@@ -30,5 +30,11 @@ Renders static chess diagrams from FEN in ` ```chessboard ` code blocks. See
 ## Known limitations (MVP)
 
 - Static FEN diagrams only — no PGN, no move navigation, no drag-and-drop.
-- Pieces are drawn as Unicode chess glyphs, not a vector piece set.
 - Does not render during note export/publish (falls back to plain code).
+
+## Credits
+
+Chess piece artwork is adapted from [chessnut-pieces](https://github.com/LexLuengas/chessnut-pieces)
+by Alexis Luengas (© 2015), licensed under the Apache License 2.0. See
+[THIRD-PARTY-LICENSES.md](./THIRD-PARTY-LICENSES.md) for the full license
+text and a description of the changes made.
