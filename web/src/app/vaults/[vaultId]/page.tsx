@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
+import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
 import Editor from "@/components/Editor";
@@ -10,9 +11,19 @@ import QuickOpen from "@/components/QuickOpen";
 import BacklinksPanel from "@/components/BacklinksPanel";
 import CollabPanel from "@/components/CollabPanel";
 import PluginManager from "@/components/PluginManager";
+import CalendarView from "@/components/CalendarView";
+import FlashcardReview from "@/components/FlashcardReview";
+import ThemePicker from "@/components/ThemePicker";
+import CSSSnippets from "@/components/CSSSnippets";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import { webApi, type ApiVault, type VaultIndex, type ApiNote, type ApiSearchResult } from "@/lib/webApi";
+import { isBoardContent } from "@/lib/board-utils";
+import { exportToPDF } from "@/lib/pdf-export";
+import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
+import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
+
+const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
 
@@ -39,6 +50,12 @@ export default function VaultPage() {
   const [collabConnected, setCollabConnected] = useState(false);
   const [collabPeers, setCollabPeers] = useState<CollabPeer[]>([]);
   const [displayName, setDisplayName] = useState<string | undefined>(undefined);
+  const [showCalendarView, setShowCalendarView] = useState(false);
+  const [showFlashcards, setShowFlashcards] = useState(false);
+  const [showThemePicker, setShowThemePicker] = useState(false);
+  const [showCSSSnippets, setShowCSSSnippets] = useState(false);
+  const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
+  const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const collabPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -146,10 +163,55 @@ export default function VaultPage() {
   useEffect(() => {
     webApi.vaults
       .get(vaultId)
-      .then(setVault)
+      .then(async (v) => {
+        setVault(v);
+
+        const themeId = (v.settings.themeId as string | undefined) ?? getDefaultTheme().id;
+        setCurrentThemeId(themeId);
+        const builtIn = BUILT_IN_THEMES.find((t) => t.id === themeId);
+        if (builtIn) {
+          applyTheme(builtIn);
+        } else {
+          const customs = await loadCustomThemes(vaultId);
+          applyTheme(customs.find((t) => t.id === themeId) ?? getDefaultTheme());
+        }
+
+        const snips = await loadSnippets(vaultId);
+        setCSSSnippets(snips);
+        applySnippets(snips);
+      })
       .catch(() => router.replace("/vaults"));
     refreshIndex();
   }, [vaultId, router, refreshIndex]);
+
+  async function handleThemeSelect(themeId: string) {
+    setCurrentThemeId(themeId);
+    let theme: ThemeDefinition | undefined = BUILT_IN_THEMES.find((t) => t.id === themeId);
+    if (!theme) {
+      const customs = await loadCustomThemes(vaultId);
+      theme = customs.find((t) => t.id === themeId);
+    }
+    if (theme) applyTheme(theme);
+
+    const v = await webApi.vaults.get(vaultId);
+    await webApi.vaults.update(vaultId, { settings: { ...v.settings, themeId } });
+  }
+
+  function openNoteByPath(path: string) {
+    const note = index?.notes.find((n) => n.path === path);
+    if (note) openNote(note.id);
+  }
+
+  async function handleExportPDF() {
+    if (!activeNote) return;
+    await exportToPDF(draft, activeNote.name);
+  }
+
+  async function handleCreateDailyNote(date: string) {
+    const note = await webApi.notes.create(vaultId, { name: `${date}.md`, folderId: null, content: `# ${date}\n` });
+    refreshIndex();
+    openNote(note.id);
+  }
 
   // Open the note requested via ?note=<id> (used by the Graph view's note click)
   useEffect(() => {
@@ -247,13 +309,20 @@ export default function VaultPage() {
   const rootNotes = index?.notes.filter((n) => n.folderId === null) ?? [];
 
   return (
-    <div className="h-screen flex">
+    <div className="h-screen flex" data-vault-id={vaultId}>
       <aside className="w-64 flex flex-col border-r border-[var(--border)] bg-[var(--bg-secondary)]">
         <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
           <Link href="/vaults" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
             ← Vaults
           </Link>
           <span className="text-sm font-medium truncate ml-2">{vault?.name}</span>
+        </div>
+
+        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-secondary)]">
+          <button onClick={() => setShowCalendarView(true)} className="hover:text-[var(--text-primary)]">Calendar</button>
+          <button onClick={() => setShowFlashcards(true)} className="hover:text-[var(--text-primary)]">Flashcards</button>
+          <button onClick={() => setShowThemePicker(true)} className="hover:text-[var(--text-primary)]">Theme</button>
+          <button onClick={() => setShowCSSSnippets(true)} className="hover:text-[var(--text-primary)]">Snippets</button>
         </div>
 
         <form onSubmit={runSearch} className="px-3 py-2 border-b border-[var(--border)]">
@@ -381,6 +450,9 @@ export default function VaultPage() {
                 <button onClick={() => setCollabVisible((v) => !v)} className="hover:text-[var(--text-primary)]">
                   Collab{collabVisible && collabPeers.length > 0 ? ` (${collabPeers.length})` : ""}
                 </button>
+                <button onClick={handleExportPDF} className="hover:text-[var(--text-primary)]">
+                  Export PDF
+                </button>
                 <Link href={`/vaults/${vaultId}/graph`} className="hover:text-[var(--text-primary)]">
                   Graph
                 </Link>
@@ -407,12 +479,16 @@ export default function VaultPage() {
             )}
             <div className="flex-1 flex min-h-0">
               <div className="flex-1 min-w-0">
-                <Editor
-                  content={draft}
-                  onChange={onDraftChange}
-                  vaultId={vaultId}
-                  onViewReady={(view) => { editorViewRef.current = view; }}
-                />
+                {isBoardContent(draft) ? (
+                  <BoardView content={draft} onChange={onDraftChange} />
+                ) : (
+                  <Editor
+                    content={draft}
+                    onChange={onDraftChange}
+                    vaultId={vaultId}
+                    onViewReady={(view) => { editorViewRef.current = view; }}
+                  />
+                )}
               </div>
               {backlinksVisible && (
                 <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
@@ -456,6 +532,54 @@ export default function VaultPage() {
           vaultId={vaultId}
           onSelect={(noteId) => openNote(noteId)}
           onClose={() => setQuickOpenVisible(false)}
+        />
+      )}
+
+      {showCalendarView && (
+        <CalendarView
+          vaultId={vaultId}
+          onFileSelect={openNoteByPath}
+          onCreateDailyNote={handleCreateDailyNote}
+          onClose={() => setShowCalendarView(false)}
+        />
+      )}
+
+      {showFlashcards && (
+        <FlashcardReview
+          vaultId={vaultId}
+          onFileSelect={openNoteByPath}
+          onClose={() => setShowFlashcards(false)}
+        />
+      )}
+
+      {showThemePicker && (
+        <div
+          style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
+          onClick={() => setShowThemePicker(false)}
+        >
+          <div
+            style={{ background: "var(--bg-primary)", borderRadius: 12, border: "1px solid var(--border)", width: 560, maxHeight: "80vh", overflowY: "auto", padding: 16 }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-sm font-semibold text-[var(--text-primary)]">Theme</span>
+              <button onClick={() => setShowThemePicker(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
+            </div>
+            <ThemePicker
+              currentThemeId={currentThemeId}
+              vaultId={vaultId}
+              onThemeSelect={(themeId) => { handleThemeSelect(themeId); setShowThemePicker(false); }}
+            />
+          </div>
+        </div>
+      )}
+
+      {showCSSSnippets && (
+        <CSSSnippets
+          vaultId={vaultId}
+          snippets={cssSnippets}
+          onSnippetsChange={(snips) => { setCSSSnippets(snips); refreshSnippets(snips); }}
+          onClose={() => setShowCSSSnippets(false)}
         />
       )}
 

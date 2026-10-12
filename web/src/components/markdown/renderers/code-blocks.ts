@@ -222,15 +222,146 @@ class DataviewWidget extends WidgetType {
 
     const loading = document.createElement("div");
     loading.style.cssText = "color:var(--text-secondary);font-size:12px";
-    loading.textContent = "Dataview chưa khả dụng trên bản web (sẽ có ở bản sau).";
+    loading.textContent = "Running query...";
     container.appendChild(loading);
 
-    // Phase 6: wire the real dataview query engine here (desktop/src/lib/dataview.ts
-    // ported with a server-vault-index data source instead of electronAPI file walks —
-    // see docs/plans/2026-10-12-noteriv-web-version.md §9 Phase 6). Left as a static
-    // notice for now so a ```dataview block degrades visibly instead of throwing.
+    this.runQuery(container, loading);
 
     return container;
+  }
+
+  private async runQuery(container: HTMLElement, loading: HTMLElement) {
+    try {
+      const { parseQuery, executeQuery, parseNoteData } = await import("@/lib/dataview");
+      const { webApi } = await import("@/lib/webApi");
+
+      const parsed = parseQuery(this.query);
+      if ("error" in parsed) {
+        loading.textContent = `Error: ${parsed.error}`;
+        loading.style.color = "var(--red)";
+        return;
+      }
+
+      const vaultId = document.querySelector("[data-vault-id]")?.getAttribute("data-vault-id");
+      if (!vaultId) {
+        loading.textContent = "No vault found";
+        loading.style.color = "var(--red)";
+        return;
+      }
+
+      const index = await webApi.vaults.index(vaultId);
+      const notes = [];
+      for (const summary of index.notes) {
+        const note = await webApi.notes.get(vaultId, summary.id);
+        notes.push(
+          parseNoteData(note.path, note.content, {
+            created: note.createdAt,
+            modified: note.updatedAt,
+            size: note.sizeBytes,
+          })
+        );
+      }
+
+      const result = executeQuery(parsed, notes);
+
+      container.removeChild(loading);
+
+      if (result.type === "TABLE") {
+        const table = document.createElement("table");
+        table.style.cssText = "width:100%;border-collapse:collapse;font-size:12px";
+
+        const thead = document.createElement("thead");
+        const headerRow = document.createElement("tr");
+        for (const f of result.fields) {
+          const th = document.createElement("th");
+          th.style.cssText = "text-align:left;padding:4px 8px;color:var(--text-secondary);font-size:11px;font-weight:600;border-bottom:1px solid var(--border)";
+          th.textContent = f;
+          headerRow.appendChild(th);
+        }
+        thead.appendChild(headerRow);
+        table.appendChild(thead);
+
+        const tbody = document.createElement("tbody");
+        for (const row of result.rows) {
+          const tr = document.createElement("tr");
+          tr.style.borderTop = "1px solid var(--bg-tertiary)";
+          for (const f of result.fields) {
+            const td = document.createElement("td");
+            td.style.cssText = "padding:4px 8px;color:var(--text-primary)";
+            if (f === "file.name") {
+              const link = document.createElement("span");
+              link.className = "md-wikilink";
+              link.style.cssText = "color:var(--accent);cursor:pointer";
+              link.textContent = row[f] || "";
+              link.setAttribute("data-target", row["file.path"] || "");
+              td.appendChild(link);
+            } else {
+              td.textContent = row[f] || "";
+            }
+            tr.appendChild(td);
+          }
+          tbody.appendChild(tr);
+        }
+        table.appendChild(tbody);
+        container.appendChild(table);
+
+        const footer = document.createElement("div");
+        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
+        footer.textContent = `${result.rows.length} results`;
+        container.appendChild(footer);
+      } else if (result.type === "LIST") {
+        const ul = document.createElement("ul");
+        ul.style.cssText = "list-style:none;padding:0;margin:0";
+        for (const row of result.rows) {
+          const li = document.createElement("li");
+          li.style.padding = "3px 0";
+          const link = document.createElement("span");
+          link.className = "md-wikilink";
+          link.style.cssText = "color:var(--accent);cursor:pointer";
+          link.textContent = row["file.name"] || "";
+          link.setAttribute("data-target", row["file.path"] || "");
+          li.appendChild(link);
+          ul.appendChild(li);
+        }
+        container.appendChild(ul);
+
+        const footer = document.createElement("div");
+        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
+        footer.textContent = `${result.rows.length} results`;
+        container.appendChild(footer);
+      } else if (result.type === "TASK" && result.tasks) {
+        const ul = document.createElement("ul");
+        ul.style.cssText = "list-style:none;padding:0;margin:0";
+        for (const task of result.tasks) {
+          const li = document.createElement("li");
+          li.style.cssText = `display:flex;align-items:flex-start;gap:6px;padding:3px 0;color:${task.completed ? "var(--text-muted)" : "var(--text-primary)"};font-size:12px`;
+          const check = document.createElement("span");
+          check.style.cssText = `width:14px;height:14px;border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;${task.completed ? "background:var(--green);color:var(--bg-primary)" : "border:1.5px solid var(--text-muted)"}`;
+          check.textContent = task.completed ? "✓" : "";
+          li.appendChild(check);
+          const text = document.createElement("span");
+          text.style.textDecoration = task.completed ? "line-through" : "none";
+          text.textContent = task.text;
+          li.appendChild(text);
+          const file = document.createElement("span");
+          file.className = "md-wikilink";
+          file.style.cssText = "color:var(--accent);cursor:pointer;font-size:10px;opacity:0.6;margin-left:auto";
+          file.textContent = task.fileName;
+          file.setAttribute("data-target", task.filePath);
+          li.appendChild(file);
+          ul.appendChild(li);
+        }
+        container.appendChild(ul);
+
+        const footer = document.createElement("div");
+        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
+        footer.textContent = `${result.tasks.length} tasks`;
+        container.appendChild(footer);
+      }
+    } catch (err) {
+      loading.textContent = `Error: ${err}`;
+      loading.style.color = "var(--red)";
+    }
   }
 
   ignoreEvent() { return false; }
