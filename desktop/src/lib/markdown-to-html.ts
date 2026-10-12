@@ -6,6 +6,42 @@
  */
 
 import { renderTocHTML } from "@/lib/toc-utils";
+import {
+  getCodeBlockProcessor,
+  type CodeBlockProcessor,
+  type CodeBlockProcessorContext,
+} from "@/lib/markdown-code-block-registry";
+
+/**
+ * Render a fenced code block through a plugin-registered processor (the same
+ * registry the live editor's CodeBlockWidget uses), returning the resulting
+ * HTML string. Returns null if there's no processor, it throws, or we're not
+ * in a browser context — callers should fall back to a plain <pre><code>.
+ */
+function renderCodeBlockWithProcessor(
+  processor: CodeBlockProcessor,
+  language: string,
+  source: string
+): string | null {
+  try {
+    const container = document.createElement("div");
+    const ctx: CodeBlockProcessorContext = { source, language, sourcePath: null };
+    const cleanup = processor(source, container, ctx);
+    // Read innerHTML before running cleanup — some processors (e.g. the
+    // chessboard plugin) clear the element in their cleanup function.
+    const result = container.innerHTML;
+    if (typeof cleanup === "function") {
+      try {
+        cleanup();
+      } catch {
+        // ignore cleanup errors — we already captured the rendered HTML
+      }
+    }
+    return result || null;
+  } catch {
+    return null;
+  }
+}
 
 /**
  * Convert a markdown string to HTML.
@@ -30,8 +66,10 @@ export function markdownToHTML(md: string): string {
       const fence = line.match(/^(`{3,}|~{3,})/)?.[1] || "```";
       const lang = line.slice(fence.length).trim();
       const codeLines: string[] = [];
+      const rawLines: string[] = [];
       i++;
       while (i < lines.length && !lines[i].startsWith(fence)) {
+        rawLines.push(lines[i]);
         codeLines.push(escapeHtml(lines[i]));
         i++;
       }
@@ -42,6 +80,19 @@ export function markdownToHTML(md: string): string {
         const queryText = codeLines.map(l => l.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')).join("\n");
         html.push(`<div class="dataview-block" data-query="${escapeHtml(queryText)}"></div>`);
         continue;
+      }
+
+      // Plugin-registered code block languages (e.g. ```chessboard) — render
+      // through the same processor the live editor uses, so exports keep
+      // the rendered widget instead of printing raw source text.
+      const langKey = lang.split(/\s+/)[0]?.toLowerCase() ?? "";
+      const entry = typeof document !== "undefined" && langKey ? getCodeBlockProcessor(langKey) : undefined;
+      if (entry) {
+        const rendered = renderCodeBlockWithProcessor(entry.processor, langKey, rawLines.join("\n"));
+        if (rendered !== null) {
+          html.push(rendered);
+          continue;
+        }
       }
 
       const langAttr = lang ? ` class="language-${escapeHtml(lang)}"` : "";

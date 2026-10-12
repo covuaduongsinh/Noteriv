@@ -146,6 +146,10 @@ const PRINT_STYLES = `
     page-break-inside: avoid;
   }
 
+  .md-codeblock-plugin, .chessboard-plugin-widget {
+    page-break-inside: avoid;
+  }
+
   input[type="checkbox"] {
     margin-right: 0.4em;
   }
