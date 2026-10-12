@@ -39,6 +39,16 @@ struct GitRunResult {
 fn run_git(args: &[&str], cwd: &Path, token: Option<&str>) -> GitRunResult {
     let mut cmd = Command::new("git");
 
+    // On Windows, a spawned console-subsystem process (git.exe) briefly flashes
+    // a visible cmd window unless told not to create one. Auto-sync runs this
+    // every few seconds, so without this flag the user sees a black window
+    // flicker on a loop. CREATE_NO_WINDOW = 0x08000000.
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        cmd.creation_flags(0x08000000);
+    }
+
     // Disable every credential helper (libsecret, manager, store, gnome-keyring,
     // etc.) and any custom askpass for THIS invocation. We pass auth via
     // GIT_ASKPASS + URL when we have a token; if we don't, git must fail fast
