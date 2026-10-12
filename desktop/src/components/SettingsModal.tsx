@@ -15,6 +15,8 @@ import {
   EDITOR_FONTS,
   AUTO_SAVE_OPTIONS,
   SYNC_OPTIONS,
+  PDF_COLUMN_LAYOUT_OPTIONS,
+  PDF_CHESSBOARD_WIDTH_OPTIONS,
 } from "@/lib/settings";
 import {
   SYNC_PROVIDERS,
@@ -201,6 +203,31 @@ export default function SettingsModal({
           </select>
         </Row>
       )}
+
+      <div className="st-divider" />
+      <div className="st-group-label">PDF export</div>
+      <Row label="Column layout" desc="Number of print columns; content flows from the left column into the right.">
+        <select
+          className="st-select"
+          value={settings.pdfColumnLayout}
+          onChange={(e) => update({ pdfColumnLayout: Number(e.target.value) as 1 | 2 })}
+        >
+          {PDF_COLUMN_LAYOUT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Row>
+      <Row label="Chessboard size" desc="Width of chessboard diagrams relative to the column width.">
+        <select
+          className="st-select"
+          value={settings.pdfChessboardWidth}
+          onChange={(e) => update({ pdfChessboardWidth: Number(e.target.value) as 75 | 100 })}
+        >
+          {PDF_CHESSBOARD_WIDTH_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Row>
 
       <div className="st-divider" />
       <div className="st-group-label">Updates</div>

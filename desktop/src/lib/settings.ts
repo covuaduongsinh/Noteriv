@@ -17,6 +17,8 @@ export interface AppSettings {
   autoUpdate: boolean; // check for and install updates automatically
   autoCollapseSidebar: boolean;
   sidebarCollapseWidth: number;
+  pdfColumnLayout: 1 | 2;       // number of print columns for PDF export
+  pdfChessboardWidth: 75 | 100; // chessboard width as % of column width
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -38,6 +40,8 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdate: true,
   autoCollapseSidebar: true,
   sidebarCollapseWidth: 800,
+  pdfColumnLayout: 2,
+  pdfChessboardWidth: 75,
 };
 
 export const ACCENT_COLORS = [
@@ -74,6 +78,16 @@ export const SYNC_OPTIONS = [
   { label: "5 minutes", value: 5 },
   { label: "10 minutes", value: 10 },
   { label: "30 minutes", value: 30 },
+];
+
+export const PDF_COLUMN_LAYOUT_OPTIONS = [
+  { label: "1 column", value: 1 },
+  { label: "2 columns", value: 2 },
+];
+
+export const PDF_CHESSBOARD_WIDTH_OPTIONS = [
+  { label: "75% of column width", value: 75 },
+  { label: "100% of column width (max)", value: 100 },
 ];
 
 export function applySettings(s: AppSettings) {

@@ -8,7 +8,8 @@ import { markdownToHTML } from "./markdown-to-html";
  * Print stylesheet for PDF export.
  * Uses serif fonts, proper margins, and page breaks before h1.
  */
-const PRINT_STYLES = `
+function buildPrintStyles(columnLayout: 1 | 2, chessboardWidthPercent: 75 | 100): string {
+  return `
   @page {
     margin: 2cm;
     size: A4;
@@ -148,6 +149,16 @@ const PRINT_STYLES = `
 
   .md-codeblock-plugin, .chessboard-plugin-widget {
     page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  .pdf-columns {
+    column-count: ${columnLayout};
+    column-gap: 1cm;
+  }
+
+  .chessboard-plugin-widget svg {
+    max-width: ${chessboardWidthPercent}% !important;
   }
 
   input[type="checkbox"] {
@@ -169,6 +180,7 @@ const PRINT_STYLES = `
     page-break-before: avoid;
   }
 `;
+}
 
 /**
  * Export markdown content as a PDF via the browser's print dialog.
@@ -176,11 +188,16 @@ const PRINT_STYLES = `
  *
  * @param content - Markdown content to export
  * @param title - Title for the document (displayed at the top)
+ * @param options - Column layout and chessboard sizing (defaults: 2 columns, 75%)
  */
 export async function exportToPDF(
   content: string,
-  title: string
+  title: string,
+  options?: { columnLayout?: 1 | 2; chessboardWidthPercent?: 75 | 100 }
 ): Promise<void> {
+  const columnLayout = options?.columnLayout ?? 2;
+  const chessboardWidthPercent = options?.chessboardWidthPercent ?? 75;
+
   const htmlContent = markdownToHTML(content);
 
   const displayTitle = title.replace(/\.(md|markdown)$/i, "");
@@ -191,11 +208,11 @@ export async function exportToPDF(
 <head>
   <meta charset="utf-8">
   <title>${escapeHtml(displayTitle)}</title>
-  <style>${PRINT_STYLES}</style>
+  <style>${buildPrintStyles(columnLayout, chessboardWidthPercent)}</style>
 </head>
 <body>
   <div class="pdf-title">${escapeHtml(displayTitle)}</div>
-  ${htmlContent}
+  <div class="pdf-columns">${htmlContent}</div>
 </body>
 </html>
   `.trim();
