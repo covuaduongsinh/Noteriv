@@ -198,15 +198,39 @@
 
 .pm-plugin-list { padding: 8px 0; }
 .pm-plugin-card {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  padding: 14px 20px;
   border-bottom: 1px solid var(--border, #45475a);
   transition: background 0.1s;
 }
 .pm-plugin-card:last-child { border-bottom: none; }
 .pm-plugin-card:hover { background: var(--bg-secondary, #181825); }
+.pm-plugin-card-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  padding: 14px 20px;
+}
+.pm-settings-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted, #6c7086);
+  cursor: pointer;
+  padding: 4px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  display: flex;
+  align-items: center;
+}
+.pm-settings-btn:hover {
+  color: var(--accent, #89b4fa);
+  background: var(--bg-tertiary, #313244);
+}
+.pm-settings-btn-active {
+  color: var(--accent, #89b4fa);
+}
+.pm-settings-panel {
+  padding: 4px 20px 16px;
+  border-top: 1px solid var(--border, #45475a);
+}
 .pm-plugin-error-card { border-left: 3px solid var(--red, #f38ba8); }
 .pm-plugin-info { flex: 1; min-width: 0; }
 .pm-plugin-header {

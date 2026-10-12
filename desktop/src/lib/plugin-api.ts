@@ -1,7 +1,8 @@
 // ─── Plugin System for Noteriv ───
 // Plugins live in {vaultPath}/.noteriv/plugins/{plugin-id}/
 // Each plugin has a manifest.json and a main.js entry file.
-// Plugin config (enabled/disabled) stored in {vaultPath}/.noteriv/plugin-config.json
+// Plugin config (enabled/disabled + per-plugin settings) stored in
+// {vaultPath}/.noteriv/plugin-config.json
 
 import {
   registerCodeBlockProcessor,
@@ -79,6 +80,11 @@ export interface PluginAPI {
     version: string;
     vaultPath: string | null;
     currentFile: string | null;
+    // Generic per-plugin persisted settings, stored in
+    // {vault}/.noteriv/plugin-config.json under settings[pluginId]. Data must
+    // be JSON-serializable (no functions/DOM nodes).
+    loadSettings: () => Promise<Record<string, unknown>>;
+    saveSettings: (data: Record<string, unknown>) => Promise<void>;
   };
 }
 
@@ -135,6 +141,10 @@ export interface EditorState {
 
 interface PluginConfig {
   enabled: string[];
+  // Arbitrary per-plugin settings blobs, keyed by plugin id. Written/read via
+  // api.app.loadSettings()/saveSettings() — see PluginManager.loadConfig/saveConfig
+  // for the read-modify-write semantics that keep this from clobbering `enabled`.
+  settings?: Record<string, Record<string, unknown>>;
 }
 
 const APP_VERSION = "1.3.0";
@@ -199,28 +209,57 @@ export class PluginManager {
     }
   }
 
-  // ── Enabled plugin IDs ──
+  // ── Config file (read-modify-write) ──
+  // Both `enabled` and `settings` live in the same plugin-config.json. Always
+  // read the full file, mutate only the key you care about, and write the
+  // full object back — writing a partial object (e.g. `{ enabled: ids }`)
+  // would silently wipe out the other key.
 
-  async getEnabledPluginIds(): Promise<string[]> {
-    if (!window.electronAPI) return [];
+  private async loadConfig(): Promise<PluginConfig> {
+    if (!window.electronAPI) return { enabled: [] };
     try {
       const configPath = `${this.vaultPath}/${CONFIG_FILE}`;
       const raw = await window.electronAPI.readFile(configPath);
-      if (!raw) return [];
+      if (!raw) return { enabled: [] };
       const config: PluginConfig = JSON.parse(raw);
-      return config.enabled || [];
+      return { enabled: config.enabled || [], settings: config.settings };
     } catch {
-      return [];
+      return { enabled: [] };
     }
   }
 
-  private async saveEnabledPluginIds(ids: string[]): Promise<void> {
+  private async saveConfig(config: PluginConfig): Promise<void> {
     if (!window.electronAPI) return;
     const configPath = `${this.vaultPath}/${CONFIG_FILE}`;
-    const config: PluginConfig = { enabled: ids };
     // Ensure .noteriv directory exists
     await window.electronAPI.createDir(`${this.vaultPath}/.noteriv`);
     await window.electronAPI.writeFile(configPath, JSON.stringify(config, null, 2));
+  }
+
+  // ── Enabled plugin IDs ──
+
+  async getEnabledPluginIds(): Promise<string[]> {
+    const config = await this.loadConfig();
+    return config.enabled || [];
+  }
+
+  private async saveEnabledPluginIds(ids: string[]): Promise<void> {
+    const config = await this.loadConfig();
+    config.enabled = ids;
+    await this.saveConfig(config);
+  }
+
+  // ── Per-plugin settings (generic key/value blob, any plugin may use) ──
+
+  async loadPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
+    const config = await this.loadConfig();
+    return config.settings?.[pluginId] ?? {};
+  }
+
+  async savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void> {
+    const config = await this.loadConfig();
+    config.settings = { ...(config.settings ?? {}), [pluginId]: data };
+    await this.saveConfig(config);
   }
 
   // ── Enable / Disable ──
@@ -587,6 +626,8 @@ export class PluginManager {
         version: APP_VERSION,
         vaultPath: manager.vaultPath,
         currentFile: manager.getEditorState()?.currentFile ?? null,
+        loadSettings: () => manager.loadPluginSettings(pluginId),
+        saveSettings: (data: Record<string, unknown>) => manager.savePluginSettings(pluginId, data),
       },
     };
   }

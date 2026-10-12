@@ -103,7 +103,7 @@ Register UI elements and show notifications.
 | `removeStatusBarItem` | `(id: string) => void` | Remove a status bar item. |
 | `addSidebarPanel` | `(panel: SidebarPanel) => void` | Add a panel to the sidebar. |
 | `removeSidebarPanel` | `(id: string) => void` | Remove a sidebar panel. |
-| `addSettingsTab` | `(tab: SettingsTab) => void` | Add a tab to the settings modal. |
+| `addSettingsTab` | `(tab: SettingsTab) => void` | Register a settings panel for this plugin, shown inline in the **Plugins** modal (Installed tab → your plugin's card → "Settings" button). |
 | `removeSettingsTab` | `(id: string) => void` | Remove a settings tab. |
 | `showNotice` | `(message: string, duration?: number) => void` | Show a toast notification. Duration is in milliseconds (default: 4000). |
 
@@ -152,6 +152,13 @@ Register UI elements and show notifications.
   }
 }
 ```
+
+`render(container)` receives a plain `HTMLElement` your plugin fully owns
+(imperative DOM, same as `SidebarPanel.render`) — set its `innerHTML` and
+attach your own listeners, and optionally return a cleanup function that
+runs when the panel is closed or the plugin is disabled. Pair this with
+`api.app.loadSettings()`/`saveSettings()` (see below) to persist whatever
+the user picks.
 
 ### api.events
 
@@ -239,13 +246,24 @@ Mobile also runs your `main.js` in a different sandbox than desktop: each code b
 
 ### api.app
 
-Read-only application state.
+Application state, plus generic per-plugin settings persistence.
 
-| Property | Type | Description |
+| Property / Method | Type | Description |
 |---|---|---|
 | `version` | string | The current Noteriv app version. |
 | `vaultPath` | string \| null | Absolute path to the active vault. |
 | `currentFile` | string \| null | Relative path to the currently open file. |
+| `loadSettings` | `() => Promise<Record<string, unknown>>` | Load this plugin's saved settings blob (desktop only — see below). Returns `{}` if nothing was saved yet. |
+| `saveSettings` | `(data: Record<string, unknown>) => Promise<void>` | Persist this plugin's settings blob. `data` must be JSON-serializable (no functions or DOM nodes). |
+
+`loadSettings`/`saveSettings` are stored per-plugin in
+`{vault}/.noteriv/plugin-config.json`, read/write the whole blob at once
+(there's no partial-key update — load, mutate the object, then save it
+back), and are **desktop only**: the mobile WebView sandbox exposes a
+static, read-only `api.app` with just `version`/`vaultPath`/`currentFile`
+(see "Mobile support" above), so feature-detect
+`typeof api.app.loadSettings === "function"` before using them if your
+plugin also runs on mobile.
 
 ## Complete Example: Word Count Plugin
 

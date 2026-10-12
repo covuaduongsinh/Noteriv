@@ -2216,6 +2216,7 @@ export default function Home() {
             }
           }}
           onClose={() => setShowPluginManager(false)}
+          getSettingsTabs={() => pluginManagerRef.current?.getSettingsTabs() ?? []}
         />
       )}
 

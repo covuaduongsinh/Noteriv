@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { PluginInstance } from "@/lib/plugin-api";
+import type { PluginInstance, SettingsTab } from "@/lib/plugin-api";
 import {
   CommunityPluginEntry,
   fetchCommunityPluginManifest,
@@ -18,6 +18,9 @@ interface PluginManagerProps {
   onInstallPlugin: () => void;
   onUninstallPlugin: (id: string) => void;
   onClose: () => void;
+  /** Re-invoked on every render so newly-registered tabs (e.g. right after
+   * onLoad resolves) show up without requiring a remount of this modal. */
+  getSettingsTabs?: () => SettingsTab[];
 }
 
 export default function PluginManagerModal({
@@ -27,12 +30,33 @@ export default function PluginManagerModal({
   onInstallPlugin,
   onUninstallPlugin,
   onClose,
+  getSettingsTabs,
 }: PluginManagerProps) {
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [search, setSearch] = useState("");
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null);
+  const [openSettingsTabId, setOpenSettingsTabId] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const settingsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Re-computed every render (not memoized) so it reflects tabs a plugin
+  // registers asynchronously right after its onLoad resolves.
+  const settingsTabs = getSettingsTabs ? getSettingsTabs() : [];
+
+  // Mount/unmount the active settings tab's render() into its container.
+  useEffect(() => {
+    if (!openSettingsTabId || !settingsContainerRef.current) return;
+    const tab = settingsTabs.find((t) => t.id === openSettingsTabId);
+    if (!tab) return;
+    const container = settingsContainerRef.current;
+    container.innerHTML = "";
+    const cleanup = tab.render(container);
+    return () => {
+      if (typeof cleanup === "function") cleanup();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openSettingsTabId]);
 
   // Community state
   const [communityEntries, setCommunityEntries] = useState<CommunityPluginEntry[]>([]);
@@ -53,6 +77,8 @@ export default function PluginManagerModal({
       if (e.key === "Escape") {
         if (confirmUninstall) {
           setConfirmUninstall(null);
+        } else if (openSettingsTabId) {
+          setOpenSettingsTabId(null);
         } else {
           onClose();
         }
@@ -60,7 +86,7 @@ export default function PluginManagerModal({
     };
     window.addEventListener("keydown", handleKey);
     return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose, confirmUninstall]);
+  }, [onClose, confirmUninstall, openSettingsTabId]);
 
   // Backdrop click
   const handleBackdrop = useCallback(
@@ -130,8 +156,16 @@ export default function PluginManagerModal({
     if (confirmUninstall === id) {
       onUninstallPlugin(id);
       setConfirmUninstall(null);
+      setOpenSettingsTabId((cur) => (cur && cur.startsWith(`${id}:`) ? null : cur));
     } else {
       setConfirmUninstall(id);
+    }
+  };
+
+  const handleToggle = (id: string, enabled: boolean) => {
+    onTogglePlugin(id, enabled);
+    if (!enabled) {
+      setOpenSettingsTabId((cur) => (cur && cur.startsWith(`${id}:`) ? null : cur));
     }
   };
 
@@ -239,69 +273,107 @@ export default function PluginManagerModal({
                 </div>
               ) : (
                 <div className="pm-plugin-list">
-                  {filteredPlugins.map((plugin) => (
-                    <div
-                      key={plugin.manifest.id}
-                      className={`pm-plugin-card${plugin.error ? " pm-plugin-error-card" : ""}`}
-                    >
-                      <div className="pm-plugin-info">
-                        <div className="pm-plugin-header">
-                          <span className="pm-plugin-name">{plugin.manifest.name}</span>
-                          <span className="pm-plugin-version">v{plugin.manifest.version}</span>
+                  {filteredPlugins.map((plugin) => {
+                    const pluginTabs = settingsTabs.filter((t) =>
+                      t.id.startsWith(`${plugin.manifest.id}:`)
+                    );
+                    const activeTabForPlugin = pluginTabs.find((t) => t.id === openSettingsTabId);
+                    return (
+                      <div
+                        key={plugin.manifest.id}
+                        className={`pm-plugin-card${plugin.error ? " pm-plugin-error-card" : ""}`}
+                      >
+                        <div className="pm-plugin-card-row">
+                          <div className="pm-plugin-info">
+                            <div className="pm-plugin-header">
+                              <span className="pm-plugin-name">{plugin.manifest.name}</span>
+                              <span className="pm-plugin-version">v{plugin.manifest.version}</span>
+                            </div>
+                            <p className="pm-plugin-desc">{plugin.manifest.description}</p>
+                            <div className="pm-plugin-meta">
+                              <span className="pm-plugin-author">
+                                <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
+                                  <circle cx="6" cy="4" r="2.5" stroke="currentColor" strokeWidth="1" />
+                                  <path d="M1.5 11c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
+                                </svg>
+                                {plugin.manifest.author}
+                              </span>
+                              <span className="pm-plugin-id">{plugin.manifest.id}</span>
+                            </div>
+                            {plugin.error && (
+                              <div className="pm-plugin-error">
+                                <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+                                  <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" />
+                                  <path d="M6 3.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+                                  <circle cx="6" cy="8.5" r="0.5" fill="currentColor" />
+                                </svg>
+                                <span>{plugin.error}</span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="pm-plugin-actions">
+                            {pluginTabs.length > 0 && (
+                              <button
+                                className={`pm-settings-btn${activeTabForPlugin ? " pm-settings-btn-active" : ""}`}
+                                onClick={() =>
+                                  setOpenSettingsTabId(activeTabForPlugin ? null : pluginTabs[0].id)
+                                }
+                                title="Plugin settings"
+                              >
+                                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                                  <path
+                                    d="M7 4.5a2.5 2.5 0 100 5 2.5 2.5 0 000-5z"
+                                    stroke="currentColor"
+                                    strokeWidth="1.1"
+                                  />
+                                  <path
+                                    d="M7 1v1.3M7 11.7V13M1 7h1.3M11.7 7H13M2.9 2.9l.9.9M10.2 10.2l.9.9M11.1 2.9l-.9.9M3.8 10.2l-.9.9"
+                                    stroke="currentColor"
+                                    strokeWidth="1.1"
+                                    strokeLinecap="round"
+                                  />
+                                </svg>
+                              </button>
+                            )}
+
+                            <button
+                              className={`st-toggle${plugin.enabled ? " st-toggle-on" : ""}`}
+                              onClick={() => handleToggle(plugin.manifest.id, !plugin.enabled)}
+                              role="switch"
+                              aria-checked={plugin.enabled}
+                              title={plugin.enabled ? "Disable plugin" : "Enable plugin"}
+                            >
+                              <span className="st-toggle-thumb" />
+                            </button>
+
+                            <button
+                              className={`pm-uninstall-btn${confirmUninstall === plugin.manifest.id ? " pm-uninstall-confirm" : ""}`}
+                              onClick={() => handleUninstall(plugin.manifest.id)}
+                              title={confirmUninstall === plugin.manifest.id ? "Click again to confirm" : "Uninstall plugin"}
+                            >
+                              {confirmUninstall === plugin.manifest.id ? (
+                                "Confirm?"
+                              ) : (
+                                <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
+                                  <path d="M3 4h8l-.75 8.25a1 1 0 01-1 .75H4.75a1 1 0 01-1-.75L3 4z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
+                                  <path d="M2 4h10" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                                  <path d="M5.5 2h3a1 1 0 011 1H4.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.1" />
+                                  <path d="M6 6.5v3.5M8 6.5v3.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
+                                </svg>
+                              )}
+                            </button>
+                          </div>
                         </div>
-                        <p className="pm-plugin-desc">{plugin.manifest.description}</p>
-                        <div className="pm-plugin-meta">
-                          <span className="pm-plugin-author">
-                            <svg width="11" height="11" viewBox="0 0 12 12" fill="none">
-                              <circle cx="6" cy="4" r="2.5" stroke="currentColor" strokeWidth="1" />
-                              <path d="M1.5 11c0-2.5 2-4 4.5-4s4.5 1.5 4.5 4" stroke="currentColor" strokeWidth="1" strokeLinecap="round" />
-                            </svg>
-                            {plugin.manifest.author}
-                          </span>
-                          <span className="pm-plugin-id">{plugin.manifest.id}</span>
-                        </div>
-                        {plugin.error && (
-                          <div className="pm-plugin-error">
-                            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                              <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1" />
-                              <path d="M6 3.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                              <circle cx="6" cy="8.5" r="0.5" fill="currentColor" />
-                            </svg>
-                            <span>{plugin.error}</span>
+
+                        {activeTabForPlugin && (
+                          <div className="pm-settings-panel">
+                            <div key={activeTabForPlugin.id} ref={settingsContainerRef} />
                           </div>
                         )}
                       </div>
-
-                      <div className="pm-plugin-actions">
-                        <button
-                          className={`st-toggle${plugin.enabled ? " st-toggle-on" : ""}`}
-                          onClick={() => onTogglePlugin(plugin.manifest.id, !plugin.enabled)}
-                          role="switch"
-                          aria-checked={plugin.enabled}
-                          title={plugin.enabled ? "Disable plugin" : "Enable plugin"}
-                        >
-                          <span className="st-toggle-thumb" />
-                        </button>
-
-                        <button
-                          className={`pm-uninstall-btn${confirmUninstall === plugin.manifest.id ? " pm-uninstall-confirm" : ""}`}
-                          onClick={() => handleUninstall(plugin.manifest.id)}
-                          title={confirmUninstall === plugin.manifest.id ? "Click again to confirm" : "Uninstall plugin"}
-                        >
-                          {confirmUninstall === plugin.manifest.id ? (
-                            "Confirm?"
-                          ) : (
-                            <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
-                              <path d="M3 4h8l-.75 8.25a1 1 0 01-1 .75H4.75a1 1 0 01-1-.75L3 4z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
-                              <path d="M2 4h10" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                              <path d="M5.5 2h3a1 1 0 011 1H4.5a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.1" />
-                              <path d="M6 6.5v3.5M8 6.5v3.5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-                            </svg>
-                          )}
-                        </button>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>

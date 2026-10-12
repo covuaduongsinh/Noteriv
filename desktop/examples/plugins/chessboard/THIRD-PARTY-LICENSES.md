@@ -2,6 +2,13 @@
 
 ## Chess piece artwork
 
+Three piece sets are embedded in `main.js`: `classic` (third-party, see
+below), `spatial` (third-party, see below), and `minimal` (original Noteriv
+artwork, geometric glyphs with no external source — no license entry
+needed).
+
+### classic (`PIECE_SVG`)
+
 The chess piece SVG artwork embedded in `main.js` (the `PIECE_SVG` map) is
 derived from **chessnut-pieces** by Alexis Luengas:
 
@@ -219,3 +226,50 @@ Apache License
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+### spatial (`PIECE_SVG_SPATIAL`)
+
+The "Spatial" piece set embedded in `main.js` (the `PIECE_SVG_SPATIAL` map)
+is derived from the `spatial` piece set in **lichess-org/lila**
+(`public/piece/spatial`), originally authored by Maurizio Monge:
+
+- Source: https://github.com/lichess-org/lila/tree/master/public/piece/spatial
+  (original artwork: https://github.com/maurimo/chess-art)
+- Copyright Maurizio Monge
+- Licensed under the MIT License (reproduced in full below).
+
+Changes made from the original files: each of the 12 individual SVG
+documents (one per piece/color) defined its own `<defs>` with
+`<linearGradient>` fills (e.g. `id="main-gradient"`). Since this plugin
+embeds every piece as an inline string and several same-type pieces can
+appear on one board (e.g. 8 pawns), those per-file gradient `id`s would
+collide once concatenated into a single document — browsers resolve a
+duplicate id to the first match, so later pieces would render with the
+wrong gradient geometry. Each piece's fills were therefore flattened from
+a two-stop linear gradient to a single solid color (the piece's lighter
+gradient stop for the white set, `#2b2e3f` — a solid approximation of the
+black set's darker stop — for the black set); the path geometry itself is
+unmodified. `id` attributes and the shared `<style>` block were dropped
+as unused once the gradients were removed.
+
+MIT License
+
+Copyright (c) Maurizio Monge
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.

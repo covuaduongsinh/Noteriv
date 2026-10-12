@@ -21,6 +21,11 @@
 //   annotations  comma/newline separated list of:
 //                  H<square>/<color>  highlight a square (color: g, r, b, y; default g)
 //                  A<square>-<square> draw an arrow between two squares
+//   pieceset     optional. One of PIECE_SETS below (classic, spatial, minimal).
+//                Overrides the plugin-wide default saved via the Settings tab.
+//   boardtheme   optional. One of BOARD_THEMES below (classic, forest, ocean,
+//                midnight). Overrides the plugin-wide default saved via the
+//                Settings tab.
 
 function escapeHtml(s) {
   return String(s)
@@ -64,6 +69,10 @@ function parseChessboardBlock(source) {
       .split(/[,\n]/)
       .map(function (s) { return s.trim(); })
       .filter(Boolean),
+    // Optional per-block overrides for the default piece set / board theme
+    // (see currentSettings). null means "no override, fall back to default".
+    pieceset: fields.pieceset ? fields.pieceset.toLowerCase() : null,
+    boardtheme: fields.boardtheme ? fields.boardtheme.toLowerCase() : null,
   };
 }
 
@@ -131,23 +140,112 @@ var PIECE_SVG = {
   p: '<g><path d="M487.507,418.344L487.507,418.344c0.099-16.66,11.76-24.598,63.798-29.302V331.81h-88.886 c31.36-19.11,51.744-52.43,51.744-91.042c0-60.662-50.274-108.192-114.366-108.192s-114.366,47.53-114.366,108.192 c0,38.612,20.286,71.833,51.744,91.042h-89.572v57.232c52.625,4.704,63.896,12.642,63.896,29.204 c0,59.486-36.848,128.87-113.19,196.098l0.098,62.721c0,18.229,91.336,31.359,201.194,31.359l0,0l0,0 c109.858,0,201.292-13.23,201.292-31.359l0.098-62.721C524.648,547.214,487.507,477.732,487.507,418.344z"/><path fill="none" stroke="#F2F2F2" stroke-width="19.0512" stroke-linecap="round" stroke-miterlimit="10" d=" M235.451,623.066c0,13.426,74.479,25.186,164.248,25.186l0,0c89.67,0,164.051-10.779,164.051-24.107"/><path fill="none" stroke="#F2F2F2" stroke-width="15.876" stroke-linecap="round" stroke-miterlimit="10" d=" M400.875,155.704c-23.52-0.196-46.648,8.428-64.975,26.754c-26.165,26.264-31.85,61.936-19.6,93.394"/></g>',
 };
 
-var HIGHLIGHT_COLOR = {
-  g: "#4caf50",
-  r: "#f44336",
-  b: "#2196f3",
-  y: "#ffeb3b",
+// ─── Piece set: Spatial ───
+// Source: lichess-org/lila public/piece/spatial (Maurizio Monge,
+// https://github.com/maurimo/chess-art, MIT License). Flattened from the
+// original gradient-filled SVGs to solid fills — see
+// THIRD-PARTY-LICENSES.md for why (duplicate gradient ids collide once
+// multiple same-type pieces are embedded in one document) and for the
+// full license text.
+var PIECE_SVG_SPATIAL = {
+  K: '<path d="M493.348 343.592v-129.84H598.06v-75.459H493.348V72.16h-69.602v66.133h-87.174v75.459h87.174v129.84m-2.358 53.141c31.212 112.7 9 276.095-66 241.96-137.19-62.44-188.192-292.18 30.844-176.93-59.33-121.286-134.17-163.98-195.037-161.568-68.981 2.735-120.017 63.407-110.19 133.268 19.373 137.709 171.584 262.12 179.55 322.2m409.326-.058c4.987-68.476 177.617-200.398 183.316-326.025 5.65-126.94-213.43-225.252-309.818 32.078 221.543-118.496 150.548 107.25 40.601 177.035-69.352 44.02-106.305-117.674-72.556-244.036m-250.62 410.864-39.452-2v71.946h483.16V803.52l-32.12 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M423.747 72.16v66.134h-87.174v75.458h87.174v135.84h69.6v-135.84H598.06v-75.458H493.348V72.159Z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M543.378 461.659c221.544-118.496 150.55 107.25 40.603 177.035-70.836 44.961-107.872-124.686-70.293-252.094l-94.939 1.144c35.009 112.745 13.658 286.004-63.361 250.95-137.192-62.44-188.193-292.18 30.844-176.93C259.659 203.019 62.507 301.959 81.007 433.462c20.095 142.853 183.137 271.395 179.824 328.662h409.111c-6.554-66.35 177.37-202.804 183.256-332.544 5.65-126.94-213.432-225.252-309.82 32.079" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M221.352 801.521h483.16v73.945h-483.16z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
+  Q: '<path d="M690.605 766.18c88.769-90.71 140.98-241.722 162.04-453.666-110.451 239.661-180.878 345.902-228.256 364.75 45.241-116.612 78.78-291.617 87.425-525.358-69.294 207.629-120.577 351.382-164.138 431.832-26.514-109.699-38.22-296.9-66.014-478.004-34.791 188.524-47.636 382.449-77.369 488.623-41.408-77.705-87.892-224.036-150.941-439.25-.989 223.42 22.967 393.006 60.406 508.846-48.155-34.212-117.283-142.337-221.014-357.238 11.588 214.478 62.838 367.984 150.213 459.816m8.033 46.627-22-2v68.117h469.834v-68.117l-16.786 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M711.814 151.906c-225.866 676.77-260.764 678.027-458.462 3.202-1.216 275.009 35.357 468.451 88.355 580.494h256.806c58.083-112.565 103.074-307.205 113.301-583.696" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M481.662 105.734c-81.968 444.154-41.752 920.212-388.918 200.981 11.881 219.895 65.45 375.697 156.9 466.654h433.718c93.18-89.82 147.656-243.21 169.283-460.855-331.536 719.381-302.754 237.784-370.983-206.78" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M228.99 809.158h469.835v70.118H228.99z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
+  R: '<path d="m654.315 303.569 65.054 1.522c43.135-59.53 53.993-116.965 67.252-174.556l-114.596.086c-6.523 15.694-10.593 43.583-20.996 46.604-21.779 6.324-38.799 12.144-52.607 17.568-12.091-4.516-26.495-9.335-43.834-14.498-13.687-4.076-21.49-35.24-23.725-49.57l-116.056.084c-5.556 16.485-8.341 45.4-20.475 49.175-21.698 6.753-38.726 12.875-52.594 18.516-14.14-5.022-31.546-10.375-53.797-16.137-22.016-5.7-14.889-38.886-22.091-51.443l-107.944.078c5.63 60.878 10.46 115.728 55.924 176.38l56.53-1.84m5.462 48.09 16 381.61m345.022 0 16-381.61M279.35 787.163l-54.555-2.47c-28.96 31.656-25.96 54.006-36.674 80.349h554.18c-6.147-26.851-4.744-54.296-32.707-79.431l-55.586 1.552" style="fill:none;stroke-width:35;stroke:#000"/><path d="m275.822 345.629 16 397.61h345.022l16-397.61z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M157.905 130.999c5.766 62.36 10.697 118.39 59.316 180.815l499.102-2.587c45.68-61.009 56.731-119.768 70.297-178.692l-114.594.086c-6.524 15.694-10.595 43.584-20.997 46.604-292.698 84.994 192.123 88.995-96.44 3.07-13.687-4.076-21.492-35.24-23.726-49.571l-116.057.085c-5.556 16.486-8.341 45.4-20.475 49.176-294.979 91.796 191.18 79.433-106.39 2.379-22.016-5.701-14.888-38.886-22.091-51.444z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M228.12 781.161c-32.525 33.548-28.891 56.567-40 83.88H742.3c-6.51-28.445-4.55-57.555-38-83.88z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
+  B: '<path d="M448.98 48c-1.336.083-2.83.288-4.49.613-41.9 8.217-41.13 30.064-19.472 64.426C453.686 71.737 468.722 46.767 448.98 48m-23.962 65.04c-31.48 45.351-79.414 110.415-116.174 182.55-71.074 139.47-87.286 275.445 22.355 408.049 17.093 10.535 18.975 46.403 5.705 77.535l74.502-.512C293.255 822.167 76.736 842.687 85.38 881.047c0 0 234.234 13.973 314.129-34.361 28.104-17.003 46.841-45.08 57.846-66.34l39.511-.272c6.969 19.36 17.384 39.603 32.565 51.063 83.454 62.996 322.11 48.457 322.11 48.457.759-52.555-184.063-52.925-296.942-99.916l41.822-.287c-13.724-30.812-11.436-67.76 12.318-87.123 13.904-25.51 23.452-51.18 29.48-76.776 35.416-88.175 52.293-202.543 7.083-302.947-35.766-79.43-81.727-137.527-102.858-177.219-14.312 18.904-31.601 41.544-49.511 66.725-28.129-35.541-52.968-65.296-67.914-89.012zm117.425 22.286C575.5 91.664 592.86 67.063 566.311 72.27c-41.908 8.218-42.1 28.81-23.868 63.056" style="fill:none;stroke-width:35;stroke:#000"/><path d="M469.75 751.538c-75.953 62.86-394.82 83.129-384.37 129.51 0 0 234.232 13.973 314.127-34.362 49.838-30.15 70.243-95.148 70.243-95.148" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M484.462 730.28c71.103 99.976 368.04 82.74 367.078 149.313 0 0-238.657 14.54-322.111-48.457-35.314-26.657-44.967-100.857-44.967-100.857z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M566.31 72.27c53.134-10.42-69.586 98.53-142.088 240.803C635.197 333.98 576.496 606.13 610.414 673.437c51.72-90.89 90.848-236.611 34.888-360.892C578.678 164.583 475.829 90.015 566.31 72.27" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M444.49 48.612c53.134-10.42-63.143 104.704-135.645 246.978-71.075 139.47-87.287 275.445 22.354 408.049 17.093 10.535 18.975 46.403 5.705 77.535l259.516-1.783c-13.724-30.811-11.436-67.76 12.318-87.123 79.669-146.173 19.124-297.647-56.407-409.937C461.223 146.883 354.008 66.357 444.49 48.612m-14.743 321.674c-2.298 92.247 36.384 158.976 35.102 264.869-36.755 21.147-28.274-95.53-52.625-122.605-21.334-23.72-85.797-18.798-68.856-51.905 76.571-.497 125.42 28.967 201.45 17.075 6.755-20.32-49.367-22.89-65.196-36.026-21.285-17.665-25.342-85.432-49.875-71.408" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
+  N: '<path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Z" style="fill:none;stroke-width:35;stroke:#000"/><path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Zm-1.458 240.252c-7.892 11.198-24.49 29.475-39.052 26.8-13.465-2.475-18.883-7.04-19.504-22.984-.523-13.426 47.048-12.993 58.556-3.816" style="fill:#ffffff;stroke-width:20;stroke:#000"/>',
+  P: '<path d="M460.195 305.537c-77.6 0-140.507 64.062-140.507 143.086.179 39.335 16.253 76.86 44.44 103.754-7.673-88.861 209.21-79.895 188.567 3.633 30.426-27.098 47.918-66.225 48.008-107.387 0-79.024-62.907-143.086-140.508-143.086m47.383 247.432-101.539.66c-25.392 205.944-140.792 212.006-127.57 303.533l355.502.223c11.141-100.852-107.312-99.908-126.393-304.416" style="fill:none;stroke-width:35;stroke:#000"/><path d="M460.195 305.538c-77.6 0-140.507 64.061-140.507 143.085.179 39.335 16.252 76.86 44.44 103.754-7.674-88.861 209.21-79.895 188.566 3.633 30.426-27.097 47.919-66.225 48.01-107.387 0-79.024-62.909-143.086-140.51-143.085z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M278.47 857.163c-13.222-91.527 102.178-97.591 127.57-303.535l101.537-.658c19.081 204.508 137.535 203.564 126.394 304.415z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
+  k: '<path d="M493.348 343.592v-129.84H598.06v-75.459H493.348V72.16h-69.602v66.133h-87.174v75.459h87.174v129.84m-2.358 53.141c31.212 112.7 9 276.095-66 241.96-137.19-62.44-188.192-292.18 30.844-176.93-59.33-121.286-134.17-163.98-195.037-161.568-68.981 2.735-120.017 63.407-110.19 133.268 19.373 137.709 171.584 262.12 179.55 322.2m409.326-.058c4.987-68.476 177.617-200.398 183.316-326.025 5.65-126.94-213.43-225.252-309.818 32.078 221.543-118.496 150.548 107.25 40.601 177.035-69.352 44.02-106.305-117.674-72.556-244.036m-250.62 410.864-39.452-2v71.946h483.16V803.52l-32.12 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M423.747 72.16v66.134h-87.174v75.458h87.174v135.84h69.6v-135.84H598.06v-75.458H493.348V72.159Z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M543.378 461.659c221.544-118.496 150.55 107.25 40.603 177.035-70.836 44.961-107.872-124.686-70.293-252.094l-94.939 1.144c35.009 112.745 13.658 286.004-63.361 250.95-137.192-62.44-188.193-292.18 30.844-176.93C259.659 203.019 62.507 301.959 81.007 433.462c20.095 142.853 183.137 271.395 179.824 328.662h409.111c-6.554-66.35 177.37-202.804 183.256-332.544 5.65-126.94-213.432-225.252-309.82 32.079" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M221.352 801.521h483.16v73.945h-483.16z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
+  q: '<path d="M690.605 766.18c88.769-90.71 140.98-241.722 162.04-453.666-110.451 239.661-180.878 345.902-228.256 364.75 45.241-116.612 78.78-291.617 87.425-525.358-69.294 207.629-120.577 351.382-164.138 431.832-26.514-109.699-38.22-296.9-66.014-478.004-34.791 188.524-47.636 382.449-77.369 488.623-41.408-77.705-87.892-224.036-150.941-439.25-.989 223.42 22.967 393.006 60.406 508.846-48.155-34.212-117.283-142.337-221.014-357.238 11.588 214.478 62.838 367.984 150.213 459.816m8.033 46.627-22-2v68.117h469.834v-68.117l-16.786 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M711.814 151.906c-225.866 676.77-260.764 678.027-458.462 3.202-1.216 275.009 35.357 468.451 88.355 580.494h256.806c58.083-112.565 103.074-307.205 113.301-583.696" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M481.662 105.734c-81.968 444.154-41.752 920.212-388.918 200.981 11.881 219.895 65.45 375.697 156.9 466.654h433.718c93.18-89.82 147.656-243.21 169.283-460.855-331.536 719.381-302.754 237.784-370.983-206.78" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M228.99 809.158h469.835v70.118H228.99z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
+  r: '<path d="m654.315 303.569 65.054 1.522c43.135-59.53 53.993-116.965 67.252-174.556l-114.596.086c-6.523 15.694-10.593 43.583-20.996 46.604-21.779 6.324-38.799 12.144-52.607 17.568-12.091-4.516-26.495-9.335-43.834-14.498-13.687-4.076-21.49-35.24-23.725-49.57l-116.056.084c-5.556 16.485-8.341 45.4-20.475 49.175-21.698 6.753-38.726 12.875-52.594 18.516-14.14-5.022-31.546-10.375-53.797-16.137-22.016-5.7-14.889-38.886-22.091-51.443l-107.944.078c5.63 60.878 10.46 115.728 55.924 176.38l56.53-1.84m5.462 48.09 16 381.61m345.022 0 16-381.61M279.35 787.163l-54.555-2.47c-28.96 31.656-25.96 54.006-36.674 80.349h554.18c-6.147-26.851-4.744-54.296-32.707-79.431l-55.586 1.552" style="fill:none;stroke-width:35;stroke:#000"/><path d="m275.822 345.629 16 397.61h345.022l16-397.61z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M157.905 130.999c5.766 62.36 10.697 118.39 59.316 180.815l499.102-2.587c45.68-61.009 56.731-119.768 70.297-178.692l-114.594.086c-6.524 15.694-10.595 43.584-20.997 46.604-292.698 84.994 192.123 88.995-96.44 3.07-13.687-4.076-21.492-35.24-23.726-49.571l-116.057.085c-5.556 16.486-8.341 45.4-20.475 49.176-294.979 91.796 191.18 79.433-106.39 2.379-22.016-5.701-14.888-38.886-22.091-51.444z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M228.12 781.161c-32.525 33.548-28.891 56.567-40 83.88H742.3c-6.51-28.445-4.55-57.555-38-83.88z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
+  b: '<path d="M448.98 48c-1.336.083-2.83.288-4.49.613-41.9 8.217-41.13 30.064-19.472 64.426C453.686 71.737 468.722 46.767 448.98 48m-23.962 65.04c-31.48 45.351-79.414 110.415-116.174 182.55-71.074 139.47-87.286 275.445 22.355 408.049 17.093 10.535 18.975 46.403 5.705 77.535l74.502-.512C293.255 822.167 76.736 842.687 85.38 881.047c0 0 234.234 13.973 314.129-34.361 28.104-17.003 46.841-45.08 57.846-66.34l39.511-.272c6.969 19.36 17.384 39.603 32.565 51.063 83.454 62.996 322.11 48.457 322.11 48.457.759-52.555-184.063-52.925-296.942-99.916l41.822-.287c-13.724-30.812-11.436-67.76 12.318-87.123 13.904-25.51 23.452-51.18 29.48-76.776 35.416-88.175 52.293-202.543 7.083-302.947-35.766-79.43-81.727-137.527-102.858-177.219-14.312 18.904-31.601 41.544-49.511 66.725-28.129-35.541-52.968-65.296-67.914-89.012zm117.425 22.286C575.5 91.664 592.86 67.063 566.311 72.27c-41.908 8.218-42.1 28.81-23.868 63.056" style="fill:none;stroke-width:35;stroke:#000"/><path d="M469.75 751.538c-75.953 62.86-394.82 83.129-384.37 129.51 0 0 234.232 13.973 314.127-34.362 49.838-30.15 70.243-95.148 70.243-95.148" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M484.462 730.28c71.103 99.976 368.04 82.74 367.078 149.313 0 0-238.657 14.54-322.111-48.457-35.314-26.657-44.967-100.857-44.967-100.857z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M566.31 72.27c53.134-10.42-69.586 98.53-142.088 240.803C635.197 333.98 576.496 606.13 610.414 673.437c51.72-90.89 90.848-236.611 34.888-360.892C578.678 164.583 475.829 90.015 566.31 72.27" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M444.49 48.612c53.134-10.42-63.143 104.704-135.645 246.978-71.075 139.47-87.287 275.445 22.354 408.049 17.093 10.535 18.975 46.403 5.705 77.535l259.516-1.783c-13.724-30.811-11.436-67.76 12.318-87.123 79.669-146.173 19.124-297.647-56.407-409.937C461.223 146.883 354.008 66.357 444.49 48.612m-14.743 321.674c-2.298 92.247 36.384 158.976 35.102 264.869-36.755 21.147-28.274-95.53-52.625-122.605-21.334-23.72-85.797-18.798-68.856-51.905 76.571-.497 125.42 28.967 201.45 17.075 6.755-20.32-49.367-22.89-65.196-36.026-21.285-17.665-25.342-85.432-49.875-71.408" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
+  n: '<path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Z" style="fill:none;stroke-width:35;stroke:#000"/><path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Zm-1.458 240.252c-7.892 11.198-24.49 29.475-39.052 26.8-13.465-2.475-18.883-7.04-19.504-22.984-.523-13.426 47.048-12.993 58.556-3.816" style="fill:#2b2e3f;stroke-width:20;stroke:#000"/>',
+  p: '<path d="M460.195 305.537c-77.6 0-140.507 64.062-140.507 143.086.179 39.335 16.253 76.86 44.44 103.754-7.673-88.861 209.21-79.895 188.567 3.633 30.426-27.098 47.918-66.225 48.008-107.387 0-79.024-62.907-143.086-140.508-143.086m47.383 247.432-101.539.66c-25.392 205.944-140.792 212.006-127.57 303.533l355.502.223c11.141-100.852-107.312-99.908-126.393-304.416" style="fill:none;stroke-width:35;stroke:#000"/><path d="M460.195 305.538c-77.6 0-140.507 64.061-140.507 143.085.179 39.335 16.252 76.86 44.44 103.754-7.674-88.861 209.21-79.895 188.566 3.633 30.426-27.097 47.919-66.225 48.01-107.387 0-79.024-62.909-143.086-140.51-143.085z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M278.47 857.163c-13.222-91.527 102.178-97.591 127.57-303.535l101.537-.658c19.081 204.508 137.535 203.564 126.394 304.415z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
 };
+
+// ─── Piece set: Minimal (Noteriv original artwork, no license needed) ───
+// Plain geometric glyphs — not traced from any existing font or piece set.
+var MINIMAL_SHAPES = {
+  K: '<path d="M34 85 L38 45 L62 45 L66 85 Z"/><path d="M47 20h6v8h8v6h-8v8h-6v-8h-8v-6h8z"/>',
+  Q: '<path d="M32 85 L36 45 L64 45 L68 85 Z"/><circle cx="36" cy="40" r="5"/><circle cx="45" cy="34" r="5"/><circle cx="50" cy="29" r="5"/><circle cx="55" cy="34" r="5"/><circle cx="64" cy="40" r="5"/>',
+  R: '<path d="M30 85 L30 40 L38 40 L38 30 L46 30 L46 40 L54 40 L54 30 L62 30 L62 40 L70 40 L70 85 Z"/>',
+  B: '<circle cx="50" cy="20" r="7"/><path d="M35 85 L40 45 Q50 30 60 45 L65 85 Z"/>',
+  N: '<path d="M30 85 L30 55 Q30 30 55 22 L75 15 L80 28 L62 36 Q72 40 74 55 L78 85 Z"/>',
+  P: '<circle cx="50" cy="32" r="14"/><path d="M38 48h24l10 30H28z"/>',
+};
+
+function buildMinimalPieces() {
+  var pieces = {};
+  var types = ["K", "Q", "R", "B", "N", "P"];
+  for (var i = 0; i < types.length; i++) {
+    var t = types[i];
+    pieces[t] = '<g style="fill:#ffffff;stroke:#1a1a1a;stroke-width:4;stroke-linejoin:round">' + MINIMAL_SHAPES[t] + "</g>";
+    pieces[t.toLowerCase()] = '<g style="fill:#2b2e3f;stroke:#f0f0f0;stroke-width:4;stroke-linejoin:round">' + MINIMAL_SHAPES[t] + "</g>";
+  }
+  return pieces;
+}
+var PIECE_SVG_MINIMAL = buildMinimalPieces();
+
+// ─── Piece set registry ───
+// Each entry's `pieces` map uses the same keys as the original PIECE_SVG
+// (uppercase = white, lowercase = black), rendered inside a nested <svg
+// viewBox="{viewBox}"> sized to that set's own artwork coordinate space.
+var PIECE_SETS = {
+  classic: { name: "Classic (Chessnut)", viewBox: "0 0 800 800", pieces: PIECE_SVG },
+  spatial: { name: "Spatial", viewBox: "0 0 933.333 933.333", pieces: PIECE_SVG_SPATIAL },
+  minimal: { name: "Minimal", viewBox: "0 0 100 100", pieces: PIECE_SVG_MINIMAL },
+};
+
+// ─── Board theme registry ───
+// Square colors + annotation colors (highlight squares, arrows). Hex
+// values only — no license concerns, unlike piece artwork.
+var BOARD_THEMES = {
+  classic: {
+    name: "Classic Wood",
+    light: "#f0d9b5",
+    dark: "#b58863",
+    highlight: { g: "#4caf50", r: "#f44336", b: "#2196f3", y: "#ffeb3b" },
+    arrow: "#1e88e5",
+  },
+  forest: {
+    name: "Forest Green",
+    light: "#e9edcc",
+    dark: "#4b7339",
+    highlight: { g: "#8bc34a", r: "#e53935", b: "#29b6f6", y: "#ffd54f" },
+    arrow: "#2e7d32",
+  },
+  ocean: {
+    name: "Ocean Blue",
+    light: "#dce6ea",
+    dark: "#3d6b8a",
+    highlight: { g: "#26a69a", r: "#ef5350", b: "#42a5f5", y: "#ffee58" },
+    arrow: "#0277bd",
+  },
+  midnight: {
+    name: "Midnight Dark",
+    light: "#4a4a52",
+    dark: "#23232b",
+    highlight: { g: "#66bb6a", r: "#ef5350", b: "#5c6bc0", y: "#fdd835" },
+    arrow: "#90caf9",
+  },
+};
+
+// Default fallbacks until onLoad finishes reading saved settings (see
+// bottom of file) — and the fallback whenever a block or a saved setting
+// names an id that no longer exists in the registries above.
+var currentSettings = { pieceSet: "classic", boardTheme: "classic" };
 
 function renderBoardSVG(config) {
   var board = config.fen.split(" ")[0];
   var ranks = board.split("/");
+  var theme = BOARD_THEMES[config.boardTheme] || BOARD_THEMES.classic;
+  var pieceSet = PIECE_SETS[config.pieceSet] || PIECE_SETS.classic;
   var svg = '<svg viewBox="0 0 400 400" class="chessboard-plugin-svg" style="display:block;width:100%;max-width:360px;margin:12px auto;" xmlns="http://www.w3.org/2000/svg">';
 
   // 1. squares
   for (var row = 0; row < 8; row++) {
     for (var col = 0; col < 8; col++) {
       var light = (row + col) % 2 === 0;
-      svg += '<rect x="' + col * 50 + '" y="' + row * 50 + '" width="50" height="50" fill="' + (light ? "#f0d9b5" : "#b58863") + '" />';
+      svg += '<rect x="' + col * 50 + '" y="' + row * 50 + '" width="50" height="50" fill="' + (light ? theme.light : theme.dark) + '" />';
     }
   }
 
@@ -156,7 +254,7 @@ function renderBoardSVG(config) {
     var hMatch = config.annotations[a].match(/^H([a-h][1-8])\/?([grby]?)$/i);
     if (!hMatch) continue;
     var hXY = squareToXY(hMatch[1], config.orientation);
-    var color = HIGHLIGHT_COLOR[(hMatch[2] || "g").toLowerCase()] || HIGHLIGHT_COLOR.g;
+    var color = theme.highlight[(hMatch[2] || "g").toLowerCase()] || theme.highlight.g;
     svg += '<rect x="' + hXY.x + '" y="' + hXY.y + '" width="50" height="50" fill="' + color + '" fill-opacity="0.55" />';
   }
 
@@ -172,16 +270,16 @@ function renderBoardSVG(config) {
       }
       var square = "abcdefgh"[file] + (8 - rk);
       var xy = squareToXY(square, config.orientation);
-      var pieceSvg = PIECE_SVG[ch];
+      var pieceSvg = pieceSet.pieces[ch];
       if (pieceSvg) {
-        svg += '<svg x="' + xy.x + '" y="' + xy.y + '" width="50" height="50" viewBox="0 0 800 800">' + pieceSvg + '</svg>';
+        svg += '<svg x="' + xy.x + '" y="' + xy.y + '" width="50" height="50" viewBox="' + pieceSet.viewBox + '">' + pieceSvg + '</svg>';
       }
       file++;
     }
   }
 
   // 4. arrows
-  svg += '<defs><marker id="cb-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="#1e88e5" fill-opacity="0.85"/></marker></defs>';
+  svg += '<defs><marker id="cb-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="' + theme.arrow + '" fill-opacity="0.85"/></marker></defs>';
   for (var b = 0; b < config.annotations.length; b++) {
     var aMatch = config.annotations[b].match(/^A([a-h][1-8])-([a-h][1-8])$/i);
     if (!aMatch) continue;
@@ -189,7 +287,7 @@ function renderBoardSVG(config) {
     var to = squareToXY(aMatch[2], config.orientation);
     var x1 = from.x + 25, y1 = from.y + 25;
     var x2 = to.x + 25, y2 = to.y + 25;
-    svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="#1e88e5" stroke-opacity="0.85" stroke-width="6" marker-end="url(#cb-arrowhead)" />';
+    svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + theme.arrow + '" stroke-opacity="0.85" stroke-width="6" marker-end="url(#cb-arrowhead)" />';
   }
 
   svg += "</svg>";
@@ -215,7 +313,11 @@ function chessboardProcessor(source, el) {
   }
 
   try {
-    el.innerHTML = '<div class="chessboard-plugin-widget">' + renderBoardSVG(config) + '</div>';
+    var renderConfig = Object.assign({}, config, {
+      pieceSet: config.pieceset || currentSettings.pieceSet,
+      boardTheme: config.boardtheme || currentSettings.boardTheme,
+    });
+    el.innerHTML = '<div class="chessboard-plugin-widget">' + renderBoardSVG(renderConfig) + '</div>';
   } catch (err) {
     el.innerHTML = '<div class="chessboard-error" style="' + errorStyle + '">Render error: ' + escapeHtml(err && err.message ? err.message : String(err)) + '</div>';
   }
@@ -225,12 +327,98 @@ function chessboardProcessor(source, el) {
   };
 }
 
-module.exports.onLoad = function (api) {
+var PREVIEW_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+
+function renderSettingsTab(api) {
+  return function render(container) {
+    var pieceOptions = Object.keys(PIECE_SETS)
+      .map(function (id) {
+        var selected = id === currentSettings.pieceSet ? " selected" : "";
+        return '<option value="' + id + '"' + selected + ">" + escapeHtml(PIECE_SETS[id].name) + "</option>";
+      })
+      .join("");
+    var themeOptions = Object.keys(BOARD_THEMES)
+      .map(function (id) {
+        var selected = id === currentSettings.boardTheme ? " selected" : "";
+        return '<option value="' + id + '"' + selected + ">" + escapeHtml(BOARD_THEMES[id].name) + "</option>";
+      })
+      .join("");
+
+    container.innerHTML =
+      '<div style="font-size:13px;">' +
+      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">' +
+      '<label style="display:flex;flex-direction:column;gap:4px;">Piece set' +
+      '<select class="cb-settings-pieceset" style="padding:4px 6px;">' + pieceOptions + "</select>" +
+      "</label>" +
+      '<label style="display:flex;flex-direction:column;gap:4px;">Board theme' +
+      '<select class="cb-settings-boardtheme" style="padding:4px 6px;">' + themeOptions + "</select>" +
+      "</label>" +
+      "</div>" +
+      '<div class="cb-settings-preview" style="margin-bottom:12px;max-width:220px;"></div>' +
+      '<button type="button" class="cb-settings-save" style="padding:6px 14px;cursor:pointer;">Save as default</button>' +
+      '<div style="margin-top:8px;font-size:11px;opacity:0.7;">Boards already open in a note keep their current look until you reopen the note.</div>' +
+      "</div>";
+
+    var pieceSelect = container.querySelector(".cb-settings-pieceset");
+    var themeSelect = container.querySelector(".cb-settings-boardtheme");
+    var preview = container.querySelector(".cb-settings-preview");
+    var saveBtn = container.querySelector(".cb-settings-save");
+
+    function updatePreview() {
+      preview.innerHTML = renderBoardSVG({
+        fen: PREVIEW_FEN,
+        orientation: "white",
+        annotations: [],
+        pieceSet: pieceSelect.value,
+        boardTheme: themeSelect.value,
+      });
+    }
+    updatePreview();
+
+    pieceSelect.addEventListener("change", updatePreview);
+    themeSelect.addEventListener("change", updatePreview);
+
+    saveBtn.addEventListener("click", function () {
+      currentSettings = { pieceSet: pieceSelect.value, boardTheme: themeSelect.value };
+      api.app.saveSettings(currentSettings).then(function () {
+        api.ui.showNotice("Chessboard defaults saved.", 4000);
+      });
+    });
+  };
+}
+
+module.exports.onLoad = async function (api) {
   if (!api.markdown || typeof api.markdown.registerCodeBlockProcessor !== "function") {
     api.ui.showNotice("Chessboard plugin requires a newer version of Noteriv (markdown code block API).", 6000);
     return;
   }
+
+  // Load the saved default piece set / board theme (feature-detected: older
+  // Noteriv builds without api.app.loadSettings just keep the classic
+  // defaults). This must finish before registering the processor so the
+  // very first render of any already-open note uses the saved defaults
+  // instead of flashing "classic" first.
+  if (api.app && typeof api.app.loadSettings === "function") {
+    try {
+      var saved = await api.app.loadSettings();
+      currentSettings = {
+        pieceSet: (saved && saved.pieceSet) || "classic",
+        boardTheme: (saved && saved.boardTheme) || "classic",
+      };
+    } catch (e) {
+      // Keep defaults on any read error.
+    }
+  }
+
   api.markdown.registerCodeBlockProcessor("chessboard", chessboardProcessor);
+
+  if (api.ui && typeof api.ui.addSettingsTab === "function" && api.app && typeof api.app.saveSettings === "function") {
+    api.ui.addSettingsTab({
+      id: "chessboard-settings",
+      name: "Chessboard",
+      render: renderSettingsTab(api),
+    });
+  }
 };
 
 module.exports.onUnload = function () {
