@@ -1,0 +1,160 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8" />
+<title>Noteriv plugin sandbox</title>
+</head>
+<body>
+<script>
+"use strict";
+
+// This page only ever runs inside an <iframe sandbox="allow-scripts"> with NO
+// allow-same-origin. That combination gives the browser an opaque origin for
+// this frame: it cannot read the parent's cookies/localStorage/DOM, and the
+// parent cannot read this frame's — regardless of which URL actually serves
+// this file. The postMessage bridge below is the *only* channel in or out,
+// and every call the plugin makes goes through the parent, which enforces
+// the plugin's declared permissions before doing anything real.
+
+var pendingCalls = Object.create(null);
+var nextCallId = 1;
+var registeredCommands = Object.create(null);
+var eventHandlers = Object.create(null);
+var pluginOnUnload = null;
+
+function rpcCall(method, args) {
+  var callId = String(nextCallId++);
+  return new Promise(function (resolve, reject) {
+    pendingCalls[callId] = { resolve: resolve, reject: reject };
+    parent.postMessage({ type: "noteriv:call", callId: callId, method: method, args: args }, "*");
+  });
+}
+
+function buildApi() {
+  return {
+    vault: {
+      read: function (path) { return rpcCall("vault.read", [path]); },
+      write: function (path, content) { return rpcCall("vault.write", [path, content]); },
+      list: function (dir) { return rpcCall("vault.list", [dir]); },
+      exists: function (path) { return rpcCall("vault.exists", [path]); },
+      delete: function (path) { return rpcCall("vault.delete", [path]); },
+    },
+    ui: {
+      addCommand: function (cmd) {
+        registeredCommands[cmd.id] = cmd.callback;
+        return rpcCall("ui.addCommand", [{ id: cmd.id, name: cmd.name, icon: cmd.icon }]);
+      },
+      removeCommand: function (id) {
+        delete registeredCommands[id];
+        return rpcCall("ui.removeCommand", [id]);
+      },
+      showNotice: function (message, duration) { return rpcCall("ui.showNotice", [message, duration]); },
+    },
+    events: {
+      on: function (event, handler) {
+        if (!eventHandlers[event]) eventHandlers[event] = [];
+        eventHandlers[event].push(handler);
+      },
+      off: function (event, handler) {
+        if (!eventHandlers[event]) return;
+        eventHandlers[event] = eventHandlers[event].filter(function (h) { return h !== handler; });
+      },
+    },
+    editor: {
+      getContent: function () { return rpcCall("editor.getContent", []); },
+      setContent: function (content) { return rpcCall("editor.setContent", [content]); },
+      insertAtCursor: function (text) { return rpcCall("editor.insertAtCursor", [text]); },
+      getSelection: function () { return rpcCall("editor.getSelection", []); },
+      replaceSelection: function (text) { return rpcCall("editor.replaceSelection", [text]); },
+    },
+    app: {
+      loadSettings: function () { return rpcCall("app.loadSettings", []); },
+      saveSettings: function (data) { return rpcCall("app.saveSettings", [data]); },
+    },
+  };
+}
+
+window.addEventListener("message", function (event) {
+  var data = event.data;
+  if (!data || typeof data !== "object") return;
+
+  if (data.type === "noteriv:response") {
+    var pending = pendingCalls[data.callId];
+    if (!pending) return;
+    delete pendingCalls[data.callId];
+    if (data.ok) pending.resolve(data.result);
+    else pending.reject(new Error(data.error || "plugin call failed"));
+    return;
+  }
+
+  if (data.type === "noteriv:invoke-command") {
+    var cb = registeredCommands[data.commandId];
+    if (typeof cb === "function") {
+      try {
+        Promise.resolve(cb()).catch(function (err) {
+          parent.postMessage({ type: "noteriv:log", level: "error", message: "command error: " + (err && err.message) }, "*");
+        });
+      } catch (err) {
+        parent.postMessage({ type: "noteriv:log", level: "error", message: "command error: " + (err && err.message) }, "*");
+      }
+    }
+    return;
+  }
+
+  if (data.type === "noteriv:emit-event") {
+    var handlers = eventHandlers[data.event] || [];
+    handlers.forEach(function (h) {
+      try { h.apply(null, data.args || []); } catch (e) { /* ignore plugin handler errors */ }
+    });
+    return;
+  }
+
+  if (data.type === "noteriv:unload") {
+    if (typeof pluginOnUnload === "function") {
+      try { pluginOnUnload(); } catch (e) { /* ignore */ }
+    }
+    return;
+  }
+
+  if (data.type === "noteriv:boot") {
+    var api = buildApi();
+    var wrapped = [
+      '"use strict";',
+      "var module = { exports: {} };",
+      "var exports = module.exports;",
+      data.mainJs,
+      "return module.exports;",
+    ].join("\n");
+
+    var pluginExports;
+    try {
+      var factory = new Function(wrapped);
+      pluginExports = factory();
+    } catch (execError) {
+      parent.postMessage({ type: "noteriv:boot-result", ok: false, error: "execute: " + execError.message }, "*");
+      return;
+    }
+
+    if (typeof pluginExports.onUnload === "function") {
+      pluginOnUnload = pluginExports.onUnload;
+    }
+
+    if (typeof pluginExports.onLoad === "function") {
+      Promise.resolve()
+        .then(function () { return pluginExports.onLoad(api); })
+        .then(function () {
+          parent.postMessage({ type: "noteriv:boot-result", ok: true }, "*");
+        })
+        .catch(function (err) {
+          parent.postMessage({ type: "noteriv:boot-result", ok: false, error: "onLoad: " + (err && err.message) }, "*");
+        });
+    } else {
+      parent.postMessage({ type: "noteriv:boot-result", ok: true }, "*");
+    }
+  }
+});
+
+parent.postMessage({ type: "noteriv:ready" }, "*");
+</script>
+</body>
+</html>

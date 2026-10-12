@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum WorkspaceRole {
+  owner
+  editor
+  viewer
+}
+
+enum LinkType {
+  wikilink
+  embed
+}
+
+enum SyncProviderType {
+  github
+  gitlab
+  gitea
+  forgejo
+  webdav
+}
+
+enum SyncDirection {
+  push
+  pull
+  both
+}
+
+enum SyncJobStatus {
+  queued
+  running
+  success
+  conflict
+  error
+}
+
+model User {
+  id           String   @id @default(uuid())
+  email        String   @unique
+  passwordHash String?  @map("password_hash")
+  displayName  String   @map("display_name")
+  avatarUrl    String?  @map("avatar_url")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  ownedWorkspaces  Workspace[]        @relation("WorkspaceOwner")
+  memberships      WorkspaceMember[]
+  refreshTokens    RefreshToken[]
+  createdNotes     Note[]             @relation("NoteCreatedBy")
+  updatedNotes     Note[]             @relation("NoteUpdatedBy")
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  tokenHash String   @map("token_hash")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  revokedAt DateTime? @map("revoked_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("refresh_tokens")
+}
+
+model Workspace {
+  id        String   @id @default(uuid())
+  name      String
+  ownerId   String   @map("owner_id")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  owner   User              @relation("WorkspaceOwner", fields: [ownerId], references: [id])
+  members WorkspaceMember[]
+  vaults  Vault[]
+
+  @@map("workspaces")
+}
+
+model WorkspaceMember {
+  workspaceId String        @map("workspace_id")
+  userId      String        @map("user_id")
+  role        WorkspaceRole @default(owner)
+  createdAt   DateTime      @default(now()) @map("created_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([workspaceId, userId])
+  @@map("workspace_members")
+}
+
+model Vault {
+  id          String   @id @default(uuid())
+  workspaceId String   @map("workspace_id")
+  name        String
+  settings    Json     @default("{}")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  workspace Workspace @relation(fields: [workspaceId], references: [id], onDelete: Cascade)
+  folders   Folder[]
+  notes     Note[]
+  backlinks Backlink[]
+  plugins   Plugin[]
+  syncConnections SyncConnection[]
+
+  @@map("vaults")
+}
+
+model SyncConnection {
+  id           String           @id @default(uuid())
+  vaultId      String           @map("vault_id")
+  providerType SyncProviderType @map("provider_type")
+
+  // Git providers (github/gitlab/gitea/forgejo)
+  remoteUrl    String?          @map("remote_url")
+  branch       String           @default("main")
+  authUsername String?          @map("auth_username")
+
+  // WebDAV
+  webdavUrl    String?          @map("webdav_url")
+  webdavPath   String?          @map("webdav_path")
+
+  /// AES-256-GCM encrypted JSON blob — {token} for git, {username,password} for WebDAV.
+  /// Never returned to the client. See src/lib/crypto.ts.
+  credentialsEncrypted Bytes    @map("credentials_encrypted")
+
+  direction      SyncDirection @default(both)
+  autoSync       Boolean       @default(false) @map("auto_sync")
+  lastSyncedAt   DateTime?     @map("last_synced_at")
+  lastSyncStatus Json?         @map("last_sync_status")
+  createdAt      DateTime      @default(now()) @map("created_at")
+
+  vault Vault     @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  jobs  SyncJob[]
+
+  @@map("sync_connections")
+}
+
+model SyncJob {
+  id               String        @id @default(uuid())
+  syncConnectionId String        @map("sync_connection_id")
+  status           SyncJobStatus @default(queued)
+  pushedCount      Int           @default(0) @map("pushed_count")
+  pulledCount      Int           @default(0) @map("pulled_count")
+  errorMessage     String?       @map("error_message")
+  startedAt        DateTime?     @map("started_at")
+  finishedAt       DateTime?     @map("finished_at")
+  createdAt        DateTime      @default(now()) @map("created_at")
+
+  syncConnection SyncConnection @relation(fields: [syncConnectionId], references: [id], onDelete: Cascade)
+
+  @@index([syncConnectionId])
+  @@map("sync_jobs")
+}
+
+model Plugin {
+  id          String   @id @default(uuid())
+  vaultId     String   @map("vault_id")
+  pluginId    String   @map("plugin_id")
+  manifest    Json
+  /// Plugin source, stored as text for now (plugins are small JS files). A
+  /// future phase can move this to object storage alongside attachments.
+  mainJs      String   @map("main_js")
+  enabled     Boolean  @default(true)
+  settings    Json     @default("{}")
+  installedAt DateTime @default(now()) @map("installed_at")
+
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@unique([vaultId, pluginId])
+  @@map("plugins")
+}
+
+model Folder {
+  id        String   @id @default(uuid())
+  vaultId   String   @map("vault_id")
+  parentId  String?  @map("parent_id")
+  name      String
+  path      String
+  position  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vault    Vault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  parent   Folder?  @relation("FolderParent", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[] @relation("FolderParent")
+  notes    Note[]
+
+  @@unique([vaultId, path])
+  @@map("folders")
+}
+
+model Note {
+  id          String   @id @default(uuid())
+  vaultId     String   @map("vault_id")
+  folderId    String?  @map("folder_id")
+  name        String
+  path        String
+  content     String   @default("")
+  frontmatter Json     @default("{}")
+  sizeBytes   Int      @default(0) @map("size_bytes")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  createdById String?  @map("created_by")
+  updatedById String?  @map("updated_by")
+  // Note: the `content_tsv` generated tsvector column (added in migration
+  // 20261012071108_add_backlinks_and_search) is deliberately NOT declared here.
+  // Prisma's migration-diff engine doesn't understand `GENERATED ALWAYS AS`
+  // columns and proposes dropping its index/default on every subsequent
+  // migration if declared as Unsupported("tsvector"). The column still exists
+  // in the DB and is queried via $queryRaw in routes/vaults.ts — just never
+  // through Prisma Client, so it doesn't need a schema field at all.
+
+  vault             Vault      @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  folder            Folder?    @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdBy         User?      @relation("NoteCreatedBy", fields: [createdById], references: [id])
+  updatedBy         User?      @relation("NoteUpdatedBy", fields: [updatedById], references: [id])
+  backlinksAsSource Backlink[] @relation("BacklinkSource")
+  backlinksAsTarget Backlink[] @relation("BacklinkTarget")
+
+  @@unique([vaultId, path])
+  @@map("notes")
+}
+
+model Backlink {
+  id           String   @id @default(uuid())
+  vaultId      String   @map("vault_id")
+  sourceNoteId String   @map("source_note_id")
+  targetNoteId String   @map("target_note_id")
+  linkType     LinkType @default(wikilink) @map("link_type")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  vault      Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  sourceNote Note  @relation("BacklinkSource", fields: [sourceNoteId], references: [id], onDelete: Cascade)
+  targetNote Note  @relation("BacklinkTarget", fields: [targetNoteId], references: [id], onDelete: Cascade)
+
+  @@unique([sourceNoteId, targetNoteId, linkType])
+  @@index([targetNoteId])
+  @@map("backlinks")
+}

@@ -1,0 +1,113 @@
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
+
+const ALLOWED_PERMISSIONS = [
+  "vault:read",
+  "vault:write",
+  "editor:read",
+  "editor:write",
+  "ui:commands",
+] as const;
+
+const manifestSchema = z.object({
+  id: z.string().min(1).max(100).regex(/^[a-z0-9-]+$/, "plugin id must be kebab-case"),
+  name: z.string().min(1).max(200),
+  version: z.string().min(1).max(50),
+  description: z.string().max(2000).default(""),
+  author: z.string().max(200).default(""),
+  main: z.string().min(1).max(200).default("main.js"),
+  permissions: z.array(z.enum(ALLOWED_PERMISSIONS)).default([]),
+});
+
+const installSchema = z.object({
+  manifest: manifestSchema,
+  mainJs: z.string().min(1).max(500_000), // 500KB ceiling for a plugin's source
+});
+
+const updateSchema = z.object({
+  enabled: z.boolean().optional(),
+  settings: z.record(z.any()).optional(),
+});
+
+export default async function pluginRoutes(fastify: FastifyInstance) {
+  const { prisma } = fastify;
+  fastify.addHook("preHandler", fastify.authenticate);
+
+  fastify.get("/:vid/plugins", async (request, reply) => {
+    const { vid } = request.params as { vid: string };
+    try {
+      await requireVaultAccess(prisma, vid, request.user!.id);
+      const plugins = await prisma.plugin.findMany({ where: { vaultId: vid } });
+      return reply.send(plugins);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  fastify.post("/:vid/plugins/install", async (request, reply) => {
+    const { vid } = request.params as { vid: string };
+    const parsed = installSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
+    }
+    try {
+      const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
+      if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
+
+      const { manifest, mainJs } = parsed.data;
+      const plugin = await prisma.plugin.upsert({
+        where: { vaultId_pluginId: { vaultId: vid, pluginId: manifest.id } },
+        create: { vaultId: vid, pluginId: manifest.id, manifest, mainJs, enabled: true },
+        update: { manifest, mainJs },
+      });
+      return reply.code(201).send(plugin);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  fastify.patch("/:vid/plugins/:pid", async (request, reply) => {
+    const { vid, pid } = request.params as { vid: string; pid: string };
+    const parsed = updateSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    try {
+      const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
+      if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
+
+      const existing = await prisma.plugin.findFirst({ where: { id: pid, vaultId: vid } });
+      if (!existing) return reply.code(404).send({ error: "not_found" });
+
+      const plugin = await prisma.plugin.update({
+        where: { id: pid },
+        data: {
+          ...(parsed.data.enabled !== undefined ? { enabled: parsed.data.enabled } : {}),
+          ...(parsed.data.settings !== undefined
+            ? { settings: { ...(existing.settings as object), ...parsed.data.settings } }
+            : {}),
+        },
+      });
+      return reply.send(plugin);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  fastify.delete("/:vid/plugins/:pid", async (request, reply) => {
+    const { vid, pid } = request.params as { vid: string; pid: string };
+    try {
+      const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
+      if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
+      const existing = await prisma.plugin.findFirst({ where: { id: pid, vaultId: vid } });
+      if (!existing) return reply.code(404).send({ error: "not_found" });
+      await prisma.plugin.delete({ where: { id: pid } });
+      return reply.send({ ok: true });
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+}

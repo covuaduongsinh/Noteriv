@@ -49,6 +49,11 @@ next-env.d.ts
 # claude
 .claude/
 
+# oh-my-claudecode operational state (per CLAUDE.md: ignored by default,
+# .omc/skills/** is the intentional committable exception)
+.omc/
+!.omc/skills/
+
 # misc
 *.pem
 .vercel

@@ -1,0 +1,172 @@
+import type { FastifyInstance } from "fastify";
+import { z } from "zod";
+import { Prisma } from "@prisma/client";
+import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
+
+const createVaultSchema = z.object({
+  name: z.string().min(1).max(200),
+  workspaceId: z.string().uuid().optional(),
+});
+
+const updateVaultSchema = z.object({
+  name: z.string().min(1).max(200).optional(),
+  settings: z.record(z.any()).optional(),
+});
+
+export default async function vaultRoutes(fastify: FastifyInstance) {
+  const { prisma } = fastify;
+  fastify.addHook("preHandler", fastify.authenticate);
+
+  fastify.get("/", async (request, reply) => {
+    const vaults = await prisma.vault.findMany({
+      where: { workspace: { members: { some: { userId: request.user!.id } } } },
+      orderBy: { updatedAt: "desc" },
+    });
+    return reply.send(vaults);
+  });
+
+  fastify.post("/", async (request, reply) => {
+    const parsed = createVaultSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid_body" });
+    }
+    const { name, workspaceId } = parsed.data;
+
+    let targetWorkspaceId = workspaceId;
+    if (!targetWorkspaceId) {
+      const membership = await prisma.workspaceMember.findFirst({
+        where: { userId: request.user!.id, role: "owner" },
+        orderBy: { createdAt: "asc" },
+      });
+      if (!membership) {
+        return reply.code(400).send({ error: "no_workspace" });
+      }
+      targetWorkspaceId = membership.workspaceId;
+    } else {
+      const membership = await prisma.workspaceMember.findUnique({
+        where: { workspaceId_userId: { workspaceId: targetWorkspaceId, userId: request.user!.id } },
+      });
+      if (!membership || membership.role === "viewer") {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+    }
+
+    const vault = await prisma.vault.create({
+      data: { name, workspaceId: targetWorkspaceId },
+    });
+    return reply.code(201).send(vault);
+  });
+
+  fastify.get("/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const { vault } = await requireVaultAccess(prisma, id, request.user!.id);
+      return reply.send(vault);
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  fastify.patch("/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const parsed = updateVaultSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "invalid_body" });
+    }
+    try {
+      const { role } = await requireVaultAccess(prisma, id, request.user!.id);
+      if (role === "viewer") {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+      const updated = await prisma.vault.update({ where: { id }, data: parsed.data });
+      return reply.send(updated);
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  fastify.delete("/:id", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      const { role } = await requireVaultAccess(prisma, id, request.user!.id);
+      if (role !== "owner") {
+        return reply.code(403).send({ error: "forbidden" });
+      }
+      await prisma.vault.delete({ where: { id } });
+      return reply.send({ ok: true });
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // Full note/folder index for client-side cache (sidebar tree, dataview, wikilink resolution)
+  fastify.get("/:id/index", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      await requireVaultAccess(prisma, id, request.user!.id);
+      const [folders, notes] = await Promise.all([
+        prisma.folder.findMany({ where: { vaultId: id }, orderBy: { position: "asc" } }),
+        prisma.note.findMany({
+          where: { vaultId: id },
+          select: {
+            id: true,
+            name: true,
+            path: true,
+            folderId: true,
+            frontmatter: true,
+            sizeBytes: true,
+            updatedAt: true,
+          },
+          orderBy: { name: "asc" },
+        }),
+      ]);
+      return reply.send({ folders, notes });
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+
+  // Full-text search over note name + content (Postgres tsvector, see prisma migration
+  // add_backlinks_and_search for the generated `content_tsv` column + GIN index).
+  fastify.get("/:id/search", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    const { q } = request.query as { q?: string };
+    if (!q || !q.trim()) return reply.send([]);
+    try {
+      await requireVaultAccess(prisma, id, request.user!.id);
+      const results = await prisma.$queryRaw<
+        Array<{ id: string; name: string; path: string; snippet: string; rank: number }>
+      >(Prisma.sql`
+        SELECT
+          id,
+          name,
+          path,
+          ts_headline('simple', content, plainto_tsquery('simple', ${q}),
+            'MaxFragments=1, MaxWords=20, MinWords=5') AS snippet,
+          ts_rank(content_tsv, plainto_tsquery('simple', ${q})) AS rank
+        FROM notes
+        WHERE vault_id = ${id} AND content_tsv @@ plainto_tsquery('simple', ${q})
+        ORDER BY rank DESC
+        LIMIT 50
+      `);
+      return reply.send(results);
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
+}
