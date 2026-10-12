@@ -103,7 +103,26 @@ class ApiError extends Error {
   }
 }
 
-async function request<T>(path: string, init?: RequestInit): Promise<T> {
+// The access token (15min TTL, see server/src/lib/jwt.ts) expires mid-session
+// on any long-lived tab. A single in-flight refresh is shared across
+// concurrent 401s so a burst of requests doesn't each race their own
+// /auth/refresh call (which would revoke-then-reissue the refresh token
+// multiple times and strand the losers with an already-rotated token).
+let refreshInFlight: Promise<boolean> | null = null;
+
+async function refreshSession(): Promise<boolean> {
+  if (!refreshInFlight) {
+    refreshInFlight = fetch("/api/v1/auth/refresh", { method: "POST", credentials: "include" })
+      .then((res) => res.ok)
+      .catch(() => false)
+      .finally(() => {
+        refreshInFlight = null;
+      });
+  }
+  return refreshInFlight;
+}
+
+async function request<T>(path: string, init?: RequestInit, _retrying = false): Promise<T> {
   const res = await fetch(`/api/v1${path}`, {
     ...init,
     credentials: "include",
@@ -112,6 +131,11 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       ...(init?.headers ?? {}),
     },
   });
+
+  if (res.status === 401 && !_retrying && path !== "/auth/login" && path !== "/auth/refresh") {
+    const refreshed = await refreshSession();
+    if (refreshed) return request<T>(path, init, true);
+  }
 
   if (!res.ok) {
     let body: unknown = null;
@@ -182,6 +206,11 @@ export const webApi = {
       request<ApiPlugin>(`/vaults/${vaultId}/plugins/${pluginDbId}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (vaultId: string, pluginDbId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/plugins/${pluginDbId}`, { method: "DELETE" }),
+  },
+
+  users: {
+    exportData: () => request<Record<string, unknown>>("/users/me/export"),
+    deleteAccount: () => request<{ ok: true }>("/users/me", { method: "DELETE" }),
   },
 };
 

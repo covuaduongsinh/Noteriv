@@ -54,6 +54,7 @@ model User {
   refreshTokens    RefreshToken[]
   createdNotes     Note[]             @relation("NoteCreatedBy")
   updatedNotes     Note[]             @relation("NoteUpdatedBy")
+  auditLogs        AuditLog[]
 
   @@map("users")
 }
@@ -246,4 +247,24 @@ model Backlink {
   @@unique([sourceNoteId, targetNoteId, linkType])
   @@index([targetNoteId])
   @@map("backlinks")
+}
+
+/// Security/account-event audit trail (auth, vault/account deletion, sync
+/// credential changes, plugin installs). Not a full activity feed over every
+/// note edit — those already have their own history via `updatedAt`/`updatedBy`.
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?  @map("user_id")
+  action     String
+  resourceType String? @map("resource_type")
+  resourceId String?  @map("resource_id")
+  metadata   Json?
+  ip         String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([action])
+  @@map("audit_logs")
 }

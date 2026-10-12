@@ -9,6 +9,8 @@ export default function VaultsPage() {
   const [vaults, setVaults] = useState<ApiVault[] | null>(null);
   const [newName, setNewName] = useState("");
   const [creating, setCreating] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     webApi.vaults
@@ -32,6 +34,31 @@ export default function VaultsPage() {
   async function logout() {
     await webApi.auth.logout();
     router.replace("/login");
+  }
+
+  async function exportData() {
+    const data = await webApi.users.exportData();
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "noteriv-export.json";
+    a.click();
+    URL.revokeObjectURL(url);
+  }
+
+  async function deleteAccount() {
+    if (!confirmDelete) {
+      setConfirmDelete(true);
+      return;
+    }
+    setDeletingAccount(true);
+    try {
+      await webApi.users.deleteAccount();
+      router.replace("/login");
+    } finally {
+      setDeletingAccount(false);
+    }
   }
 
   return (
@@ -72,6 +99,24 @@ export default function VaultsPage() {
           Tạo
         </button>
       </form>
+
+      <div className="w-full max-w-md flex flex-col gap-2 mt-8 pt-6 border-t border-[var(--border)]">
+        <h2 className="text-sm font-medium text-[var(--text-secondary)]">Tài khoản</h2>
+        <button
+          onClick={exportData}
+          className="text-left px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
+        >
+          Tải xuống toàn bộ dữ liệu (JSON)
+        </button>
+        <button
+          onClick={deleteAccount}
+          onBlur={() => setConfirmDelete(false)}
+          disabled={deletingAccount}
+          className="text-left px-3 py-2 rounded-lg text-sm text-[var(--red)] hover:bg-[var(--bg-secondary)] disabled:opacity-50"
+        >
+          {confirmDelete ? "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu" : "Xoá tài khoản"}
+        </button>
+      </div>
     </div>
   );
 }

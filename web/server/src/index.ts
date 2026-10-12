@@ -1,6 +1,8 @@
 import Fastify from "fastify";
 import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
+import helmet from "@fastify/helmet";
+import rateLimit from "@fastify/rate-limit";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import authRoutes from "./routes/auth.js";
@@ -9,12 +11,27 @@ import noteRoutes from "./routes/notes.js";
 import folderRoutes from "./routes/folders.js";
 import pluginRoutes from "./routes/plugins.js";
 import syncConnectionRoutes from "./routes/syncConnections.js";
+import userRoutes from "./routes/users.js";
 
-const fastify = Fastify({ logger: true });
+const fastify = Fastify({ logger: true, trustProxy: true });
 
 await fastify.register(cors, {
-  origin: process.env.CORS_ORIGIN ?? "http://localhost:3456",
+  origin: process.env.CORS_ORIGIN ?? "http://localhost:3457",
   credentials: true,
+});
+await fastify.register(helmet, {
+  // The plugin-sandbox iframe (public/plugin-sandbox.html) is served from
+  // this same origin and must stay embeddable and script-executable without
+  // Helmet's default CSP fighting the sandbox attribute's own isolation —
+  // real frame isolation comes from the iframe's `sandbox` attribute
+  // (deliberately missing `allow-same-origin`, see plugin-sandbox/usePluginHost.ts),
+  // not from CSP, so a strict default-src here would be redundant friction.
+  contentSecurityPolicy: false,
+});
+await fastify.register(rateLimit, {
+  global: true,
+  max: 300,
+  timeWindow: "1 minute",
 });
 await fastify.register(cookie);
 await fastify.register(prismaPlugin);
@@ -26,6 +43,7 @@ await fastify.register(noteRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(folderRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(pluginRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(syncConnectionRoutes, { prefix: "/api/v1/vaults" });
+await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 
 fastify.get("/healthz", async () => ({ ok: true }));
 

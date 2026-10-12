@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
+import { logAudit } from "../lib/auditLog.js";
 
 const ALLOWED_PERMISSIONS = [
   "vault:read",
@@ -62,6 +63,7 @@ export default async function pluginRoutes(fastify: FastifyInstance) {
         create: { vaultId: vid, pluginId: manifest.id, manifest, mainJs, enabled: true },
         update: { manifest, mainJs },
       });
+      logAudit(prisma, { userId: request.user!.id, action: "plugin_installed", resourceType: "plugin", resourceId: plugin.id, metadata: { pluginId: manifest.id, permissions: manifest.permissions }, ip: request.ip });
       return reply.code(201).send(plugin);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
@@ -104,6 +106,7 @@ export default async function pluginRoutes(fastify: FastifyInstance) {
       const existing = await prisma.plugin.findFirst({ where: { id: pid, vaultId: vid } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
       await prisma.plugin.delete({ where: { id: pid } });
+      logAudit(prisma, { userId: request.user!.id, action: "plugin_deleted", resourceType: "plugin", resourceId: pid, ip: request.ip });
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

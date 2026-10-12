@@ -10,6 +10,7 @@ import {
 } from "../lib/jwt.js";
 import { hashToken } from "../lib/tokenHash.js";
 import { randomUUID } from "node:crypto";
+import { logAudit } from "../lib/auditLog.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -56,7 +57,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     reply.setCookie(REFRESH_COOKIE, refreshToken, cookieOpts(REFRESH_TOKEN_TTL_SECONDS));
   }
 
-  fastify.post("/register", async (request, reply) => {
+  const bruteForceGuard = { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } };
+
+  fastify.post("/register", bruteForceGuard, async (request, reply) => {
     const parsed = registerSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
@@ -84,10 +87,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
     });
 
     await issueSession(reply, user.id, user.email);
+    logAudit(prisma, { userId: user.id, action: "register", ip: request.ip });
     return reply.code(201).send({ id: user.id, email: user.email, displayName: user.displayName });
   });
 
-  fastify.post("/login", async (request, reply) => {
+  fastify.post("/login", bruteForceGuard, async (request, reply) => {
     const parsed = loginSchema.safeParse(request.body);
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_body" });
@@ -96,10 +100,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      logAudit(prisma, { action: "login_failed", metadata: { email }, ip: request.ip });
       return reply.code(401).send({ error: "invalid_credentials" });
     }
 
     await issueSession(reply, user.id, user.email);
+    logAudit(prisma, { userId: user.id, action: "login", ip: request.ip });
     return reply.send({ id: user.id, email: user.email, displayName: user.displayName });
   });
 
@@ -141,6 +147,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
           where: { id: payload.tokenId },
           data: { revokedAt: new Date() },
         }).catch(() => undefined);
+        logAudit(prisma, { userId: payload.sub, action: "logout", ip: request.ip });
       } catch {
         // ignore invalid token on logout
       }

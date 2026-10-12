@@ -5,6 +5,7 @@ import { encryptJson, decryptJson } from "../lib/crypto.js";
 import { testGitRemote } from "../lib/gitSync.js";
 import { webdavTest } from "../lib/webdavSync.js";
 import { syncQueue } from "../lib/syncQueue.js";
+import { logAudit } from "../lib/auditLog.js";
 
 const gitProviderSchema = z.object({
   providerType: z.enum(["github", "gitlab", "gitea", "forgejo"]),
@@ -72,6 +73,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
             credentialsEncrypted: encryptJson({ username: data.username, password: data.password }),
           },
         });
+        logAudit(prisma, { userId: request.user!.id, action: "sync_connection_created", resourceType: "syncConnection", resourceId: conn.id, metadata: { providerType: "webdav" }, ip: request.ip });
         return reply.code(201).send(toPublic(conn));
       }
 
@@ -87,6 +89,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
           credentialsEncrypted: encryptJson({ username: data.username, token: data.token }),
         },
       });
+      logAudit(prisma, { userId: request.user!.id, action: "sync_connection_created", resourceType: "syncConnection", resourceId: conn.id, metadata: { providerType: data.providerType }, ip: request.ip });
       return reply.code(201).send(toPublic(conn));
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
@@ -102,6 +105,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
       const existing = await prisma.syncConnection.findFirst({ where: { id: cid, vaultId: vid } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
       await prisma.syncConnection.delete({ where: { id: cid } });
+      logAudit(prisma, { userId: request.user!.id, action: "sync_connection_deleted", resourceType: "syncConnection", resourceId: cid, ip: request.ip });
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
@@ -139,6 +143,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
       if (!conn) return reply.code(404).send({ error: "not_found" });
 
       await syncQueue.add("sync", { connectionId: cid }, { removeOnComplete: 50, removeOnFail: 50 });
+      logAudit(prisma, { userId: request.user!.id, action: "sync_triggered", resourceType: "syncConnection", resourceId: cid, ip: request.ip });
       return reply.send({ ok: true, queued: true });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

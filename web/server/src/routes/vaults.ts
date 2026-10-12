@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
+import { logAudit } from "../lib/auditLog.js";
 
 const createVaultSchema = z.object({
   name: z.string().min(1).max(200),
@@ -99,6 +100,7 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
         return reply.code(403).send({ error: "forbidden" });
       }
       await prisma.vault.delete({ where: { id } });
+      logAudit(prisma, { userId: request.user!.id, action: "vault_deleted", resourceType: "vault", resourceId: id, ip: request.ip });
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) {
