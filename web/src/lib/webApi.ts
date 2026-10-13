@@ -145,6 +145,19 @@ export interface ApiAttachmentList {
   quotaBytes: number;
 }
 
+export interface ApiNoteSnapshot {
+  id: string;
+  createdAt: string;
+  size: number;
+}
+
+export interface ApiHistoryEntry {
+  hash: string;
+  author: string;
+  date: string;
+  message: string;
+}
+
 export interface ApiTrashedItem {
   id: string;
   name: string;
@@ -295,6 +308,16 @@ export const webApi = {
       request<{ ok: true }>(`/vaults/${vaultId}/notes/${noteId}`, { method: "DELETE" }),
     backlinks: (vaultId: string, noteId: string) =>
       request<ApiBacklink[]>(`/vaults/${vaultId}/notes/${noteId}/backlinks`),
+    // D5 — File Recovery / Time Scrubber.
+    snapshots: (vaultId: string, noteId: string) =>
+      request<ApiNoteSnapshot[]>(`/vaults/${vaultId}/notes/${noteId}/snapshots`),
+    snapshotContent: (vaultId: string, noteId: string, snapshotId: string) =>
+      request<{ content: string }>(`/vaults/${vaultId}/notes/${noteId}/snapshots/${snapshotId}`),
+    // D6 — Note History (git log), only meaningful when `available` is true.
+    history: (vaultId: string, noteId: string) =>
+      request<{ available: boolean; entries: ApiHistoryEntry[] }>(`/vaults/${vaultId}/notes/${noteId}/history`),
+    historyAt: (vaultId: string, noteId: string, hash: string) =>
+      request<{ content: string }>(`/vaults/${vaultId}/notes/${noteId}/history/${hash}`),
   },
 
   plugins: {

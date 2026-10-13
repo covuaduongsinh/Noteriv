@@ -8,6 +8,8 @@ import { PrismaClient } from "@prisma/client";
 import { runSyncJob } from "../lib/syncRunner.js";
 import { trashCleanupQueue } from "../lib/trashCleanupQueue.js";
 import { cleanupExpiredTrash } from "../lib/trash.js";
+import { noteSnapshotQueue } from "../lib/noteSnapshotQueue.js";
+import { captureSnapshots } from "../lib/noteSnapshots.js";
 
 const connection = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:56379", {
   maxRetriesPerRequest: null,
@@ -48,11 +50,31 @@ await trashCleanupQueue.add(
   { repeat: { every: 24 * 60 * 60 * 1000 }, jobId: "purge-expired-trash" }
 );
 
+// Note snapshots (Phase D5) — every 10 minutes, only notes whose content
+// changed since their last snapshot get a new row (see captureSnapshots).
+const snapshotWorker = new Worker(
+  "note-snapshots",
+  async () => {
+    console.log("[sync-worker] capturing note snapshots");
+    await captureSnapshots(prisma);
+  },
+  { connection, concurrency: 1 }
+);
+snapshotWorker.on("failed", (job, err) => {
+  console.error(`[sync-worker] snapshot job ${job?.id} failed:`, err.message);
+});
+await noteSnapshotQueue.add(
+  "capture-snapshots",
+  {},
+  { repeat: { every: 10 * 60 * 1000 }, jobId: "capture-snapshots" }
+);
+
 console.log("noteriv sync-worker started");
 
 process.on("SIGTERM", async () => {
   await worker.close();
   await trashWorker.close();
+  await snapshotWorker.close();
   await prisma.$disconnect();
   process.exit(0);
 });

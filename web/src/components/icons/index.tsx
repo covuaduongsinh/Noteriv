@@ -293,3 +293,15 @@ export function PublishIcon({ size = 14, className }: IconProps) {
     </svg>
   );
 }
+
+/** Used for both File Recovery/Time Scrubber (D5) and Note History (D6) —
+ * same clock glyph desktop uses in both NoteHistory.tsx's and
+ * FileRecovery.tsx's own headers. */
+export function HistoryIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <circle cx="8" cy="8" r="6" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M8 4v4l2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}

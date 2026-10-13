@@ -35,6 +35,9 @@ import TemplatePicker from "@/components/TemplatePicker";
 import NoteComposer from "@/components/NoteComposer";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
+import FileRecovery from "@/components/FileRecovery";
+import TimeScrubber from "@/components/TimeScrubber";
+import NoteHistory from "@/components/NoteHistory";
 import { setImageLightboxHandler } from "@/components/markdown/renderers/images";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
@@ -175,6 +178,14 @@ export default function VaultPage() {
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
+  // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
+  const [showFileRecovery, setShowFileRecovery] = useState(false);
+  const [showTimeScrubber, setShowTimeScrubber] = useState(false);
+  const [showGitHistory, setShowGitHistory] = useState(false);
+  // Cheap client-side gate (no extra request): only offer Note History once a
+  // non-WebDAV sync connection has synced at least once. The /history endpoint
+  // itself still double-checks server-side and degrades gracefully either way.
+  const gitHistoryAvailable = syncConnections.some((c) => c.providerType !== "webdav" && c.lastSyncedAt);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1006,12 +1017,15 @@ export default function VaultPage() {
                 collabVisible={collabVisible}
                 collabPeerCount={collabPeers.length}
                 bookmarked={isBookmarked(bookmarks, activeTab.noteId)}
+                gitHistoryAvailable={gitHistoryAvailable}
                 onToggleBacklinks={() => setBacklinksVisible((v) => !v)}
                 onToggleCollab={() => setCollabVisible((v) => !v)}
                 onExportPDF={handleExportPDF}
                 onToggleBookmark={() => handleToggleBookmark(activeTab.noteId)}
                 onPresent={() => setShowSlidePresentation(true)}
                 onPublish={() => setShowPublishPreview(true)}
+                onFileRecovery={() => setShowFileRecovery(true)}
+                onGitHistory={() => setShowGitHistory(true)}
               />
               {pluginHost.commands.length > 0 && (
                 <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
@@ -1261,6 +1275,42 @@ export default function VaultPage() {
           title={activeTab.name.replace(/\.(md|markdown)$/i, "")}
           currentNoteId={activeTabId}
           onClose={() => setShowPublishPreview(false)}
+        />
+      )}
+
+      {showFileRecovery && activeTab && activeTabId && (
+        <FileRecovery
+          vaultId={vaultId}
+          noteId={activeTabId}
+          notePath={activeTab.path}
+          onRestore={onDraftChange}
+          onClose={() => setShowFileRecovery(false)}
+          onOpenScrubber={() => {
+            setShowFileRecovery(false);
+            setShowTimeScrubber(true);
+          }}
+        />
+      )}
+
+      {showTimeScrubber && activeTab && activeTabId && (
+        <TimeScrubber
+          vaultId={vaultId}
+          noteId={activeTabId}
+          notePath={activeTab.path}
+          currentContent={draft}
+          onRestore={onDraftChange}
+          onClose={() => setShowTimeScrubber(false)}
+        />
+      )}
+
+      {showGitHistory && activeTab && activeTabId && (
+        <NoteHistory
+          vaultId={vaultId}
+          noteId={activeTabId}
+          notePath={activeTab.path}
+          currentContent={draft}
+          onRestore={onDraftChange}
+          onClose={() => setShowGitHistory(false)}
         />
       )}
 

@@ -307,10 +307,30 @@ model Note {
   updatedBy         User?      @relation("NoteUpdatedBy", fields: [updatedById], references: [id])
   backlinksAsSource Backlink[] @relation("BacklinkSource")
   backlinksAsTarget Backlink[] @relation("BacklinkTarget")
+  snapshots         NoteSnapshot[]
 
   @@unique([vaultId, path])
   @@index([vaultId, deletedAt])
   @@map("notes")
+}
+
+/// Periodic content snapshot (Phase D5 File Recovery / Time Scrubber) — ported
+/// from desktop's local `.noteriv/snapshots/*.md` files, but server-backed so
+/// it's available from any device. Written by a recurring job (see
+/// web/server/src/sync-worker/index.ts) only when the note's content actually
+/// changed since the last snapshot — not on every save, to avoid one row per
+/// keystroke-debounce cycle. Capped at MAX_SNAPSHOTS_PER_NOTE per note (see
+/// web/server/src/lib/noteSnapshots.ts), oldest pruned first.
+model NoteSnapshot {
+  id        String   @id @default(uuid())
+  noteId    String   @map("note_id")
+  content   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  note Note @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  @@index([noteId, createdAt])
+  @@map("note_snapshots")
 }
 
 model Backlink {

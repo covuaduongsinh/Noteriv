@@ -14,7 +14,7 @@ import { webdavSyncCore, type WebdavConfig } from "./webdavSync.js";
 // and pushing unrelated files from that outer repo. Keeping it under the OS temp
 // dir by default removes that whole class of mistake; SYNC_SCRATCH_DIR can still
 // override it for an operator who's verified their chosen path isn't inside a repo.
-const SCRATCH_ROOT = process.env.SYNC_SCRATCH_DIR ?? path.join(tmpdir(), "noteriv-sync-scratch");
+export const SCRATCH_ROOT = process.env.SYNC_SCRATCH_DIR ?? path.join(tmpdir(), "noteriv-sync-scratch");
 
 interface GitCredentialsBlob {
   username: string;

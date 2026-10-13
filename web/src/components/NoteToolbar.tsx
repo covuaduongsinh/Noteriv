@@ -1,6 +1,6 @@
 "use client";
 
-import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon, PresentIcon, PublishIcon } from "@/components/icons";
+import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon, PresentIcon, PublishIcon, HistoryIcon } from "@/components/icons";
 
 interface NoteToolbarProps {
   notePath: string;
@@ -8,12 +8,15 @@ interface NoteToolbarProps {
   collabVisible: boolean;
   collabPeerCount: number;
   bookmarked: boolean;
+  gitHistoryAvailable: boolean;
   onToggleBacklinks: () => void;
   onToggleCollab: () => void;
   onExportPDF: () => void;
   onToggleBookmark: () => void;
   onPresent: () => void;
   onPublish: () => void;
+  onFileRecovery: () => void;
+  onGitHistory: () => void;
 }
 
 /**
@@ -32,12 +35,15 @@ export default function NoteToolbar({
   collabVisible,
   collabPeerCount,
   bookmarked,
+  gitHistoryAvailable,
   onToggleBacklinks,
   onToggleCollab,
   onExportPDF,
   onToggleBookmark,
   onPresent,
   onPublish,
+  onFileRecovery,
+  onGitHistory,
 }: NoteToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
@@ -77,6 +83,15 @@ export default function NoteToolbar({
         <button onClick={onPublish} title="Publish preview (static HTML)" className="titlebar-btn">
           <PublishIcon />
         </button>
+        <button onClick={onFileRecovery} title="File Recovery / Time Scrubber" className="titlebar-btn">
+          <HistoryIcon />
+        </button>
+        {gitHistoryAvailable && (
+          <button onClick={onGitHistory} title="Note History (git log)" className="titlebar-btn">
+            <HistoryIcon />
+            <span className="ml-0.5 text-[9px]">git</span>
+          </button>
+        )}
       </div>
     </div>
   );

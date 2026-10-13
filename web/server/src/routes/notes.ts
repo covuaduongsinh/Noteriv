@@ -4,6 +4,8 @@ import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { resolvePath } from "../lib/notePath.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { trashNote } from "../lib/trash.js";
+import { listSnapshots, getSnapshotContent } from "../lib/noteSnapshots.js";
+import { getNoteGitHistory, getNoteContentAtCommit } from "../lib/noteHistory.js";
 
 const createNoteSchema = z.object({
   name: z.string().min(1).max(255),
@@ -130,6 +132,69 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       return reply.send(
         backlinks.map((b) => ({ ...b.sourceNote, linkType: b.linkType }))
       );
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  // D5 — File Recovery / Time Scrubber: periodic content snapshots (written by
+  // the recurring sync-worker job, see lib/noteSnapshots.ts), not per-save.
+  fastify.get("/:vid/notes/:nid/snapshots", async (request, reply) => {
+    const { vid, nid } = request.params as { vid: string; nid: string };
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      if (!note) return reply.code(404).send({ error: "not_found" });
+      return reply.send(await listSnapshots(prisma, nid));
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  fastify.get("/:vid/notes/:nid/snapshots/:sid", async (request, reply) => {
+    const { vid, nid, sid } = request.params as { vid: string; nid: string; sid: string };
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      if (!note) return reply.code(404).send({ error: "not_found" });
+      const content = await getSnapshotContent(prisma, nid, sid);
+      if (content === null) return reply.code(404).send({ error: "not_found" });
+      return reply.send({ content });
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  // D6 — Note History via git log, only available when the vault has a
+  // configured git sync-connection with a working copy that's already been
+  // synced at least once (see lib/noteHistory.ts's doc comment for why no
+  // hidden per-vault git repo is created just for this).
+  fastify.get("/:vid/notes/:nid/history", async (request, reply) => {
+    const { vid, nid } = request.params as { vid: string; nid: string };
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      if (!note) return reply.code(404).send({ error: "not_found" });
+      const result = await getNoteGitHistory(prisma, vid, note.path);
+      return reply.send(result);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  fastify.get("/:vid/notes/:nid/history/:hash", async (request, reply) => {
+    const { vid, nid, hash } = request.params as { vid: string; nid: string; hash: string };
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      if (!note) return reply.code(404).send({ error: "not_found" });
+      const content = await getNoteContentAtCommit(prisma, vid, note.path, hash);
+      if (content === null) return reply.code(404).send({ error: "not_found" });
+      return reply.send({ content });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
       throw err;
