@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
 import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
@@ -15,6 +14,12 @@ import CalendarView from "@/components/CalendarView";
 import FlashcardReview from "@/components/FlashcardReview";
 import ThemePicker from "@/components/ThemePicker";
 import CSSSnippets from "@/components/CSSSnippets";
+import VaultHeader from "@/components/VaultHeader";
+import Ribbon from "@/components/Ribbon";
+import Sidebar from "@/components/Sidebar";
+import NoteToolbar from "@/components/NoteToolbar";
+import FormattingToolbar from "@/components/FormattingToolbar";
+import { CloseIcon } from "@/components/icons";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import { webApi, type ApiVault, type VaultIndex, type ApiNote, type ApiSearchResult } from "@/lib/webApi";
@@ -26,6 +31,7 @@ import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
+const DEFAULT_SIDEBAR_WIDTH = 250;
 
 export default function VaultPage() {
   const params = useParams<{ vaultId: string }>();
@@ -34,15 +40,16 @@ export default function VaultPage() {
   const vaultId = params.vaultId;
 
   const [vault, setVault] = useState<ApiVault | null>(null);
+  const [allVaults, setAllVaults] = useState<ApiVault[]>([]);
   const [index, setIndex] = useState<VaultIndex | null>(null);
   const [activeNote, setActiveNote] = useState<ApiNote | null>(null);
   const [draft, setDraft] = useState("");
   const [saving, setSaving] = useState(false);
-  const [newNoteName, setNewNoteName] = useState<string | null>(null);
-  const [newFolderName, setNewFolderName] = useState<string | null>(null);
-  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
+  const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ApiSearchResult[] | null>(null);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
@@ -56,6 +63,7 @@ export default function VaultPage() {
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
+  const [editorViewVersion, setEditorViewVersion] = useState(0);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const collabPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -76,6 +84,7 @@ export default function VaultPage() {
 
   useEffect(() => {
     webApi.auth.me().then((u) => setDisplayName(u.displayName)).catch(() => undefined);
+    webApi.vaults.list().then(setAllVaults).catch(() => undefined);
   }, []);
 
   // Join/leave the realtime collab room for the open note as the panel is toggled
@@ -154,6 +163,7 @@ export default function VaultPage() {
       const note = await webApi.notes.get(vaultId, noteId);
       setActiveNote(note);
       setDraft(note.content);
+      setSearchVisible(false);
       setSearchResults(null);
       setSearchQuery("");
     },
@@ -213,6 +223,16 @@ export default function VaultPage() {
     openNote(note.id);
   }
 
+  async function handleQuickNewNote() {
+    const note = await webApi.notes.create(vaultId, { name: "Untitled.md", folderId: null, content: "" });
+    refreshIndex();
+    openNote(note.id);
+  }
+
+  function handleGraphView() {
+    router.push(`/vaults/${vaultId}/graph`);
+  }
+
   // Open the note requested via ?note=<id> (used by the Graph view's note click)
   useEffect(() => {
     const noteId = searchParams.get("note");
@@ -263,39 +283,6 @@ export default function VaultPage() {
     }
   }
 
-  async function submitNewNote(e: React.FormEvent) {
-    e.preventDefault();
-    const name = newNoteName?.trim();
-    setNewNoteName(null);
-    if (!name) return;
-    const note = await webApi.notes.create(vaultId, { name, folderId: null, content: "" });
-    refreshIndex();
-    openNote(note.id);
-  }
-
-  async function submitNewFolder(e: React.FormEvent) {
-    e.preventDefault();
-    const name = newFolderName?.trim();
-    setNewFolderName(null);
-    if (!name) return;
-    await webApi.folders.create(vaultId, { name });
-    refreshIndex();
-  }
-
-  async function deleteNote(noteId: string) {
-    if (confirmDeleteId !== noteId) {
-      setConfirmDeleteId(noteId);
-      return;
-    }
-    setConfirmDeleteId(null);
-    await webApi.notes.remove(vaultId, noteId);
-    if (activeNote?.id === noteId) {
-      setActiveNote(null);
-      setDraft("");
-    }
-    refreshIndex();
-  }
-
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchQuery.trim()) {
@@ -306,226 +293,159 @@ export default function VaultPage() {
     setSearchResults(results);
   }
 
-  const rootNotes = index?.notes.filter((n) => n.folderId === null) ?? [];
-
   return (
-    <div className="h-screen flex" data-vault-id={vaultId}>
-      <aside className="w-64 flex flex-col border-r border-[var(--border)] bg-[var(--bg-secondary)]">
-        <div className="flex items-center justify-between px-3 py-2 border-b border-[var(--border)]">
-          <Link href="/vaults" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            ← Vaults
-          </Link>
-          <span className="text-sm font-medium truncate ml-2">{vault?.name}</span>
-        </div>
+    <div className="h-screen flex flex-col" data-vault-id={vaultId}>
+      <VaultHeader
+        vault={vault}
+        vaults={allVaults}
+        activeNotePath={activeNote?.path ?? null}
+        sidebarCollapsed={sidebarCollapsed}
+        onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+      />
 
-        <div className="flex items-center gap-2 px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-secondary)]">
-          <button onClick={() => setShowCalendarView(true)} className="hover:text-[var(--text-primary)]">Calendar</button>
-          <button onClick={() => setShowFlashcards(true)} className="hover:text-[var(--text-primary)]">Flashcards</button>
-          <button onClick={() => setShowThemePicker(true)} className="hover:text-[var(--text-primary)]">Theme</button>
-          <button onClick={() => setShowCSSSnippets(true)} className="hover:text-[var(--text-primary)]">Snippets</button>
-        </div>
+      <div className="flex flex-1 overflow-hidden">
+        <Ribbon
+          onQuickOpen={() => setQuickOpenVisible(true)}
+          onNewNote={handleQuickNewNote}
+          onGraph={handleGraphView}
+          onSearch={() => setSearchVisible(true)}
+          onCalendar={() => setShowCalendarView(true)}
+          onFlashcards={() => setShowFlashcards(true)}
+          onPlugins={() => setPluginManagerOpen(true)}
+          onSnippets={() => setShowCSSSnippets(true)}
+          onTheme={() => setShowThemePicker(true)}
+        />
 
-        <form onSubmit={runSearch} className="px-3 py-2 border-b border-[var(--border)]">
-          <input
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Tìm trong nội dung…"
-            className="w-full text-sm px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          />
-        </form>
-
-        {searchResults !== null ? (
-          <div className="flex-1 overflow-y-auto px-2 pb-4">
-            <div className="flex items-center justify-between px-2 py-1 text-xs text-[var(--text-muted)]">
-              <span>{searchResults.length} kết quả</span>
-              <button onClick={() => { setSearchResults(null); setSearchQuery(""); }} className="hover:text-[var(--text-primary)]">
-                Đóng
-              </button>
-            </div>
-            {searchResults.map((r) => (
-              <button
-                key={r.id}
-                onClick={() => openNote(r.id)}
-                className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--bg-tertiary)]"
-              >
-                <div className="text-sm text-[var(--text-primary)] truncate">{r.name}</div>
-                <div
-                  className="text-xs text-[var(--text-muted)] truncate [&_b]:text-[var(--text-primary)] [&_b]:font-semibold"
-                  // ts_headline() only ever emits <b>…</b> around matched terms — restrict to that tag.
-                  dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.snippet, { ALLOWED_TAGS: ["b"] }) }}
-                />
-              </button>
-            ))}
-          </div>
-        ) : (
-          <>
-            <div className="flex gap-2 px-3 py-2">
-              <button
-                onClick={() => setNewNoteName("Untitled.md")}
-                className="flex-1 text-sm px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]"
-              >
-                + Note
-              </button>
-              <button
-                onClick={() => setNewFolderName("")}
-                className="flex-1 text-sm px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]"
-              >
-                + Folder
-              </button>
-            </div>
-
-            {newNoteName !== null && (
-              <form onSubmit={submitNewNote} className="px-3 pb-2">
-                <input
-                  autoFocus
-                  value={newNoteName}
-                  onChange={(e) => setNewNoteName(e.target.value)}
-                  onBlur={() => setNewNoteName(null)}
-                  onKeyDown={(e) => e.key === "Escape" && setNewNoteName(null)}
-                  className="w-full text-sm px-2 py-1 rounded-md bg-[var(--bg-tertiary)] outline-none ring-1 ring-[var(--accent)]"
-                />
-              </form>
-            )}
-
-            {newFolderName !== null && (
-              <form onSubmit={submitNewFolder} className="px-3 pb-2">
-                <input
-                  autoFocus
-                  placeholder="Tên folder"
-                  value={newFolderName}
-                  onChange={(e) => setNewFolderName(e.target.value)}
-                  onBlur={() => setNewFolderName(null)}
-                  onKeyDown={(e) => e.key === "Escape" && setNewFolderName(null)}
-                  className="w-full text-sm px-2 py-1 rounded-md bg-[var(--bg-tertiary)] outline-none ring-1 ring-[var(--accent)]"
-                />
-              </form>
-            )}
-
-            <div className="flex-1 overflow-y-auto px-2 pb-4">
-              {index?.folders.map((folder) => (
-                <div key={folder.id} className="mb-1">
-                  <div className="px-2 py-1 text-xs uppercase tracking-wide text-[var(--text-muted)]">
-                    {folder.name}
-                  </div>
-                  {index.notes
-                    .filter((n) => n.folderId === folder.id)
-                    .map((note) => (
-                      <NoteRow
-                        key={note.id}
-                        note={note}
-                        active={activeNote?.id === note.id}
-                        confirmingDelete={confirmDeleteId === note.id}
-                        onOpen={() => openNote(note.id)}
-                        onDelete={() => deleteNote(note.id)}
-                      />
-                    ))}
+        {!sidebarCollapsed &&
+          (searchVisible ? (
+            <div className="sidebar-root flex flex-col" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+              <div className="sidebar-header">
+                <span className="sidebar-title">Tìm kiếm</span>
+                <div className="sidebar-actions">
+                  <button onClick={() => { setSearchVisible(false); setSearchResults(null); setSearchQuery(""); }} className="sidebar-btn" title="Đóng tìm kiếm">
+                    <CloseIcon size={12} />
+                  </button>
                 </div>
-              ))}
-
-              {rootNotes.map((note) => (
-                <NoteRow
-                  key={note.id}
-                  note={note}
-                  active={activeNote?.id === note.id}
-                  confirmingDelete={confirmDeleteId === note.id}
-                  onOpen={() => openNote(note.id)}
-                  onDelete={() => deleteNote(note.id)}
-                />
-              ))}
-            </div>
-          </>
-        )}
-      </aside>
-
-      <main className="flex-1 flex flex-col relative">
-        {activeNote ? (
-          <>
-            <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
-              <span>{activeNote.path}</span>
-              <div className="flex items-center gap-3">
-                <span>{saving ? "Đang lưu…" : "Đã lưu"}</span>
-                <button onClick={() => setBacklinksVisible((v) => !v)} className="hover:text-[var(--text-primary)]">
-                  Backlinks
-                </button>
-                <button onClick={() => setCollabVisible((v) => !v)} className="hover:text-[var(--text-primary)]">
-                  Collab{collabVisible && collabPeers.length > 0 ? ` (${collabPeers.length})` : ""}
-                </button>
-                <button onClick={handleExportPDF} className="hover:text-[var(--text-primary)]">
-                  Export PDF
-                </button>
-                <Link href={`/vaults/${vaultId}/graph`} className="hover:text-[var(--text-primary)]">
-                  Graph
-                </Link>
-                <button onClick={() => setQuickOpenVisible(true)} className="hover:text-[var(--text-primary)]">
-                  Quick open (⌘K)
-                </button>
-                <button onClick={() => setPluginManagerOpen(true)} className="hover:text-[var(--text-primary)]">
-                  Plugins
-                </button>
               </div>
-            </div>
-            {pluginHost.commands.length > 0 && (
-              <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
-                {pluginHost.commands.map((cmd) => (
+              <form onSubmit={runSearch} className="px-3 py-2 border-b border-[var(--border)]">
+                <input
+                  autoFocus
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Tìm trong nội dung…"
+                  className="w-full text-sm px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+                />
+              </form>
+              <div className="flex-1 overflow-y-auto px-2 pb-4">
+                {searchResults !== null && (
+                  <div className="px-2 py-1 text-xs text-[var(--text-muted)]">{searchResults.length} kết quả</div>
+                )}
+                {(searchResults ?? []).map((r) => (
                   <button
-                    key={`${cmd.pluginDbId}:${cmd.id}`}
-                    onClick={() => pluginHost.runCommand(cmd.pluginDbId, cmd.id)}
-                    className="px-2 py-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]"
+                    key={r.id}
+                    onClick={() => openNote(r.id)}
+                    className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--bg-tertiary)]"
                   >
-                    {cmd.name}
+                    <div className="text-sm text-[var(--text-primary)] truncate">{r.name}</div>
+                    <div
+                      className="text-xs text-[var(--text-muted)] truncate [&_b]:text-[var(--text-primary)] [&_b]:font-semibold"
+                      // ts_headline() only ever emits <b>…</b> around matched terms — restrict to that tag.
+                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.snippet, { ALLOWED_TAGS: ["b"] }) }}
+                    />
                   </button>
                 ))}
               </div>
-            )}
-            <div className="flex-1 flex min-h-0">
-              <div className="flex-1 min-w-0">
-                {isBoardContent(draft) ? (
-                  <BoardView content={draft} onChange={onDraftChange} />
-                ) : (
-                  <Editor
-                    content={draft}
-                    onChange={onDraftChange}
-                    vaultId={vaultId}
-                    onViewReady={(view) => { editorViewRef.current = view; }}
+            </div>
+          ) : (
+            <Sidebar
+              vaultId={vaultId}
+              vaultName={vault?.name ?? ""}
+              index={index}
+              activeNoteId={activeNote?.id ?? null}
+              width={sidebarWidth}
+              onWidthChange={setSidebarWidth}
+              onFileSelect={openNote}
+              onRefresh={refreshIndex}
+              onNewNote={handleQuickNewNote}
+            />
+          ))}
+
+        <main className="flex-1 flex flex-col relative">
+          {activeNote ? (
+            <>
+              <NoteToolbar
+                notePath={activeNote.path}
+                saving={saving}
+                backlinksVisible={backlinksVisible}
+                collabVisible={collabVisible}
+                collabPeerCount={collabPeers.length}
+                onToggleBacklinks={() => setBacklinksVisible((v) => !v)}
+                onToggleCollab={() => setCollabVisible((v) => !v)}
+                onExportPDF={handleExportPDF}
+              />
+              {pluginHost.commands.length > 0 && (
+                <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
+                  {pluginHost.commands.map((cmd) => (
+                    <button
+                      key={`${cmd.pluginDbId}:${cmd.id}`}
+                      onClick={() => pluginHost.runCommand(cmd.pluginDbId, cmd.id)}
+                      className="px-2 py-1 rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)]"
+                    >
+                      {cmd.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+              <div className="flex-1 flex min-h-0">
+                <div className="flex-1 min-w-0 flex flex-col">
+                  {isBoardContent(draft) ? (
+                    <BoardView content={draft} onChange={onDraftChange} />
+                  ) : (
+                    <>
+                      <FormattingToolbar key={editorViewVersion} editorView={editorViewRef.current} />
+                      <div className="flex-1 min-h-0">
+                        <Editor
+                          content={draft}
+                          onChange={onDraftChange}
+                          vaultId={vaultId}
+                          onViewReady={(view) => {
+                            editorViewRef.current = view;
+                            setEditorViewVersion((v) => v + 1);
+                          }}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+                {backlinksVisible && (
+                  <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
+                    <BacklinksPanel
+                      noteId={activeNote.id}
+                      vaultId={vaultId}
+                      onNoteOpen={openNote}
+                      onClose={() => setBacklinksVisible(false)}
+                    />
+                  </div>
+                )}
+                {collabVisible && (
+                  <CollabPanel
+                    connected={collabConnected}
+                    peers={collabPeers}
+                    onClose={() => setCollabVisible(false)}
                   />
                 )}
               </div>
-              {backlinksVisible && (
-                <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
-                  <BacklinksPanel
-                    noteId={activeNote.id}
-                    vaultId={vaultId}
-                    onNoteOpen={openNote}
-                    onClose={() => setBacklinksVisible(false)}
-                  />
-                </div>
-              )}
-              {collabVisible && (
-                <CollabPanel
-                  connected={collabConnected}
-                  peers={collabPeers}
-                  onClose={() => setCollabVisible(false)}
-                />
-              )}
-            </div>
-          </>
-        ) : (
-          <div className="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
-            <span>Chọn hoặc tạo một note để bắt đầu</span>
-            <div className="flex gap-3 text-sm">
-              <button onClick={() => setQuickOpenVisible(true)} className="hover:text-[var(--text-primary)]">
+            </>
+          ) : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
+              <span>Chọn hoặc tạo một note để bắt đầu</span>
+              <button onClick={() => setQuickOpenVisible(true)} className="text-sm hover:text-[var(--text-primary)]">
                 Quick open (⌘K)
               </button>
-              <Link href={`/vaults/${vaultId}/graph`} className="hover:text-[var(--text-primary)]">
-                Graph view
-              </Link>
-              <button onClick={() => setPluginManagerOpen(true)} className="hover:text-[var(--text-primary)]">
-                Plugins
-              </button>
             </div>
-          </div>
-        )}
-      </main>
+          )}
+        </main>
+      </div>
 
       {quickOpenVisible && (
         <QuickOpen
@@ -608,45 +528,6 @@ export default function VaultPage() {
           ))}
         </div>
       )}
-    </div>
-  );
-}
-
-function NoteRow({
-  note,
-  active,
-  confirmingDelete,
-  onOpen,
-  onDelete,
-}: {
-  note: { id: string; name: string };
-  active: boolean;
-  confirmingDelete: boolean;
-  onOpen: () => void;
-  onDelete: () => void;
-}) {
-  return (
-    <div
-      className={`group flex items-center justify-between px-2 py-1.5 rounded-md cursor-pointer text-sm ${
-        active ? "bg-[var(--bg-hover)] text-[var(--text-primary)]" : "text-[var(--text-secondary)] hover:bg-[var(--bg-tertiary)]"
-      }`}
-      onClick={onOpen}
-    >
-      <span className="truncate">{note.name}</span>
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        title={confirmingDelete ? "Bấm lần nữa để xoá" : "Xoá note"}
-        className={`px-1 ${
-          confirmingDelete
-            ? "text-[var(--red)] opacity-100"
-            : "opacity-0 group-hover:opacity-100 text-[var(--text-muted)] hover:text-[var(--red)]"
-        }`}
-      >
-        {confirmingDelete ? "xoá?" : "×"}
-      </button>
     </div>
   );
 }

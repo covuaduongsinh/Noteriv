@@ -127,7 +127,12 @@ async function request<T>(path: string, init?: RequestInit, _retrying = false): 
     ...init,
     credentials: "include",
     headers: {
-      "Content-Type": "application/json",
+      // Only set when there's an actual body — Fastify's JSON body parser
+      // rejects a request carrying Content-Type: application/json with an
+      // empty body (e.g. every DELETE call) with a 400, confirmed live via
+      // a real browser delete: the exact same route accepted a bodyless
+      // fetch() with no Content-Type header but 400'd when webApi sent one.
+      ...(init?.body ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },
   });

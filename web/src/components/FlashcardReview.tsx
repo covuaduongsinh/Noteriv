@@ -93,23 +93,23 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
       ref={(el) => el?.focus()}
     >
       <div style={{
-        background: "#1e1e2e", borderRadius: 12, border: "1px solid #313244",
+        background: "var(--bg-primary)", borderRadius: 12, border: "1px solid var(--bg-tertiary)",
         width: 520, maxHeight: "80vh", display: "flex", flexDirection: "column",
         overflow: "hidden",
       }} onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "12px 16px", borderBottom: "1px solid #313244",
+          padding: "12px 16px", borderBottom: "1px solid var(--bg-tertiary)",
         }}>
-          <span style={{ color: "#cdd6f4", fontSize: 14, fontWeight: 600 }}>Flashcard Review</span>
-          <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#a6adc8" }}>
+          <span style={{ color: "var(--text-primary)", fontSize: 14, fontWeight: 600 }}>Flashcard Review</span>
+          <div style={{ display: "flex", gap: 12, fontSize: 11, color: "var(--text-secondary)" }}>
             <span>{stats.total} cards</span>
-            <span style={{ color: "#f9e2af" }}>{stats.due - stats.reviewed} due</span>
-            <span style={{ color: "#a6e3a1" }}>{stats.reviewed} done</span>
+            <span style={{ color: "var(--yellow)" }}>{stats.due - stats.reviewed} due</span>
+            <span style={{ color: "var(--green)" }}>{stats.reviewed} done</span>
           </div>
           <button onClick={onClose} style={{
-            border: "none", background: "transparent", color: "#585b70",
+            border: "none", background: "transparent", color: "var(--text-muted)",
             fontSize: 18, cursor: "pointer",
           }}>&times;</button>
         </div>
@@ -117,14 +117,14 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
         {/* Card area */}
         <div style={{ flex: 1, padding: 24, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", minHeight: 300 }}>
           {loading && (
-            <div style={{ color: "#a6adc8", fontSize: 13 }}>Scanning vault for flashcards...</div>
+            <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>Scanning vault for flashcards...</div>
           )}
 
           {done && !loading && (
             <div style={{ textAlign: "center" }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>&#127881;</div>
-              <div style={{ color: "#a6e3a1", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>All caught up!</div>
-              <div style={{ color: "#a6adc8", fontSize: 13 }}>
+              <div style={{ color: "var(--green)", fontSize: 16, fontWeight: 600, marginBottom: 8 }}>All caught up!</div>
+              <div style={{ color: "var(--text-secondary)", fontSize: 13 }}>
                 {stats.total === 0
                   ? "No flashcards found. Add Q:/A: pairs or {{cloze}} deletions to your notes."
                   : `${stats.reviewed} cards reviewed. Come back tomorrow for more.`
@@ -137,11 +137,11 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
             <>
               {/* Question */}
               <div style={{
-                background: "#313244", borderRadius: 10, padding: "20px 24px",
+                background: "var(--bg-tertiary)", borderRadius: 10, padding: "20px 24px",
                 width: "100%", marginBottom: 16, minHeight: 80,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                <div style={{ color: "#cdd6f4", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
+                <div style={{ color: "var(--text-primary)", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
                   {card.question}
                 </div>
               </div>
@@ -149,11 +149,11 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
               {/* Answer */}
               {showAnswer ? (
                 <div style={{
-                  background: "#181825", borderRadius: 10, border: "1px solid #45475a",
+                  background: "var(--bg-secondary)", borderRadius: 10, border: "1px solid var(--border)",
                   padding: "20px 24px", width: "100%", marginBottom: 16, minHeight: 60,
                   display: "flex", alignItems: "center", justifyContent: "center",
                 }}>
-                  <div style={{ color: "#a6e3a1", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
+                  <div style={{ color: "var(--green)", fontSize: 15, textAlign: "center", lineHeight: 1.6 }}>
                     {card.answer}
                   </div>
                 </div>
@@ -161,8 +161,8 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
                 <button
                   onClick={() => setShowAnswer(true)}
                   style={{
-                    padding: "10px 32px", borderRadius: 8, border: "1px solid #45475a",
-                    background: "#313244", color: "#cdd6f4", fontSize: 13,
+                    padding: "10px 32px", borderRadius: 8, border: "1px solid var(--border)",
+                    background: "var(--bg-tertiary)", color: "var(--text-primary)", fontSize: 13,
                     cursor: "pointer", marginBottom: 16,
                   }}
                 >
@@ -174,11 +174,11 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
               {showAnswer && (
                 <div style={{ display: "flex", gap: 8, width: "100%" }}>
                   {[
-                    { grade: 1, label: "Again", color: "#f38ba8", key: "1" },
-                    { grade: 2, label: "Hard", color: "#fab387", key: "2" },
-                    { grade: 3, label: "OK", color: "#f9e2af", key: "3" },
-                    { grade: 4, label: "Good", color: "#89b4fa", key: "4" },
-                    { grade: 5, label: "Easy", color: "#a6e3a1", key: "5" },
+                    { grade: 1, label: "Again", color: "var(--red)", key: "1" },
+                    { grade: 2, label: "Hard", color: "var(--peach)", key: "2" },
+                    { grade: 3, label: "OK", color: "var(--yellow)", key: "3" },
+                    { grade: 4, label: "Good", color: "var(--accent)", key: "4" },
+                    { grade: 5, label: "Easy", color: "var(--green)", key: "5" },
                   ].map((btn) => (
                     <button
                       key={btn.grade}
@@ -202,7 +202,7 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
                 onClick={() => { if (onFileSelect) { onFileSelect(card.source); onClose(); } }}
                 style={{
                   marginTop: 12, border: "none", background: "transparent",
-                  color: "#585b70", fontSize: 10, cursor: "pointer",
+                  color: "var(--text-muted)", fontSize: 10, cursor: "pointer",
                 }}
               >
                 {card.source.split("/").pop()?.replace(/\.(md|markdown)$/i, "")} &middot; {card.type}
@@ -214,9 +214,9 @@ export default function FlashcardReview({ vaultId, onClose, onFileSelect }: Flas
         {/* Progress bar */}
         {dueCards.length > 0 && (
           <div style={{ padding: "0 16px 12px" }}>
-            <div style={{ height: 3, background: "#313244", borderRadius: 2, overflow: "hidden" }}>
+            <div style={{ height: 3, background: "var(--bg-tertiary)", borderRadius: 2, overflow: "hidden" }}>
               <div style={{
-                height: "100%", background: "#89b4fa", borderRadius: 2,
+                height: "100%", background: "var(--accent)", borderRadius: 2,
                 width: `${Math.min(100, (stats.reviewed / Math.max(1, stats.due)) * 100)}%`,
                 transition: "width 0.3s ease",
               }} />

@@ -146,9 +146,9 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
       justifyContent: "center",
     }} onClick={onClose}>
       <div style={{
-        background: "#1e1e2e",
+        background: "var(--bg-primary)",
         borderRadius: 12,
-        border: "1px solid #313244",
+        border: "1px solid var(--bg-tertiary)",
         width: 720,
         maxHeight: "80vh",
         display: "flex",
@@ -160,12 +160,12 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
             <button onClick={handlePrevMonth} style={navBtnStyle}>&lt;</button>
             <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-              <span style={{ color: "#cdd6f4", fontSize: 18, fontWeight: 600 }}>
+              <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 600 }}>
                 {monthNames[month]} {year}
               </span>
               <button onClick={handleToday} style={{
-                padding: "2px 8px", borderRadius: 4, border: "1px solid #45475a",
-                background: "transparent", color: "#89b4fa", fontSize: 11, cursor: "pointer",
+                padding: "2px 8px", borderRadius: 4, border: "1px solid var(--border)",
+                background: "transparent", color: "var(--accent)", fontSize: 11, cursor: "pointer",
               }}>Today</button>
             </div>
             <button onClick={handleNextMonth} style={navBtnStyle}>&gt;</button>
@@ -174,7 +174,7 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
           {/* Weekday headers */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>
             {weekdays.map((d) => (
-              <div key={d} style={{ textAlign: "center", fontSize: 11, color: "#a6adc8", padding: 4, fontWeight: 600 }}>{d}</div>
+              <div key={d} style={{ textAlign: "center", fontSize: 11, color: "var(--text-secondary)", padding: 4, fontWeight: 600 }}>{d}</div>
             ))}
           </div>
 
@@ -192,8 +192,8 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
                     aspectRatio: "1",
                     border: "none",
                     borderRadius: 6,
-                    background: isSelected ? "#45475a" : day.isToday ? "#313244" : "transparent",
-                    color: !day.isCurrentMonth ? "#585b70" : day.isToday ? "#89b4fa" : "#cdd6f4",
+                    background: isSelected ? "var(--border)" : day.isToday ? "var(--bg-tertiary)" : "transparent",
+                    color: !day.isCurrentMonth ? "var(--text-muted)" : day.isToday ? "var(--accent)" : "var(--text-primary)",
                     fontSize: 13,
                     fontWeight: day.isToday ? 700 : 400,
                     cursor: "pointer",
@@ -203,14 +203,14 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 2,
-                    outline: isSelected ? "2px solid #89b4fa" : "none",
+                    outline: isSelected ? "2px solid var(--accent)" : "none",
                     outlineOffset: -2,
                   }}
                 >
                   {day.dayOfMonth}
                   <div style={{ display: "flex", gap: 2 }}>
-                    {day.hasDailyNote && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#89b4fa" }} />}
-                    {day.taskCount > 0 && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "#a6e3a1" }} />}
+                    {day.hasDailyNote && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--accent)" }} />}
+                    {day.taskCount > 0 && <span style={{ width: 4, height: 4, borderRadius: "50%", background: "var(--green)" }} />}
                   </div>
                 </button>
               );
@@ -218,12 +218,12 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
           </div>
 
           {/* Legend */}
-          <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "#a6adc8" }}>
+          <div style={{ display: "flex", gap: 16, marginTop: 12, fontSize: 11, color: "var(--text-secondary)" }}>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#89b4fa" }} /> Daily note
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)" }} /> Daily note
             </span>
             <span style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#a6e3a1" }} /> Due tasks
+              <span style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--green)" }} /> Due tasks
             </span>
           </div>
         </div>
@@ -231,18 +231,18 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
         {/* Day detail sidebar */}
         <div style={{
           width: 240,
-          borderLeft: "1px solid #313244",
+          borderLeft: "1px solid var(--bg-tertiary)",
           padding: 16,
           overflowY: "auto",
-          background: "#181825",
+          background: "var(--bg-secondary)",
         }}>
-          <div style={{ fontSize: 13, fontWeight: 600, color: "#cdd6f4", marginBottom: 12 }}>
+          <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 12 }}>
             {selectedDate}
           </div>
 
           {dayNotes.length > 0 && (
             <div style={{ marginBottom: 16 }}>
-              <div style={{ fontSize: 11, color: "#a6adc8", marginBottom: 6, fontWeight: 600 }}>Notes</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6, fontWeight: 600 }}>Notes</div>
               {dayNotes.map((n) => (
                 <button
                   key={n.path}
@@ -255,7 +255,7 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
                     border: "none",
                     borderRadius: 4,
                     background: "transparent",
-                    color: "#89b4fa",
+                    color: "var(--accent)",
                     fontSize: 12,
                     cursor: "pointer",
                   }}
@@ -268,7 +268,7 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
 
           {dayTasks.length > 0 && (
             <div>
-              <div style={{ fontSize: 11, color: "#a6adc8", marginBottom: 6, fontWeight: 600 }}>Tasks Due</div>
+              <div style={{ fontSize: 11, color: "var(--text-secondary)", marginBottom: 6, fontWeight: 600 }}>Tasks Due</div>
               {dayTasks.map((t, i) => (
                 <div key={i} style={{
                   display: "flex",
@@ -276,10 +276,10 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
                   gap: 6,
                   padding: "4px 0",
                   fontSize: 12,
-                  color: t.completed ? "#585b70" : "#cdd6f4",
+                  color: t.completed ? "var(--text-muted)" : "var(--text-primary)",
                   textDecoration: t.completed ? "line-through" : "none",
                 }}>
-                  <span style={{ color: t.completed ? "#a6e3a1" : "#f9e2af" }}>
+                  <span style={{ color: t.completed ? "var(--green)" : "var(--yellow)" }}>
                     {t.completed ? "✓" : "○"}
                   </span>
                   <span>{t.text}</span>
@@ -289,7 +289,7 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
           )}
 
           {dayNotes.length === 0 && dayTasks.length === 0 && (
-            <div style={{ fontSize: 12, color: "#585b70", marginTop: 8 }}>
+            <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 8 }}>
               No notes or tasks for this day.
               <button
                 onClick={() => { onCreateDailyNote(selectedDate); onClose(); }}
@@ -299,7 +299,7 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
                   padding: "4px 0",
                   border: "none",
                   background: "transparent",
-                  color: "#89b4fa",
+                  color: "var(--accent)",
                   fontSize: 12,
                   cursor: "pointer",
                 }}
@@ -317,10 +317,10 @@ export default function CalendarView({ vaultId, onFileSelect, onCreateDailyNote,
 const navBtnStyle: React.CSSProperties = {
   width: 32,
   height: 32,
-  border: "1px solid #45475a",
+  border: "1px solid var(--border)",
   borderRadius: 6,
   background: "transparent",
-  color: "#cdd6f4",
+  color: "var(--text-primary)",
   fontSize: 14,
   cursor: "pointer",
   display: "flex",
