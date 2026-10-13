@@ -69,8 +69,14 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
 
+      # `npm ci` here reliably fails: this lockfile is generated on Windows
+      # dev machines, and npm doesn't always resolve nested optional deps
+      # (e.g. @unrs/resolver-binding-wasm32-wasi's own @emnapi/* optionals,
+      # pulled in via Tailwind's oxide/lightningcss native binaries) for a
+      # platform other than the one that generated it. `npm install`
+      # reconciles instead of hard-failing on the mismatch.
       - name: Install deps
-        run: npm ci
+        run: npm install
 
       - name: Typecheck
         run: npx tsc --noEmit
