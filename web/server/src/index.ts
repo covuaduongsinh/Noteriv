@@ -3,6 +3,7 @@ import cors from "@fastify/cors";
 import cookie from "@fastify/cookie";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
+import multipart from "@fastify/multipart";
 import prismaPlugin from "./plugins/prisma.js";
 import authPlugin from "./plugins/auth.js";
 import authRoutes from "./routes/auth.js";
@@ -14,6 +15,7 @@ import syncConnectionRoutes from "./routes/syncConnections.js";
 import userRoutes from "./routes/users.js";
 import userVaultStateRoutes from "./routes/userVaultState.js";
 import trashRoutes from "./routes/trash.js";
+import attachmentRoutes from "./routes/attachments.js";
 
 const fastify = Fastify({ logger: true, trustProxy: true });
 
@@ -36,6 +38,10 @@ await fastify.register(rateLimit, {
   timeWindow: "1 minute",
 });
 await fastify.register(cookie);
+// 25MB per-file ceiling: a memory-safety cap (files are buffered via
+// file.toBuffer() in routes/attachments.ts) well under the per-vault quota,
+// not the quota enforcement itself (that's the aggregate check in the route).
+await fastify.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
 await fastify.register(prismaPlugin);
 await fastify.register(authPlugin);
 
@@ -47,6 +53,7 @@ await fastify.register(pluginRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(syncConnectionRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(userVaultStateRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(trashRoutes, { prefix: "/api/v1/vaults" });
+await fastify.register(attachmentRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 
 fastify.get("/healthz", async () => ({ ok: true }));

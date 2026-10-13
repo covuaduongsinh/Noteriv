@@ -15,6 +15,7 @@ import {
   InsightsIcon,
   TemplateIcon,
   ComposerIcon,
+  AttachmentIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
@@ -32,6 +33,7 @@ interface RibbonProps {
   onInsights: () => void;
   onTemplates: () => void;
   onNoteComposer: () => void;
+  onAttachments: () => void;
   outlineActive?: boolean;
   tagsActive?: boolean;
   bookmarksActive?: boolean;
@@ -58,6 +60,7 @@ export default function Ribbon({
   onInsights,
   onTemplates,
   onNoteComposer,
+  onAttachments,
   outlineActive,
   tagsActive,
   bookmarksActive,
@@ -112,6 +115,9 @@ export default function Ribbon({
         </button>
         <button className="ribbon-btn" title="Note Composer (merge/split)" onClick={onNoteComposer}>
           <ComposerIcon />
+        </button>
+        <button className="ribbon-btn" title="Attachments" onClick={onAttachments}>
+          <AttachmentIcon />
         </button>
         <button className="ribbon-btn" title="Vault Insights" onClick={onInsights}>
           <InsightsIcon />

@@ -132,6 +132,7 @@ model Vault {
   plugins   Plugin[]
   syncConnections SyncConnection[]
   userStates UserVaultState[]
+  attachments Attachment[]
 
   @@map("vaults")
 }
@@ -225,6 +226,24 @@ model Plugin {
 
   @@unique([vaultId, pluginId])
   @@map("plugins")
+}
+
+/// Attachment binary stored in S3-compatible object storage (Garage, see
+/// web/server/src/lib/attachments.ts) — only metadata lives in Postgres.
+/// `storageKey` is the object key inside the bucket, not a local path.
+model Attachment {
+  id         String   @id @default(uuid())
+  vaultId    String   @map("vault_id")
+  filename   String
+  mimeType   String   @map("mime_type")
+  size       Int
+  storageKey String   @map("storage_key")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@index([vaultId])
+  @@map("attachments")
 }
 
 model Folder {

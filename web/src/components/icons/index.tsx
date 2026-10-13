@@ -259,3 +259,17 @@ export function ComposerIcon({ size = 14, className }: IconProps) {
     </svg>
   );
 }
+
+export function AttachmentIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path
+        d="M10.5 4.5l-5 5a2.121 2.121 0 103 3l5-5a3.536 3.536 0 10-5-5l-5 5a1 1 0 001.414 1.414l5-5"
+        stroke="currentColor"
+        strokeWidth="1.2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}

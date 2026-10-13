@@ -35,5 +35,31 @@ services:
       timeout: 5s
       retries: 5
 
+  # S3-compatible object storage for attachments (Phase C3). Originally
+  # planned as MinIO, but as of 2026-10-13 `minio/minio` and `bitnami/minio`
+  # are both gone from Docker Hub (confirmed via the Hub API, not a pull
+  # fluke) — switched to Garage (dxflrs/garage), a lightweight Rust S3-API
+  # server (~20MB image) that's actually a better fit for this disk/mem
+  # -constrained host anyway. The app code only ever talks the S3 API
+  # (@aws-sdk/client-s3), so this swap is invisible above the storage layer.
+  garage:
+    image: dxflrs/garage:v1.0.1
+    container_name: noteriv-garage
+    restart: unless-stopped
+    environment:
+      RUST_LOG: garage=info
+    ports:
+      - "127.0.0.1:59000:3900"
+    volumes:
+      - ./garage.toml:/etc/garage.toml:ro
+      - noteriv-garagedata:/var/lib/garage
+    # Host disk is at 92% capacity (see 2026-10-13 capacity check) — the real
+    # cap on attachment storage is enforced at the application layer (see
+    # web/server/src/lib/attachments.ts's per-vault quota check against the
+    # sum of Attachment.size rows), NOT by this container's own limits. This
+    # mem_limit is just for the Garage process itself, unrelated to disk quota.
+    mem_limit: 192m
+
 volumes:
   noteriv-pgdata:
+  noteriv-garagedata:

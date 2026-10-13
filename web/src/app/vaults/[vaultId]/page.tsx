@@ -34,6 +34,7 @@ import VaultInsights from "@/components/VaultInsights";
 import TemplatePicker from "@/components/TemplatePicker";
 import NoteComposer from "@/components/NoteComposer";
 import HoverPreview from "@/components/HoverPreview";
+import AttachmentManager from "@/components/AttachmentManager";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
@@ -59,7 +60,7 @@ import {
   type HotkeyBinding,
   type HotkeyAction,
 } from "@/lib/hotkeys";
-import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule } from "@/lib/editor-commands";
+import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor } from "@/lib/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
@@ -163,6 +164,7 @@ export default function VaultPage() {
   const [showInsights, setShowInsights] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showNoteComposer, setShowNoteComposer] = useState(false);
+  const [showAttachments, setShowAttachments] = useState(false);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -893,6 +895,7 @@ export default function VaultPage() {
           onInsights={() => setShowInsights(true)}
           onTemplates={() => setShowTemplatePicker(true)}
           onNoteComposer={() => setShowNoteComposer(true)}
+          onAttachments={() => setShowAttachments(true)}
           outlineActive={outlineVisible}
           tagsActive={tagPaneVisible}
           bookmarksActive={bookmarksVisible}
@@ -1169,6 +1172,16 @@ export default function VaultPage() {
           index={index}
           onInsert={(content, name) => handleCreateFromTemplate(content, name)}
           onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
+
+      {showAttachments && (
+        <AttachmentManager
+          vaultId={vaultId}
+          onInsert={(markdownLink) => {
+            if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
+          }}
+          onClose={() => setShowAttachments(false)}
         />
       )}
 

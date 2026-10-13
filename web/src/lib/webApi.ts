@@ -126,6 +126,22 @@ export interface ApiSyncJob {
   createdAt: string;
 }
 
+export interface ApiAttachment {
+  id: string;
+  vaultId: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  storageKey: string;
+  createdAt: string;
+}
+
+export interface ApiAttachmentList {
+  attachments: ApiAttachment[];
+  usedBytes: number;
+  quotaBytes: number;
+}
+
 export interface ApiTrashedItem {
   id: string;
   name: string;
@@ -197,12 +213,16 @@ async function request<T>(path: string, init?: RequestInit, _retrying = false): 
     ...init,
     credentials: "include",
     headers: {
-      // Only set when there's an actual body — Fastify's JSON body parser
-      // rejects a request carrying Content-Type: application/json with an
-      // empty body (e.g. every DELETE call) with a 400, confirmed live via
-      // a real browser delete: the exact same route accepted a bodyless
-      // fetch() with no Content-Type header but 400'd when webApi sent one.
-      ...(init?.body ? { "Content-Type": "application/json" } : {}),
+      // Only set when there's an actual JSON body — Fastify's JSON body
+      // parser rejects a request carrying Content-Type: application/json
+      // with an empty body (e.g. every DELETE call) with a 400, confirmed
+      // live via a real browser delete: the exact same route accepted a
+      // bodyless fetch() with no Content-Type header but 400'd when webApi
+      // sent one. A FormData body (file upload) must NOT get this header
+      // either — the browser sets its own `multipart/form-data; boundary=`
+      // automatically, and overriding it here would drop the boundary and
+      // break every upload.
+      ...(init?.body && !(init.body instanceof FormData) ? { "Content-Type": "application/json" } : {}),
       ...(init?.headers ?? {}),
     },
   });
@@ -341,6 +361,20 @@ export const webApi = {
     get: () => request<ApiUserPreferences>("/users/me/preferences"),
     update: (data: Partial<ApiUserPreferences>) =>
       request<ApiUserPreferences>("/users/me/preferences", { method: "PUT", body: JSON.stringify(data) }),
+  },
+
+  attachments: {
+    list: (vaultId: string) => request<ApiAttachmentList>(`/vaults/${vaultId}/attachments`),
+    upload: (vaultId: string, file: File) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<ApiAttachment>(`/vaults/${vaultId}/attachments`, { method: "POST", body: form });
+    },
+    remove: (vaultId: string, attachmentId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/attachments/${attachmentId}`, { method: "DELETE" }),
+    // Not a fetch() call — this is a plain same-origin URL for <img src>/<a href>,
+    // auth rides along via the existing httpOnly cookie, same as any other asset.
+    downloadUrl: (vaultId: string, attachmentId: string) => `/api/v1/vaults/${vaultId}/attachments/${attachmentId}/download`,
   },
 
   trash: {
