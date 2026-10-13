@@ -3,11 +3,21 @@
 # directory (web/infra/), per standard docker-compose behavior — not the
 # invocation cwd. Secrets (POSTGRES_PASSWORD, JWT_*, ENCRYPTION_KEY) are
 # injected by Dokploy's compose-level env at deploy time, never committed
-# here. No service publishes a host port; Dokploy's Traefik reaches `web`
-# and `collab` directly over the compose network via domain.create.
+# here. No service publishes a host port; Dokploy's Traefik reaches
+# `noteriv-web` and `noteriv-collab` directly over the compose network via
+# domain.create.
+#
+# Service names are prefixed `noteriv-*` rather than generic names like
+# `api`/`web` — Dokploy puts every project's domain-routed containers on one
+# shared `dokploy-network` overlay, and Docker's embedded DNS does NOT scope
+# hostnames per compose project on a shared network. A generic name collided
+# with another, unrelated project's identically-named service here during
+# deploy testing: this project's `web` container resolved `api` to a
+# different project's `api` container on dokploy-network and got
+# ECONNREFUSED. Prefixing avoids the collision; it is not just a style choice.
 
 services:
-  postgres:
+  noteriv-postgres:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
@@ -23,7 +33,7 @@ services:
       timeout: 5s
       retries: 5
 
-  redis:
+  noteriv-redis:
     image: redis:7-alpine
     restart: unless-stopped
     # noeviction: backs BullMQ's sync job queue — allkeys-lru would silently
@@ -36,7 +46,7 @@ services:
       timeout: 5s
       retries: 5
 
-  api:
+  noteriv-api:
     build:
       context: ../server
       dockerfile: Dockerfile
@@ -45,20 +55,20 @@ services:
     environment:
       NODE_ENV: production
       PORT: "4001"
-      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
+      REDIS_URL: redis://noteriv-redis:6379
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
       CORS_ORIGIN: https://noteriv.dsc.edu.vn
     depends_on:
-      postgres:
+      noteriv-postgres:
         condition: service_healthy
-      redis:
+      noteriv-redis:
         condition: service_healthy
     mem_limit: 256m
 
-  worker:
+  noteriv-worker:
     build:
       context: ../server
       dockerfile: Dockerfile
@@ -66,17 +76,17 @@ services:
     command: ["node", "dist/sync-worker/index.js"]
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
-      REDIS_URL: redis://redis:6379
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
+      REDIS_URL: redis://noteriv-redis:6379
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
     depends_on:
-      postgres:
+      noteriv-postgres:
         condition: service_healthy
-      redis:
+      noteriv-redis:
         condition: service_healthy
     mem_limit: 256m
 
-  collab:
+  noteriv-collab:
     build:
       context: ../server
       dockerfile: Dockerfile
@@ -85,14 +95,14 @@ services:
     environment:
       NODE_ENV: production
       COLLAB_PORT: "4002"
-      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
     depends_on:
-      postgres:
+      noteriv-postgres:
         condition: service_healthy
     mem_limit: 256m
 
-  web:
+  noteriv-web:
     build:
       context: ../../
       dockerfile: web/Dockerfile
@@ -101,10 +111,10 @@ services:
         # comment on why: rewrites() and NEXT_PUBLIC_* are both resolved at
         # `next build` time, not re-read per request in a standalone build.
         NEXT_PUBLIC_COLLAB_WS_URL: wss://noteriv.dsc.edu.vn
-        NOTERIV_API_ORIGIN: http://api:4001
+        NOTERIV_API_ORIGIN: http://noteriv-api:4001
     restart: unless-stopped
     depends_on:
-      - api
+      - noteriv-api
     mem_limit: 384m
 
 volumes:
