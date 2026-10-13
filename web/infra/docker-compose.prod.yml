@@ -93,18 +93,24 @@ services:
 
   # S3-compatible object storage for attachments (Phase C3), same Garage setup
   # as web/infra/docker-compose.dev.yml (MinIO is gone from Docker Hub as of
-  # 2026-10-13 — see that file's comment for the full story). The config file
-  # is generated at container start from env vars instead of a mounted file,
-  # since this compose file is deploy-cloned by Dokploy and secrets must come
-  # from Dokploy's compose-level env, never be committed to git.
-  noteriv-garage:
-    image: dxflrs/garage:v1.0.1
-    restart: unless-stopped
+  # 2026-10-13 — see that file's comment for the full story).
+  #
+  # dxflrs/garage is a scratch-style image with no /bin/sh (confirmed via
+  # `docker inspect` — Entrypoint is empty, Cmd is `["/garage","server"]`
+  # directly), so the config file can't be generated with a shell heredoc
+  # inside the Garage container itself like a normal image. A tiny busybox
+  # init container writes it to a shared volume first and must finish before
+  # Garage starts (service_completed_successfully) — this keeps the secrets
+  # env-var-driven (never committed to git) without needing a shell in the
+  # Garage image.
+  noteriv-garage-config:
+    image: busybox:1.36
+    restart: "no"
     entrypoint: ["/bin/sh", "-c"]
     command:
       - |
         set -e
-        cat > /tmp/garage.toml <<EOF
+        cat > /etc/garage-conf/garage.toml <<EOF
         metadata_dir = "/var/lib/garage/meta"
         data_dir = "/var/lib/garage/data"
         db_engine = "sqlite"
@@ -120,8 +126,18 @@ services:
         api_bind_addr = "[::]:3903"
         admin_token = "${GARAGE_ADMIN_TOKEN:?set GARAGE_ADMIN_TOKEN}"
         EOF
-        exec /garage -c /tmp/garage.toml server
     volumes:
+      - noteriv-prod-garageconf:/etc/garage-conf
+
+  noteriv-garage:
+    image: dxflrs/garage:v1.0.1
+    restart: unless-stopped
+    command: ["/garage", "-c", "/etc/garage-conf/garage.toml", "server"]
+    depends_on:
+      noteriv-garage-config:
+        condition: service_completed_successfully
+    volumes:
+      - noteriv-prod-garageconf:/etc/garage-conf:ro
       - noteriv-prod-garagedata:/var/lib/garage
     # Real quota is enforced app-side (web/server/src/lib/attachments.ts),
     # same as dev — this mem_limit is just for the Garage process itself.
@@ -161,3 +177,4 @@ services:
 volumes:
   noteriv-prod-pgdata:
   noteriv-prod-garagedata:
+  noteriv-prod-garageconf:
