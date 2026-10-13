@@ -24,6 +24,7 @@ coverage/
 
 # env
 .env*
+!.env.example
 credentials.json
 # os
 .DS_Store
@@ -61,3 +62,4 @@ eas.json
 # build tools
 bundletool-*.jar
 phone/eas.json
+web/server/dist/
