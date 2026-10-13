@@ -61,6 +61,11 @@ services:
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
       CORS_ORIGIN: https://noteriv.dsc.edu.vn
+      ATTACHMENTS_S3_ENDPOINT: http://noteriv-garage:3900
+      ATTACHMENTS_S3_REGION: garage
+      ATTACHMENTS_S3_BUCKET: noteriv-attachments
+      ATTACHMENTS_S3_ACCESS_KEY_ID: ${ATTACHMENTS_S3_ACCESS_KEY_ID:-}
+      ATTACHMENTS_S3_SECRET_ACCESS_KEY: ${ATTACHMENTS_S3_SECRET_ACCESS_KEY:-}
     depends_on:
       noteriv-postgres:
         condition: service_healthy
@@ -85,6 +90,42 @@ services:
       noteriv-redis:
         condition: service_healthy
     mem_limit: 256m
+
+  # S3-compatible object storage for attachments (Phase C3), same Garage setup
+  # as web/infra/docker-compose.dev.yml (MinIO is gone from Docker Hub as of
+  # 2026-10-13 — see that file's comment for the full story). The config file
+  # is generated at container start from env vars instead of a mounted file,
+  # since this compose file is deploy-cloned by Dokploy and secrets must come
+  # from Dokploy's compose-level env, never be committed to git.
+  noteriv-garage:
+    image: dxflrs/garage:v1.0.1
+    restart: unless-stopped
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        set -e
+        cat > /tmp/garage.toml <<EOF
+        metadata_dir = "/var/lib/garage/meta"
+        data_dir = "/var/lib/garage/data"
+        db_engine = "sqlite"
+        replication_factor = 1
+        rpc_bind_addr = "[::]:3901"
+        rpc_public_addr = "127.0.0.1:3901"
+        rpc_secret = "${GARAGE_RPC_SECRET:?set GARAGE_RPC_SECRET}"
+        [s3_api]
+        s3_region = "garage"
+        api_bind_addr = "[::]:3900"
+        root_domain = ".s3.garage.localhost"
+        [admin]
+        api_bind_addr = "[::]:3903"
+        admin_token = "${GARAGE_ADMIN_TOKEN:?set GARAGE_ADMIN_TOKEN}"
+        EOF
+        exec /garage -c /tmp/garage.toml server
+    volumes:
+      - noteriv-prod-garagedata:/var/lib/garage
+    # Real quota is enforced app-side (web/server/src/lib/attachments.ts),
+    # same as dev — this mem_limit is just for the Garage process itself.
+    mem_limit: 192m
 
   noteriv-collab:
     build:
@@ -119,3 +160,4 @@ services:
 
 volumes:
   noteriv-prod-pgdata:
+  noteriv-prod-garagedata:
