@@ -239,6 +239,13 @@ model Attachment {
   size       Int
   storageKey String   @map("storage_key")
   createdAt  DateTime @default(now()) @map("created_at")
+  /// PDF annotation array (Phase D4) — only populated for mimeType
+  /// "application/pdf". Kept inline on Attachment rather than a separate
+  /// table since it's always loaded/saved as one unit alongside the file
+  /// (same JSON-on-the-parent-row pattern Vault.settings already uses for
+  /// themes/plugins/bookmarks). Shape: PDFAnnotation[] from
+  /// web/src/lib/pdf-annotation.ts.
+  metadata   Json?
 
   vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
 

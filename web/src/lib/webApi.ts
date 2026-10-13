@@ -134,6 +134,9 @@ export interface ApiAttachment {
   size: number;
   storageKey: string;
   createdAt: string;
+  // PDF annotations (Phase D4) — only ever populated for mimeType
+  // "application/pdf". See web/src/lib/pdf-annotation.ts for the shape.
+  metadata?: unknown;
 }
 
 export interface ApiAttachmentList {
@@ -373,6 +376,11 @@ export const webApi = {
     },
     remove: (vaultId: string, attachmentId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/attachments/${attachmentId}`, { method: "DELETE" }),
+    updateMetadata: (vaultId: string, attachmentId: string, metadata: unknown) =>
+      request<ApiAttachment>(`/vaults/${vaultId}/attachments/${attachmentId}`, {
+        method: "PATCH",
+        body: JSON.stringify({ metadata }),
+      }),
     // Not a fetch() call — this is a plain same-origin URL for <img src>/<a href>,
     // auth rides along via the existing httpOnly cookie, same as any other asset.
     downloadUrl: (vaultId: string, attachmentId: string) => `/api/v1/vaults/${vaultId}/attachments/${attachmentId}/download`,

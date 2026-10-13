@@ -77,6 +77,30 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
     }
   });
 
+  // PDF annotations (Phase D4) — stored on the attachment row itself (see
+  // Attachment.metadata's schema comment), loaded/saved as one JSON blob
+  // alongside the viewer, same shape as web/src/lib/pdf-annotation.ts.
+  fastify.patch("/:vid/attachments/:aid", async (request, reply) => {
+    const { vid, aid } = request.params as { vid: string; aid: string };
+    try {
+      const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
+      if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
+
+      const body = request.body as { metadata?: unknown };
+      const attachment = await prisma.attachment.findFirst({ where: { id: aid, vaultId: vid } });
+      if (!attachment) return reply.code(404).send({ error: "not_found" });
+
+      const updated = await prisma.attachment.update({
+        where: { id: aid },
+        data: { metadata: body.metadata === undefined ? undefined : (body.metadata as object) },
+      });
+      return reply.send(updated);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
   fastify.delete("/:vid/attachments/:aid", async (request, reply) => {
     const { vid, aid } = request.params as { vid: string; aid: string };
     try {

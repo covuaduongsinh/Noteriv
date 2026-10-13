@@ -1226,6 +1226,11 @@ export default function VaultPage() {
             if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
           }}
           onClose={() => setShowAttachments(false)}
+          onOpenNote={(noteId) => {
+            setShowAttachments(false);
+            refreshIndex();
+            openNote(noteId);
+          }}
         />
       )}
 
