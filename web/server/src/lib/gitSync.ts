@@ -270,7 +270,18 @@ export async function gitSyncCore(
 
   if (remote) {
     const pushUrl = creds ? makeAuthUrl(remote, creds.username, creds.token) : "origin";
-    await runGit(["push", "-u", pushUrl, branch], dir, creds?.token);
+    const push = await runGit(["push", "-u", pushUrl, branch], dir, creds?.token);
+    if (!push.success) {
+      // Unreachable host, bad credentials, and non-fast-forward rejections all land
+      // here — this result was previously discarded entirely, which is how a sync
+      // job against a nonexistent remote + fake token could still report "success".
+      const rejected = /\[rejected\]|non-fast-forward|fetch first|stale info/i.test(push.stderr);
+      throw new Error(
+        rejected
+          ? `Sync paused: remote has changes that weren't merged locally; push was rejected. ${push.stderr}`
+          : `Sync failed: could not push to remote. ${push.stderr || "unknown git push error"}`
+      );
+    }
   }
 
   return { pushedCommit };
