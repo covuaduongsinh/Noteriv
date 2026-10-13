@@ -1,0 +1,111 @@
+# Production stack, deployed via Dokploy (see docs/plans/2026-10-12-noteriv-web-version.md
+# §9 Phase 7). Relative build paths below resolve against this file's own
+# directory (web/infra/), per standard docker-compose behavior — not the
+# invocation cwd. Secrets (POSTGRES_PASSWORD, JWT_*, ENCRYPTION_KEY) are
+# injected by Dokploy's compose-level env at deploy time, never committed
+# here. No service publishes a host port; Dokploy's Traefik reaches `web`
+# and `collab` directly over the compose network via domain.create.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: noteriv
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
+      POSTGRES_DB: noteriv
+    volumes:
+      - noteriv-prod-pgdata:/var/lib/postgresql/data
+    mem_limit: 512m
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U noteriv"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # noeviction: backs BullMQ's sync job queue — allkeys-lru would silently
+    # drop queued/in-flight job keys under memory pressure.
+    command: ["redis-server", "--maxmemory", "100mb", "--maxmemory-policy", "noeviction"]
+    mem_limit: 160m
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/index.js"]
+    environment:
+      NODE_ENV: production
+      PORT: "4001"
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
+      REDIS_URL: redis://redis:6379
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
+      CORS_ORIGIN: https://noteriv.dsc.edu.vn
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+
+  worker:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/sync-worker/index.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
+      REDIS_URL: redis://redis:6379
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    mem_limit: 256m
+
+  collab:
+    build:
+      context: ../server
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    command: ["node", "dist/collab-server/index.js"]
+    environment:
+      NODE_ENV: production
+      COLLAB_PORT: "4002"
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@postgres:5432/noteriv?schema=public
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    mem_limit: 256m
+
+  web:
+    build:
+      context: ../../
+      dockerfile: web/Dockerfile
+      args:
+        # Both are build args, not runtime environment — see Dockerfile's
+        # comment on why: rewrites() and NEXT_PUBLIC_* are both resolved at
+        # `next build` time, not re-read per request in a standalone build.
+        NEXT_PUBLIC_COLLAB_WS_URL: wss://noteriv.dsc.edu.vn
+        NOTERIV_API_ORIGIN: http://api:4001
+    restart: unless-stopped
+    depends_on:
+      - api
+    mem_limit: 384m
+
+volumes:
+  noteriv-prod-pgdata:
