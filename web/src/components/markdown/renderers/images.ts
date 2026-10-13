@@ -4,6 +4,34 @@ import type { InlineRenderer, InlineReplacement } from "../types";
 let _editorView: any = null;
 export function setEditorViewForImages(view: any) { _editorView = view; }
 
+// D9 (image lightbox) — rendered <img> markup here is raw HTML injected via a
+// CodeMirror decoration, not a React element, so there is no JSX onClick to
+// attach. The vault page registers a handler once (works for both the
+// live-preview Editor and ReadOnlyView, since both render through this same
+// pipeline) and a global dblclick listener below calls it with the clicked
+// image's resolved src/alt.
+let _onImageOpen: ((src: string, alt: string) => void) | null = null;
+export function setImageLightboxHandler(fn: ((src: string, alt: string) => void) | null) {
+  _onImageOpen = fn;
+}
+
+let lightboxListenerAttached = false;
+function attachLightboxListener() {
+  if (lightboxListenerAttached) return;
+  lightboxListenerAttached = true;
+  document.addEventListener("dblclick", (e) => {
+    const target = e.target as HTMLElement;
+    if (target.tagName === "IMG" && target.classList.contains("md-inline-img")) {
+      const img = target as HTMLImageElement;
+      if (img.src && _onImageOpen) {
+        e.preventDefault();
+        _onImageOpen(img.src, img.alt);
+      }
+    }
+  });
+}
+if (typeof window !== "undefined") attachLightboxListener();
+
 // Cache of loaded images: absolute path → data URL
 const imageCache = new Map<string, string>();
 const loadingPaths = new Set<string>();

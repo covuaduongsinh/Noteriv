@@ -35,6 +35,7 @@ import TemplatePicker from "@/components/TemplatePicker";
 import NoteComposer from "@/components/NoteComposer";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
+import { setImageLightboxHandler } from "@/components/markdown/renderers/images";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
@@ -88,6 +89,8 @@ function saveRecentCommand(action: HotkeyAction) {
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
 const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
+const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
+const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
 const WORKSPACE_SAVE_DEBOUNCE_MS = 1000;
@@ -169,6 +172,9 @@ export default function VaultPage() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showSlidePresentation, setShowSlidePresentation] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [showPublishPreview, setShowPublishPreview] = useState(false);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -200,6 +206,22 @@ export default function VaultPage() {
     webApi.auth.me().then((u) => setDisplayName(u.displayName)).catch(() => undefined);
     webApi.vaults.list().then(setAllVaults).catch(() => undefined);
   }, []);
+
+  // D9 — image lightbox: double-click on a rendered <img> (Editor or
+  // ReadOnlyView, both share the same renderer pipeline) opens it enlarged.
+  useEffect(() => {
+    setImageLightboxHandler((src) => setLightboxSrc(src));
+    return () => setImageLightboxHandler(null);
+  }, []);
+
+  useEffect(() => {
+    if (!lightboxSrc) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setLightboxSrc(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [lightboxSrc]);
 
   function setActiveTabContent(noteId: string, content: string) {
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, content } : t)));
@@ -988,6 +1010,8 @@ export default function VaultPage() {
                 onToggleCollab={() => setCollabVisible((v) => !v)}
                 onExportPDF={handleExportPDF}
                 onToggleBookmark={() => handleToggleBookmark(activeTab.noteId)}
+                onPresent={() => setShowSlidePresentation(true)}
+                onPublish={() => setShowPublishPreview(true)}
               />
               {pluginHost.commands.length > 0 && (
                 <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
@@ -1218,6 +1242,45 @@ export default function VaultPage() {
           onContentChange={onDraftChange}
           onRefresh={refreshIndex}
         />
+      )}
+
+      {showSlidePresentation && activeTab && (
+        <SlidePresentation content={draft} onClose={() => setShowSlidePresentation(false)} />
+      )}
+
+      {showPublishPreview && activeTab && (
+        <PublishPreview
+          vaultId={vaultId}
+          index={index}
+          content={draft}
+          title={activeTab.name.replace(/\.(md|markdown)$/i, "")}
+          currentNoteId={activeTabId}
+          onClose={() => setShowPublishPreview(false)}
+        />
+      )}
+
+      {lightboxSrc && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 100,
+            background: "rgba(0,0,0,0.85)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            cursor: "zoom-out",
+          }}
+          onClick={() => setLightboxSrc(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element -- arbitrary runtime src (vault image / attachment URL), not a static asset */}
+          <img
+            src={lightboxSrc}
+            alt=""
+            style={{ maxWidth: "92vw", maxHeight: "92vh", objectFit: "contain", borderRadius: 6 }}
+            onClick={(e) => e.stopPropagation()}
+          />
+        </div>
       )}
 
       {wikilinkHover && (

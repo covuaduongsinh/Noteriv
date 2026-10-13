@@ -1,6 +1,6 @@
 "use client";
 
-import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon } from "@/components/icons";
+import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon, PresentIcon, PublishIcon } from "@/components/icons";
 
 interface NoteToolbarProps {
   notePath: string;
@@ -12,6 +12,8 @@ interface NoteToolbarProps {
   onToggleCollab: () => void;
   onExportPDF: () => void;
   onToggleBookmark: () => void;
+  onPresent: () => void;
+  onPublish: () => void;
 }
 
 /**
@@ -34,6 +36,8 @@ export default function NoteToolbar({
   onToggleCollab,
   onExportPDF,
   onToggleBookmark,
+  onPresent,
+  onPublish,
 }: NoteToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
@@ -66,6 +70,12 @@ export default function NoteToolbar({
         </button>
         <button onClick={onExportPDF} title="Export PDF" className="titlebar-btn">
           <ExportIcon />
+        </button>
+        <button onClick={onPresent} title="Present (slide mode)" className="titlebar-btn">
+          <PresentIcon />
+        </button>
+        <button onClick={onPublish} title="Publish preview (static HTML)" className="titlebar-btn">
+          <PublishIcon />
         </button>
       </div>
     </div>

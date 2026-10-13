@@ -273,3 +273,23 @@ export function AttachmentIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+export function PresentIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <rect x="1.5" y="2.5" width="13" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M6.5 13.5h3M8 10.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M6 7l2.3-1.5L6 4v3z" fill="currentColor" />
+    </svg>
+  );
+}
+
+export function PublishIcon({ size = 14, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M3 6.5l5-4 5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M8 2.5v8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M3 10.5v3h10v-3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
