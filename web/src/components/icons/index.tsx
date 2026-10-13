@@ -196,6 +196,25 @@ export function RenameIcon({ size = 14, className }: IconProps) {
   );
 }
 
+export function OutlineIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M2 4h3M7 4h7" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M2 8h2M6 8h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M2 12h2M6 12h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+export function TagIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <path d="M2 2h5l7 7-5 5-7-7V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+      <circle cx="5" cy="5" r="1" fill="currentColor" />
+    </svg>
+  );
+}
+
 export function TrashIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>

@@ -78,6 +78,21 @@ export interface ApiBacklink {
   path: string;
 }
 
+export type ViewMode = "live" | "source" | "view";
+
+export interface ApiOpenTab {
+  noteId: string;
+  path: string;
+  name: string;
+}
+
+export interface ApiWorkspaceState {
+  openTabs: ApiOpenTab[];
+  activeTabId: string | null;
+  pinnedTabIds: string[];
+  fileViewModes: Record<string, ViewMode>;
+}
+
 export interface ApiPlugin {
   id: string;
   vaultId: string;
@@ -216,6 +231,15 @@ export const webApi = {
   users: {
     exportData: () => request<Record<string, unknown>>("/users/me/export"),
     deleteAccount: () => request<{ ok: true }>("/users/me", { method: "DELETE" }),
+  },
+
+  workspace: {
+    getState: (vaultId: string) => request<ApiWorkspaceState>(`/vaults/${vaultId}/workspace-state`),
+    updateState: (vaultId: string, data: Partial<ApiWorkspaceState>) =>
+      request<ApiWorkspaceState>(`/vaults/${vaultId}/workspace-state`, {
+        method: "PUT",
+        body: JSON.stringify(data),
+      }),
   },
 };
 

@@ -4,7 +4,6 @@ import { BacklinksIcon, CollabIcon, ExportIcon } from "@/components/icons";
 
 interface NoteToolbarProps {
   notePath: string;
-  saving: boolean;
   backlinksVisible: boolean;
   collabVisible: boolean;
   collabPeerCount: number;
@@ -19,11 +18,12 @@ interface NoteToolbarProps {
  * ribbon-vs-per-note mapping). Desktop has no direct equivalent for this
  * exact row — Backlinks/Export PDF are triggered via hotkey/command palette
  * there, and Collab doesn't exist in desktop at all — so these are icon
- * buttons styled like `.ribbon-btn` rather than a ported component.
+ * buttons styled like `.ribbon-btn` rather than a ported component. The
+ * saved/unsaved indicator moved to StatusBar.tsx (Phase A), matching
+ * desktop's status bar rather than living here.
  */
 export default function NoteToolbar({
   notePath,
-  saving,
   backlinksVisible,
   collabVisible,
   collabPeerCount,
@@ -35,7 +35,6 @@ export default function NoteToolbar({
     <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
       <span className="truncate">{notePath}</span>
       <div className="flex items-center gap-1">
-        <span className="text-xs text-[var(--text-muted)] mr-2">{saving ? "Đang lưu…" : "Đã lưu"}</span>
         <button
           onClick={onToggleBacklinks}
           title="Backlinks"

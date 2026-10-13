@@ -55,6 +55,7 @@ model User {
   createdNotes     Note[]             @relation("NoteCreatedBy")
   updatedNotes     Note[]             @relation("NoteUpdatedBy")
   auditLogs        AuditLog[]
+  vaultStates      UserVaultState[]
 
   @@map("users")
 }
@@ -113,8 +114,35 @@ model Vault {
   backlinks Backlink[]
   plugins   Plugin[]
   syncConnections SyncConnection[]
+  userStates UserVaultState[]
 
   @@map("vaults")
+}
+
+/// Per-user, per-vault UI workspace state — which tabs are open, which is
+/// active, which are pinned, and which view mode (live/source/view) each note
+/// is in. This is NOT vault configuration (that's Vault.settings, shared by
+/// every member) — it's private to one user's browser session, analogous to
+/// desktop's workspace_save/workspace_load (Tauri-local) but server-backed so
+/// it survives across devices/reloads for that user.
+model UserVaultState {
+  id            String   @id @default(uuid())
+  vaultId       String   @map("vault_id")
+  userId        String   @map("user_id")
+  /// Array of { noteId, path, name } for open tabs, in display order.
+  openTabs      Json     @default("[]") @map("open_tabs")
+  activeTabId   String?  @map("active_tab_id")
+  /// Array of noteId strings.
+  pinnedTabIds  Json     @default("[]") @map("pinned_tab_ids")
+  /// Record<noteId, "live"|"source"|"view">.
+  fileViewModes Json     @default("{}") @map("file_view_modes")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([vaultId, userId])
+  @@map("user_vault_states")
 }
 
 model SyncConnection {

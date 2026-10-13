@@ -6,6 +6,9 @@ import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
 import Editor from "@/components/Editor";
+import SourceEditor from "@/components/SourceEditor";
+import ReadOnlyView from "@/components/ReadOnlyView";
+import SplitPane from "@/components/SplitPane";
 import QuickOpen from "@/components/QuickOpen";
 import BacklinksPanel from "@/components/BacklinksPanel";
 import CollabPanel from "@/components/CollabPanel";
@@ -15,14 +18,25 @@ import FlashcardReview from "@/components/FlashcardReview";
 import ThemePicker from "@/components/ThemePicker";
 import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
+import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
 import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
 import FormattingToolbar from "@/components/FormattingToolbar";
+import FrontmatterEditor from "@/components/FrontmatterEditor";
+import StatusBar from "@/components/StatusBar";
+import OutlinePanel from "@/components/OutlinePanel";
+import TagPane from "@/components/TagPane";
 import { CloseIcon } from "@/components/icons";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
-import { webApi, type ApiVault, type VaultIndex, type ApiNote, type ApiSearchResult } from "@/lib/webApi";
+import {
+  webApi,
+  type ApiVault,
+  type VaultIndex,
+  type ApiSearchResult,
+  type ViewMode,
+} from "@/lib/webApi";
 import { isBoardContent } from "@/lib/board-utils";
 import { exportToPDF } from "@/lib/pdf-export";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
@@ -31,7 +45,16 @@ import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
+const WORKSPACE_SAVE_DEBOUNCE_MS = 1000;
 const DEFAULT_SIDEBAR_WIDTH = 250;
+
+interface OpenTab {
+  noteId: string;
+  path: string;
+  name: string;
+  content: string;
+  savedContent: string;
+}
 
 export default function VaultPage() {
   const params = useParams<{ vaultId: string }>();
@@ -42,13 +65,27 @@ export default function VaultPage() {
   const [vault, setVault] = useState<ApiVault | null>(null);
   const [allVaults, setAllVaults] = useState<ApiVault[]>([]);
   const [index, setIndex] = useState<VaultIndex | null>(null);
-  const [activeNote, setActiveNote] = useState<ApiNote | null>(null);
-  const [draft, setDraft] = useState("");
-  const [saving, setSaving] = useState(false);
+
+  // Tabs — a web vault can now have several notes open at once, mirroring
+  // desktop's tab-bar model (docs/plans/2026-10-13-noteriv-web-full-parity.md
+  // Phase A1). `tabs` holds in-memory content; Postgres is still the source
+  // of truth, refreshed via webApi.notes.get on open.
+  const [tabs, setTabs] = useState<OpenTab[]>([]);
+  const [activeTabId, setActiveTabId] = useState<string | null>(null);
+  const [pinnedTabIds, setPinnedTabIds] = useState<Set<string>>(new Set());
+  const [fileViewModes, setFileViewModes] = useState<Record<string, ViewMode>>({});
+  const [splitTabId, setSplitTabId] = useState<string | null>(null);
+  const [splitRatio, setSplitRatio] = useState(0.5);
+  const workspaceLoadedRef = useRef(false);
+  const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
+  const [outlineVisible, setOutlineVisible] = useState(false);
+  const [tagPaneVisible, setTagPaneVisible] = useState(false);
+  const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ApiSearchResult[] | null>(null);
@@ -64,22 +101,28 @@ export default function VaultPage() {
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
   const [editorViewVersion, setEditorViewVersion] = useState(0);
-  const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const collabPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
   const collabSessionRef = useRef<CollabSession | null>(null);
+
+  const activeTab = tabs.find((t) => t.noteId === activeTabId) ?? null;
+  const splitTab = splitTabId ? tabs.find((t) => t.noteId === splitTabId) ?? null : null;
+  const draft = activeTab?.content ?? "";
+  const viewMode: ViewMode = (activeTabId && fileViewModes[activeTabId]) || "live";
   const draftRef = useRef(draft);
   draftRef.current = draft;
   // Last content applied FROM a remote collab update. CodeMirror's update
   // listener fires for *any* doc change, including the programmatic dispatch
   // Editor.tsx does to reflect a new `content` prop — so a remote update
-  // flows: collab onUpdate -> setDraft -> Editor re-renders -> CodeMirror
-  // dispatch -> onChange -> onDraftChange. Without this guard, onDraftChange
-  // would immediately push that same content back into Yjs as if the user had
-  // typed it, and two tabs would echo each other's updates back and forth,
-  // which Yjs's CRDT merges as concurrent edits — corrupting the text within
-  // a few round trips. Comparing against the exact string we just received
-  // (set synchronously, before setDraft) closes the loop regardless of timing.
+  // flows: collab onUpdate -> setActiveTabContent -> Editor re-renders ->
+  // CodeMirror dispatch -> onChange -> onDraftChange. Without this guard,
+  // onDraftChange would immediately push that same content back into Yjs as
+  // if the user had typed it, and two tabs would echo each other's updates
+  // back and forth, which Yjs's CRDT merges as concurrent edits — corrupting
+  // the text within a few round trips. Comparing against the exact string we
+  // just received (set synchronously, before the state update) closes the
+  // loop regardless of timing.
   const lastRemoteContentRef = useRef<string | null>(null);
 
   useEffect(() => {
@@ -87,11 +130,25 @@ export default function VaultPage() {
     webApi.vaults.list().then(setAllVaults).catch(() => undefined);
   }, []);
 
-  // Join/leave the realtime collab room for the open note as the panel is toggled
-  // or the note changes — a web note already has a durable id, so "the room" is
-  // just `note:{id}`, no code to generate/share like desktop needed.
+  function setActiveTabContent(noteId: string, content: string) {
+    setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, content } : t)));
+  }
+
+  function scheduleSave(noteId: string, content: string) {
+    if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
+    saveTimers.current[noteId] = setTimeout(async () => {
+      await webApi.notes.update(vaultId, noteId, { content });
+      setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
+      refreshIndex();
+    }, SAVE_DEBOUNCE_MS);
+  }
+
+  // Join/leave the realtime collab room for the active note as the panel is
+  // toggled or the active tab changes — a web note already has a durable id,
+  // so "the room" is just `note:{id}`, no code to generate/share like desktop
+  // needed.
   useEffect(() => {
-    if (!collabVisible || !activeNote) {
+    if (!collabVisible || !activeTabId) {
       collabSessionRef.current?.destroy();
       collabSessionRef.current = null;
       setCollabConnected(false);
@@ -99,16 +156,17 @@ export default function VaultPage() {
       return;
     }
 
+    const noteId = activeTabId;
     let cancelled = false;
     setCollabConnected(false);
     setCollabPeers([]);
     startCollab(
-      activeNote.id,
+      noteId,
       draftRef.current,
       (content) => {
         lastRemoteContentRef.current = content;
-        setDraft(content);
-        if (activeNote) scheduleSave(activeNote.id, content);
+        setActiveTabContent(noteId, content);
+        scheduleSave(noteId, content);
       },
       setCollabPeers,
       displayName
@@ -124,7 +182,7 @@ export default function VaultPage() {
       collabSessionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [collabVisible, activeNote?.id]);
+  }, [collabVisible, activeTabId]);
 
   const refreshIndex = useCallback(() => {
     webApi.vaults.index(vaultId).then(setIndex);
@@ -160,16 +218,100 @@ export default function VaultPage() {
 
   const openNote = useCallback(
     async (noteId: string) => {
-      const note = await webApi.notes.get(vaultId, noteId);
-      setActiveNote(note);
-      setDraft(note.content);
       setSearchVisible(false);
       setSearchResults(null);
       setSearchQuery("");
+
+      const alreadyOpen = tabs.some((t) => t.noteId === noteId);
+      if (alreadyOpen) {
+        setActiveTabId(noteId);
+        return;
+      }
+      const note = await webApi.notes.get(vaultId, noteId);
+      setTabs((prev) =>
+        prev.some((t) => t.noteId === noteId)
+          ? prev
+          : [...prev, { noteId, path: note.path, name: note.name, content: note.content, savedContent: note.content }]
+      );
+      setActiveTabId(noteId);
     },
-    [vaultId]
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [vaultId, tabs]
   );
 
+  function closeTab(noteId: string) {
+    if (pinnedTabIds.has(noteId)) return;
+    if (splitTabId === noteId) setSplitTabId(null);
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.noteId === noteId);
+      const next = prev.filter((t) => t.noteId !== noteId);
+      if (activeTabId === noteId) {
+        const newIdx = Math.min(idx, next.length - 1);
+        setActiveTabId(next[newIdx]?.noteId ?? null);
+      }
+      return next;
+    });
+  }
+
+  function reorderTabs(from: number, to: number) {
+    setTabs((prev) => {
+      const next = [...prev];
+      const [moved] = next.splice(from, 1);
+      next.splice(to, 0, moved);
+      return next;
+    });
+  }
+
+  function handleTogglePin(noteId: string) {
+    setPinnedTabIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(noteId)) next.delete(noteId);
+      else next.add(noteId);
+      return next;
+    });
+  }
+
+  function handleCloseOtherTabs(noteId: string) {
+    setTabs((prev) => prev.filter((t) => t.noteId === noteId || pinnedTabIds.has(t.noteId)));
+    setActiveTabId(noteId);
+  }
+
+  function handleCloseAllTabs() {
+    setTabs((prev) => {
+      const remaining = prev.filter((t) => pinnedTabIds.has(t.noteId));
+      if (activeTabId && !pinnedTabIds.has(activeTabId)) {
+        setActiveTabId(remaining[0]?.noteId ?? null);
+      }
+      return remaining;
+    });
+    setSplitTabId(null);
+  }
+
+  function handleCloseTabsToRight(noteId: string) {
+    setTabs((prev) => {
+      const idx = prev.findIndex((t) => t.noteId === noteId);
+      if (idx === -1) return prev;
+      const next = prev.filter((t, i) => i <= idx || pinnedTabIds.has(t.noteId));
+      if (activeTabId && !next.some((t) => t.noteId === activeTabId)) setActiveTabId(noteId);
+      return next;
+    });
+  }
+
+  function handleSplitRight(noteId: string) {
+    setSplitTabId(noteId);
+  }
+
+  function handleCloseSplit() {
+    setSplitTabId(null);
+  }
+
+  function handleViewModeChange(mode: ViewMode) {
+    if (!activeTabId) return;
+    setFileViewModes((prev) => ({ ...prev, [activeTabId]: mode }));
+  }
+
+  // Load this vault's config (theme/snippets) and this user's workspace
+  // state (open tabs/active tab/pinned/view-modes) in parallel.
   useEffect(() => {
     webApi.vaults
       .get(vaultId)
@@ -192,7 +334,53 @@ export default function VaultPage() {
       })
       .catch(() => router.replace("/vaults"));
     refreshIndex();
+
+    webApi.workspace
+      .getState(vaultId)
+      .then(async (state) => {
+        const notes = await Promise.all(
+          state.openTabs.map((t) =>
+            webApi.notes
+              .get(vaultId, t.noteId)
+              .then((note): OpenTab => ({ noteId: note.id, path: note.path, name: note.name, content: note.content, savedContent: note.content }))
+              .catch(() => null)
+          )
+        );
+        const restoredTabs = notes.filter((t): t is OpenTab => t !== null);
+        setTabs(restoredTabs);
+        setPinnedTabIds(new Set(state.pinnedTabIds));
+        setFileViewModes(state.fileViewModes);
+        setActiveTabId(
+          state.activeTabId && restoredTabs.some((t) => t.noteId === state.activeTabId)
+            ? state.activeTabId
+            : restoredTabs[0]?.noteId ?? null
+        );
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        workspaceLoadedRef.current = true;
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, router, refreshIndex]);
+
+  // Persist workspace state (shape only — noteId/path/name, not content;
+  // note content already autosaves via scheduleSave) whenever it changes,
+  // debounced the same way note autosave is.
+  useEffect(() => {
+    if (!workspaceLoadedRef.current) return;
+    if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
+    workspaceSaveTimer.current = setTimeout(() => {
+      webApi.workspace
+        .updateState(vaultId, {
+          openTabs: tabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
+          activeTabId,
+          pinnedTabIds: Array.from(pinnedTabIds),
+          fileViewModes,
+        })
+        .catch(() => undefined);
+    }, WORKSPACE_SAVE_DEBOUNCE_MS);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vaultId, tabs, activeTabId, pinnedTabIds, fileViewModes]);
 
   async function handleThemeSelect(themeId: string) {
     setCurrentThemeId(themeId);
@@ -213,8 +401,8 @@ export default function VaultPage() {
   }
 
   async function handleExportPDF() {
-    if (!activeNote) return;
-    await exportToPDF(draft, activeNote.name);
+    if (!activeTab) return;
+    await exportToPDF(draft, activeTab.name);
   }
 
   async function handleCreateDailyNote(date: string) {
@@ -233,10 +421,18 @@ export default function VaultPage() {
     router.push(`/vaults/${vaultId}/graph`);
   }
 
+  function handleHeadingClick(line: number) {
+    const view = editorViewRef.current;
+    if (!view) return;
+    const lineInfo = view.state.doc.line(Math.min(Math.max(line, 1), view.state.doc.lines));
+    view.dispatch({ selection: { anchor: lineInfo.from }, scrollIntoView: true });
+    view.focus();
+  }
+
   // Open the note requested via ?note=<id> (used by the Graph view's note click)
   useEffect(() => {
     const noteId = searchParams.get("note");
-    if (noteId && noteId !== activeNote?.id) {
+    if (noteId && noteId !== activeTabId) {
       openNote(noteId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -254,22 +450,10 @@ export default function VaultPage() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, []);
 
-  function scheduleSave(noteId: string, content: string) {
-    if (saveTimer.current) clearTimeout(saveTimer.current);
-    saveTimer.current = setTimeout(async () => {
-      setSaving(true);
-      try {
-        await webApi.notes.update(vaultId, noteId, { content });
-        refreshIndex();
-      } finally {
-        setSaving(false);
-      }
-    }, SAVE_DEBOUNCE_MS);
-  }
-
   function onDraftChange(value: string) {
-    setDraft(value);
-    if (activeNote) scheduleSave(activeNote.id, value);
+    if (!activeTabId) return;
+    setActiveTabContent(activeTabId, value);
+    scheduleSave(activeTabId, value);
 
     // Don't echo a just-received remote update back into Yjs as if it were a
     // fresh local edit (see lastRemoteContentRef's comment above).
@@ -283,6 +467,12 @@ export default function VaultPage() {
     }
   }
 
+  function onSplitDraftChange(value: string) {
+    if (!splitTabId) return;
+    setActiveTabContent(splitTabId, value);
+    scheduleSave(splitTabId, value);
+  }
+
   async function runSearch(e: React.FormEvent) {
     e.preventDefault();
     if (!searchQuery.trim()) {
@@ -293,15 +483,82 @@ export default function VaultPage() {
     setSearchResults(results);
   }
 
+  const tabBarTabs: TabBarTab[] = tabs.map((t) => ({
+    noteId: t.noteId,
+    path: t.path,
+    name: t.name,
+    isDirty: t.content !== t.savedContent,
+  }));
+
+  function renderNoteBody(tab: OpenTab, mode: ViewMode, isMain: boolean) {
+    const content = tab.content;
+    const onChange = isMain ? onDraftChange : onSplitDraftChange;
+    const onReady = isMain
+      ? (view: EditorView) => {
+          editorViewRef.current = view;
+          setEditorViewVersion((v) => v + 1);
+        }
+      : undefined;
+
+    if (isBoardContent(content)) {
+      return <BoardView content={content} onChange={onChange} />;
+    }
+
+    return (
+      <div className="flex-1 min-h-0 flex flex-col">
+        {mode !== "source" && (
+          <FrontmatterEditor
+            content={content}
+            onChange={onChange}
+            collapsed={frontmatterCollapsed}
+            onToggleCollapse={() => setFrontmatterCollapsed((v) => !v)}
+          />
+        )}
+        {isMain && mode === "live" && (
+          <FormattingToolbar key={editorViewVersion} editorView={editorViewRef.current} />
+        )}
+        <div className="flex-1 min-h-0">
+          {mode === "source" ? (
+            <SourceEditor content={content} onChange={onChange} vaultId={vaultId} onViewReady={onReady} />
+          ) : mode === "view" ? (
+            <ReadOnlyView content={content} onChange={onChange} />
+          ) : (
+            <Editor content={content} onChange={onChange} vaultId={vaultId} onViewReady={onReady} />
+          )}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="h-screen flex flex-col" data-vault-id={vaultId}>
       <VaultHeader
         vault={vault}
         vaults={allVaults}
-        activeNotePath={activeNote?.path ?? null}
+        activeNotePath={activeTab?.path ?? null}
         sidebarCollapsed={sidebarCollapsed}
         onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+        viewMode={viewMode}
+        onViewModeChange={handleViewModeChange}
+        showViewModes={!!activeTab}
       />
+
+      {tabs.length > 0 && (
+        <TabBar
+          tabs={tabBarTabs}
+          activeTabId={activeTabId}
+          pinnedTabIds={pinnedTabIds}
+          onTabSelect={setActiveTabId}
+          onTabClose={closeTab}
+          onTabReorder={reorderTabs}
+          onTogglePin={handleTogglePin}
+          onCloseOtherTabs={handleCloseOtherTabs}
+          onCloseAllTabs={handleCloseAllTabs}
+          onCloseTabsToRight={handleCloseTabsToRight}
+          onSplitRight={handleSplitRight}
+          onNewTab={handleQuickNewNote}
+        />
+      )}
 
       <div className="flex flex-1 overflow-hidden">
         <Ribbon
@@ -314,6 +571,10 @@ export default function VaultPage() {
           onPlugins={() => setPluginManagerOpen(true)}
           onSnippets={() => setShowCSSSnippets(true)}
           onTheme={() => setShowThemePicker(true)}
+          onOutline={() => setOutlineVisible((v) => !v)}
+          onTags={() => setTagPaneVisible((v) => !v)}
+          outlineActive={outlineVisible}
+          tagsActive={tagPaneVisible}
         />
 
         {!sidebarCollapsed &&
@@ -361,7 +622,7 @@ export default function VaultPage() {
               vaultId={vaultId}
               vaultName={vault?.name ?? ""}
               index={index}
-              activeNoteId={activeNote?.id ?? null}
+              activeNoteId={activeTabId}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}
               onFileSelect={openNote}
@@ -371,11 +632,10 @@ export default function VaultPage() {
           ))}
 
         <main className="flex-1 flex flex-col relative">
-          {activeNote ? (
+          {activeTab ? (
             <>
               <NoteToolbar
-                notePath={activeNote.path}
-                saving={saving}
+                notePath={activeTab.path}
                 backlinksVisible={backlinksVisible}
                 collabVisible={collabVisible}
                 collabPeerCount={collabPeers.length}
@@ -398,29 +658,42 @@ export default function VaultPage() {
               )}
               <div className="flex-1 flex min-h-0">
                 <div className="flex-1 min-w-0 flex flex-col">
-                  {isBoardContent(draft) ? (
-                    <BoardView content={draft} onChange={onDraftChange} />
-                  ) : (
-                    <>
-                      <FormattingToolbar key={editorViewVersion} editorView={editorViewRef.current} />
-                      <div className="flex-1 min-h-0">
-                        <Editor
-                          content={draft}
-                          onChange={onDraftChange}
-                          vaultId={vaultId}
-                          onViewReady={(view) => {
-                            editorViewRef.current = view;
-                            setEditorViewVersion((v) => v + 1);
-                          }}
-                        />
-                      </div>
-                    </>
-                  )}
+                  <SplitPane
+                    direction="horizontal"
+                    splitRatio={splitRatio}
+                    onSplitRatioChange={setSplitRatio}
+                    left={renderNoteBody(activeTab, viewMode, true)}
+                    right={
+                      splitTab
+                        ? (
+                          <div className="h-full flex flex-col">
+                            <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-secondary)]">
+                              <span className="truncate">{splitTab.path}</span>
+                              <button onClick={handleCloseSplit} className="titlebar-btn" title="Close split">
+                                <CloseIcon size={11} />
+                              </button>
+                            </div>
+                            {renderNoteBody(splitTab, (splitTabId && fileViewModes[splitTabId]) || "live", false)}
+                          </div>
+                        )
+                        : null
+                    }
+                  />
                 </div>
+                {outlineVisible && (
+                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                    <OutlinePanel content={draft} onHeadingClick={handleHeadingClick} onClose={() => setOutlineVisible(false)} />
+                  </div>
+                )}
+                {tagPaneVisible && (
+                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                    <TagPane vaultId={vaultId} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
+                  </div>
+                )}
                 {backlinksVisible && (
                   <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
                     <BacklinksPanel
-                      noteId={activeNote.id}
+                      noteId={activeTab.noteId}
                       vaultId={vaultId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
@@ -435,6 +708,13 @@ export default function VaultPage() {
                   />
                 )}
               </div>
+              <StatusBar
+                viewMode={viewMode}
+                vaultName={vault?.name ?? ""}
+                notePath={activeTab.path}
+                content={draft}
+                dirty={activeTab.content !== activeTab.savedContent}
+              />
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">

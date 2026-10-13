@@ -2,7 +2,7 @@
 
 import { SidebarToggleIcon } from "@/components/icons";
 import VaultSwitcher from "@/components/VaultSwitcher";
-import type { ApiVault } from "@/lib/webApi";
+import type { ApiVault, ViewMode } from "@/lib/webApi";
 
 interface VaultHeaderProps {
   vault: ApiVault | null;
@@ -10,19 +10,32 @@ interface VaultHeaderProps {
   activeNotePath: string | null;
   sidebarCollapsed: boolean;
   onToggleSidebar: () => void;
+  viewMode?: ViewMode;
+  onViewModeChange?: (mode: ViewMode) => void;
+  showViewModes?: boolean;
 }
 
 /**
  * Slim header bar — a deliberately reduced translation of desktop's
  * TitleBar.tsx. No OS window controls (minimize/maximize/close manage a
- * native Tauri window; meaningless in a browser tab) and no tab bar (web
- * opens one note at a time; adding multi-tab support is new feature scope,
- * not a visual-parity translation — see the plan doc's design-decisions
- * section). Reuses desktop's `.titlebar`/`.titlebar-controls`/`.titlebar-path`
+ * native Tauri window; meaningless in a browser tab). The tab strip itself
+ * lives in a separate TabBar.tsx (mounted below this header in the vault
+ * page) now that web supports multiple open notes — see
+ * docs/plans/2026-10-13-noteriv-web-full-parity.md Phase A1. Reuses
+ * desktop's `.titlebar`/`.titlebar-controls`/`.titlebar-path`/`.view-toggle`
  * classes, which carry no window-chrome assumptions beyond a fixed bar
  * height.
  */
-export default function VaultHeader({ vault, vaults, activeNotePath, sidebarCollapsed, onToggleSidebar }: VaultHeaderProps) {
+export default function VaultHeader({
+  vault,
+  vaults,
+  activeNotePath,
+  sidebarCollapsed,
+  onToggleSidebar,
+  viewMode,
+  onViewModeChange,
+  showViewModes = false,
+}: VaultHeaderProps) {
   const displayedPath = activeNotePath || vault?.name || "Noteriv";
 
   return (
@@ -40,7 +53,30 @@ export default function VaultHeader({ vault, vaults, activeNotePath, sidebarColl
           {displayedPath}
         </div>
 
-        <div className="titlebar-section" style={{ paddingRight: 8 }} />
+        <div className="titlebar-section" style={{ paddingRight: 8 }}>
+          {showViewModes && viewMode && onViewModeChange && (
+            <div className="view-toggle">
+              <button
+                onClick={() => onViewModeChange("live")}
+                className={`view-toggle-btn ${viewMode === "live" ? "vt-active" : ""}`}
+              >
+                Edit
+              </button>
+              <button
+                onClick={() => onViewModeChange("view")}
+                className={`view-toggle-btn ${viewMode === "view" ? "vt-active" : ""}`}
+              >
+                View
+              </button>
+              <button
+                onClick={() => onViewModeChange("source")}
+                className={`view-toggle-btn ${viewMode === "source" ? "vt-active" : ""}`}
+              >
+                Source
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

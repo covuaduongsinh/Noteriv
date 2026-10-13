@@ -10,6 +10,8 @@ import {
   SnippetsIcon,
   SettingsIcon,
   SearchIcon,
+  OutlineIcon,
+  TagIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
@@ -22,6 +24,10 @@ interface RibbonProps {
   onPlugins: () => void;
   onSnippets: () => void;
   onTheme: () => void;
+  onOutline: () => void;
+  onTags: () => void;
+  outlineActive?: boolean;
+  tagsActive?: boolean;
 }
 
 /**
@@ -40,6 +46,10 @@ export default function Ribbon({
   onPlugins,
   onSnippets,
   onTheme,
+  onOutline,
+  onTags,
+  outlineActive,
+  tagsActive,
 }: RibbonProps) {
   return (
     <div className="ribbon">
@@ -55,6 +65,22 @@ export default function Ribbon({
         </button>
         <button className="ribbon-btn" title="Tìm trong vault" onClick={onSearch}>
           <SearchIcon />
+        </button>
+        <button
+          className="ribbon-btn"
+          title="Outline"
+          onClick={onOutline}
+          style={outlineActive ? { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } : undefined}
+        >
+          <OutlineIcon />
+        </button>
+        <button
+          className="ribbon-btn"
+          title="Tags"
+          onClick={onTags}
+          style={tagsActive ? { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } : undefined}
+        >
+          <TagIcon />
         </button>
         <button className="ribbon-btn" title="Calendar" onClick={onCalendar}>
           <CalendarIcon />
