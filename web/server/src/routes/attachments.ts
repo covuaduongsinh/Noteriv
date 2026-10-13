@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
-import { ATTACHMENT_QUOTA_BYTES, getVaultUsage, makeStorageKey, putObject, getObjectStream, deleteObject } from "../lib/attachments.js";
+import { ATTACHMENT_QUOTA_BYTES, getVaultUsage, makeStorageKey, putObject, getObjectStream, deleteObject, formatBytes } from "../lib/attachments.js";
 
 export default async function attachmentRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
@@ -34,7 +34,7 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
       if (usedBytes + buffer.length > ATTACHMENT_QUOTA_BYTES) {
         return reply.code(413).send({
           error: "quota_exceeded",
-          message: `Vault attachment storage quota exceeded (${Math.round(ATTACHMENT_QUOTA_BYTES / 1024 / 1024)}MB limit).`,
+          message: `Vault attachment storage quota exceeded (${formatBytes(ATTACHMENT_QUOTA_BYTES)} limit).`,
           usedBytes,
           quotaBytes: ATTACHMENT_QUOTA_BYTES,
         });
