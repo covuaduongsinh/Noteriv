@@ -93,6 +93,48 @@ export interface ApiWorkspaceState {
   fileViewModes: Record<string, ViewMode>;
 }
 
+export type SyncProviderType = "github" | "gitlab" | "gitea" | "forgejo" | "webdav";
+export type SyncDirection = "push" | "pull" | "both";
+export type SyncJobStatus = "queued" | "running" | "success" | "conflict" | "error";
+
+export interface ApiSyncConnection {
+  id: string;
+  vaultId: string;
+  providerType: SyncProviderType;
+  remoteUrl: string | null;
+  branch: string;
+  authUsername: string | null;
+  webdavUrl: string | null;
+  webdavPath: string | null;
+  direction: SyncDirection;
+  autoSync: boolean;
+  lastSyncedAt: string | null;
+  lastSyncStatus: Record<string, unknown> | null;
+  createdAt: string;
+}
+
+export interface ApiSyncJob {
+  id: string;
+  syncConnectionId: string;
+  status: SyncJobStatus;
+  pushedCount: number;
+  pulledCount: number;
+  errorMessage: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  createdAt: string;
+}
+
+export interface ApiUserPreferences {
+  hotkeys: Record<string, string>;
+  editorSettings: {
+    editorFont?: string;
+    fontSize?: number;
+    lineHeight?: number;
+    autoSaveInterval?: number;
+  };
+}
+
 export interface ApiPlugin {
   id: string;
   vaultId: string;
@@ -240,6 +282,52 @@ export const webApi = {
         method: "PUT",
         body: JSON.stringify(data),
       }),
+  },
+
+  sync: {
+    list: (vaultId: string) => request<ApiSyncConnection[]>(`/vaults/${vaultId}/sync-connections`),
+    createGit: (
+      vaultId: string,
+      data: {
+        providerType: Exclude<SyncProviderType, "webdav">;
+        remoteUrl: string;
+        branch?: string;
+        direction?: SyncDirection;
+        autoSync?: boolean;
+        username?: string;
+        token: string;
+      }
+    ) => request<ApiSyncConnection>(`/vaults/${vaultId}/sync-connections`, { method: "POST", body: JSON.stringify(data) }),
+    createWebdav: (
+      vaultId: string,
+      data: {
+        providerType: "webdav";
+        webdavUrl: string;
+        webdavPath?: string;
+        direction?: SyncDirection;
+        autoSync?: boolean;
+        username: string;
+        password: string;
+      }
+    ) => request<ApiSyncConnection>(`/vaults/${vaultId}/sync-connections`, { method: "POST", body: JSON.stringify(data) }),
+    remove: (vaultId: string, connectionId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/sync-connections/${connectionId}`, { method: "DELETE" }),
+    test: (vaultId: string, connectionId: string) =>
+      request<{ ok: boolean; error?: string }>(`/vaults/${vaultId}/sync-connections/${connectionId}/test`, { method: "POST" }),
+    trigger: (vaultId: string, connectionId: string) =>
+      request<{ ok: true; queued: true }>(`/vaults/${vaultId}/sync-connections/${connectionId}/trigger`, { method: "POST" }),
+    status: (vaultId: string, connectionId: string) =>
+      request<{ connection: ApiSyncConnection; latestJob: ApiSyncJob | null }>(
+        `/vaults/${vaultId}/sync-connections/${connectionId}/status`
+      ),
+    log: (vaultId: string, connectionId: string) =>
+      request<ApiSyncJob[]>(`/vaults/${vaultId}/sync-connections/${connectionId}/log`),
+  },
+
+  preferences: {
+    get: () => request<ApiUserPreferences>("/users/me/preferences"),
+    update: (data: Partial<ApiUserPreferences>) =>
+      request<ApiUserPreferences>("/users/me/preferences", { method: "PUT", body: JSON.stringify(data) }),
   },
 };
 

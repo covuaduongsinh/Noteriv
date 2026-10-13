@@ -1,8 +1,21 @@
 import type { FastifyInstance } from "fastify";
+import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
 
 const ACCESS_COOKIE = "noteriv_access";
 const REFRESH_COOKIE = "noteriv_refresh";
+
+const preferencesSchema = z.object({
+  hotkeys: z.record(z.string(), z.string()).optional(),
+  editorSettings: z
+    .object({
+      editorFont: z.string().optional(),
+      fontSize: z.number().min(10).max(32).optional(),
+      lineHeight: z.number().min(1).max(3).optional(),
+      autoSaveInterval: z.number().min(300).max(10000).optional(),
+    })
+    .optional(),
+});
 
 export default async function userRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
@@ -87,5 +100,33 @@ export default async function userRoutes(fastify: FastifyInstance) {
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
     return reply.send({ ok: true });
+  });
+
+  // Per-user preferences (hotkey overrides + editor settings) — private to
+  // the requesting user, not shared vault config (see UserVaultState for the
+  // per-user/per-vault equivalent for workspace state).
+  fastify.get("/me/preferences", async (request, reply) => {
+    const pref = await prisma.userPreference.findUnique({ where: { userId: request.user!.id } });
+    return reply.send({ hotkeys: pref?.hotkeys ?? {}, editorSettings: pref?.editorSettings ?? {} });
+  });
+
+  fastify.put("/me/preferences", async (request, reply) => {
+    const parsed = preferencesSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    const userId = request.user!.id;
+    const data = parsed.data;
+    const pref = await prisma.userPreference.upsert({
+      where: { userId },
+      create: {
+        userId,
+        hotkeys: data.hotkeys ?? {},
+        editorSettings: data.editorSettings ?? {},
+      },
+      update: {
+        ...(data.hotkeys !== undefined ? { hotkeys: data.hotkeys } : {}),
+        ...(data.editorSettings !== undefined ? { editorSettings: data.editorSettings } : {}),
+      },
+    });
+    return reply.send({ hotkeys: pref.hotkeys, editorSettings: pref.editorSettings });
   });
 }

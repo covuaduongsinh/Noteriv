@@ -15,7 +15,6 @@ import CollabPanel from "@/components/CollabPanel";
 import PluginManager from "@/components/PluginManager";
 import CalendarView from "@/components/CalendarView";
 import FlashcardReview from "@/components/FlashcardReview";
-import ThemePicker from "@/components/ThemePicker";
 import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -27,6 +26,8 @@ import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
 import OutlinePanel from "@/components/OutlinePanel";
 import TagPane from "@/components/TagPane";
+import SettingsModal from "@/components/SettingsModal";
+import CommandPalette from "@/components/CommandPalette";
 import { CloseIcon } from "@/components/icons";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
@@ -35,12 +36,43 @@ import {
   type ApiVault,
   type VaultIndex,
   type ApiSearchResult,
+  type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
 import { isBoardContent } from "@/lib/board-utils";
 import { exportToPDF } from "@/lib/pdf-export";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
+import {
+  DEFAULT_HOTKEYS,
+  mergeHotkeys,
+  hotkeysToOverrideMap,
+  matchesHotkey,
+  detectPlatform,
+  type HotkeyBinding,
+  type HotkeyAction,
+} from "@/lib/hotkeys";
+import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
+
+const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
+
+function loadRecentCommands(): HotkeyAction[] {
+  try {
+    const raw = localStorage.getItem(RECENT_COMMANDS_KEY);
+    return raw ? (JSON.parse(raw) as HotkeyAction[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+function saveRecentCommand(action: HotkeyAction) {
+  try {
+    const prev = loadRecentCommands().filter((a) => a !== action);
+    localStorage.setItem(RECENT_COMMANDS_KEY, JSON.stringify([action, ...prev].slice(0, 5)));
+  } catch {
+    // localStorage unavailable (private window etc.) — recent list is a convenience, not load-bearing
+  }
+}
 
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 
@@ -96,11 +128,25 @@ export default function VaultPage() {
   const [displayName, setDisplayName] = useState<string | undefined>(undefined);
   const [showCalendarView, setShowCalendarView] = useState(false);
   const [showFlashcards, setShowFlashcards] = useState(false);
-  const [showThemePicker, setShowThemePicker] = useState(false);
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
   const [editorViewVersion, setEditorViewVersion] = useState(0);
+
+  // Phase B2/B3 — per-user hotkey overrides + editor preferences
+  // (web/server/src/routes/users.ts's /me/preferences), Settings modal, and
+  // the Command Palette that reads the same hotkey list.
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialSection, setSettingsInitialSection] = useState<"general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem">("general");
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
+  const [hotkeyBindings, setHotkeyBindings] = useState<HotkeyBinding[]>(DEFAULT_HOTKEYS);
+  const [editorSettings, setEditorSettingsState] = useState(DEFAULT_EDITOR_SETTINGS);
+  const [platform, setPlatform] = useState("web");
+  const [syncConnections, setSyncConnections] = useState<ApiSyncConnection[]>([]);
+  const preferencesLoadedRef = useRef(false);
+  const preferencesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const collabPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const editorViewRef = useRef<EditorView | null>(null);
@@ -134,13 +180,26 @@ export default function VaultPage() {
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, content } : t)));
   }
 
+  const editorSettingsRef = useRef(editorSettings);
+  editorSettingsRef.current = editorSettings;
+
+  async function persistNote(noteId: string, content: string) {
+    await webApi.notes.update(vaultId, noteId, { content });
+    setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
+    refreshIndex();
+  }
+
   function scheduleSave(noteId: string, content: string) {
     if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
-    saveTimers.current[noteId] = setTimeout(async () => {
-      await webApi.notes.update(vaultId, noteId, { content });
-      setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
-      refreshIndex();
-    }, SAVE_DEBOUNCE_MS);
+    saveTimers.current[noteId] = setTimeout(() => {
+      persistNote(noteId, content);
+    }, editorSettingsRef.current.autoSaveInterval || SAVE_DEBOUNCE_MS);
+  }
+
+  function forceSaveActiveTab() {
+    if (!activeTabId) return;
+    if (saveTimers.current[activeTabId]) clearTimeout(saveTimers.current[activeTabId]);
+    persistNote(activeTabId, draftRef.current);
   }
 
   // Join/leave the realtime collab room for the active note as the panel is
@@ -382,6 +441,177 @@ export default function VaultPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, tabs, activeTabId, pinnedTabIds, fileViewModes]);
 
+  // Load per-user hotkey overrides + editor preferences once (device-wide
+  // across vaults, not per-vault — matches webApi.preferences's /users/me
+  // scope). Platform + recent-commands are per-device only (localStorage),
+  // never sent to the server.
+  useEffect(() => {
+    setPlatform(detectPlatform());
+    setRecentCommands(loadRecentCommands());
+    webApi.preferences
+      .get()
+      .then((prefs) => {
+        setHotkeyBindings(mergeHotkeys(prefs.hotkeys));
+        setEditorSettingsState({ ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings });
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        preferencesLoadedRef.current = true;
+      });
+  }, []);
+
+  // Apply editor preferences as CSS vars globals.css already reads
+  // (--editor-font/--editor-font-size/--editor-line-height — see
+  // docs/plans/2026-10-13-noteriv-web-full-parity.md Phase B2).
+  useEffect(() => {
+    document.documentElement.style.setProperty("--editor-font", editorSettings.editorFont);
+    document.documentElement.style.setProperty("--editor-font-size", `${editorSettings.fontSize}px`);
+    document.documentElement.style.setProperty("--editor-line-height", String(editorSettings.lineHeight));
+  }, [editorSettings]);
+
+  // Persist hotkey/editor-setting changes, debounced like workspace state.
+  useEffect(() => {
+    if (!preferencesLoadedRef.current) return;
+    if (preferencesSaveTimer.current) clearTimeout(preferencesSaveTimer.current);
+    preferencesSaveTimer.current = setTimeout(() => {
+      webApi.preferences
+        .update({ hotkeys: hotkeysToOverrideMap(hotkeyBindings), editorSettings })
+        .catch(() => undefined);
+    }, WORKSPACE_SAVE_DEBOUNCE_MS);
+  }, [hotkeyBindings, editorSettings]);
+
+  const refreshSyncConnections = useCallback(() => {
+    webApi.sync.list(vaultId).then(setSyncConnections).catch(() => undefined);
+  }, [vaultId]);
+
+  useEffect(() => {
+    refreshSyncConnections();
+  }, [refreshSyncConnections]);
+
+  function openSettings(section: typeof settingsInitialSection = "general") {
+    setSettingsInitialSection(section);
+    setSettingsOpen(true);
+  }
+
+  function cycleViewMode() {
+    if (!activeTabId) return;
+    const order: ViewMode[] = ["live", "view", "source"];
+    const next = order[(order.indexOf(viewMode) + 1) % order.length];
+    handleViewModeChange(next);
+  }
+
+  async function handleGitSyncHotkey() {
+    if (syncConnections.length === 0) {
+      openSettings("sync");
+      return;
+    }
+    await webApi.sync.trigger(vaultId, syncConnections[0].id);
+    refreshSyncConnections();
+  }
+
+  function executeCommand(action: HotkeyAction) {
+    switch (action) {
+      case "save":
+        forceSaveActiveTab();
+        break;
+      case "newNote":
+        handleQuickNewNote();
+        break;
+      case "closeTab":
+        if (activeTabId) closeTab(activeTabId);
+        break;
+      case "closeAllTabs":
+        handleCloseAllTabs();
+        break;
+      case "closeOtherTabs":
+        if (activeTabId) handleCloseOtherTabs(activeTabId);
+        break;
+      case "togglePinTab":
+        if (activeTabId) handleTogglePin(activeTabId);
+        break;
+      case "quickOpen":
+        setQuickOpenVisible(true);
+        break;
+      case "commandPalette":
+        setCommandPaletteOpen(true);
+        break;
+      case "findInVault":
+        setSearchVisible(true);
+        break;
+      case "toggleSidebar":
+        setSidebarCollapsed((v) => !v);
+        break;
+      case "toggleViewMode":
+        cycleViewMode();
+        break;
+      case "settings":
+        openSettings("general");
+        break;
+      case "toggleOutline":
+        setOutlineVisible((v) => !v);
+        break;
+      case "toggleTags":
+        setTagPaneVisible((v) => !v);
+        break;
+      case "graphView":
+        handleGraphView();
+        break;
+      case "toggleBacklinks":
+        setBacklinksVisible((v) => !v);
+        break;
+      case "toggleCollab":
+        setCollabVisible((v) => !v);
+        break;
+      case "exportPDF":
+        handleExportPDF();
+        break;
+      case "calendarView":
+        setShowCalendarView(true);
+        break;
+      case "flashcardReview":
+        setShowFlashcards(true);
+        break;
+      case "pluginManager":
+        setPluginManagerOpen(true);
+        break;
+      case "cssSnippets":
+        setShowCSSSnippets(true);
+        break;
+      case "gitSync":
+        handleGitSyncHotkey();
+        break;
+      case "splitEditor":
+        if (activeTabId) handleSplitRight(activeTabId);
+        break;
+      case "closeSplit":
+        handleCloseSplit();
+        break;
+    }
+  }
+
+  // Global hotkey dispatch — replaces the old Cmd/Ctrl+K-only listener below
+  // with a lookup against the full (default-merged-with-user-overrides)
+  // binding list, so Shortcuts-tab rebinds actually take effect everywhere,
+  // not just in Quick Open.
+  useEffect(() => {
+    function onKeyDown(e: KeyboardEvent) {
+      for (const binding of hotkeyBindings) {
+        if (matchesHotkey(e, binding.keys)) {
+          e.preventDefault();
+          if (binding.action === "commandPalette") {
+            setCommandPaletteOpen(true);
+          } else {
+            executeCommand(binding.action);
+          }
+          return;
+        }
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hotkeyBindings, activeTabId, tabs, pinnedTabIds, viewMode, draft, syncConnections]);
+
   async function handleThemeSelect(themeId: string) {
     setCurrentThemeId(themeId);
     let theme: ThemeDefinition | undefined = BUILT_IN_THEMES.find((t) => t.id === themeId);
@@ -437,18 +667,6 @@ export default function VaultPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
-
-  // Cmd/Ctrl+K opens quick switcher
-  useEffect(() => {
-    function onKeyDown(e: KeyboardEvent) {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-        e.preventDefault();
-        setQuickOpenVisible(true);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, []);
 
   function onDraftChange(value: string) {
     if (!activeTabId) return;
@@ -568,9 +786,7 @@ export default function VaultPage() {
           onSearch={() => setSearchVisible(true)}
           onCalendar={() => setShowCalendarView(true)}
           onFlashcards={() => setShowFlashcards(true)}
-          onPlugins={() => setPluginManagerOpen(true)}
-          onSnippets={() => setShowCSSSnippets(true)}
-          onTheme={() => setShowThemePicker(true)}
+          onSettings={() => openSettings("general")}
           onOutline={() => setOutlineVisible((v) => !v)}
           onTags={() => setTagPaneVisible((v) => !v)}
           outlineActive={outlineVisible}
@@ -714,6 +930,14 @@ export default function VaultPage() {
                 notePath={activeTab.path}
                 content={draft}
                 dirty={activeTab.content !== activeTab.savedContent}
+                syncSummary={
+                  syncConnections.length === 0
+                    ? null
+                    : syncConnections[0].lastSyncedAt
+                    ? `sync: ${new Date(syncConnections[0].lastSyncedAt).toLocaleTimeString()}`
+                    : "sync: chưa chạy"
+                }
+                onOpenSync={() => openSettings("sync")}
               />
             </>
           ) : (
@@ -752,26 +976,38 @@ export default function VaultPage() {
         />
       )}
 
-      {showThemePicker && (
-        <div
-          style={{ position: "fixed", inset: 0, zIndex: 90, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}
-          onClick={() => setShowThemePicker(false)}
-        >
-          <div
-            style={{ background: "var(--bg-primary)", borderRadius: 12, border: "1px solid var(--border)", width: 560, maxHeight: "80vh", overflowY: "auto", padding: 16 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-sm font-semibold text-[var(--text-primary)]">Theme</span>
-              <button onClick={() => setShowThemePicker(false)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">&times;</button>
-            </div>
-            <ThemePicker
-              currentThemeId={currentThemeId}
-              vaultId={vaultId}
-              onThemeSelect={(themeId) => { handleThemeSelect(themeId); setShowThemePicker(false); }}
-            />
-          </div>
-        </div>
+      {settingsOpen && (
+        <SettingsModal
+          vaultId={vaultId}
+          currentThemeId={currentThemeId}
+          onThemeSelect={handleThemeSelect}
+          hotkeys={hotkeyBindings}
+          onHotkeysChange={setHotkeyBindings}
+          editorSettings={editorSettings}
+          onEditorSettingsChange={(patch) => setEditorSettingsState((prev) => ({ ...prev, ...patch }))}
+          platform={platform}
+          onOpenPlugins={() => setPluginManagerOpen(true)}
+          onOpenSnippets={() => setShowCSSSnippets(true)}
+          initialSection={settingsInitialSection}
+          onClose={() => {
+            setSettingsOpen(false);
+            refreshSyncConnections();
+          }}
+        />
+      )}
+
+      {commandPaletteOpen && (
+        <CommandPalette
+          hotkeys={hotkeyBindings}
+          platform={platform}
+          recentActions={recentCommands}
+          onExecute={executeCommand}
+          onRecent={(action) => {
+            saveRecentCommand(action);
+            setRecentCommands(loadRecentCommands());
+          }}
+          onClose={() => setCommandPaletteOpen(false)}
+        />
       )}
 
       {showCSSSnippets && (

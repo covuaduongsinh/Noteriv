@@ -56,8 +56,25 @@ model User {
   updatedNotes     Note[]             @relation("NoteUpdatedBy")
   auditLogs        AuditLog[]
   vaultStates      UserVaultState[]
+  preference       UserPreference?
 
   @@map("users")
+}
+
+model UserPreference {
+  id        String   @id @default(uuid())
+  userId    String   @unique @map("user_id")
+  /// Partial override map, Record<HotkeyAction, keyString> — only entries
+  /// that differ from web/src/lib/hotkeys.ts's DEFAULT_HOTKEYS are stored.
+  hotkeys   Json     @default("{}")
+  /// { editorFont?, fontSize?, lineHeight?, tabSize?, autoSaveInterval? } —
+  /// see web/src/lib/settings.ts's AppSettings subset actually wired for web.
+  editorSettings Json @default("{}") @map("editor_settings")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_preferences")
 }
 
 model RefreshToken {

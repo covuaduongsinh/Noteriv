@@ -6,8 +6,6 @@ import {
   GraphIcon,
   CalendarIcon,
   FlashcardIcon,
-  PluginIcon,
-  SnippetsIcon,
   SettingsIcon,
   SearchIcon,
   OutlineIcon,
@@ -21,9 +19,7 @@ interface RibbonProps {
   onSearch: () => void;
   onCalendar: () => void;
   onFlashcards: () => void;
-  onPlugins: () => void;
-  onSnippets: () => void;
-  onTheme: () => void;
+  onSettings: () => void;
   onOutline: () => void;
   onTags: () => void;
   outlineActive?: boolean;
@@ -43,9 +39,7 @@ export default function Ribbon({
   onSearch,
   onCalendar,
   onFlashcards,
-  onPlugins,
-  onSnippets,
-  onTheme,
+  onSettings,
   onOutline,
   onTags,
   outlineActive,
@@ -88,15 +82,9 @@ export default function Ribbon({
         <button className="ribbon-btn" title="Flashcards" onClick={onFlashcards}>
           <FlashcardIcon />
         </button>
-        <button className="ribbon-btn" title="Plugins" onClick={onPlugins}>
-          <PluginIcon />
-        </button>
       </div>
       <div className="ribbon-bottom">
-        <button className="ribbon-btn" title="CSS Snippets" onClick={onSnippets}>
-          <SnippetsIcon />
-        </button>
-        <button className="ribbon-btn" title="Theme" onClick={onTheme}>
+        <button className="ribbon-btn" title="Settings (Ctrl+,)" onClick={onSettings}>
           <SettingsIcon />
         </button>
       </div>
