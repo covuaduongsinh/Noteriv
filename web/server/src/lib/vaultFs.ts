@@ -123,6 +123,81 @@ export async function importDirToNotes(
   }
 }
 
+/**
+ * Creates Postgres notes for `.md` files in `dir` whose path isn't already a
+ * note in the DB — never updates or deletes existing notes. Used to rescue
+ * remote-only files on the very first git sync of an existing vault, where
+ * `ensureWorkingCopy` checks out whatever's already on the remote into `dir`
+ * *before* the DB's current content is exported there: without this step,
+ * `exportNotesToDir`'s prune pass (which only knows paths already in the DB)
+ * would delete those remote-only files from `dir`, and the following
+ * add/commit/push would propagate that deletion back to the remote — a real
+ * data-loss bug, not just a cosmetic one. Paths that exist in both places are
+ * deliberately left untouched here: the DB's content is what `exportNotesToDir`
+ * writes next, preserving the sync engine's existing "DB content wins on
+ * conflict, remote's prior version just becomes earlier git history" rule for
+ * every sync (first or not) rather than only for already-established repos.
+ */
+export async function importNewNotesOnly(
+  prisma: PrismaClient,
+  vaultId: string,
+  dir: string,
+  actorUserId: string | null
+): Promise<void> {
+  const files: Array<{ rel: string; full: string }> = [];
+  async function recurse(cur: string) {
+    let entries;
+    try {
+      entries = await readdir(cur, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      if (entry.name === ".git" || entry.name === ".noteriv") continue;
+      const full = path.join(cur, entry.name);
+      if (entry.isDirectory()) {
+        await recurse(full);
+      } else if (entry.name.toLowerCase().endsWith(".md")) {
+        files.push({ rel: path.relative(dir, full).replace(/\\/g, "/"), full });
+      }
+    }
+  }
+  await recurse(dir);
+  if (files.length === 0) return;
+
+  const existingNotes = await prisma.note.findMany({ where: { vaultId }, select: { path: true } });
+  const existingPaths = new Set(existingNotes.map((n) => n.path));
+  const existingFolders = await prisma.folder.findMany({ where: { vaultId }, select: { id: true, path: true } });
+  const folderByPath = new Map(existingFolders.map((f) => [f.path, f.id]));
+
+  for (const { rel, full } of files) {
+    if (existingPaths.has(rel)) continue;
+
+    const content = await readFile(full, "utf8");
+    const lastSlash = rel.lastIndexOf("/");
+    const name = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
+    const folderPath = lastSlash === -1 ? null : rel.slice(0, lastSlash);
+    let folderId: string | null = null;
+    if (folderPath) {
+      folderId = await ensureFolderChain(prisma, vaultId, folderPath, folderByPath);
+    }
+
+    const created = await prisma.note.create({
+      data: {
+        vaultId,
+        folderId,
+        name,
+        path: rel,
+        content,
+        sizeBytes: Buffer.byteLength(content, "utf8"),
+        createdById: actorUserId,
+        updatedById: actorUserId,
+      },
+    });
+    await recomputeBacklinksForNote(prisma, vaultId, created.id, content);
+  }
+}
+
 async function ensureFolderChain(
   prisma: PrismaClient,
   vaultId: string,
