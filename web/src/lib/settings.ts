@@ -26,4 +26,6 @@ export const DEFAULT_EDITOR_SETTINGS = {
   fontSize: 15,
   lineHeight: 1.7,
   autoSaveInterval: 800,
+  // Phase D7 — ported from desktop/src/lib/vim-mode.ts's on/off toggle.
+  vimModeEnabled: false,
 };

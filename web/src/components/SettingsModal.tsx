@@ -28,6 +28,7 @@ export interface EditorSettings {
   fontSize: number;
   lineHeight: number;
   autoSaveInterval: number;
+  vimModeEnabled: boolean;
 }
 
 interface SettingsModalProps {
@@ -202,6 +203,17 @@ export default function SettingsModal({
             </option>
           ))}
         </select>
+      </Row>
+      <div className="st-divider" />
+      <Row label="Vim mode" desc="Dùng phím tắt kiểu Vim trong editor (chế độ Edit).">
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={editorSettings.vimModeEnabled}
+            onChange={(e) => onEditorSettingsChange({ vimModeEnabled: e.target.checked })}
+          />
+          <span className="st-hint">{editorSettings.vimModeEnabled ? "Bật" : "Tắt"}</span>
+        </label>
       </Row>
     </div>
   );

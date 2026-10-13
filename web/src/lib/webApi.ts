@@ -161,6 +161,7 @@ export interface ApiUserPreferences {
     fontSize?: number;
     lineHeight?: number;
     autoSaveInterval?: number;
+    vimModeEnabled?: boolean;
   };
 }
 

@@ -18,6 +18,7 @@ import {
 } from "./markdown";
 import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
 import { setEditorViewForImages } from "./markdown/renderers/images";
+import { vimExtension } from "@/lib/vim-mode";
 
 interface EditorProps {
   content: string;
@@ -29,9 +30,13 @@ interface EditorProps {
   /** Fires when the pointer rests over a rendered `.md-wikilink` span — Phase C5 hover preview. */
   onWikilinkHover?: (target: string, x: number, y: number) => void;
   onWikilinkLeave?: () => void;
+  /** Phase D7 — ported from desktop/src/lib/vim-mode.ts. Toggling recreates
+   * the CodeMirror instance (see createEditor's deps below) since the vim
+   * keymap has to be present at state-creation time, not added after. */
+  vimMode?: boolean;
 }
 
-export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave }: EditorProps) {
+export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave, vimMode = false }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -50,6 +55,7 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
     const state = EditorState.create({
       doc: content,
       extensions: [
+        ...vimExtension(vimMode),
         drawSelection(),
         closeBrackets(),
         history(),
@@ -93,7 +99,8 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
     viewRef.current = new EditorView({ state, parent: editorRef.current });
     setEditorViewForImages(viewRef.current);
     onViewReady?.(viewRef.current);
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vimMode]);
 
   useEffect(() => {
     createEditor();

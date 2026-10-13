@@ -48,6 +48,8 @@ import {
   type ViewMode,
 } from "@/lib/webApi";
 import { isBoardContent } from "@/lib/board-utils";
+import { isCanvasContent } from "@/lib/canvas-utils";
+import { isDrawingContent } from "@/lib/drawing-utils";
 import { exportToPDF } from "@/lib/pdf-export";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
@@ -84,6 +86,8 @@ function saveRecentCommand(action: HotkeyAction) {
 }
 
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
+const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
+const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
 const WORKSPACE_SAVE_DEBOUNCE_MS = 1000;
@@ -813,7 +817,22 @@ export default function VaultPage() {
       : undefined;
 
     if (isBoardContent(content)) {
-      return <BoardView content={content} onChange={onChange} />;
+      return <BoardView key={tab.noteId} content={content} onChange={onChange} />;
+    }
+    if (isCanvasContent(content)) {
+      return (
+        <CanvasView
+          key={tab.noteId}
+          content={content}
+          onChange={onChange}
+          vaultId={vaultId}
+          index={index}
+          onNoteSelect={openNote}
+        />
+      );
+    }
+    if (isDrawingContent(content)) {
+      return <DrawingView key={tab.noteId} content={content} onChange={onChange} />;
     }
 
     return (
@@ -839,6 +858,7 @@ export default function VaultPage() {
               content={content}
               onChange={onChange}
               vaultId={vaultId}
+              vimMode={editorSettings.vimModeEnabled}
               onViewReady={onReady}
               onWikilinkHover={isMain ? handleWikilinkHover : undefined}
               onWikilinkLeave={isMain ? handleWikilinkLeave : undefined}

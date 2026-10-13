@@ -13,6 +13,12 @@ const preferencesSchema = z.object({
       fontSize: z.number().min(10).max(32).optional(),
       lineHeight: z.number().min(1).max(3).optional(),
       autoSaveInterval: z.number().min(300).max(10000).optional(),
+      // Phase D7 — ported from desktop/src/lib/vim-mode.ts's on/off toggle.
+      // Found missing via actual browser testing: PUT silently dropped this
+      // field (zod strips unknown object keys by default) instead of
+      // erroring, so the client's "saved" state was a lie until this was
+      // added here.
+      vimModeEnabled: z.boolean().optional(),
     })
     .optional(),
 });
