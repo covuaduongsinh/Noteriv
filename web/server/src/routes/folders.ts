@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { resolvePath } from "../lib/notePath.js";
+import { trashFolder } from "../lib/trash.js";
 
 const createFolderSchema = z.object({
   name: z.string().min(1).max(255),
@@ -43,7 +44,7 @@ export default async function folderRoutes(fastify: FastifyInstance) {
       const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
       if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
 
-      const existing = await prisma.folder.findFirst({ where: { id: fid, vaultId: vid } });
+      const existing = await prisma.folder.findFirst({ where: { id: fid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
 
       const nextName = parsed.data.name ?? existing.name;
@@ -66,9 +67,9 @@ export default async function folderRoutes(fastify: FastifyInstance) {
     try {
       const { role } = await requireVaultAccess(prisma, vid, request.user!.id);
       if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
-      const existing = await prisma.folder.findFirst({ where: { id: fid, vaultId: vid } });
+      const existing = await prisma.folder.findFirst({ where: { id: fid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
-      await prisma.folder.delete({ where: { id: fid } });
+      await trashFolder(prisma, vid, fid);
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

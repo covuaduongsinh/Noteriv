@@ -56,6 +56,7 @@ export interface ApiNoteSummary {
   folderId: string | null;
   frontmatter: Record<string, unknown>;
   sizeBytes: number;
+  createdAt: string;
   updatedAt: string;
 }
 
@@ -123,6 +124,18 @@ export interface ApiSyncJob {
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
+}
+
+export interface ApiTrashedItem {
+  id: string;
+  name: string;
+  path: string;
+  deletedAt: string;
+}
+
+export interface ApiTrash {
+  notes: ApiTrashedItem[];
+  folders: ApiTrashedItem[];
 }
 
 export interface ApiUserPreferences {
@@ -328,6 +341,19 @@ export const webApi = {
     get: () => request<ApiUserPreferences>("/users/me/preferences"),
     update: (data: Partial<ApiUserPreferences>) =>
       request<ApiUserPreferences>("/users/me/preferences", { method: "PUT", body: JSON.stringify(data) }),
+  },
+
+  trash: {
+    list: (vaultId: string) => request<ApiTrash>(`/vaults/${vaultId}/trash`),
+    restoreNote: (vaultId: string, noteId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/trash/notes/${noteId}/restore`, { method: "POST" }),
+    restoreFolder: (vaultId: string, folderId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/trash/folders/${folderId}/restore`, { method: "POST" }),
+    deleteNote: (vaultId: string, noteId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/trash/notes/${noteId}`, { method: "DELETE" }),
+    deleteFolder: (vaultId: string, folderId: string) =>
+      request<{ ok: true }>(`/vaults/${vaultId}/trash/folders/${folderId}`, { method: "DELETE" }),
+    empty: (vaultId: string) => request<{ ok: true }>(`/vaults/${vaultId}/trash/empty`, { method: "POST" }),
   },
 };
 

@@ -26,15 +26,22 @@ interface EditorProps {
   vaultId?: string;
   className?: string;
   focusMode?: boolean;
+  /** Fires when the pointer rests over a rendered `.md-wikilink` span — Phase C5 hover preview. */
+  onWikilinkHover?: (target: string, x: number, y: number) => void;
+  onWikilinkLeave?: () => void;
 }
 
-export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false }: EditorProps) {
+export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+  const onWikilinkHoverRef = useRef(onWikilinkHover);
+  const onWikilinkLeaveRef = useRef(onWikilinkLeave);
   const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => { onChangeRef.current = onChange; });
+  useEffect(() => { onWikilinkHoverRef.current = onWikilinkHover; });
+  useEffect(() => { onWikilinkLeaveRef.current = onWikilinkLeave; });
 
   const createEditor = useCallback(() => {
     if (!editorRef.current) return;
@@ -65,6 +72,19 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
           }
+        }),
+        EditorView.domEventHandlers({
+          mouseover(event) {
+            const el = (event.target as HTMLElement).closest(".md-wikilink");
+            const target = el?.getAttribute("data-target");
+            if (target && onWikilinkHoverRef.current) {
+              onWikilinkHoverRef.current(target, event.clientX, event.clientY);
+            }
+          },
+          mouseout(event) {
+            const el = (event.target as HTMLElement).closest(".md-wikilink");
+            if (el) onWikilinkLeaveRef.current?.();
+          },
         }),
         EditorView.lineWrapping,
       ],

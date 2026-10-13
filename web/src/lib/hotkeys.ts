@@ -38,7 +38,28 @@ export type HotkeyAction =
   | "cssSnippets"
   | "gitSync"
   | "splitEditor"
-  | "closeSplit";
+  | "closeSplit"
+  // Phase C additions (docs/plans/2026-10-13-noteriv-web-full-parity.md) —
+  // formatting toggles ported from editor-commands.ts/FormattingToolbar.tsx
+  // (previously only reachable by clicking the toolbar, not via hotkey or
+  // Command Palette), plus the new Trash/Bookmarks/Templates/Note
+  // Composer/Vault Insights features.
+  | "toggleBold"
+  | "toggleItalic"
+  | "toggleStrikethrough"
+  | "toggleCode"
+  | "insertLink"
+  | "insertImage"
+  | "insertBlockquote"
+  | "insertCodeBlock"
+  | "insertTaskList"
+  | "insertTable"
+  | "insertHorizontalRule"
+  | "toggleBookmark"
+  | "openTrash"
+  | "insertTemplate"
+  | "noteComposer"
+  | "vaultInsights";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -76,6 +97,24 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
+
+  { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },
+  { action: "toggleItalic", label: "Italic", keys: "Ctrl+I", category: "Formatting" },
+  { action: "toggleStrikethrough", label: "Strikethrough", keys: "", category: "Formatting" },
+  { action: "toggleCode", label: "Inline Code", keys: "Ctrl+`", category: "Formatting" },
+  { action: "insertLink", label: "Insert Link", keys: "", category: "Formatting" },
+  { action: "insertImage", label: "Insert Image", keys: "", category: "Formatting" },
+  { action: "insertBlockquote", label: "Blockquote", keys: "", category: "Formatting" },
+  { action: "insertCodeBlock", label: "Code Block", keys: "", category: "Formatting" },
+  { action: "insertTaskList", label: "Task List", keys: "", category: "Formatting" },
+  { action: "insertTable", label: "Insert Table", keys: "", category: "Formatting" },
+  { action: "insertHorizontalRule", label: "Horizontal Rule", keys: "", category: "Formatting" },
+
+  { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
+  { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
+  { action: "insertTemplate", label: "New from Template", keys: "Ctrl+T", category: "File" },
+  { action: "noteComposer", label: "Note Composer", keys: "", category: "Edit" },
+  { action: "vaultInsights", label: "Vault Insights", keys: "", category: "View" },
 ];
 
 /** Parse a key combo string like "Ctrl+Shift+F" and check if a KeyboardEvent matches it. */

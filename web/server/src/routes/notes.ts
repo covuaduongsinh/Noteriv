@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { resolvePath } from "../lib/notePath.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
+import { trashNote } from "../lib/trash.js";
 
 const createNoteSchema = z.object({
   name: z.string().min(1).max(255),
@@ -33,7 +34,7 @@ export default async function noteRoutes(fastify: FastifyInstance) {
     const { vid, nid } = request.params as { vid: string; nid: string };
     try {
       await assertVaultAccess(vid, request.user!.id);
-      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!note) return reply.code(404).send({ error: "not_found" });
       return reply.send(note);
     } catch (err) {
@@ -83,7 +84,7 @@ export default async function noteRoutes(fastify: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
     try {
       await assertVaultAccess(vid, request.user!.id, true);
-      const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
 
       const { content, frontmatter, name, folderId } = parsed.data;
@@ -123,7 +124,7 @@ export default async function noteRoutes(fastify: FastifyInstance) {
     try {
       await assertVaultAccess(vid, request.user!.id);
       const backlinks = await prisma.backlink.findMany({
-        where: { targetNoteId: nid, vaultId: vid },
+        where: { targetNoteId: nid, vaultId: vid, sourceNote: { deletedAt: null } },
         include: { sourceNote: { select: { id: true, name: true, path: true } } },
       });
       return reply.send(
@@ -139,9 +140,9 @@ export default async function noteRoutes(fastify: FastifyInstance) {
     const { vid, nid } = request.params as { vid: string; nid: string };
     try {
       await assertVaultAccess(vid, request.user!.id, true);
-      const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid } });
+      const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
-      await prisma.note.delete({ where: { id: nid } });
+      await trashNote(prisma, nid);
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

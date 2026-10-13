@@ -6,6 +6,8 @@ import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { PrismaClient } from "@prisma/client";
 import { runSyncJob } from "../lib/syncRunner.js";
+import { trashCleanupQueue } from "../lib/trashCleanupQueue.js";
+import { cleanupExpiredTrash } from "../lib/trash.js";
 
 const connection = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:56379", {
   maxRetriesPerRequest: null,
@@ -26,10 +28,31 @@ worker.on("failed", (job, err) => {
   console.error(`[sync-worker] job ${job?.id} failed:`, err.message);
 });
 
+// Trash cleanup (Phase C1) — separate queue/worker from sync-jobs above, same
+// process. A stable jobId means re-registering the repeat schedule on every
+// worker restart doesn't create duplicate schedulers.
+const trashWorker = new Worker(
+  "trash-cleanup",
+  async () => {
+    console.log("[sync-worker] running trash cleanup (purge past retention window)");
+    await cleanupExpiredTrash(prisma);
+  },
+  { connection, concurrency: 1 }
+);
+trashWorker.on("failed", (job, err) => {
+  console.error(`[sync-worker] trash cleanup job ${job?.id} failed:`, err.message);
+});
+await trashCleanupQueue.add(
+  "purge-expired-trash",
+  {},
+  { repeat: { every: 24 * 60 * 60 * 1000 }, jobId: "purge-expired-trash" }
+);
+
 console.log("noteriv sync-worker started");
 
 process.on("SIGTERM", async () => {
   await worker.close();
+  await trashWorker.close();
   await prisma.$disconnect();
   process.exit(0);
 });

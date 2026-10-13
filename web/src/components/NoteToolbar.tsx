@@ -1,15 +1,17 @@
 "use client";
 
-import { BacklinksIcon, CollabIcon, ExportIcon } from "@/components/icons";
+import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon } from "@/components/icons";
 
 interface NoteToolbarProps {
   notePath: string;
   backlinksVisible: boolean;
   collabVisible: boolean;
   collabPeerCount: number;
+  bookmarked: boolean;
   onToggleBacklinks: () => void;
   onToggleCollab: () => void;
   onExportPDF: () => void;
+  onToggleBookmark: () => void;
 }
 
 /**
@@ -27,14 +29,24 @@ export default function NoteToolbar({
   backlinksVisible,
   collabVisible,
   collabPeerCount,
+  bookmarked,
   onToggleBacklinks,
   onToggleCollab,
   onExportPDF,
+  onToggleBookmark,
 }: NoteToolbarProps) {
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
       <span className="truncate">{notePath}</span>
       <div className="flex items-center gap-1">
+        <button
+          onClick={onToggleBookmark}
+          title={bookmarked ? "Bỏ bookmark" : "Bookmark note này"}
+          className="titlebar-btn"
+          style={bookmarked ? { color: "var(--accent)" } : undefined}
+        >
+          <BookmarkIcon />
+        </button>
         <button
           onClick={onToggleBacklinks}
           title="Backlinks"

@@ -28,7 +28,14 @@ import OutlinePanel from "@/components/OutlinePanel";
 import TagPane from "@/components/TagPane";
 import SettingsModal from "@/components/SettingsModal";
 import CommandPalette from "@/components/CommandPalette";
+import TrashPanel from "@/components/TrashPanel";
+import BookmarksPanel from "@/components/BookmarksPanel";
+import VaultInsights from "@/components/VaultInsights";
+import TemplatePicker from "@/components/TemplatePicker";
+import NoteComposer from "@/components/NoteComposer";
+import HoverPreview from "@/components/HoverPreview";
 import { CloseIcon } from "@/components/icons";
+import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
@@ -52,6 +59,7 @@ import {
   type HotkeyBinding,
   type HotkeyAction,
 } from "@/lib/hotkeys";
+import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule } from "@/lib/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
@@ -146,6 +154,17 @@ export default function VaultPage() {
   const [syncConnections, setSyncConnections] = useState<ApiSyncConnection[]>([]);
   const preferencesLoadedRef = useRef(false);
   const preferencesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Phase C — Trash/Bookmarks/Vault Insights/Templates/Note Composer/hover preview
+  // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
+  const [showTrash, setShowTrash] = useState(false);
+  const [bookmarksVisible, setBookmarksVisible] = useState(false);
+  const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const [showInsights, setShowInsights] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showNoteComposer, setShowNoteComposer] = useState(false);
+  const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
+  const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const collabPushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -377,6 +396,8 @@ export default function VaultPage() {
       .then(async (v) => {
         setVault(v);
 
+        setBookmarks((v.settings.bookmarks as string[] | undefined) ?? []);
+
         const themeId = (v.settings.themeId as string | undefined) ?? getDefaultTheme().id;
         setCurrentThemeId(themeId);
         const builtIn = BUILT_IN_THEMES.find((t) => t.id === themeId);
@@ -586,6 +607,54 @@ export default function VaultPage() {
       case "closeSplit":
         handleCloseSplit();
         break;
+      case "toggleBold":
+        if (editorViewRef.current) wrapSelection(editorViewRef.current, "**", "**");
+        break;
+      case "toggleItalic":
+        if (editorViewRef.current) wrapSelection(editorViewRef.current, "*", "*");
+        break;
+      case "toggleStrikethrough":
+        if (editorViewRef.current) wrapSelection(editorViewRef.current, "~~", "~~");
+        break;
+      case "toggleCode":
+        if (editorViewRef.current) wrapSelection(editorViewRef.current, "`", "`");
+        break;
+      case "insertLink":
+        if (editorViewRef.current) insertLink(editorViewRef.current);
+        break;
+      case "insertImage":
+        if (editorViewRef.current) insertImage(editorViewRef.current);
+        break;
+      case "insertBlockquote":
+        if (editorViewRef.current) insertBlockquote(editorViewRef.current);
+        break;
+      case "insertCodeBlock":
+        if (editorViewRef.current) insertCodeBlock(editorViewRef.current);
+        break;
+      case "insertTaskList":
+        if (editorViewRef.current) insertTaskList(editorViewRef.current);
+        break;
+      case "insertTable":
+        if (editorViewRef.current) insertTable(editorViewRef.current);
+        break;
+      case "insertHorizontalRule":
+        if (editorViewRef.current) insertHorizontalRule(editorViewRef.current);
+        break;
+      case "toggleBookmark":
+        if (activeTabId) handleToggleBookmark(activeTabId);
+        break;
+      case "openTrash":
+        setShowTrash(true);
+        break;
+      case "insertTemplate":
+        setShowTemplatePicker(true);
+        break;
+      case "noteComposer":
+        setShowNoteComposer(true);
+        break;
+      case "vaultInsights":
+        setShowInsights(true);
+        break;
     }
   }
 
@@ -623,6 +692,29 @@ export default function VaultPage() {
 
     const v = await webApi.vaults.get(vaultId);
     await webApi.vaults.update(vaultId, { settings: { ...v.settings, themeId } });
+  }
+
+  async function handleToggleBookmark(noteId: string) {
+    const next = toggleBookmark(bookmarks, noteId);
+    setBookmarks(next);
+    const v = await webApi.vaults.get(vaultId);
+    await webApi.vaults.update(vaultId, { settings: { ...v.settings, bookmarks: next } });
+  }
+
+  function handleWikilinkHover(target: string, x: number, y: number) {
+    if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
+    wikilinkHoverTimer.current = setTimeout(() => setWikilinkHover({ target, x, y }), 300);
+  }
+
+  function handleWikilinkLeave() {
+    if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
+    setWikilinkHover(null);
+  }
+
+  async function handleCreateFromTemplate(content: string, templateName: string) {
+    const note = await webApi.notes.create(vaultId, { name: `${templateName}.md`, folderId: null, content });
+    refreshIndex();
+    openNote(note.id);
   }
 
   function openNoteByPath(path: string) {
@@ -741,7 +833,14 @@ export default function VaultPage() {
           ) : mode === "view" ? (
             <ReadOnlyView content={content} onChange={onChange} />
           ) : (
-            <Editor content={content} onChange={onChange} vaultId={vaultId} onViewReady={onReady} />
+            <Editor
+              content={content}
+              onChange={onChange}
+              vaultId={vaultId}
+              onViewReady={onReady}
+              onWikilinkHover={isMain ? handleWikilinkHover : undefined}
+              onWikilinkLeave={isMain ? handleWikilinkLeave : undefined}
+            />
           )}
         </div>
       </div>
@@ -789,8 +888,14 @@ export default function VaultPage() {
           onSettings={() => openSettings("general")}
           onOutline={() => setOutlineVisible((v) => !v)}
           onTags={() => setTagPaneVisible((v) => !v)}
+          onTrash={() => setShowTrash(true)}
+          onBookmarks={() => setBookmarksVisible((v) => !v)}
+          onInsights={() => setShowInsights(true)}
+          onTemplates={() => setShowTemplatePicker(true)}
+          onNoteComposer={() => setShowNoteComposer(true)}
           outlineActive={outlineVisible}
           tagsActive={tagPaneVisible}
+          bookmarksActive={bookmarksVisible}
         />
 
         {!sidebarCollapsed &&
@@ -855,9 +960,11 @@ export default function VaultPage() {
                 backlinksVisible={backlinksVisible}
                 collabVisible={collabVisible}
                 collabPeerCount={collabPeers.length}
+                bookmarked={isBookmarked(bookmarks, activeTab.noteId)}
                 onToggleBacklinks={() => setBacklinksVisible((v) => !v)}
                 onToggleCollab={() => setCollabVisible((v) => !v)}
                 onExportPDF={handleExportPDF}
+                onToggleBookmark={() => handleToggleBookmark(activeTab.noteId)}
               />
               {pluginHost.commands.length > 0 && (
                 <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
@@ -904,6 +1011,18 @@ export default function VaultPage() {
                 {tagPaneVisible && (
                   <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
                     <TagPane vaultId={vaultId} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
+                  </div>
+                )}
+                {bookmarksVisible && (
+                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                    <BookmarksPanel
+                      bookmarks={bookmarks}
+                      index={index}
+                      currentNoteId={activeTabId}
+                      onNoteSelect={openNote}
+                      onBookmarkRemove={handleToggleBookmark}
+                      onClose={() => setBookmarksVisible(false)}
+                    />
                   </div>
                 )}
                 {backlinksVisible && (
@@ -1025,6 +1144,56 @@ export default function VaultPage() {
           installed={pluginHost.installed}
           onChanged={pluginHost.refreshInstalled}
           onClose={() => setPluginManagerOpen(false)}
+        />
+      )}
+
+      {showTrash && (
+        <TrashPanel vaultId={vaultId} onClose={() => setShowTrash(false)} onRestored={refreshIndex} />
+      )}
+
+      {showInsights && (
+        <VaultInsights
+          vaultId={vaultId}
+          index={index}
+          onFileSelect={(noteId) => {
+            openNote(noteId);
+            setShowInsights(false);
+          }}
+          onClose={() => setShowInsights(false)}
+        />
+      )}
+
+      {showTemplatePicker && (
+        <TemplatePicker
+          vaultId={vaultId}
+          index={index}
+          onInsert={(content, name) => handleCreateFromTemplate(content, name)}
+          onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
+
+      {showNoteComposer && (
+        <NoteComposer
+          vaultId={vaultId}
+          index={index}
+          currentNoteId={activeTabId}
+          currentNoteName={activeTab?.name ?? null}
+          currentFolderId={index?.notes.find((n) => n.id === activeTabId)?.folderId ?? null}
+          currentContent={draft}
+          onClose={() => setShowNoteComposer(false)}
+          onNoteSelect={openNote}
+          onContentChange={onDraftChange}
+          onRefresh={refreshIndex}
+        />
+      )}
+
+      {wikilinkHover && (
+        <HoverPreview
+          target={wikilinkHover.target}
+          vaultId={vaultId}
+          index={index}
+          position={{ x: wikilinkHover.x, y: wikilinkHover.y }}
+          onDismiss={handleWikilinkLeave}
         />
       )}
 

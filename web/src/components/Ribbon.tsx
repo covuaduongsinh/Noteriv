@@ -10,6 +10,11 @@ import {
   SearchIcon,
   OutlineIcon,
   TagIcon,
+  TrashIcon,
+  BookmarkIcon,
+  InsightsIcon,
+  TemplateIcon,
+  ComposerIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
@@ -22,8 +27,14 @@ interface RibbonProps {
   onSettings: () => void;
   onOutline: () => void;
   onTags: () => void;
+  onTrash: () => void;
+  onBookmarks: () => void;
+  onInsights: () => void;
+  onTemplates: () => void;
+  onNoteComposer: () => void;
   outlineActive?: boolean;
   tagsActive?: boolean;
+  bookmarksActive?: boolean;
 }
 
 /**
@@ -42,8 +53,14 @@ export default function Ribbon({
   onSettings,
   onOutline,
   onTags,
+  onTrash,
+  onBookmarks,
+  onInsights,
+  onTemplates,
+  onNoteComposer,
   outlineActive,
   tagsActive,
+  bookmarksActive,
 }: RibbonProps) {
   return (
     <div className="ribbon">
@@ -53,6 +70,9 @@ export default function Ribbon({
         </button>
         <button className="ribbon-btn" title="New note" onClick={onNewNote}>
           <NewNoteIcon />
+        </button>
+        <button className="ribbon-btn" title="New from template" onClick={onTemplates}>
+          <TemplateIcon />
         </button>
         <button className="ribbon-btn" title="Graph view" onClick={onGraph}>
           <GraphIcon />
@@ -76,14 +96,31 @@ export default function Ribbon({
         >
           <TagIcon />
         </button>
+        <button
+          className="ribbon-btn"
+          title="Bookmarks"
+          onClick={onBookmarks}
+          style={bookmarksActive ? { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } : undefined}
+        >
+          <BookmarkIcon />
+        </button>
         <button className="ribbon-btn" title="Calendar" onClick={onCalendar}>
           <CalendarIcon />
         </button>
         <button className="ribbon-btn" title="Flashcards" onClick={onFlashcards}>
           <FlashcardIcon />
         </button>
+        <button className="ribbon-btn" title="Note Composer (merge/split)" onClick={onNoteComposer}>
+          <ComposerIcon />
+        </button>
+        <button className="ribbon-btn" title="Vault Insights" onClick={onInsights}>
+          <InsightsIcon />
+        </button>
       </div>
       <div className="ribbon-bottom">
+        <button className="ribbon-btn" title="Trash" onClick={onTrash}>
+          <TrashIcon size={16} />
+        </button>
         <button className="ribbon-btn" title="Settings (Ctrl+,)" onClick={onSettings}>
           <SettingsIcon />
         </button>

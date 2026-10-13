@@ -228,13 +228,18 @@ model Plugin {
 }
 
 model Folder {
-  id        String   @id @default(uuid())
-  vaultId   String   @map("vault_id")
-  parentId  String?  @map("parent_id")
+  id        String    @id @default(uuid())
+  vaultId   String    @map("vault_id")
+  parentId  String?   @map("parent_id")
   name      String
   path      String
-  position  Int      @default(0)
-  createdAt DateTime @default(now()) @map("created_at")
+  position  Int       @default(0)
+  createdAt DateTime  @default(now()) @map("created_at")
+  /// Soft-delete marker (Phase C1 Trash) — set instead of a real row delete so
+  /// the folder (and whatever was trashed alongside it in the same batch, see
+  /// lib/trash.ts) can be restored. A permanent delete still goes through
+  /// Prisma's real `.delete()`, via the dedicated trash routes only.
+  deletedAt DateTime? @map("deleted_at")
 
   vault    Vault    @relation(fields: [vaultId], references: [id], onDelete: Cascade)
   parent   Folder?  @relation("FolderParent", fields: [parentId], references: [id], onDelete: Cascade)
@@ -242,6 +247,7 @@ model Folder {
   notes    Note[]
 
   @@unique([vaultId, path])
+  @@index([vaultId, deletedAt])
   @@map("folders")
 }
 
@@ -258,6 +264,9 @@ model Note {
   updatedAt   DateTime @updatedAt @map("updated_at")
   createdById String?  @map("created_by")
   updatedById String?  @map("updated_by")
+  /// Soft-delete marker (Phase C1 Trash) — see Folder.deletedAt's doc comment,
+  /// same semantics here.
+  deletedAt   DateTime? @map("deleted_at")
   // Note: the `content_tsv` generated tsvector column (added in migration
   // 20261012071108_add_backlinks_and_search) is deliberately NOT declared here.
   // Prisma's migration-diff engine doesn't understand `GENERATED ALWAYS AS`
@@ -274,6 +283,7 @@ model Note {
   backlinksAsTarget Backlink[] @relation("BacklinkTarget")
 
   @@unique([vaultId, path])
+  @@index([vaultId, deletedAt])
   @@map("notes")
 }
 

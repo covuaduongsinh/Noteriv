@@ -13,6 +13,7 @@ import pluginRoutes from "./routes/plugins.js";
 import syncConnectionRoutes from "./routes/syncConnections.js";
 import userRoutes from "./routes/users.js";
 import userVaultStateRoutes from "./routes/userVaultState.js";
+import trashRoutes from "./routes/trash.js";
 
 const fastify = Fastify({ logger: true, trustProxy: true });
 
@@ -45,6 +46,7 @@ await fastify.register(folderRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(pluginRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(syncConnectionRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(userVaultStateRoutes, { prefix: "/api/v1/vaults" });
+await fastify.register(trashRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 
 fastify.get("/healthz", async () => ({ ok: true }));

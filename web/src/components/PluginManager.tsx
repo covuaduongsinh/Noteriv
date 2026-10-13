@@ -1,7 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { webApi, type ApiPlugin } from "@/lib/webApi";
+import {
+  fetchCommunityPluginManifest,
+  fetchCommunityPluginSource,
+  type CommunityPluginEntry,
+  type CommunityPluginManifest,
+} from "@/lib/plugin-community";
 
 const PERMISSION_LABELS: Record<string, string> = {
   "vault:read": "Đọc note trong vault",
@@ -26,6 +32,43 @@ export default function PluginManager({
   const [mainJs, setMainJs] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [installing, setInstalling] = useState(false);
+  const [tab, setTab] = useState<"installed" | "community" | "manual">("installed");
+  const [communityManifest, setCommunityManifest] = useState<CommunityPluginManifest | null>(null);
+  const [communityLoading, setCommunityLoading] = useState(false);
+  const [communityError, setCommunityError] = useState<string | null>(null);
+  const [installingId, setInstallingId] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (tab !== "community" || communityManifest || communityLoading) return;
+    setCommunityLoading(true);
+    setCommunityError(null);
+    fetchCommunityPluginManifest()
+      .then((m) => {
+        if (!m) setCommunityError("Không tải được danh sách plugin cộng đồng (repo có thể chưa sẵn sàng).");
+        setCommunityManifest(m);
+      })
+      .finally(() => setCommunityLoading(false));
+  }, [tab, communityManifest, communityLoading]);
+
+  const installedIds = new Set(installed.map((p) => p.pluginId));
+
+  async function installFromCommunity(entry: CommunityPluginEntry) {
+    setInstallingId(entry.id);
+    setCommunityError(null);
+    try {
+      const source = await fetchCommunityPluginSource(entry);
+      if (!source) {
+        setCommunityError(`Không tải được "${entry.name}" — thiếu manifest.json hoặc main.js trong repo.`);
+        return;
+      }
+      await webApi.plugins.install(vaultId, { manifest: source.manifest as ApiPlugin["manifest"], mainJs: source.mainJs });
+      onChanged();
+    } catch {
+      setCommunityError(`Cài "${entry.name}" thất bại.`);
+    } finally {
+      setInstallingId(null);
+    }
+  }
 
   async function install(e: React.FormEvent) {
     e.preventDefault();
@@ -74,59 +117,106 @@ export default function PluginManager({
           </button>
         </div>
 
-        <div className="flex flex-col gap-2">
-          {installed.length === 0 && <p className="text-sm text-[var(--text-muted)]">Chưa cài plugin nào.</p>}
-          {installed.map((p) => (
-            <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
-              <div>
-                <div className="text-sm font-medium">
-                  {p.manifest.name} <span className="text-[var(--text-muted)]">v{p.manifest.version}</span>
-                </div>
-                <div className="text-xs text-[var(--text-muted)]">
-                  {(p.manifest.permissions ?? []).map((perm) => PERMISSION_LABELS[perm] ?? perm).join(", ") || "Không yêu cầu quyền"}
-                </div>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => toggle(p)}
-                  className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80"
-                >
-                  {p.enabled ? "Tắt" : "Bật"}
-                </button>
-                <button
-                  onClick={() => remove(p)}
-                  className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] text-[var(--red)] hover:opacity-80"
-                >
-                  Gỡ
-                </button>
-              </div>
-            </div>
+        <div className="flex gap-1 border-b border-[var(--border)]">
+          {([
+            ["installed", "Đã cài"],
+            ["community", "Cộng đồng"],
+            ["manual", "Cài thủ công"],
+          ] as const).map(([key, label]) => (
+            <button
+              key={key}
+              onClick={() => setTab(key)}
+              className={`px-3 py-1.5 text-sm ${tab === key ? "border-b-2 border-[var(--accent)] text-[var(--text-primary)]" : "text-[var(--text-muted)]"}`}
+            >
+              {label}
+            </button>
           ))}
         </div>
 
-        <form onSubmit={install} className="flex flex-col gap-2 pt-2 border-t border-[var(--border)]">
-          <h3 className="text-sm font-medium text-[var(--text-secondary)]">Cài plugin mới (dán thủ công)</h3>
-          <textarea
-            value={manifestJson}
-            onChange={(e) => setManifestJson(e.target.value)}
-            placeholder='manifest.json, vd: {"id":"hello","name":"Hello","version":"1.0.0","description":"","author":"","main":"main.js","permissions":["ui:commands"]}'
-            className="h-20 text-xs font-mono px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          />
-          <textarea
-            value={mainJs}
-            onChange={(e) => setMainJs(e.target.value)}
-            placeholder="main.js — module.exports.onLoad = function(api) { ... }"
-            className="h-32 text-xs font-mono px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-          />
-          {error && <p className="text-xs text-[var(--red)]">{error}</p>}
-          <button
-            type="submit"
-            disabled={installing}
-            className="self-start px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] text-sm font-medium disabled:opacity-50"
-          >
-            {installing ? "Đang cài…" : "Cài đặt"}
-          </button>
-        </form>
+        {tab === "installed" && (
+          <div className="flex flex-col gap-2">
+            {installed.length === 0 && <p className="text-sm text-[var(--text-muted)]">Chưa cài plugin nào.</p>}
+            {installed.map((p) => (
+              <div key={p.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                <div>
+                  <div className="text-sm font-medium">
+                    {p.manifest.name} <span className="text-[var(--text-muted)]">v{p.manifest.version}</span>
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">
+                    {(p.manifest.permissions ?? []).map((perm) => PERMISSION_LABELS[perm] ?? perm).join(", ") || "Không yêu cầu quyền"}
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => toggle(p)}
+                    className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80"
+                  >
+                    {p.enabled ? "Tắt" : "Bật"}
+                  </button>
+                  <button
+                    onClick={() => remove(p)}
+                    className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] text-[var(--red)] hover:opacity-80"
+                  >
+                    Gỡ
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {tab === "community" && (
+          <div className="flex flex-col gap-2">
+            {communityLoading && <p className="text-sm text-[var(--text-muted)]">Đang tải danh sách…</p>}
+            {communityError && <p className="text-xs text-[var(--red)]">{communityError}</p>}
+            {communityManifest?.plugins.map((entry) => (
+              <div key={entry.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
+                <div>
+                  <div className="text-sm font-medium">
+                    {entry.name} <span className="text-[var(--text-muted)]">v{entry.version}</span>
+                  </div>
+                  <div className="text-xs text-[var(--text-muted)]">{entry.description} — {entry.author}</div>
+                </div>
+                <button
+                  onClick={() => installFromCommunity(entry)}
+                  disabled={installingId === entry.id || installedIds.has(entry.id)}
+                  className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80 disabled:opacity-50"
+                >
+                  {installedIds.has(entry.id) ? "Đã cài" : installingId === entry.id ? "Đang cài…" : "Cài đặt"}
+                </button>
+              </div>
+            ))}
+            {communityManifest && communityManifest.plugins.length === 0 && (
+              <p className="text-sm text-[var(--text-muted)]">Chưa có plugin cộng đồng nào.</p>
+            )}
+          </div>
+        )}
+
+        {tab === "manual" && (
+          <form onSubmit={install} className="flex flex-col gap-2 pt-2">
+            <h3 className="text-sm font-medium text-[var(--text-secondary)]">Cài plugin mới (dán thủ công)</h3>
+            <textarea
+              value={manifestJson}
+              onChange={(e) => setManifestJson(e.target.value)}
+              placeholder='manifest.json, vd: {"id":"hello","name":"Hello","version":"1.0.0","description":"","author":"","main":"main.js","permissions":["ui:commands"]}'
+              className="h-20 text-xs font-mono px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            />
+            <textarea
+              value={mainJs}
+              onChange={(e) => setMainJs(e.target.value)}
+              placeholder="main.js — module.exports.onLoad = function(api) { ... }"
+              className="h-32 text-xs font-mono px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
+            />
+            {error && <p className="text-xs text-[var(--red)]">{error}</p>}
+            <button
+              type="submit"
+              disabled={installing}
+              className="self-start px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] text-sm font-medium disabled:opacity-50"
+            >
+              {installing ? "Đang cài…" : "Cài đặt"}
+            </button>
+          </form>
+        )}
       </div>
     </div>
   );

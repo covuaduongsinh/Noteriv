@@ -116,9 +116,9 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
     try {
       await requireVaultAccess(prisma, id, request.user!.id);
       const [folders, notes] = await Promise.all([
-        prisma.folder.findMany({ where: { vaultId: id }, orderBy: { position: "asc" } }),
+        prisma.folder.findMany({ where: { vaultId: id, deletedAt: null }, orderBy: { position: "asc" } }),
         prisma.note.findMany({
-          where: { vaultId: id },
+          where: { vaultId: id, deletedAt: null },
           select: {
             id: true,
             name: true,
@@ -126,6 +126,7 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
             folderId: true,
             frontmatter: true,
             sizeBytes: true,
+            createdAt: true,
             updatedAt: true,
           },
           orderBy: { name: "asc" },
@@ -159,7 +160,7 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
             'MaxFragments=1, MaxWords=20, MinWords=5') AS snippet,
           ts_rank(content_tsv, plainto_tsquery('simple', ${q})) AS rank
         FROM notes
-        WHERE vault_id = ${id} AND content_tsv @@ plainto_tsquery('simple', ${q})
+        WHERE vault_id = ${id} AND deleted_at IS NULL AND content_tsv @@ plainto_tsquery('simple', ${q})
         ORDER BY rank DESC
         LIMIT 50
       `);
