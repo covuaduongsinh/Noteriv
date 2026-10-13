@@ -35,6 +35,7 @@ import TemplatePicker from "@/components/TemplatePicker";
 import NoteComposer from "@/components/NoteComposer";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
+import AudioRecorder from "@/components/AudioRecorder";
 import FileRecovery from "@/components/FileRecovery";
 import TimeScrubber from "@/components/TimeScrubber";
 import NoteHistory from "@/components/NoteHistory";
@@ -175,6 +176,7 @@ export default function VaultPage() {
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
+  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
@@ -949,6 +951,7 @@ export default function VaultPage() {
           onTemplates={() => setShowTemplatePicker(true)}
           onNoteComposer={() => setShowNoteComposer(true)}
           onAttachments={() => setShowAttachments(true)}
+          onAudioRecorder={() => setShowAudioRecorder(true)}
           outlineActive={outlineVisible}
           tagsActive={tagPaneVisible}
           bookmarksActive={bookmarksVisible}
@@ -1245,6 +1248,16 @@ export default function VaultPage() {
             refreshIndex();
             openNote(noteId);
           }}
+        />
+      )}
+
+      {showAudioRecorder && (
+        <AudioRecorder
+          vaultId={vaultId}
+          onInsert={(markdownLink) => {
+            if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
+          }}
+          onClose={() => setShowAudioRecorder(false)}
         />
       )}
 

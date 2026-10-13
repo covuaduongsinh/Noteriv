@@ -16,6 +16,7 @@ import {
   TemplateIcon,
   ComposerIcon,
   AttachmentIcon,
+  MicIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
@@ -34,6 +35,7 @@ interface RibbonProps {
   onTemplates: () => void;
   onNoteComposer: () => void;
   onAttachments: () => void;
+  onAudioRecorder: () => void;
   outlineActive?: boolean;
   tagsActive?: boolean;
   bookmarksActive?: boolean;
@@ -61,6 +63,7 @@ export default function Ribbon({
   onTemplates,
   onNoteComposer,
   onAttachments,
+  onAudioRecorder,
   outlineActive,
   tagsActive,
   bookmarksActive,
@@ -118,6 +121,9 @@ export default function Ribbon({
         </button>
         <button className="ribbon-btn" title="Attachments" onClick={onAttachments}>
           <AttachmentIcon />
+        </button>
+        <button className="ribbon-btn" title="Ghi âm" onClick={onAudioRecorder}>
+          <MicIcon />
         </button>
         <button className="ribbon-btn" title="Vault Insights" onClick={onInsights}>
           <InsightsIcon />

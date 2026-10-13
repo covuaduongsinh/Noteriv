@@ -305,3 +305,14 @@ export function HistoryIcon({ size = 14, className }: IconProps) {
     </svg>
   );
 }
+
+/** Phase D8 — Audio recorder. */
+export function MicIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
+      <rect x="6" y="2" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" />
+      <path d="M4 7.5a4 4 0 008 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+      <path d="M8 11.5v2.5M6 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
+    </svg>
+  );
+}
