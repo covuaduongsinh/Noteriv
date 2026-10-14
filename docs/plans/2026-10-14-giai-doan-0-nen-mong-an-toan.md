@@ -180,7 +180,7 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
 | 4 | 0.3 Theo dõi, dọn VPS | 1 buổi | 0.2 (để thử cảnh báo) |
 | 5 | 0.4 Bảo mật, pháp lý | 1–2 buổi | — |
 
-Hết Giai đoạn 0 thì lập kế hoạch **Giai đoạn 1 (bàn cờ có sẵn)** thành file riêng trong `docs/plans/`.
+Giai đoạn tiếp theo: [Giai đoạn 1: tách repo, package dùng chung, Plugin API v1](2026-10-14-giai-doan-1-tach-repo-package-chung-plugin-api.md). Điều kiện: xong 0.1 và 0.2; 0.3 và 0.4 có thể làm song song với Giai đoạn 1.
 
 ## Trạng thái
 

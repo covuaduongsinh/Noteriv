@@ -4,14 +4,26 @@
 
 ## 1. Cách chủ dự án mở một phiên mới
 
-Dán câu sau (đổi số phiên):
+Dán câu sau (đổi tên file giai đoạn và số phiên):
 
 > Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-0-nen-mong-an-toan.md`, rồi lập kế hoạch và triển khai **Phiên 0.1**.
 
-Các tài liệu định hướng:
-- Lộ trình tổng: `docs/plans/2026-10-14-lo-trinh-noteriv-chess-pkm.md`
-- Giai đoạn 0: `docs/plans/2026-10-14-giai-doan-0-nen-mong-an-toan.md`
-- Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và các file `docs/plans/2026-10-1x-*.md`
+Các tài liệu định hướng (theo thứ tự thực hiện):
+
+| GĐ | File kế hoạch |
+|---|---|
+| Tổng | `docs/plans/2026-10-14-lo-trinh-noteriv-chess-pkm.md` |
+| 0 | `docs/plans/2026-10-14-giai-doan-0-nen-mong-an-toan.md` |
+| 1 | `docs/plans/2026-10-14-giai-doan-1-tach-repo-package-chung-plugin-api.md` |
+| 2 | `docs/plans/2026-10-14-giai-doan-2-thu-gon-core-plugin.md` |
+| 3 | `docs/plans/2026-10-14-giai-doan-3-co-vua-core-plugin.md` |
+| 4 | `docs/plans/2026-10-14-giai-doan-4-tai-lieu-plugin-cli.md` |
+| 5 | `docs/plans/2026-10-14-giai-doan-5-dong-bo-di-dong-chia-se.md` |
+| 6 | `docs/plans/2026-10-14-giai-doan-6-ai-mcp-ra-mat.md` |
+
+Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và các file `docs/plans/2026-10-1x-*.md`.
+
+**Trước khi làm một phiên:** kiểm bảng "Trạng thái" cuối file giai đoạn (phiên trước đã xong chưa) và mục "Điều kiện bắt đầu" ở đầu file.
 
 ## 2. Về chủ dự án và cách làm việc
 
@@ -26,10 +38,11 @@ Các tài liệu định hướng:
 
 ## 3. Định hướng sản phẩm (đã chốt 2026-10-14)
 
-- **Web là sản phẩm chính**; `desktop/` ở chế độ giữ nguyên.
+- **Web là sản phẩm chính**; **desktop vẫn được duy trì với cùng tính năng** nhờ dùng chung mã (`packages/*` từ Giai đoạn 1). Mọi tính năng mới phải chạy trên cả hai.
 - Đối tượng: **cộng đồng PKM cờ vua**. Tên: **Noteriv**.
 - **Noteriv thay thế ChessNote** (`D:\code\chessnote`, fork SilverBullet). ChessNote đã ngừng chạy; chỉ chuyển **tính năng**, không có dữ liệu cần chuyển. Tài liệu thuật toán cờ: `D:\code\chessnote\docs\CHESS_MODULES.md` và `docs/modules/`. Kiểm tra giấy phép trước khi chép mã (xem mục 3 của lộ trình).
-- Upstream `thejacedev/Noteriv` (remote `upstream`): **chỉ học ý tưởng**, không merge vào `web/`.
+- Upstream `thejacedev/Noteriv` (remote `upstream`): **chỉ học ý tưởng**, không merge. Repo sẽ được **tách thành repo riêng ở đầu Giai đoạn 1** (phiên 1.1); khi đó cập nhật URL repo ở file này.
+- Thứ tự: 0 an toàn → 1 nền móng chung + Plugin API → 2 thu gọn thành core plugin → 3 cờ vua (core plugin) → 4 hệ sinh thái plugin → 5 đồng bộ/PWA/chia sẻ/lớp học → 6 AI/MCP/ra mắt.
 - Mốc: tag `v-web-parity-2026-10-14` (commit `05f7318`).
 
 ## 4. Bản đồ mã nguồn
@@ -86,4 +99,4 @@ Các tài liệu định hướng:
 ## 9. Việc còn treo từ trước (không thuộc Giai đoạn 0 nhưng cần nhớ)
 
 - Chưa thử chọn hoặc tạo repo GitHub bằng token thật trong luồng "Tạo vault từ GitHub".
-- Plugin chessboard bản web chưa được đăng lên `thejacedev/NoterivPlugins` (và có thể không cần, vì Giai đoạn 1 sẽ đưa bàn cờ vào lõi).
+- Plugin chessboard bản web chưa được đăng lên `thejacedev/NoterivPlugins`. Có thể bỏ qua: Giai đoạn 3 thay nó bằng core plugin `chess-board`, và Giai đoạn 4 có kho plugin riêng.
