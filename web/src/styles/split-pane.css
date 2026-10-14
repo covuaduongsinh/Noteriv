@@ -18,6 +18,12 @@
 .split-pane-panel {
   overflow: hidden;
   position: relative;
+  /* A flex column so the note body (`flex-1 min-h-0`) is bounded by the panel's height. As a plain
+     block the body grew to its content height, so .cm-scroller never overflowed: no scrollbar, no wheel scroll. */
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
 }
 
 /* Divider */
