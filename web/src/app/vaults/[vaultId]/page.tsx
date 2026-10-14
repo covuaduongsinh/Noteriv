@@ -46,6 +46,7 @@ import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
   webApi,
+  ApiError,
   type ApiVault,
   type VaultIndex,
   type ApiSearchResult,
@@ -129,6 +130,12 @@ export default function VaultPage() {
   const [splitTabId, setSplitTabId] = useState<string | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const workspaceLoadedRef = useRef(false);
+  // State twin of workspaceLoadedRef: the `?note=` effect must wait for the
+  // saved-tabs restore to finish, otherwise the restore's setTabs overwrites
+  // the tab `?note=` just opened.
+  const restoreIncompleteRef = useRef(false);
+  const [workspaceReady, setWorkspaceReady] = useState(false);
+  const [pageNotice, setPageNotice] = useState<string | null>(null);
   const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -346,7 +353,17 @@ export default function VaultPage() {
         setActiveTabId(noteId);
         return;
       }
-      const note = await webApi.notes.get(vaultId, noteId);
+      let note;
+      try {
+        note = await webApi.notes.get(vaultId, noteId);
+      } catch (err) {
+        setPageNotice(
+          err instanceof ApiError && err.status === 404
+            ? "Note không còn tồn tại (có thể đã bị xoá hoặc nằm trong Trash)."
+            : "Không mở được note, vui lòng thử lại."
+        );
+        return;
+      }
       setTabs((prev) =>
         prev.some((t) => t.noteId === noteId)
           ? prev
@@ -459,15 +476,27 @@ export default function VaultPage() {
     webApi.workspace
       .getState(vaultId)
       .then(async (state) => {
+        // Only a 404 means the note is really gone and its tab should be
+        // dropped. Any other failure (network blip, 5xx) leaves the restore
+        // incomplete: those tabs are skipped for this session, but we must not
+        // persist the shrunken list over the server's good copy.
+        let transientFailure = false;
         const notes = await Promise.all(
           state.openTabs.map((t) =>
             webApi.notes
               .get(vaultId, t.noteId)
               .then((note): OpenTab => ({ noteId: note.id, path: note.path, name: note.name, content: note.content, savedContent: note.content }))
-              .catch(() => null)
+              .catch((err) => {
+                if (!(err instanceof ApiError && err.status === 404)) transientFailure = true;
+                return null;
+              })
           )
         );
         const restoredTabs = notes.filter((t): t is OpenTab => t !== null);
+        if (transientFailure) {
+          restoreIncompleteRef.current = true;
+          setPageNotice("Không khôi phục được một số tab do lỗi kết nối; tải lại trang để thử lại.");
+        }
         setTabs(restoredTabs);
         setPinnedTabIds(new Set(state.pinnedTabIds));
         setFileViewModes(state.fileViewModes);
@@ -477,9 +506,13 @@ export default function VaultPage() {
             : restoredTabs[0]?.noteId ?? null
         );
       })
-      .catch(() => undefined)
+      .catch(() => {
+        // getState itself failed: never persist an empty workspace over the saved one.
+        restoreIncompleteRef.current = true;
+      })
       .finally(() => {
-        workspaceLoadedRef.current = true;
+        workspaceLoadedRef.current = !restoreIncompleteRef.current;
+        setWorkspaceReady(true);
       });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, router, refreshIndex]);
@@ -793,13 +826,16 @@ export default function VaultPage() {
   }
 
   // Open the note requested via ?note=<id> (used by the Graph view's note click)
+  // Waits for the saved-tabs restore (workspaceReady) so the note is merged
+  // into the restored tab list instead of being overwritten by it.
   useEffect(() => {
+    if (!workspaceReady) return;
     const noteId = searchParams.get("note");
     if (noteId && noteId !== activeTabId) {
       openNote(noteId);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams]);
+  }, [searchParams, workspaceReady]);
 
   function onDraftChange(value: string) {
     if (!activeTabId) return;
@@ -1363,6 +1399,15 @@ export default function VaultPage() {
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
       <div ref={pluginHost.containerRef} style={{ display: "none" }} />
+
+      {pageNotice && (
+        <div
+          onClick={() => setPageNotice(null)}
+          className="fixed bottom-4 left-4 z-50 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
+        >
+          {pageNotice}
+        </div>
+      )}
 
       {pluginHost.notices.length > 0 && (
         <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
