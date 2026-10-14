@@ -182,6 +182,47 @@ services:
         condition: service_healthy
     mem_limit: 256m
 
+  # Nightly (02:00 Asia/Ho_Chi_Minh) age-encrypted backup of Postgres + Garage attachments
+  # to the private GitHub repo covuaduongsinh/noteriv-backups. See web/infra/backup/README.md
+  # and docs/ops/sao-luu-khoi-phuc.md. BACKUP_* use `:-` rather than `:?` on purpose: a
+  # missing backup setting must make the backup fail (and alert via healthchecks), not
+  # block the whole production deploy. The secrets below are passed in only so backup.sh
+  # can store them encrypted (secrets.env.age); they are needed to restore.
+  noteriv-backup:
+    build:
+      context: ./backup
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Ho_Chi_Minh
+      DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
+      ATTACHMENTS_S3_ENDPOINT: http://noteriv-garage:3900
+      ATTACHMENTS_S3_REGION: garage
+      ATTACHMENTS_S3_BUCKET: noteriv-attachments
+      ATTACHMENTS_S3_ACCESS_KEY_ID: ${ATTACHMENTS_S3_ACCESS_KEY_ID:-}
+      ATTACHMENTS_S3_SECRET_ACCESS_KEY: ${ATTACHMENTS_S3_SECRET_ACCESS_KEY:-}
+      BACKUP_REPO: git@github.com:covuaduongsinh/noteriv-backups.git
+      BACKUP_AGE_RECIPIENT: ${BACKUP_AGE_RECIPIENT:-}
+      BACKUP_DEPLOY_KEY_B64: ${BACKUP_DEPLOY_KEY_B64:-}
+      BACKUP_HEALTHCHECK_URL: ${BACKUP_HEALTHCHECK_URL:-}
+      SOURCE_COMMIT: ${SOURCE_COMMIT:-unknown}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-}
+      ENCRYPTION_KEY: ${ENCRYPTION_KEY:-}
+      GARAGE_RPC_SECRET: ${GARAGE_RPC_SECRET:-}
+      GARAGE_ADMIN_TOKEN: ${GARAGE_ADMIN_TOKEN:-}
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN:-}
+    # Only the deploy key lives in tmpfs. Work files (already encrypted) go to /tmp on the
+    # container's disk layer: tmpfs pages count against mem_limit and the dump keeps growing.
+    tmpfs:
+      - /run/backup:mode=700
+    depends_on:
+      noteriv-postgres:
+        condition: service_healthy
+    # pg_dump, age and rclone all stream; nothing is held in memory whole.
+    mem_limit: 128m
+
   noteriv-web:
     build:
       context: ../../
