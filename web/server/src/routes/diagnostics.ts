@@ -19,7 +19,7 @@ export default async function diagnosticsRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
 
   fastify.get("/", async (_request, reply) => {
-    const [git, storage, db, redis, disk] = await Promise.all([
+    const [git, storage, db, redis, disk, pdf] = await Promise.all([
       gitVersion().catch(() => null),
       checkStorage(),
       prisma.$queryRaw`SELECT 1`.then(() => true).catch(() => false),
@@ -35,6 +35,16 @@ export default async function diagnosticsRoutes(fastify: FastifyInstance) {
       statfs(tmpdir())
         .then((s) => ({ freeMB: Math.round((s.bavail * s.bsize) / 1048576), totalMB: Math.round((s.blocks * s.bsize) / 1048576) }))
         .catch(() => null),
+      (async () => {
+        const url = process.env.PDF_SERVICE_URL;
+        if (!url) return { configured: false, ok: false };
+        try {
+          const r = await fetch(`${url}/health`, { signal: AbortSignal.timeout(3000) });
+          return { configured: true, ok: r.ok };
+        } catch {
+          return { configured: true, ok: false };
+        }
+      })(),
     ]);
 
     return reply.send({
@@ -51,6 +61,7 @@ export default async function diagnosticsRoutes(fastify: FastifyInstance) {
         ageSeconds: redis.workerAgeSeconds,
       },
       scratchDisk: disk,
+      pdfService: pdf,
     });
   });
 }

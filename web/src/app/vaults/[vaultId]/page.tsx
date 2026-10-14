@@ -63,7 +63,7 @@ import {
 import { isBoardContent } from "@/lib/board-utils";
 import { isCanvasContent } from "@/lib/canvas-utils";
 import { isDrawingContent } from "@/lib/drawing-utils";
-import { exportToPDF } from "@/lib/pdf-export";
+import { exportToPDF, downloadPdf } from "@/lib/pdf-export";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import {
@@ -820,6 +820,9 @@ export default function VaultPage() {
       case "exportPDF":
         handleExportPDF();
         break;
+      case "printNote":
+        handlePrint();
+        break;
       case "calendarView":
         setShowCalendarView(true);
         break;
@@ -1005,12 +1008,28 @@ export default function VaultPage() {
     if (note) openNote(note.id);
   }
 
+  const pdfOptions = () => ({
+    columnLayout: editorSettings.pdfColumnLayout,
+    chessboardWidthPercent: editorSettings.pdfChessboardWidth,
+  });
+
+  // Download a real PDF (rendered by the server); progress and failures are reported in the page notice.
   async function handleExportPDF() {
     if (!activeTab) return;
-    await exportToPDF(draft, activeTab.name, {
-      columnLayout: editorSettings.pdfColumnLayout,
-      chessboardWidthPercent: editorSettings.pdfChessboardWidth,
-    });
+    setPageNotice("Đang tạo PDF…");
+    try {
+      await downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
+      setPageNotice("Đã tải PDF.");
+      setTimeout(() => setPageNotice((n) => (n === "Đã tải PDF." ? null : n)), 3000);
+    } catch (err) {
+      const message = (err as { body?: { message?: string } } | null)?.body?.message;
+      setPageNotice(message ?? "Không tạo được PDF. Bạn có thể dùng File → In… rồi chọn Save as PDF.");
+    }
+  }
+
+  async function handlePrint() {
+    if (!activeTab) return;
+    await exportToPDF(draft, activeTab.name, pdfOptions());
   }
 
   // Same convention as desktop: Daily/YYYY-MM-DD.md, created on first use.

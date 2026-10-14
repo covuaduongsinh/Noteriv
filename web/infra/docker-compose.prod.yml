@@ -66,6 +66,9 @@ services:
       ATTACHMENTS_S3_BUCKET: noteriv-attachments
       ATTACHMENTS_S3_ACCESS_KEY_ID: ${ATTACHMENTS_S3_ACCESS_KEY_ID:-}
       ATTACHMENTS_S3_SECRET_ACCESS_KEY: ${ATTACHMENTS_S3_SECRET_ACCESS_KEY:-}
+      # "Tải PDF" is rendered by the internal noteriv-pdf service (headless Chromium).
+      PDF_SERVICE_URL: http://noteriv-pdf:4003
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN:?set PDF_SERVICE_TOKEN}
     depends_on:
       noteriv-postgres:
         condition: service_healthy
@@ -150,6 +153,18 @@ services:
     # Real quota is enforced app-side (web/server/src/lib/attachments.ts),
     # same as dev — this mem_limit is just for the Garage process itself.
     mem_limit: 192m
+
+  # Internal HTML -> PDF renderer (headless Chromium). Not published: only noteriv-api reaches it on
+  # the compose network, authenticated with PDF_SERVICE_TOKEN (set in Dokploy's compose env). It renders
+  # untrusted HTML with JavaScript and all network access disabled; see pdf-service/src/index.mjs.
+  noteriv-pdf:
+    build:
+      context: ../pdf-service
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN:?set PDF_SERVICE_TOKEN}
+    mem_limit: 768m
 
   noteriv-collab:
     build:

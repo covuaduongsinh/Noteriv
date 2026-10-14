@@ -75,7 +75,8 @@ export type HotkeyAction =
   | "focusMode"
   | "reloadApp"
   | "diagnostics"
-  | "devToolsHint";
+  | "devToolsHint"
+  | "printNote";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -107,7 +108,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
 
-  { action: "exportPDF", label: "Export as PDF", keys: "", category: "File" },
+  { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
+  { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
   { action: "calendarView", label: "Calendar View", keys: "", category: "Navigation" },
   { action: "flashcardReview", label: "Flashcard Review", keys: "", category: "Navigation" },
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },

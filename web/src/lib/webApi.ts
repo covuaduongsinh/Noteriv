@@ -298,6 +298,27 @@ async function request<T>(path: string, init?: RequestInit, _retrying = false): 
   return (await res.json()) as T;
 }
 
+/** POST that returns a binary body (e.g. a PDF). Retries once after refreshing the session, like request(). */
+async function requestBlob(path: string, body: unknown, _retrying = false): Promise<Blob> {
+  const res = await fetch(`/api/v1${path}`, {
+    method: "POST",
+    credentials: "include",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+  if (res.status === 401 && !_retrying && (await refreshSession())) return requestBlob(path, body, true);
+  if (!res.ok) {
+    let errBody: unknown = null;
+    try {
+      errBody = await res.json();
+    } catch {
+      // not JSON
+    }
+    throw new ApiError(res.status, errBody);
+  }
+  return res.blob();
+}
+
 export const webApi = {
   auth: {
     register: (data: { email: string; password: string; displayName: string }) =>
@@ -497,6 +518,7 @@ export const webApi = {
         redis: { ok: boolean };
         worker: { alive: boolean; lastHeartbeat: string | null; ageSeconds: number | null };
         scratchDisk: { freeMB: number; totalMB: number } | null;
+        pdfService: { configured: boolean; ok: boolean };
       }>("/diagnostics"),
   },
 
@@ -511,6 +533,12 @@ export const webApi = {
         body: JSON.stringify({ name, vaultId }),
       }),
     revoke: (id: string) => request<{ ok: true }>(`/users/me/clip-tokens/${id}`, { method: "DELETE" }),
+  },
+
+  pdf: {
+    /** Server-rendered PDF (headless Chromium) of a full HTML document built by lib/pdf-export.ts. */
+    render: (vaultId: string, noteId: string, html: string, title: string) =>
+      requestBlob(`/vaults/${vaultId}/notes/${noteId}/pdf`, { html, title }),
   },
 
   vaultTransfer: {

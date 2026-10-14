@@ -46,7 +46,15 @@ function renderCodeBlockWithProcessor(
 /**
  * Convert a markdown string to HTML.
  */
-export function markdownToHTML(md: string): string {
+export interface MarkdownToHtmlOptions {
+  /**
+   * Plugin blocks rendered ahead of time (key = `${language}\u0000${source}`). The web's plugin processors
+   * run in a sandboxed iframe and answer asynchronously, which this synchronous converter cannot await.
+   */
+  preRendered?: Map<string, string>;
+}
+
+export function markdownToHTML(md: string, opts: MarkdownToHtmlOptions = {}): string {
   const lines = md.split("\n");
   const html: string[] = [];
   let i = 0;
@@ -86,6 +94,11 @@ export function markdownToHTML(md: string): string {
       // through the same processor the live editor uses, so exports keep
       // the rendered widget instead of printing raw source text.
       const langKey = lang.split(/\s+/)[0]?.toLowerCase() ?? "";
+      const pre = opts.preRendered?.get(`${langKey}\u0000${rawLines.join("\n")}`);
+      if (pre) {
+        html.push(pre);
+        continue;
+      }
       const entry = typeof document !== "undefined" && langKey ? getCodeBlockProcessor(langKey) : undefined;
       if (entry) {
         const rendered = renderCodeBlockWithProcessor(entry.processor, langKey, rawLines.join("\n"));

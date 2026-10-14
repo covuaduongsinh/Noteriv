@@ -144,7 +144,7 @@ export function usePluginHost(
       if (cached) {
         mirror.update(cached);
       } else {
-        mirror.update({ html: '<div style="opacity:.6;font-size:12px">…</div>', css: "" });
+        mirror.update({ html: '<div data-nrv-pending="1" style="opacity:.6;font-size:12px">…</div>', css: "" });
         renderCodeBlock(pluginDbId, language, source).then((r) => {
           if (disposed) return;
           mirror.update(r ?? { html: '<div style="color:#f38ba8;font-size:12px">Plugin không render được khối này.</div>', css: "" });

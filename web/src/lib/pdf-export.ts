@@ -5,6 +5,8 @@
  */
 
 import { markdownToHTML } from "./markdown-to-html";
+import { getCodeBlockProcessor } from "./markdown-code-block-registry";
+import { webApi } from "./webApi";
 
 /**
  * Print stylesheet for PDF export.
@@ -24,7 +26,8 @@ function buildPrintStyles(columnLayout: 1 | 2, chessboardWidthPercent: 75 | 100)
   }
 
   body {
-    font-family: "Georgia", "Times New Roman", "Palatino Linotype", serif;
+    /* Georgia has no precomposed Vietnamese glyphs (marks float beside the letters); these do. */
+    font-family: "Noto Serif", "Liberation Serif", "Times New Roman", "DejaVu Serif", Georgia, serif;
     font-size: 12pt;
     line-height: 1.7;
     color: #1a1a1a;
@@ -78,7 +81,7 @@ function buildPrintStyles(columnLayout: 1 | 2, chessboardWidthPercent: 75 | 100)
   }
 
   code {
-    font-family: "Courier New", Courier, monospace;
+    font-family: "Noto Sans Mono", "Liberation Mono", "Courier New", "DejaVu Sans Mono", monospace;
     font-size: 0.9em;
     background: #f3f4f6;
     padding: 0.15em 0.35em;
@@ -184,27 +187,115 @@ function buildPrintStyles(columnLayout: 1 | 2, chessboardWidthPercent: 75 | 100)
 `;
 }
 
+export interface PdfOptions {
+  columnLayout?: 1 | 2;
+  chessboardWidthPercent?: 75 | 100;
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
 /**
- * Export markdown content as a PDF via the browser's print dialog.
- * Creates a hidden iframe with styled HTML content and triggers printing.
- *
- * @param content - Markdown content to export
- * @param title - Title for the document (displayed at the top)
- * @param options - Column layout and chessboard sizing (defaults: 2 columns, 75%)
+ * Renders every fenced block whose language has a plugin processor (e.g. ```chessboard) and returns
+ * the resulting HTML keyed for markdownToHTML's `preRendered`. Web processors draw into a Shadow DOM
+ * after an async round-trip to the plugin's sandbox, so we wait for the real render (the host marks its
+ * placeholder with data-nrv-pending) and take the shadow root's markup, which includes the plugin's CSS.
  */
-export async function exportToPDF(
-  content: string,
-  title: string,
-  options?: { columnLayout?: 1 | 2; chessboardWidthPercent?: 75 | 100 }
-): Promise<void> {
+async function preRenderPluginBlocks(md: string): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const open = lines[i].match(/^(`{3,}|~{3,})\s*(.*)$/);
+    if (!open) continue;
+    const fence = open[1];
+    const langKey = open[2].trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+    const body: string[] = [];
+    let j = i + 1;
+    while (j < lines.length && !lines[j].startsWith(fence)) body.push(lines[j++]);
+    i = j; // continue after the closing fence
+
+    const entry = langKey ? getCodeBlockProcessor(langKey) : undefined;
+    if (!entry) continue;
+    const source = body.join("\n");
+    const key = `${langKey}\u0000${source}`;
+    if (out.has(key)) continue;
+
+    const el = document.createElement("div");
+    let cleanup: void | (() => void) = undefined;
+    try {
+      cleanup = entry.processor(source, el, { source, language: langKey, sourcePath: null });
+      const deadline = Date.now() + 9000;
+      let html: string | null = null;
+      while (Date.now() < deadline) {
+        const root = el.shadowRoot;
+        if (root && root.innerHTML && !root.querySelector("[data-nrv-pending]")) {
+          html = root.innerHTML;
+          break;
+        }
+        if (!root && el.innerHTML) {
+          html = el.innerHTML; // a processor that drew straight into the element
+          break;
+        }
+        await sleep(60);
+      }
+      if (html) out.set(key, `<div class="plugin-block">${html}</div>`);
+    } catch {
+      // leave this block as plain code in the export
+    } finally {
+      try {
+        if (typeof cleanup === "function") cleanup();
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return out;
+}
+
+const MAX_INLINE_BYTES = 24 * 1024 * 1024;
+
+/**
+ * Replaces same-origin attachment URLs with data: URLs. The server-side renderer has no session cookie
+ * (and no network at all), so images must travel inside the HTML.
+ */
+async function inlineImages(html: string): Promise<string> {
+  const re = /(<img\b[^>]*?\bsrc=")((?:https?:\/\/[^/"]+)?\/api\/v1\/[^"]+)(")/g;
+  const urls = Array.from(new Set(Array.from(html.matchAll(re)).map((m) => m[2])));
+  const replacement = new Map<string, string>();
+  let total = 0;
+  for (const url of urls) {
+    try {
+      const res = await fetch(url, { credentials: "include" });
+      if (!res.ok) continue;
+      const blob = await res.blob();
+      total += blob.size;
+      if (total > MAX_INLINE_BYTES) break;
+      const dataUrl = await new Promise<string>((resolve, reject) => {
+        const fr = new FileReader();
+        fr.onload = () => resolve(String(fr.result));
+        fr.onerror = reject;
+        fr.readAsDataURL(blob);
+      });
+      replacement.set(url, dataUrl);
+    } catch {
+      // an image that can't be fetched is simply left out of the PDF
+    }
+  }
+  return html.replace(re, (whole, head: string, url: string, tail: string) => {
+    const data = replacement.get(url);
+    return data ? `${head}${data}${tail}` : whole;
+  });
+}
+
+/** The complete, self-contained HTML document used by both Print and Download. */
+async function buildPdfDocument(content: string, title: string, options?: PdfOptions): Promise<string> {
   const columnLayout = options?.columnLayout ?? 2;
   const chessboardWidthPercent = options?.chessboardWidthPercent ?? 75;
 
-  const htmlContent = markdownToHTML(content);
-
+  const preRendered = await preRenderPluginBlocks(content);
+  const htmlContent = await inlineImages(markdownToHTML(content, { preRendered }));
   const displayTitle = title.replace(/\.(md|markdown)$/i, "");
 
-  const fullHTML = `
+  return `
 <!DOCTYPE html>
 <html>
 <head>
@@ -218,6 +309,14 @@ export async function exportToPDF(
 </body>
 </html>
   `.trim();
+}
+
+/**
+ * Print: opens the browser's print dialog (the user can pick "Save as PDF").
+ * Kept as the "In…" command; the main export is `downloadPdf`.
+ */
+export async function exportToPDF(content: string, title: string, options?: PdfOptions): Promise<void> {
+  const fullHTML = await buildPdfDocument(content, title, options);
 
   // Create a hidden iframe, write the HTML, and trigger print
   const iframe = document.createElement("iframe");
@@ -247,7 +346,7 @@ export async function exportToPDF(
         iframe.contentWindow?.print();
         // Clean up after a delay to let print dialog close
         setTimeout(() => {
-          document.body.removeChild(iframe);
+          if (iframe.parentNode) document.body.removeChild(iframe);
           resolve();
         }, 1000);
       }, 250);
@@ -268,6 +367,30 @@ export async function exportToPDF(
       }, 1000);
     }, 500);
   });
+}
+
+/**
+ * Download: the browser builds the document (plugin blocks drawn, images inlined), the server renders
+ * it to a real PDF with headless Chromium and the file is saved as "<note name>.pdf".
+ */
+export async function downloadPdf(
+  vaultId: string,
+  noteId: string,
+  content: string,
+  title: string,
+  options?: PdfOptions
+): Promise<void> {
+  const html = await buildPdfDocument(content, title, options);
+  const blob = await webApi.pdf.render(vaultId, noteId, html, title);
+  const name = `${title.replace(/\.(md|markdown)$/i, "").replace(/[\\/:*?"<>|]/g, " ").trim() || "note"}.pdf`;
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
 function escapeHtml(text: string): string {

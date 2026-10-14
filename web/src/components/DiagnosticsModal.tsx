@@ -56,6 +56,7 @@ export default function DiagnosticsModal({ vaultId, plugins, denied, syncConnect
       lines.push(`Server: node ${server.node}, uptime ${server.uptimeSeconds}s, db ${server.database.ok ? "ok" : "LỖI"}, redis ${server.redis.ok ? "ok" : "LỖI"}`);
       lines.push(`git: ${server.git.installed ? server.git.version : "KHÔNG CÓ"}`);
       lines.push(`storage: ${server.storage.ok ? "ok" : "LỖI"} (${server.storage.endpoint})${server.storage.error ? " — " + server.storage.error : ""}`);
+      lines.push(`pdf: ${server.pdfService.ok ? "ok" : server.pdfService.configured ? "KHÔNG PHẢN HỒI" : "chưa cấu hình"}`);
       lines.push(`worker: ${server.worker.alive ? "đang chạy" : "KHÔNG PHẢN HỒI"} (heartbeat ${server.worker.ageSeconds ?? "?"}s trước)`);
     } else {
       lines.push(`Server: ${error || "đang tải"}`);
@@ -113,6 +114,11 @@ export default function DiagnosticsModal({ vaultId, plugins, denied, syncConnect
               ok={server.worker.alive}
               label="Worker (sync nền)"
               detail={server.worker.alive ? `heartbeat ${server.worker.ageSeconds}s trước` : "không thấy heartbeat — sync/auto-sync sẽ không chạy"}
+            />
+            <Row
+              ok={server.pdfService.ok}
+              label="Dịch vụ tạo PDF"
+              detail={server.pdfService.ok ? "sẵn sàng" : server.pdfService.configured ? "không phản hồi" : "chưa cấu hình (PDF_SERVICE_URL)"}
             />
             {server.scratchDisk && (
               <Row ok={server.scratchDisk.freeMB > 500} label="Đĩa tạm cho sync" detail={`${server.scratchDisk.freeMB} MB trống / ${server.scratchDisk.totalMB} MB`} />

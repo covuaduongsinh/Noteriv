@@ -74,7 +74,7 @@ export default function NoteToolbar({
           <CollabIcon />
           {collabVisible && collabPeerCount > 0 && <span className="ml-1 text-xs">{collabPeerCount}</span>}
         </button>
-        <button onClick={onExportPDF} title="Export PDF" className="titlebar-btn">
+        <button onClick={onExportPDF} title="Tải PDF" className="titlebar-btn">
           <ExportIcon />
         </button>
         <button onClick={onPresent} title="Present (slide mode)" className="titlebar-btn">
