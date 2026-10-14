@@ -257,6 +257,9 @@ model Attachment {
   /// themes/plugins/bookmarks). Shape: PDFAnnotation[] from
   /// web/src/lib/pdf-annotation.ts.
   metadata   Json?
+  /// Repo-relative path this file has in a git-synced vault (e.g. "attachments/a.png"
+  /// or "assets/img/b.png"); null until a sync first places or finds it.
+  syncPath   String?  @map("sync_path")
 
   vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
 

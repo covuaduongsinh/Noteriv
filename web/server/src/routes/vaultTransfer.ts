@@ -8,6 +8,7 @@ import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { ensureFolderChain } from "../lib/vaultFs.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { getObjectStream } from "../lib/attachments.js";
+import { toRelativeLinks } from "../lib/attachmentLinks.js";
 import { logAudit } from "../lib/auditLog.js";
 
 // archiver 7 is CommonJS (module.exports = factory) while its typings declare named exports only.
@@ -146,15 +147,7 @@ export default async function vaultTransferRoutes(fastify: FastifyInstance) {
         zipPathById.set(a.id, candidate);
       }
 
-      const downloadUrl = new RegExp(`/api/v1/vaults/${vid}/attachments/([0-9a-f-]{36})/download`, "g");
-      const rewrite = (notePath: string, content: string) =>
-        content.replace(downloadUrl, (whole, id: string) => {
-          const target = zipPathById.get(id);
-          if (!target) return whole;
-          const rel = path.posix.relative(path.posix.dirname(notePath), target);
-          // Spaces/parens would end a markdown link early; encode the path segments.
-          return rel.split("/").map((seg) => (seg === ".." ? seg : encodeURIComponent(seg))).join("/");
-        });
+      const rewrite = (notePath: string, content: string) => toRelativeLinks(vid, notePath, content, zipPathById);
 
       const archive = archiver("zip", { zlib: { level: 6 } });
       archive.on("warning", (err: Error) => fastify.log.warn({ err }, "export zip warning"));

@@ -12,9 +12,10 @@ export async function exportNotesToDir(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
-  opts: { prune?: boolean } = {}
+  opts: { prune?: boolean; transform?: (notePath: string, content: string) => string } = {}
 ): Promise<void> {
   const prune = opts.prune !== false;
+  const transform = opts.transform ?? ((_p: string, c: string) => c);
   // Trashed notes (deletedAt set) stay out of the export so they leave the repo too.
   const notes = await prisma.note.findMany({ where: { vaultId, deletedAt: null }, select: { path: true, content: true } });
   const wanted = new Set(notes.map((n) => n.path));
@@ -23,7 +24,7 @@ export async function exportNotesToDir(
   for (const note of notes) {
     const dest = path.join(dir, note.path.replace(/\//g, path.sep));
     await mkdir(path.dirname(dest), { recursive: true });
-    await writeFile(dest, note.content, "utf8");
+    await writeFile(dest, transform(note.path, note.content), "utf8");
   }
 
   // Remove tracked .md files whose note was deleted in the DB since last export.
@@ -53,7 +54,8 @@ export async function importDirToNotes(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
-  actorUserId: string | null
+  actorUserId: string | null,
+  transform: (notePath: string, content: string) => string = (_p, c) => c
 ): Promise<void> {
   const files: Array<{ rel: string; full: string }> = [];
   async function recurse(cur: string) {
@@ -84,7 +86,7 @@ export async function importDirToNotes(
 
   for (const { rel, full } of files) {
     seenPaths.add(rel);
-    const content = await readFile(full, "utf8");
+    const content = transform(rel, await readFile(full, "utf8"));
     const existing = existingByPath.get(rel);
 
     if (existing) {
@@ -149,7 +151,8 @@ export async function importNewNotesOnly(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
-  actorUserId: string | null
+  actorUserId: string | null,
+  transform: (notePath: string, content: string) => string = (_p, c) => c
 ): Promise<void> {
   const files: Array<{ rel: string; full: string }> = [];
   async function recurse(cur: string) {
@@ -180,7 +183,7 @@ export async function importNewNotesOnly(
   for (const { rel, full } of files) {
     if (existingPaths.has(rel)) continue;
 
-    const content = await readFile(full, "utf8");
+    const content = transform(rel, await readFile(full, "utf8"));
     const lastSlash = rel.lastIndexOf("/");
     const name = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
     const folderPath = lastSlash === -1 ? null : rel.slice(0, lastSlash);

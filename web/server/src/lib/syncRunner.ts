@@ -12,6 +12,8 @@ import {
   type GitCredentials,
 } from "./gitSync.js";
 import { webdavSyncCore, type WebdavConfig } from "./webdavSync.js";
+import { exportAttachmentsToDir, importAttachmentsFromDir } from "./attachmentSync.js";
+import { toRelativeLinks, fromRelativeLinks } from "./attachmentLinks.js";
 import type { SyncJobMode } from "./syncQueue.js";
 
 // Deliberately defaults to the OS temp dir, NOT a path inside the Noteriv repo:
@@ -31,6 +33,25 @@ interface GitCredentialsBlob {
 interface WebdavCredentialsBlob {
   username: string;
   password: string;
+}
+
+/** Writes the vault's notes AND attachments into `dir`, with note links made repo-relative. */
+async function exportVaultToDir(prisma: PrismaClient, vaultId: string, dir: string, prune: boolean): Promise<void> {
+  const pathById = await exportAttachmentsToDir(prisma, vaultId, dir);
+  await exportNotesToDir(prisma, vaultId, dir, {
+    prune,
+    transform: (notePath, content) => toRelativeLinks(vaultId, notePath, content, pathById),
+  });
+}
+
+/** Registers the repo's attachments, then returns the link transform that maps their relative links back to web URLs. */
+async function attachmentLinkTransform(
+  prisma: PrismaClient,
+  vaultId: string,
+  dir: string
+): Promise<(notePath: string, content: string) => string> {
+  const idByPath = await importAttachmentsFromDir(prisma, vaultId, dir, null);
+  return (notePath, content) => fromRelativeLinks(vaultId, notePath, content, idByPath);
 }
 
 /** Expands {date} {time} {count} in a commit message template (desktop parity). */
@@ -103,13 +124,13 @@ export async function runSyncJob(
       if (mode === "resolve-remote") {
         // Take the remote's content wholesale, then mirror it into the DB.
         await adoptRemoteTip(dir, remoteUrl, connection.branch, gitCreds, "hard");
-        await importDirToNotes(prisma, connection.vaultId, dir, null);
+        await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
         pulled = 1;
       } else if (mode === "resolve-web") {
         // Keep the web's content: move to the remote tip but keep the DB export as the
         // working tree, so the commit below is a plain fast-forward push (no force).
         await adoptRemoteTip(dir, remoteUrl, connection.branch, gitCreds, "mixed");
-        await exportNotesToDir(prisma, connection.vaultId, dir);
+        await exportVaultToDir(prisma, connection.vaultId, dir, true);
         await ensureGitignore(dir);
         const result = await gitSyncCore(
           dir,
@@ -120,11 +141,13 @@ export async function runSyncJob(
         );
         pushed = result.pushedCommit ? 1 : 0;
       } else {
-        if (doPull) await importNewNotesOnly(prisma, connection.vaultId, dir, null);
+        if (doPull) {
+          await importNewNotesOnly(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
+        }
         if (doPush) {
           // Push-only never imports, so remote-only files must not be pruned either —
           // otherwise the push would delete notes the remote has but the vault doesn't.
-          await exportNotesToDir(prisma, connection.vaultId, dir, { prune: doPull });
+          await exportVaultToDir(prisma, connection.vaultId, dir, doPull);
           await ensureGitignore(dir);
         }
         const result = await gitSyncCore(
@@ -136,7 +159,10 @@ export async function runSyncJob(
         );
         pushed = result.pushedCommit ? 1 : 0;
         // Pull-only never re-exports the DB, so the working tree is exactly the remote's.
-        if (doPull) await importDirToNotes(prisma, connection.vaultId, dir, null);
+        if (doPull) {
+          // Re-scan: the pull may have brought new attachment files whose links the notes now reference.
+          await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
+        }
       }
     }
 
