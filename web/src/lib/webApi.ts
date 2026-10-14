@@ -485,6 +485,21 @@ export const webApi = {
     downloadUrl: (vaultId: string, attachmentId: string) => `/api/v1/vaults/${vaultId}/attachments/${attachmentId}/download`,
   },
 
+  diagnostics: {
+    get: () =>
+      request<{
+        time: string;
+        node: string;
+        uptimeSeconds: number;
+        git: { installed: boolean; version: string | null };
+        storage: { configured: boolean; ok: boolean; endpoint: string; error?: string };
+        database: { ok: boolean };
+        redis: { ok: boolean };
+        worker: { alive: boolean; lastHeartbeat: string | null; ageSeconds: number | null };
+        scratchDisk: { freeMB: number; totalMB: number } | null;
+      }>("/diagnostics"),
+  },
+
   clipper: {
     list: () =>
       request<{ id: string; name: string; vaultId: string; vaultName: string; tokenHint: string; createdAt: string; lastUsedAt: string | null }[]>(

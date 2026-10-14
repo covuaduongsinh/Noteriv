@@ -4,6 +4,7 @@ import { useState, useMemo, useRef, useCallback } from "react";
 import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
 import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
+import { createUntitledNote } from "@/lib/note-names";
 
 const DND_TYPE = "application/x-noteriv-node";
 interface DragPayload {
@@ -331,19 +332,36 @@ export default function Sidebar({
     onRefresh();
   }
 
+  function showActionError(text: string) {
+    setMoveError(text);
+    setTimeout(() => setMoveError(""), 4000);
+  }
+
   async function handleNewFileIn(folderId: string | null) {
-    const note = await webApi.notes.create(vaultId, { name: "Untitled.md", folderId });
-    if (folderId) setExpandedFolders((prev) => new Set(prev).add(folderId));
-    onRefresh();
-    onFileSelect(note.id);
-    startRename({ type: "note", id: note.id, name: "Untitled", path: note.path });
+    try {
+      const note = await createUntitledNote(vaultId, folderId, index?.notes ?? []);
+      if (folderId) setExpandedFolders((prev) => new Set(prev).add(folderId));
+      onRefresh();
+      onFileSelect(note.id);
+      startRename({ type: "note", id: note.id, name: note.name.replace(/\.md$/i, ""), path: note.path });
+    } catch {
+      showActionError("Không tạo được note mới.");
+    }
   }
 
   async function handleNewFolderIn(parentId: string | null) {
-    const folder = await webApi.folders.create(vaultId, { name: "New Folder", parentId });
-    if (parentId) setExpandedFolders((prev) => new Set(prev).add(parentId));
-    onRefresh();
-    startRename({ type: "folder", id: folder.id, name: folder.name, children: [] });
+    // "New Folder", "New Folder 2", … — creating the same name twice is a 409 on the server.
+    const siblings = new Set((index?.folders ?? []).filter((f) => f.parentId === parentId).map((f) => f.name.toLowerCase()));
+    let name = "New Folder";
+    for (let i = 2; siblings.has(name.toLowerCase()); i++) name = `New Folder ${i}`;
+    try {
+      const folder = await webApi.folders.create(vaultId, { name, parentId });
+      if (parentId) setExpandedFolders((prev) => new Set(prev).add(parentId));
+      onRefresh();
+      startRename({ type: "folder", id: folder.id, name: folder.name, children: [] });
+    } catch {
+      showActionError("Không tạo được thư mục mới.");
+    }
   }
 
   function handleContextMenu(e: React.MouseEvent, node: TreeNode) {

@@ -172,6 +172,11 @@ export async function gitIsInstalled(): Promise<boolean> {
   return (await runGit(["--version"], process.cwd())).success;
 }
 
+export async function gitVersion(): Promise<string | null> {
+  const r = await runGit(["--version"], process.cwd());
+  return r.success ? r.stdout : null;
+}
+
 /** Called at startup by the API and the worker so a missing git shows up in the logs immediately, not on the first user sync. */
 export async function warnIfGitMissing(log: (msg: string) => void): Promise<void> {
   if (!(await gitIsInstalled())) {

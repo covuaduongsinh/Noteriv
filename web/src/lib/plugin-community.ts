@@ -78,13 +78,37 @@ const METHOD_TO_PERMISSION: Record<string, string> = {
   "markdown.unregisterCodeBlockProcessor": "markdown:render",
 };
 
+/** Drops // and /* *\/ comments (not the `//` of a URL) so words inside them don't count as API calls. */
+function stripComments(code: string): string {
+  // Blank single/double-quoted strings too, so "api.vault.read" inside a message doesn't count.
+  const noStrings = code.replace(/"(?:[^"\\\n]|\\.)*"|'(?:[^'\\\n]|\\.)*'/g, '""');
+  return noStrings.replace(/\/\*[\s\S]*?\*\//g, " ").replace(/(^|[^:\\])\/\/[^\n]*/g, "$1");
+}
+
+/**
+ * Permissions a plugin's code actually asks for. Only `api.<ns>.<method>(...)` calls count (and calls
+ * through an alias such as `var ui = api.ui`), not any text that happens to read `vault.x`: an earlier
+ * looser scan granted chessboard read/write access to the vault and the editor it never touches.
+ */
 export function inferPermissions(mainJs: string): string[] {
+  const code = stripComments(mainJs);
   const found = new Set<string>();
-  const re = /\b(vault|editor|ui|markdown)\s*\.\s*(\w+)/g;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(mainJs)) !== null) {
-    const perm = METHOD_TO_PERMISSION[`${m[1]}.${m[2]}`];
+  const add = (ns: string, method: string) => {
+    const perm = METHOD_TO_PERMISSION[`${ns}.${method}`];
     if (perm) found.add(perm);
+  };
+
+  let m: RegExpExecArray | null;
+  const direct = /\bapi\s*\.\s*(vault|editor|ui|markdown)\s*\.\s*(\w+)/g;
+  while ((m = direct.exec(code)) !== null) add(m[1], m[2]);
+
+  // var ui = api.ui;  /  const { addCommand } = api.ui  (the second form is not tracked per method)
+  const aliases = new Map<string, string>();
+  const aliasRe = /\b(?:var|let|const)\s+(\w+)\s*=\s*api\s*\.\s*(vault|editor|ui|markdown)\b(?!\s*\.)/g;
+  while ((m = aliasRe.exec(code)) !== null) aliases.set(m[1], m[2]);
+  for (const [alias, ns] of aliases) {
+    const use = new RegExp(`\\b${alias}\\s*\\.\\s*(\\w+)`, "g");
+    while ((m = use.exec(code)) !== null) add(ns, m[1]);
   }
   return Array.from(found);
 }

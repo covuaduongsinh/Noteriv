@@ -64,6 +64,7 @@ const SECTIONS: MenuSection[] = [
       { action: "graphView", label: "Graph View" },
       "sep",
       { action: "randomNote", label: "Random Note" },
+      { action: "commandPalette", label: "Command Palette" },
       { action: "calendarView", label: "Calendar" },
       { action: "flashcardReview", label: "Flashcards" },
       { action: "vaultInsights", label: "Vault Insights" },
@@ -79,6 +80,15 @@ const SECTIONS: MenuSection[] = [
       { action: "pluginManager", label: "Plugins…" },
       { action: "themePicker", label: "Themes…" },
       { action: "cssSnippets", label: "CSS Snippets…" },
+    ],
+  },
+  {
+    title: "Developer",
+    entries: [
+      { action: "devToolsHint", label: "Toggle Developer Tools (F12)" },
+      { action: "reloadApp", label: "Reload Window" },
+      "sep",
+      { action: "diagnostics", label: "Diagnostics…" },
     ],
   },
 ];

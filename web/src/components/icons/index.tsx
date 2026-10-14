@@ -340,3 +340,34 @@ export function ThemeIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+// ── Round 3: ribbon rework ──
+
+export function CommandIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M3 4.5l3.5 3.5L3 11.5" />
+      <path d="M8.5 12h4.5" />
+    </svg>
+  );
+}
+
+export function DailyIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
+      <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
+      <circle cx="8" cy="10" r="1.2" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+export function MoreIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="currentColor" className={className}>
+      <circle cx="3.5" cy="8" r="1.2" />
+      <circle cx="8" cy="8" r="1.2" />
+      <circle cx="12.5" cy="8" r="1.2" />
+    </svg>
+  );
+}

@@ -65,7 +65,8 @@ export function sanitizePluginHtml(html: string): string {
   return DOMPurify.sanitize(html, { FORBID_TAGS, FORBID_ATTR, ADD_ATTR: ["data-nrv"] });
 }
 
-const HOST_STYLE = ":host{display:block;contain:paint;overflow:hidden;max-width:100%}";
+// svg/img shrink with the editor column (a fixed-width chessboard was clipped next to open side panels).
+const HOST_STYLE = ":host{display:block;contain:paint;overflow:hidden;max-width:100%}svg,img{max-width:100%;height:auto}";
 
 /**
  * Shows `payload` inside a shadow root attached to `host`. Returns a function that

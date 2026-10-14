@@ -72,7 +72,10 @@ export type HotkeyAction =
   | "randomNote"
   | "toggleLint"
   | "zenMode"
-  | "focusMode";
+  | "focusMode"
+  | "reloadApp"
+  | "diagnostics"
+  | "devToolsHint";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -120,6 +123,9 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "toggleLint", label: "Toggle Lint Panel", keys: "", category: "View" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },
   { action: "focusMode", label: "Focus Mode (dim other lines)", keys: "", category: "View" },
+  { action: "reloadApp", label: "Reload page (saves first)", keys: "", category: "Developer" },
+  { action: "diagnostics", label: "Diagnostics (server, sync, plugins)…", keys: "", category: "Developer" },
+  { action: "devToolsHint", label: "Open browser developer tools (F12)", keys: "", category: "Developer" },
   { action: "exportVault", label: "Export vault as zip", keys: "", category: "File" },
 
   { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },

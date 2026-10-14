@@ -205,6 +205,7 @@ export default function PluginManager({
               const missing = (denied[p.id] ?? []).filter((d) => !granted.includes(d));
               const fromCode = inferPermissions(p.mainJs);
               const canGrantFromCode = fromCode.some((x) => !granted.includes(x));
+              const excess = granted.filter((g) => !fromCode.includes(g));
               return (
                 <div key={p.id} className="flex flex-col gap-2 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
                   <div className="flex items-center justify-between">
@@ -242,6 +243,22 @@ export default function PluginManager({
                           className="text-xs px-2 py-1 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] hover:opacity-80"
                         >
                           Cấp quyền cần thiết
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {excess.length > 0 && (
+                    <div className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
+                      <span>
+                        Quyền mà mã plugin không dùng đến: {excess.map((x) => PERMISSION_LABELS[x] ?? x).join(", ")}.
+                      </span>
+                      <div>
+                        <button
+                          onClick={() => setPermissions(p, granted.filter((g) => fromCode.includes(g)))}
+                          className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80"
+                        >
+                          Chỉ giữ quyền cần thiết
                         </button>
                       </div>
                     </div>

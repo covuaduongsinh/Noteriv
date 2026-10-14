@@ -31,6 +31,8 @@ import CommandPalette from "@/components/CommandPalette";
 import ImportVault from "@/components/ImportVault";
 import PluginMirror from "@/components/PluginMirror";
 import LintPanel from "@/components/LintPanel";
+import DiagnosticsModal from "@/components/DiagnosticsModal";
+import { createUntitledNote } from "@/lib/note-names";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import BookmarksPanel from "@/components/BookmarksPanel";
@@ -184,6 +186,7 @@ export default function VaultPage() {
   const [showTrash, setShowTrash] = useState(false);
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
   const [showLint, setShowLint] = useState(false);
+  const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [zenMode, setZenMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   // key = `${pluginDbId}:${panelId}` of the plugin sidebar panel shown in place of the file tree
@@ -904,6 +907,16 @@ export default function VaultPage() {
       case "randomNote":
         handleRandomNote();
         break;
+      case "diagnostics":
+        setShowDiagnostics(true);
+        break;
+      case "devToolsHint":
+        // A web page cannot open the browser's DevTools itself.
+        setPageNotice("Nhấn F12 (hoặc Ctrl+Shift+I) để mở công cụ nhà phát triển của trình duyệt.");
+        break;
+      case "reloadApp":
+        handleReloadApp();
+        break;
       case "toggleLint":
         setShowLint((v) => !v);
         break;
@@ -928,6 +941,12 @@ export default function VaultPage() {
   // not just in Quick Open.
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
+      // F1 always opens the palette: Ctrl+Shift+P is taken by the browser on some platforms.
+      if (e.key === "F1" && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+        return;
+      }
       for (const binding of hotkeyBindings) {
         if (matchesHotkey(e, binding.keys)) {
           e.preventDefault();
@@ -1010,6 +1029,12 @@ export default function VaultPage() {
     openNote(note.id);
   }
 
+  // Developer > Reload: persist every edited tab first so reloading never drops unsaved text.
+  async function handleReloadApp() {
+    await Promise.all(tabs.filter((t) => t.content !== t.savedContent).map((t) => persistNote(t.noteId, t.content).catch(() => undefined)));
+    window.location.reload();
+  }
+
   function handleDailyNote() {
     const now = new Date();
     const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -1041,9 +1066,14 @@ export default function VaultPage() {
   }, [index]);
 
   async function handleQuickNewNote() {
-    const note = await webApi.notes.create(vaultId, { name: "Untitled.md", folderId: null, content: "" });
-    refreshIndex();
-    openNote(note.id);
+    try {
+      // Picks "Untitled 2.md" etc. when the name is taken; a plain "Untitled.md" used to 409 silently.
+      const note = await createUntitledNote(vaultId, null, index?.notes ?? []);
+      refreshIndex();
+      openNote(note.id);
+    } catch {
+      setPageNotice("Không tạo được note mới. Kiểm tra kết nối hoặc quyền ghi vault rồi thử lại.");
+    }
   }
 
   function handleGraphView() {
@@ -1229,6 +1259,8 @@ export default function VaultPage() {
           <Ribbon
             onQuickOpen={() => setQuickOpenVisible(true)}
             onNewNote={handleQuickNewNote}
+            onDailyNote={handleDailyNote}
+            onCommandPalette={() => setCommandPaletteOpen(true)}
             onGraph={handleGraphView}
             onSearch={() => setSearchVisible(true)}
             onCalendar={() => setShowCalendarView(true)}
@@ -1750,6 +1782,16 @@ export default function VaultPage() {
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
       <div ref={pluginHost.containerRef} style={{ display: "none" }} />
 
+      {showDiagnostics && (
+        <DiagnosticsModal
+          vaultId={vaultId}
+          plugins={pluginHost.installed}
+          denied={pluginHost.deniedPermissions}
+          syncConnections={syncConnections}
+          onClose={() => setShowDiagnostics(false)}
+        />
+      )}
+
       {showNewFromGithub && (
         <CreateVaultFromGithub
           onClose={() => setShowNewFromGithub(false)}
@@ -1793,7 +1835,7 @@ export default function VaultPage() {
       )}
 
       {pluginHost.notices.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
+        <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
           {pluginHost.notices.map((n) => (
             <div
               key={n.key}

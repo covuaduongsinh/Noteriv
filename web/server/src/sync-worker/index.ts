@@ -107,6 +107,12 @@ autoSyncWorker.on("failed", (job, err) => {
 });
 await autoSyncQueue.add("tick", {}, { repeat: { every: 60 * 1000 }, jobId: "auto-sync-tick" });
 
+// Liveness signal for the diagnostics screen: the API can't see worker processes, but it can read this key.
+export const WORKER_HEARTBEAT_KEY = "noteriv:worker:heartbeat";
+const beat = () => connection.set(WORKER_HEARTBEAT_KEY, new Date().toISOString(), "EX", 120).catch(() => undefined);
+void beat();
+setInterval(beat, 30_000).unref();
+
 console.log("noteriv sync-worker started");
 void warnIfGitMissing((m) => console.error(`[sync-worker] ${m}`));
 

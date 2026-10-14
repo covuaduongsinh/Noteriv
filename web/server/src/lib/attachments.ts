@@ -1,4 +1,4 @@
-import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand } from "@aws-sdk/client-s3";
+import { S3Client, PutObjectCommand, GetObjectCommand, DeleteObjectCommand, HeadBucketCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "node:crypto";
 import type { PrismaClient } from "@prisma/client";
 
@@ -44,6 +44,18 @@ export function formatBytes(bytes: number): string {
   const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
   const value = bytes / Math.pow(1024, i);
   return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
+}
+
+/** Cheap reachability/credentials probe for the diagnostics screen. */
+export async function checkStorage(): Promise<{ configured: boolean; ok: boolean; endpoint: string; error?: string }> {
+  const endpoint = process.env.ATTACHMENTS_S3_ENDPOINT ?? "http://127.0.0.1:59000 (mặc định)";
+  const configured = !!process.env.ATTACHMENTS_S3_ENDPOINT && !!process.env.ATTACHMENTS_S3_ACCESS_KEY_ID;
+  try {
+    await s3.send(new HeadBucketCommand({ Bucket: BUCKET }), { abortSignal: AbortSignal.timeout(4000) });
+    return { configured, ok: true, endpoint };
+  } catch (err) {
+    return { configured, ok: false, endpoint, error: err instanceof Error ? err.message.slice(0, 160) : String(err) };
+  }
 }
 
 export function makeStorageKey(vaultId: string, filename: string): string {
