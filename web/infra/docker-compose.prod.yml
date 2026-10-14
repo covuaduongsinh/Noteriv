@@ -15,6 +15,14 @@
 # deploy testing: this project's `web` container resolved `api` to a
 # different project's `api` container on dokploy-network and got
 # ECONNREFUSED. Prefixing avoids the collision; it is not just a style choice.
+#
+# The same file also deploys staging (second Dokploy compose, branch `next`,
+# staging-noteriv.dsc.edu.vn). Everything environment-specific is a variable whose
+# default is the production value, so production needs no extra env:
+#   PUBLIC_ORIGIN     CORS origin of the API        (default https://noteriv.dsc.edu.vn)
+#   PUBLIC_WS_ORIGIN  collab WebSocket origin       (default wss://noteriv.dsc.edu.vn)
+#   BACKUP_REPLICAS   0 on staging = no backup job  (default 1)
+# See docs/plans/2026-10-15-phien-0-2-staging.md.
 
 services:
   noteriv-postgres:
@@ -60,7 +68,7 @@ services:
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?set JWT_REFRESH_SECRET}
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
-      CORS_ORIGIN: https://noteriv.dsc.edu.vn
+      CORS_ORIGIN: ${PUBLIC_ORIGIN:-https://noteriv.dsc.edu.vn}
       ATTACHMENTS_S3_ENDPOINT: http://noteriv-garage:3900
       ATTACHMENTS_S3_REGION: garage
       ATTACHMENTS_S3_BUCKET: noteriv-attachments
@@ -193,6 +201,9 @@ services:
       context: ./backup
       dockerfile: Dockerfile
     restart: unless-stopped
+    # Staging sets BACKUP_REPLICAS=0: it must never push test data into the production backup repo.
+    deploy:
+      replicas: ${BACKUP_REPLICAS:-1}
     environment:
       TZ: Asia/Ho_Chi_Minh
       DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
@@ -231,7 +242,7 @@ services:
         # Both are build args, not runtime environment — see Dockerfile's
         # comment on why: rewrites() and NEXT_PUBLIC_* are both resolved at
         # `next build` time, not re-read per request in a standalone build.
-        NEXT_PUBLIC_COLLAB_WS_URL: wss://noteriv.dsc.edu.vn
+        NEXT_PUBLIC_COLLAB_WS_URL: ${PUBLIC_WS_ORIGIN:-wss://noteriv.dsc.edu.vn}
         NOTERIV_API_ORIGIN: http://noteriv-api:4001
     restart: unless-stopped
     depends_on:
