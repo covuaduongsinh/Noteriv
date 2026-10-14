@@ -373,6 +373,30 @@ export async function exportToPDF(content: string, title: string, options?: PdfO
  * Download: the browser builds the document (plugin blocks drawn, images inlined), the server renders
  * it to a real PDF with headless Chromium and the file is saved as "<note name>.pdf".
  */
+export async function renderPdf(
+  vaultId: string,
+  noteId: string,
+  content: string,
+  title: string,
+  options?: PdfOptions
+): Promise<{ blob: Blob; filename: string }> {
+  const html = await buildPdfDocument(content, title, options);
+  const blob = await webApi.pdf.render(vaultId, noteId, html, title);
+  const filename = `${title.replace(/\.(md|markdown)$/i, "").replace(/[\\/:*?"<>|]/g, " ").trim() || "note"}.pdf`;
+  return { blob, filename };
+}
+
+export function saveBlob(blob: Blob, filename: string): void {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
 export async function downloadPdf(
   vaultId: string,
   noteId: string,
@@ -380,17 +404,8 @@ export async function downloadPdf(
   title: string,
   options?: PdfOptions
 ): Promise<void> {
-  const html = await buildPdfDocument(content, title, options);
-  const blob = await webApi.pdf.render(vaultId, noteId, html, title);
-  const name = `${title.replace(/\.(md|markdown)$/i, "").replace(/[\\/:*?"<>|]/g, " ").trim() || "note"}.pdf`;
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = name;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 10_000);
+  const { blob, filename } = await renderPdf(vaultId, noteId, content, title, options);
+  saveBlob(blob, filename);
 }
 
 function escapeHtml(text: string): string {

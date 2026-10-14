@@ -25,6 +25,7 @@ const SECTIONS: MenuSection[] = [
       { action: "insertTemplate", label: "New from Template…" },
       "sep",
       { action: "save", label: "Save" },
+      { action: "previewPDF", label: "Xem trước PDF" },
       { action: "exportPDF", label: "Tải PDF" },
       { action: "printNote", label: "In…" },
       "sep",

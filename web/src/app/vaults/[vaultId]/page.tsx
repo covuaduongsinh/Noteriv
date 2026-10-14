@@ -63,7 +63,8 @@ import {
 import { isBoardContent } from "@/lib/board-utils";
 import { isCanvasContent } from "@/lib/canvas-utils";
 import { isDrawingContent } from "@/lib/drawing-utils";
-import { exportToPDF, downloadPdf } from "@/lib/pdf-export";
+import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
+import PdfPreviewModal from "@/components/PdfPreviewModal";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import {
@@ -187,6 +188,7 @@ export default function VaultPage() {
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
   const [showLint, setShowLint] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
+  const [pdfPreview, setPdfPreview] = useState<{ blob: Blob; filename: string } | null>(null);
   const [zenMode, setZenMode] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   // key = `${pluginDbId}:${panelId}` of the plugin sidebar panel shown in place of the file tree
@@ -817,6 +819,9 @@ export default function VaultPage() {
       case "toggleCollab":
         setCollabVisible((v) => !v);
         break;
+      case "previewPDF":
+        handlePreviewPDF();
+        break;
       case "exportPDF":
         handleExportPDF();
         break;
@@ -1024,6 +1029,19 @@ export default function VaultPage() {
     } catch (err) {
       const message = (err as { body?: { message?: string } } | null)?.body?.message;
       setPageNotice(message ?? "Không tạo được PDF. Bạn có thể dùng File → In… rồi chọn Save as PDF.");
+    }
+  }
+
+  // Render the same PDF as "Tải PDF" but show it in a modal first; the user downloads from there.
+  async function handlePreviewPDF() {
+    if (!activeTab) return;
+    setPageNotice("Đang tạo bản xem trước…");
+    try {
+      setPdfPreview(await renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
+      setPageNotice(null);
+    } catch (err) {
+      const message = (err as { body?: { message?: string } } | null)?.body?.message;
+      setPageNotice(message ?? "Không tạo được bản xem trước PDF.");
     }
   }
 
@@ -1800,6 +1818,15 @@ export default function VaultPage() {
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
       <div ref={pluginHost.containerRef} style={{ display: "none" }} />
+
+      {pdfPreview && (
+        <PdfPreviewModal
+          blob={pdfPreview.blob}
+          filename={pdfPreview.filename}
+          onDownload={() => saveBlob(pdfPreview.blob, pdfPreview.filename)}
+          onClose={() => setPdfPreview(null)}
+        />
+      )}
 
       {showDiagnostics && (
         <DiagnosticsModal

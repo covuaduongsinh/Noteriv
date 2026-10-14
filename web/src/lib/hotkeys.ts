@@ -32,6 +32,7 @@ export type HotkeyAction =
   | "toggleBacklinks"
   | "toggleCollab"
   | "exportPDF"
+  | "previewPDF"
   | "calendarView"
   | "flashcardReview"
   | "pluginManager"
@@ -108,6 +109,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
 
+  { action: "previewPDF", label: "Xem trước PDF", keys: "", category: "File" },
   { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
   { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
   { action: "calendarView", label: "Calendar View", keys: "", category: "Navigation" },
