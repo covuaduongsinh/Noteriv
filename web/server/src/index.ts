@@ -13,12 +13,18 @@ import folderRoutes from "./routes/folders.js";
 import pluginRoutes from "./routes/plugins.js";
 import syncConnectionRoutes from "./routes/syncConnections.js";
 import vaultTransferRoutes from "./routes/vaultTransfer.js";
+import { clipTokenRoutes, clipPublicRoutes } from "./routes/clipper.js";
 import userRoutes from "./routes/users.js";
 import userVaultStateRoutes from "./routes/userVaultState.js";
 import trashRoutes from "./routes/trash.js";
 import attachmentRoutes from "./routes/attachments.js";
 
 const fastify = Fastify({ logger: true, trustProxy: true });
+
+// Prisma first so the public clip route (below) can use it; that route must be registered
+// BEFORE the app-wide CORS plugin — it needs its own wide-open CORS (bearer-token auth, no cookies).
+await fastify.register(prismaPlugin);
+await fastify.register(clipPublicRoutes, { prefix: "/api/v1/clip" });
 
 await fastify.register(cors, {
   origin: process.env.CORS_ORIGIN ?? "http://localhost:3457",
@@ -43,7 +49,6 @@ await fastify.register(cookie);
 // file.toBuffer() in routes/attachments.ts) well under the per-vault quota,
 // not the quota enforcement itself (that's the aggregate check in the route).
 await fastify.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
-await fastify.register(prismaPlugin);
 await fastify.register(authPlugin);
 
 await fastify.register(authRoutes, { prefix: "/api/v1/auth" });
@@ -56,6 +61,7 @@ await fastify.register(userVaultStateRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(trashRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(attachmentRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(vaultTransferRoutes, { prefix: "/api/v1/vaults" });
+await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 
 fastify.get("/healthz", async () => ({ ok: true }));

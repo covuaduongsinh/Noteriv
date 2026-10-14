@@ -56,6 +56,7 @@ model User {
   updatedNotes     Note[]             @relation("NoteUpdatedBy")
   auditLogs        AuditLog[]
   vaultStates      UserVaultState[]
+  clipTokens       ClipToken[]
   preference       UserPreference?
 
   @@map("users")
@@ -133,6 +134,7 @@ model Vault {
   syncConnections SyncConnection[]
   userStates UserVaultState[]
   attachments Attachment[]
+  clipTokens  ClipToken[]
 
   @@map("vaults")
 }
@@ -367,6 +369,27 @@ model Backlink {
 /// Security/account-event audit trail (auth, vault/account deletion, sync
 /// credential changes, plugin installs). Not a full activity feed over every
 /// note edit — those already have their own history via `updatedAt`/`updatedBy`.
+/// Personal token used by the browser clipper bookmarklet (parity plan v2, Pha 6).
+/// Only the SHA-256 of the token is stored; the token itself is shown once at creation.
+/// It can do exactly one thing: create notes in `vaultId` (see routes/clipper.ts).
+model ClipToken {
+  id          String    @id @default(uuid())
+  userId      String    @map("user_id")
+  vaultId     String    @map("vault_id")
+  name        String
+  tokenHash   String    @unique @map("token_hash")
+  /// Last 4 characters, only so the UI can tell tokens apart.
+  tokenHint   String    @map("token_hint")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  lastUsedAt  DateTime? @map("last_used_at")
+
+  user  User  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  vault Vault @relation(fields: [vaultId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("clip_tokens")
+}
+
 model AuditLog {
   id         String   @id @default(uuid())
   userId     String?  @map("user_id")

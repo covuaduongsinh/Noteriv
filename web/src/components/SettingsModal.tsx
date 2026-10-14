@@ -12,10 +12,11 @@ import { EDITOR_FONTS, AUTO_SAVE_OPTIONS, ACCENT_COLORS, TAB_SIZES } from "@/lib
 import ThemePicker from "@/components/ThemePicker";
 import SyncSection from "@/components/sync/SyncSection";
 import PluginMirror from "@/components/PluginMirror";
+import ClipperSection from "@/components/ClipperSection";
 import type { PluginPanelRef } from "@/lib/plugin-sandbox/types";
 import type { MirrorEvent } from "@/lib/plugin-sandbox/mirror";
 
-type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem";
+type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem" | "clipper";
 /** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
 type Section = BuiltInSection | `plugin:${string}`;
 
@@ -26,6 +27,7 @@ const SECTIONS: { id: BuiltInSection; label: string }[] = [
   { id: "shortcuts", label: "Shortcuts" },
   { id: "sync", label: "Sync" },
   { id: "ecosystem", label: "Ecosystem" },
+  { id: "clipper", label: "Clipper" },
 ];
 
 export interface EditorSettings {
@@ -44,6 +46,7 @@ export interface EditorSettings {
 
 interface SettingsModalProps {
   vaultId: string;
+  vaultName?: string;
   currentThemeId: string;
   onThemeSelect: (themeId: string) => void;
   hotkeys: HotkeyBinding[];
@@ -62,6 +65,7 @@ interface SettingsModalProps {
 
 export default function SettingsModal({
   vaultId,
+  vaultName,
   currentThemeId,
   onThemeSelect,
   hotkeys,
@@ -384,6 +388,7 @@ export default function SettingsModal({
     shortcuts: renderShortcuts,
     sync: () => <SyncSection vaultId={vaultId} />,
     ecosystem: renderEcosystem,
+    clipper: () => <ClipperSection vaultId={vaultId} vaultName={vaultName ?? "vault này"} />,
   };
 
   const navItems: { id: Section; label: string }[] = [

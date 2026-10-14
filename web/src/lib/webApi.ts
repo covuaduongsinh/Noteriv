@@ -481,6 +481,19 @@ export const webApi = {
     downloadUrl: (vaultId: string, attachmentId: string) => `/api/v1/vaults/${vaultId}/attachments/${attachmentId}/download`,
   },
 
+  clipper: {
+    list: () =>
+      request<{ id: string; name: string; vaultId: string; vaultName: string; tokenHint: string; createdAt: string; lastUsedAt: string | null }[]>(
+        "/users/me/clip-tokens"
+      ),
+    create: (name: string, vaultId: string) =>
+      request<{ id: string; name: string; vaultId: string; tokenHint: string; token: string }>("/users/me/clip-tokens", {
+        method: "POST",
+        body: JSON.stringify({ name, vaultId }),
+      }),
+    revoke: (id: string) => request<{ ok: true }>(`/users/me/clip-tokens/${id}`, { method: "DELETE" }),
+  },
+
   vaultTransfer: {
     importNotes: (vaultId: string, files: { path: string; content: string }[], onConflict: "skip" | "overwrite") =>
       request<{ created: number; updated: number; skipped: number; errors: { path: string; error: string }[] }>(

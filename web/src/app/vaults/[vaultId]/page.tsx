@@ -1531,6 +1531,7 @@ export default function VaultPage() {
       {settingsOpen && (
         <SettingsModal
           vaultId={vaultId}
+          vaultName={vault?.name}
           pluginTabs={pluginHost.panels.filter((p) => p.kind === "settings")}
           onPluginEvent={(tab, e) => pluginHost.sendMirrorEvent(tab.pluginDbId, "settings", tab.id, e)}
           currentThemeId={currentThemeId}
