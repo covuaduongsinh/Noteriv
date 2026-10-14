@@ -21,6 +21,7 @@ import userRoutes from "./routes/users.js";
 import userVaultStateRoutes from "./routes/userVaultState.js";
 import trashRoutes from "./routes/trash.js";
 import attachmentRoutes from "./routes/attachments.js";
+import { syncQueue } from "./lib/syncQueue.js";
 
 const fastify = Fastify({ logger: true, trustProxy: true });
 
@@ -72,6 +73,29 @@ await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 void warnIfGitMissing((m) => fastify.log.warn(m));
 
 fastify.get("/healthz", async () => ({ ok: true }));
+
+// Public uptime probe, reachable through the web app's /api rewrite (the bare /healthz above is not).
+// Checks the two things the API cannot work without. Says only ok or not: no versions, no error
+// text; the reason goes to the log. Rate limit off because monitors poll it by design and each
+// call is two trivial queries. Redis uses maxRetriesPerRequest:null, so a dead Redis would hang
+// forever without the timeout.
+const HEALTH_TIMEOUT_MS = 3000;
+const withTimeout = <T>(p: Promise<T>) =>
+  Promise.race([p, new Promise<never>((_, rej) => setTimeout(() => rej(new Error("timeout")), HEALTH_TIMEOUT_MS))]);
+
+fastify.get("/api/v1/healthz", { config: { rateLimit: false } }, async (request, reply) => {
+  const [db, redis] = await Promise.allSettled([
+    withTimeout(fastify.prisma.$queryRaw`SELECT 1`),
+    // IRedisClient (bullmq) does not type ping(); any command proves the round trip, like diagnostics.ts.
+    withTimeout(syncQueue.client.then((c) => c.get("noteriv:healthz"))),
+  ]);
+  if (db.status === "fulfilled" && redis.status === "fulfilled") return reply.send({ ok: true });
+  request.log.warn(
+    { db: db.status === "rejected" ? String(db.reason) : "ok", redis: redis.status === "rejected" ? String(redis.reason) : "ok" },
+    "healthz failed"
+  );
+  return reply.code(503).send({ ok: false });
+});
 
 const port = Number(process.env.PORT ?? 4001);
 fastify
