@@ -670,7 +670,20 @@ export default function VaultPage() {
 
   useEffect(() => {
     refreshSyncConnections();
+    // Keep the status-bar sync entry fresh (auto-sync / sync-on-save finish in the background).
+    const t = setInterval(refreshSyncConnections, 60_000);
+    return () => clearInterval(t);
   }, [refreshSyncConnections]);
+
+  // "Pull on open": once per vault visit, ask the server to queue a sync for
+  // connections that opted in (it skips ones that just ran or need attention).
+  const pullOnOpenDoneRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (pullOnOpenDoneRef.current === vaultId) return;
+    if (!syncConnections.some((c) => c.pullOnOpen)) return;
+    pullOnOpenDoneRef.current = vaultId;
+    webApi.sync.pullOnOpen(vaultId).then(() => setTimeout(refreshSyncConnections, 5000)).catch(() => undefined);
+  }, [vaultId, syncConnections, refreshSyncConnections]);
 
   const syncSummaryText =
     syncConnections.length === 0

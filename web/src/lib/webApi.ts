@@ -109,10 +109,44 @@ export interface ApiSyncConnection {
   webdavPath: string | null;
   direction: SyncDirection;
   autoSync: boolean;
+  syncIntervalMinutes: number;
+  commitTemplate: string;
+  syncOnSave: boolean;
+  pullOnOpen: boolean;
+  accountLogin: string | null;
+  accountAvatarUrl: string | null;
   lastSyncedAt: string | null;
   lastSyncStatus: Record<string, unknown> | null;
   createdAt: string;
 }
+
+export interface ApiSyncOptions {
+  direction?: SyncDirection;
+  autoSync?: boolean;
+  syncIntervalMinutes?: number;
+  commitTemplate?: string;
+  syncOnSave?: boolean;
+  pullOnOpen?: boolean;
+}
+
+export interface ApiGithubUser {
+  login: string;
+  name: string | null;
+  avatarUrl: string;
+}
+
+export interface ApiGithubRepo {
+  fullName: string;
+  name: string;
+  private: boolean;
+  defaultBranch: string;
+  cloneUrl: string;
+  description: string | null;
+  updatedAt: string;
+}
+
+/** Either a freshly pasted token (before a connection exists) or an existing connection to borrow it from. */
+export type GithubTokenSource = { token: string } | { connectionId: string };
 
 export interface ApiSyncJob {
   id: string;
@@ -121,6 +155,7 @@ export interface ApiSyncJob {
   pushedCount: number;
   pulledCount: number;
   errorMessage: string | null;
+  conflictFiles?: string[] | null;
   startedAt: string | null;
   finishedAt: string | null;
   createdAt: string;
@@ -348,40 +383,77 @@ export const webApi = {
     list: (vaultId: string) => request<ApiSyncConnection[]>(`/vaults/${vaultId}/sync-connections`),
     createGit: (
       vaultId: string,
-      data: {
+      data: ApiSyncOptions & {
         providerType: Exclude<SyncProviderType, "webdav">;
         remoteUrl: string;
         branch?: string;
-        direction?: SyncDirection;
-        autoSync?: boolean;
         username?: string;
         token: string;
       }
     ) => request<ApiSyncConnection>(`/vaults/${vaultId}/sync-connections`, { method: "POST", body: JSON.stringify(data) }),
     createWebdav: (
       vaultId: string,
-      data: {
+      data: ApiSyncOptions & {
         providerType: "webdav";
         webdavUrl: string;
         webdavPath?: string;
-        direction?: SyncDirection;
-        autoSync?: boolean;
         username: string;
         password: string;
       }
     ) => request<ApiSyncConnection>(`/vaults/${vaultId}/sync-connections`, { method: "POST", body: JSON.stringify(data) }),
+    update: (
+      vaultId: string,
+      connectionId: string,
+      patch: ApiSyncOptions & {
+        remoteUrl?: string;
+        branch?: string;
+        username?: string;
+        token?: string;
+        webdavUrl?: string;
+        webdavPath?: string;
+        password?: string;
+      }
+    ) =>
+      request<ApiSyncConnection>(`/vaults/${vaultId}/sync-connections/${connectionId}`, {
+        method: "PATCH",
+        body: JSON.stringify(patch),
+      }),
+    resolve: (vaultId: string, connectionId: string, strategy: "web" | "remote") =>
+      request<{ ok: true; queued: true }>(`/vaults/${vaultId}/sync-connections/${connectionId}/resolve`, {
+        method: "POST",
+        body: JSON.stringify({ strategy }),
+      }),
+    pullOnOpen: (vaultId: string) =>
+      request<{ ok: true; queued: number }>(`/vaults/${vaultId}/sync-connections/pull-on-open`, { method: "POST" }),
     remove: (vaultId: string, connectionId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/sync-connections/${connectionId}`, { method: "DELETE" }),
     test: (vaultId: string, connectionId: string) =>
       request<{ ok: boolean; error?: string }>(`/vaults/${vaultId}/sync-connections/${connectionId}/test`, { method: "POST" }),
     trigger: (vaultId: string, connectionId: string) =>
       request<{ ok: true; queued: true }>(`/vaults/${vaultId}/sync-connections/${connectionId}/trigger`, { method: "POST" }),
-    status: (vaultId: string, connectionId: string) =>
-      request<{ connection: ApiSyncConnection; latestJob: ApiSyncJob | null }>(
-        `/vaults/${vaultId}/sync-connections/${connectionId}/status`
-      ),
+    status: (vaultId: string, connectionId: string, withRemote = false) =>
+      request<{
+        connection: ApiSyncConnection;
+        latestJob: ApiSyncJob | null;
+        changesSinceSync: number;
+        remote: { remoteChanged: boolean; remoteReachable: boolean; error?: string } | null;
+      }>(`/vaults/${vaultId}/sync-connections/${connectionId}/status${withRemote ? "?remote=1" : ""}`),
     log: (vaultId: string, connectionId: string) =>
       request<ApiSyncJob[]>(`/vaults/${vaultId}/sync-connections/${connectionId}/log`),
+  },
+
+  github: {
+    user: (vaultId: string, src: GithubTokenSource) =>
+      request<ApiGithubUser>(`/vaults/${vaultId}/github/user`, { method: "POST", body: JSON.stringify(src) }),
+    repos: (vaultId: string, src: GithubTokenSource, page = 1) =>
+      request<ApiGithubRepo[]>(`/vaults/${vaultId}/github/repos`, { method: "POST", body: JSON.stringify({ ...src, page }) }),
+    createRepo: (vaultId: string, src: GithubTokenSource, name: string, isPrivate: boolean) =>
+      request<ApiGithubRepo>(`/vaults/${vaultId}/github/repos/create`, {
+        method: "POST",
+        body: JSON.stringify({ ...src, name, private: isPrivate }),
+      }),
+    branches: (vaultId: string, src: GithubTokenSource, fullName: string) =>
+      request<string[]>(`/vaults/${vaultId}/github/branches`, { method: "POST", body: JSON.stringify({ ...src, fullName }) }),
   },
 
   preferences: {

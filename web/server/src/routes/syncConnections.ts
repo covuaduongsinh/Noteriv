@@ -403,7 +403,11 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     if (err instanceof BadRequestError) return reply.code(400).send({ error: err.message });
     if (err instanceof GithubApiError) {
       const code = err.status === 401 || err.status === 403 ? 400 : err.status === 0 ? 502 : err.status === 422 ? 422 : 502;
-      return reply.code(code).send({ error: err.status === 401 || err.status === 403 ? "invalid_token" : "github_error", message: err.message });
+      const badToken = err.status === 401 || err.status === 403;
+      return reply.code(code).send({
+        error: badToken ? "invalid_token" : "github_error",
+        message: badToken ? "GitHub từ chối token này (sai, hết hạn hoặc thiếu quyền repo)." : err.message,
+      });
     }
     throw err;
   }
