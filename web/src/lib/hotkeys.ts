@@ -69,7 +69,10 @@ export type HotkeyAction =
   | "importNewVault"
   | "newVaultFromGithub"
   | "dailyNote"
-  | "randomNote";
+  | "randomNote"
+  | "toggleLint"
+  | "zenMode"
+  | "focusMode";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -114,6 +117,9 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
   { action: "dailyNote", label: "Open Today's Daily Note", keys: "Ctrl+D", category: "Navigation" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
+  { action: "toggleLint", label: "Toggle Lint Panel", keys: "", category: "View" },
+  { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },
+  { action: "focusMode", label: "Focus Mode (dim other lines)", keys: "", category: "View" },
   { action: "exportVault", label: "Export vault as zip", keys: "", category: "File" },
 
   { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },

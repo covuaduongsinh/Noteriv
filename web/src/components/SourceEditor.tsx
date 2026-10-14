@@ -11,6 +11,7 @@ import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { search, searchKeymap } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
+import { prefsCompartment, prefsExtension } from "@/lib/editor-prefs";
 
 const sourceHighlight = HighlightStyle.define([
   { tag: tags.heading1, color: "var(--accent)", fontWeight: "bold", fontSize: "1.2em" },
@@ -49,9 +50,11 @@ interface SourceEditorProps {
   onViewReady?: (view: EditorView) => void;
   vaultId?: string;
   className?: string;
+  spellCheck?: boolean;
+  tabSize?: number;
 }
 
-export default function SourceEditor({ content, onChange, onViewReady, vaultId, className = "" }: SourceEditorProps) {
+export default function SourceEditor({ content, onChange, onViewReady, vaultId, className = "", spellCheck = false, tabSize = 4 }: SourceEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -64,6 +67,7 @@ export default function SourceEditor({ content, onChange, onViewReady, vaultId, 
     const state = EditorState.create({
       doc: content,
       extensions: [
+        prefsCompartment.of(prefsExtension(spellCheck, tabSize)),
         lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
@@ -90,6 +94,10 @@ export default function SourceEditor({ content, onChange, onViewReady, vaultId, 
     createEditor();
     return () => { viewRef.current?.destroy(); };
   }, [createEditor]);
+
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: prefsCompartment.reconfigure(prefsExtension(spellCheck, tabSize)) });
+  }, [spellCheck, tabSize]);
 
   useEffect(() => {
     if (!viewRef.current) return;

@@ -8,7 +8,7 @@ import {
   eventToKeyString,
   formatHotkey,
 } from "@/lib/hotkeys";
-import { EDITOR_FONTS, AUTO_SAVE_OPTIONS } from "@/lib/settings";
+import { EDITOR_FONTS, AUTO_SAVE_OPTIONS, ACCENT_COLORS, TAB_SIZES } from "@/lib/settings";
 import ThemePicker from "@/components/ThemePicker";
 import SyncSection from "@/components/sync/SyncSection";
 import PluginMirror from "@/components/PluginMirror";
@@ -34,6 +34,12 @@ export interface EditorSettings {
   lineHeight: number;
   autoSaveInterval: number;
   vimModeEnabled: boolean;
+  spellCheck: boolean;
+  accentColor: string;
+  tabSize: number;
+  pdfColumnLayout: 1 | 2;
+  pdfChessboardWidth: 75 | 100;
+  autoCollapseSidebar: boolean;
 }
 
 interface SettingsModalProps {
@@ -128,6 +134,24 @@ export default function SettingsModal({
 
   const renderGeneral = () => (
     <div className="st-section">
+      <Row label="Tự thu gọn sidebar" desc="Thu gọn sidebar khi cửa sổ hẹp hơn 800px.">
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={editorSettings.autoCollapseSidebar} onChange={(e) => onEditorSettingsChange({ autoCollapseSidebar: e.target.checked })} />
+          <span className="st-hint">{editorSettings.autoCollapseSidebar ? "Bật" : "Tắt"}</span>
+        </label>
+      </Row>
+      <Row label="PDF: số cột" desc="Bố cục khi xuất PDF.">
+        <select className="st-select" value={editorSettings.pdfColumnLayout} onChange={(e) => onEditorSettingsChange({ pdfColumnLayout: Number(e.target.value) as 1 | 2 })}>
+          <option value={1}>1 cột</option>
+          <option value={2}>2 cột</option>
+        </select>
+      </Row>
+      <Row label="PDF: cỡ bàn cờ" desc="Chiều rộng bàn cờ so với cột.">
+        <select className="st-select" value={editorSettings.pdfChessboardWidth} onChange={(e) => onEditorSettingsChange({ pdfChessboardWidth: Number(e.target.value) as 75 | 100 })}>
+          <option value={75}>75%</option>
+          <option value={100}>100%</option>
+        </select>
+      </Row>
       <Row label="Auto-save" desc="Tự động lưu sau khi dừng gõ bao lâu.">
         <select
           className="st-select"
@@ -150,6 +174,27 @@ export default function SettingsModal({
 
   const renderAppearance = () => (
     <div className="st-section">
+      <Row label="Màu nhấn (accent)" desc="Ghi đè màu nhấn của theme; chọn ô đầu để dùng màu của theme.">
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {ACCENT_COLORS.map((c) => (
+            <button
+              key={c.name}
+              title={c.name}
+              onClick={() => onEditorSettingsChange({ accentColor: c.value })}
+              style={{
+                width: 20,
+                height: 20,
+                borderRadius: "50%",
+                background: c.value || "transparent",
+                border: editorSettings.accentColor === c.value ? "2px solid var(--text-primary)" : "1px solid var(--border)",
+                fontSize: 10,
+              }}
+            >
+              {c.value ? "" : "∅"}
+            </button>
+          ))}
+        </div>
+      </Row>
       <ThemePicker currentThemeId={currentThemeId} vaultId={vaultId} onThemeSelect={onThemeSelect} />
     </div>
   );
@@ -183,6 +228,21 @@ export default function SettingsModal({
         </select>
       </Row>
       <div className="st-divider" />
+      <Row label="Tab size" desc="Số khoảng trắng của một lần thụt lề (phím Tab).">
+        <select className="st-select" value={editorSettings.tabSize} onChange={(e) => onEditorSettingsChange({ tabSize: Number(e.target.value) })}>
+          {TAB_SIZES.map((n) => (
+            <option key={n} value={n}>
+              {n}
+            </option>
+          ))}
+        </select>
+      </Row>
+      <Row label="Kiểm tra chính tả" desc="Gạch chân từ sai theo trình duyệt (ngôn ngữ do trình duyệt quyết định).">
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input type="checkbox" checked={editorSettings.spellCheck} onChange={(e) => onEditorSettingsChange({ spellCheck: e.target.checked })} />
+          <span className="st-hint">{editorSettings.spellCheck ? "Bật" : "Tắt"}</span>
+        </label>
+      </Row>
       <Row label="Vim mode" desc="Dùng phím tắt kiểu Vim trong editor (chế độ Edit).">
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input

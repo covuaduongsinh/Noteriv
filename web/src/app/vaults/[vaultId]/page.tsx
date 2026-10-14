@@ -30,6 +30,7 @@ import SettingsModal from "@/components/SettingsModal";
 import CommandPalette from "@/components/CommandPalette";
 import ImportVault from "@/components/ImportVault";
 import PluginMirror from "@/components/PluginMirror";
+import LintPanel from "@/components/LintPanel";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import BookmarksPanel from "@/components/BookmarksPanel";
@@ -182,6 +183,9 @@ export default function VaultPage() {
   // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
   const [showTrash, setShowTrash] = useState(false);
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
+  const [showLint, setShowLint] = useState(false);
+  const [zenMode, setZenMode] = useState(false);
+  const [focusMode, setFocusMode] = useState(false);
   // key = `${pluginDbId}:${panelId}` of the plugin sidebar panel shown in place of the file tree
   const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
@@ -660,6 +664,33 @@ export default function VaultPage() {
     document.documentElement.style.setProperty("--editor-line-height", String(editorSettings.lineHeight));
   }, [editorSettings]);
 
+  // Accent override (empty = whatever the active theme defines). Re-applied after theme changes
+  // because applyTheme rewrites --accent.
+  useEffect(() => {
+    const root = document.documentElement;
+    if (editorSettings.accentColor) root.style.setProperty("--accent", editorSettings.accentColor);
+    else if (preferencesLoadedRef.current) root.style.removeProperty("--accent");
+  }, [editorSettings.accentColor, currentThemeId]);
+
+  // Collapse the sidebar on narrow windows (once per crossing, so the user can still reopen it).
+  useEffect(() => {
+    if (!editorSettings.autoCollapseSidebar) return;
+    const query = window.matchMedia("(max-width: 800px)");
+    const apply = (narrow: boolean) => narrow && setSidebarCollapsed(true);
+    apply(query.matches);
+    const onChange = (e: MediaQueryListEvent) => apply(e.matches);
+    query.addEventListener("change", onChange);
+    return () => query.removeEventListener("change", onChange);
+  }, [editorSettings.autoCollapseSidebar]);
+
+  // Esc leaves zen mode.
+  useEffect(() => {
+    if (!zenMode) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setZenMode(false);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [zenMode]);
+
   // Persist hotkey/editor-setting changes, debounced like workspace state.
   useEffect(() => {
     if (!preferencesLoadedRef.current) return;
@@ -873,6 +904,15 @@ export default function VaultPage() {
       case "randomNote":
         handleRandomNote();
         break;
+      case "toggleLint":
+        setShowLint((v) => !v);
+        break;
+      case "zenMode":
+        setZenMode((v) => !v);
+        break;
+      case "focusMode":
+        setFocusMode((v) => !v);
+        break;
       case "exportVault":
         window.location.href = webApi.vaultTransfer.exportUrl(vaultId);
         break;
@@ -948,7 +988,10 @@ export default function VaultPage() {
 
   async function handleExportPDF() {
     if (!activeTab) return;
-    await exportToPDF(draft, activeTab.name);
+    await exportToPDF(draft, activeTab.name, {
+      columnLayout: editorSettings.pdfColumnLayout,
+      chessboardWidthPercent: editorSettings.pdfChessboardWidth,
+    });
   }
 
   // Same convention as desktop: Daily/YYYY-MM-DD.md, created on first use.
@@ -1111,7 +1154,14 @@ export default function VaultPage() {
         )}
         <div className="flex-1 min-h-0">
           {mode === "source" ? (
-            <SourceEditor content={content} onChange={onChange} vaultId={vaultId} onViewReady={onReady} />
+            <SourceEditor
+              content={content}
+              onChange={onChange}
+              vaultId={vaultId}
+              onViewReady={onReady}
+              spellCheck={editorSettings.spellCheck}
+              tabSize={editorSettings.tabSize}
+            />
           ) : mode === "view" ? (
             <ReadOnlyView content={content} onChange={onChange} />
           ) : (
@@ -1120,6 +1170,9 @@ export default function VaultPage() {
               onChange={onChange}
               vaultId={vaultId}
               vimMode={editorSettings.vimModeEnabled}
+              spellCheck={editorSettings.spellCheck}
+              tabSize={editorSettings.tabSize}
+              focusMode={focusMode}
               onViewReady={onReady}
               onWikilinkHover={isMain ? handleWikilinkHover : undefined}
               onWikilinkLeave={isMain ? handleWikilinkLeave : undefined}
@@ -1132,27 +1185,29 @@ export default function VaultPage() {
 
   return (
     <div className="h-screen flex flex-col" data-vault-id={vaultId}>
-      <VaultHeader
-        vault={vault}
-        vaults={allVaults}
-        activeNotePath={activeTab?.path ?? null}
-        sidebarCollapsed={sidebarCollapsed}
-        onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
-        viewMode={viewMode}
-        onViewModeChange={handleViewModeChange}
-        showViewModes={!!activeTab}
-        hotkeys={hotkeyBindings}
-        platform={platform}
-        onMenuAction={executeCommand}
-        onImportNewVault={() => setImportMode("new")}
-        onNewFromGithub={() => setShowNewFromGithub(true)}
-        onVaultsChanged={() => {
-          webApi.vaults.list().then(setAllVaults).catch(() => undefined);
-          webApi.vaults.get(vaultId).then(setVault).catch(() => undefined);
-        }}
-      />
+      {!zenMode && (
+        <VaultHeader
+          vault={vault}
+          vaults={allVaults}
+          activeNotePath={activeTab?.path ?? null}
+          sidebarCollapsed={sidebarCollapsed}
+          onToggleSidebar={() => setSidebarCollapsed((v) => !v)}
+          viewMode={viewMode}
+          onViewModeChange={handleViewModeChange}
+          showViewModes={!!activeTab}
+          hotkeys={hotkeyBindings}
+          platform={platform}
+          onMenuAction={executeCommand}
+          onImportNewVault={() => setImportMode("new")}
+          onNewFromGithub={() => setShowNewFromGithub(true)}
+          onVaultsChanged={() => {
+            webApi.vaults.list().then(setAllVaults).catch(() => undefined);
+            webApi.vaults.get(vaultId).then(setVault).catch(() => undefined);
+          }}
+        />
+      )}
 
-      {tabs.length > 0 && (
+      {tabs.length > 0 && !zenMode && (
         <TabBar
           tabs={tabBarTabs}
           activeTabId={activeTabId}
@@ -1170,42 +1225,44 @@ export default function VaultPage() {
       )}
 
       <div className="flex flex-1 overflow-hidden">
-        <Ribbon
-          onQuickOpen={() => setQuickOpenVisible(true)}
-          onNewNote={handleQuickNewNote}
-          onGraph={handleGraphView}
-          onSearch={() => setSearchVisible(true)}
-          onCalendar={() => setShowCalendarView(true)}
-          onFlashcards={() => setShowFlashcards(true)}
-          onSettings={() => openSettings("general")}
-          onOutline={() => setOutlineVisible((v) => !v)}
-          onTags={() => setTagPaneVisible((v) => !v)}
-          onTrash={() => setShowTrash(true)}
-          onBookmarks={() => setBookmarksVisible((v) => !v)}
-          onInsights={() => setShowInsights(true)}
-          onTemplates={() => setShowTemplatePicker(true)}
-          onNoteComposer={() => setShowNoteComposer(true)}
-          onAttachments={() => setShowAttachments(true)}
-          onAudioRecorder={() => setShowAudioRecorder(true)}
-          onSync={() => openSettings("sync")}
-          onPlugins={() => setPluginManagerOpen(true)}
-          onThemes={() => openSettings("appearance")}
-          onSnippets={() => setShowCSSSnippets(true)}
-          pluginPanels={pluginHost.panels
-            .filter((p) => p.kind === "sidebar")
-            .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
-          activePluginPanel={activePluginPanel}
-          onPluginPanel={(key) => {
-            setActivePluginPanel((cur) => (cur === key ? null : key));
-            setSidebarCollapsed(false);
-          }}
-          syncAttention={syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")}
-          outlineActive={outlineVisible}
-          tagsActive={tagPaneVisible}
-          bookmarksActive={bookmarksVisible}
-        />
+        {!zenMode && (
+          <Ribbon
+            onQuickOpen={() => setQuickOpenVisible(true)}
+            onNewNote={handleQuickNewNote}
+            onGraph={handleGraphView}
+            onSearch={() => setSearchVisible(true)}
+            onCalendar={() => setShowCalendarView(true)}
+            onFlashcards={() => setShowFlashcards(true)}
+            onSettings={() => openSettings("general")}
+            onOutline={() => setOutlineVisible((v) => !v)}
+            onTags={() => setTagPaneVisible((v) => !v)}
+            onTrash={() => setShowTrash(true)}
+            onBookmarks={() => setBookmarksVisible((v) => !v)}
+            onInsights={() => setShowInsights(true)}
+            onTemplates={() => setShowTemplatePicker(true)}
+            onNoteComposer={() => setShowNoteComposer(true)}
+            onAttachments={() => setShowAttachments(true)}
+            onAudioRecorder={() => setShowAudioRecorder(true)}
+            onSync={() => openSettings("sync")}
+            onPlugins={() => setPluginManagerOpen(true)}
+            onThemes={() => openSettings("appearance")}
+            onSnippets={() => setShowCSSSnippets(true)}
+            pluginPanels={pluginHost.panels
+              .filter((p) => p.kind === "sidebar")
+              .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
+            activePluginPanel={activePluginPanel}
+            onPluginPanel={(key) => {
+              setActivePluginPanel((cur) => (cur === key ? null : key));
+              setSidebarCollapsed(false);
+            }}
+            syncAttention={syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")}
+            outlineActive={outlineVisible}
+            tagsActive={tagPaneVisible}
+            bookmarksActive={bookmarksVisible}
+          />
+        )}
 
-        {!sidebarCollapsed &&
+        {!sidebarCollapsed && !zenMode &&
           (activePluginPanel && pluginHost.panels.some((p) => `${p.pluginDbId}:${p.id}` === activePluginPanel && p.kind === "sidebar") ? (
             (() => {
               const panel = pluginHost.panels.find((p) => `${p.pluginDbId}:${p.id}` === activePluginPanel && p.kind === "sidebar")!;
@@ -1378,18 +1435,28 @@ export default function VaultPage() {
                   />
                 )}
               </div>
-              <StatusBar
-                viewMode={viewMode}
-                vaultName={vault?.name ?? ""}
-                notePath={activeTab.path}
-                content={draft}
-                dirty={activeTab.content !== activeTab.savedContent}
-                syncSummary={syncSummaryText}
-                syncTone={syncTone}
-                onOpenSync={() => openSettings("sync")}
-                pluginItems={pluginHost.statusItems}
-                onPluginItemClick={pluginHost.clickStatusItem}
-              />
+              {showLint && (
+                <LintPanel
+                  content={draft}
+                  noteNames={(index?.notes ?? []).map((n) => n.name.replace(/\.(md|markdown)$/i, ""))}
+                  onLineClick={handleHeadingClick}
+                  onClose={() => setShowLint(false)}
+                />
+              )}
+              {!zenMode && (
+                <StatusBar
+                  viewMode={viewMode}
+                  vaultName={vault?.name ?? ""}
+                  notePath={activeTab.path}
+                  content={draft}
+                  dirty={activeTab.content !== activeTab.savedContent}
+                  syncSummary={syncSummaryText}
+                  syncTone={syncTone}
+                  onOpenSync={() => openSettings("sync")}
+                  pluginItems={pluginHost.statusItems}
+                  onPluginItemClick={pluginHost.clickStatusItem}
+                />
+              )}
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
@@ -1702,6 +1769,16 @@ export default function VaultPage() {
             else refreshIndex();
           }}
         />
+      )}
+
+      {zenMode && (
+        <button
+          onClick={() => setZenMode(false)}
+          className="fixed top-2 right-3 z-40 text-xs rounded-md bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+          style={{ padding: "4px 10px", opacity: 0.7 }}
+        >
+          Thoát Zen (Esc)
+        </button>
       )}
 
       {pageNotice && (

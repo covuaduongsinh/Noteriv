@@ -28,4 +28,26 @@ export const DEFAULT_EDITOR_SETTINGS = {
   autoSaveInterval: 800,
   // Phase D7 — ported from desktop/src/lib/vim-mode.ts's on/off toggle.
   vimModeEnabled: false,
+  // Parity plan v2, Pha 6 — ported from desktop/src/lib/settings.ts.
+  spellCheck: false,
+  accentColor: "", // "" = keep the active theme's accent
+  tabSize: 4,
+  pdfColumnLayout: 2 as 1 | 2,
+  pdfChessboardWidth: 75 as 75 | 100,
+  /** Collapse the sidebar automatically on narrow windows. */
+  autoCollapseSidebar: true,
 };
+
+export const ACCENT_COLORS: { name: string; value: string }[] = [
+  { name: "Mặc định theo theme", value: "" },
+  { name: "Blue", value: "#89b4fa" },
+  { name: "Lavender", value: "#b4befe" },
+  { name: "Mauve", value: "#cba6f7" },
+  { name: "Pink", value: "#f38ba8" },
+  { name: "Peach", value: "#fab387" },
+  { name: "Yellow", value: "#f9e2af" },
+  { name: "Green", value: "#a6e3a1" },
+  { name: "Teal", value: "#94e2d5" },
+];
+
+export const TAB_SIZES = [2, 4, 8];

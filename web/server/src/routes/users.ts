@@ -19,6 +19,13 @@ const preferencesSchema = z.object({
       // erroring, so the client's "saved" state was a lie until this was
       // added here.
       vimModeEnabled: z.boolean().optional(),
+      // Parity plan v2, Pha 6 — remember to add new fields here too: zod strips unknown keys.
+      spellCheck: z.boolean().optional(),
+      accentColor: z.string().regex(/^(#[0-9a-fA-F]{6})?$/).optional(),
+      tabSize: z.number().int().min(1).max(8).optional(),
+      pdfColumnLayout: z.union([z.literal(1), z.literal(2)]).optional(),
+      pdfChessboardWidth: z.union([z.literal(75), z.literal(100)]).optional(),
+      autoCollapseSidebar: z.boolean().optional(),
     })
     .optional(),
 });

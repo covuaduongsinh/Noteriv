@@ -19,6 +19,7 @@ import {
 import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
 import { setEditorViewForImages } from "./markdown/renderers/images";
 import { vimExtension } from "@/lib/vim-mode";
+import { prefsCompartment, prefsExtension } from "@/lib/editor-prefs";
 
 interface EditorProps {
   content: string;
@@ -34,9 +35,11 @@ interface EditorProps {
    * the CodeMirror instance (see createEditor's deps below) since the vim
    * keymap has to be present at state-creation time, not added after. */
   vimMode?: boolean;
+  spellCheck?: boolean;
+  tabSize?: number;
 }
 
-export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave, vimMode = false }: EditorProps) {
+export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave, vimMode = false, spellCheck = false, tabSize = 4 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
@@ -56,6 +59,7 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
       doc: content,
       extensions: [
         ...vimExtension(vimMode),
+        prefsCompartment.of(prefsExtension(spellCheck, tabSize)),
         drawSelection(),
         closeBrackets(),
         history(),
@@ -117,6 +121,11 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
       });
     }
   }, [content]);
+
+  // Apply spell-check / tab-size changes to the live editor without recreating it.
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: prefsCompartment.reconfigure(prefsExtension(spellCheck, tabSize)) });
+  }, [spellCheck, tabSize]);
 
   // Toggle focus mode via CSS class on editor container
   useEffect(() => {
