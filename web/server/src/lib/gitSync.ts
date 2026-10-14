@@ -52,6 +52,16 @@ export function askpassBody(creds: GitCredentials, isWin: boolean): string {
   ].join("\n");
 }
 
+const GIT_IDENTITY = {
+  name: process.env.SYNC_GIT_AUTHOR_NAME ?? "Noteriv Sync",
+  email: process.env.SYNC_GIT_AUTHOR_EMAIL ?? "sync@noteriv.local",
+};
+
+/** Friendly text for the failure modes operators actually hit; everything else passes through. */
+function explainSpawnError(message: string): string {
+  return /ENOENT/.test(message) ? "Máy chủ chưa cài git (spawn git ENOENT) — liên hệ quản trị viên." : message;
+}
+
 function runGit(args: string[], cwd: string, creds?: GitCredentials | null, timeoutMs?: number): Promise<GitRunResult> {
   return new Promise((resolve) => {
     const env: NodeJS.ProcessEnv = {
@@ -59,6 +69,13 @@ function runGit(args: string[], cwd: string, creds?: GitCredentials | null, time
       GIT_SSH_COMMAND: "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new",
       GIT_TERMINAL_PROMPT: "0",
       SSH_ASKPASS: "",
+      // A container has no global git identity (a dev machine usually does), and
+      // `git commit` refuses to run without one. Setting it through the environment keeps
+      // sync independent of whatever ~/.gitconfig the host happens to have.
+      GIT_AUTHOR_NAME: GIT_IDENTITY.name,
+      GIT_AUTHOR_EMAIL: GIT_IDENTITY.email,
+      GIT_COMMITTER_NAME: GIT_IDENTITY.name,
+      GIT_COMMITTER_EMAIL: GIT_IDENTITY.email,
     };
 
     // autocrlf=false: note content must round-trip byte-for-byte; a host git configured
@@ -111,7 +128,7 @@ function runGit(args: string[], cwd: string, creds?: GitCredentials | null, time
       child.on("error", async (err) => {
         clearTimeout(timer);
         if (askpassFile) await rm(askpassFile, { force: true }).catch(() => undefined);
-        resolve({ stdout: "", stderr: err.message, success: false });
+        resolve({ stdout: "", stderr: explainSpawnError(err.message), success: false });
       });
     };
 
@@ -153,6 +170,13 @@ function effectiveUrl(remote: string, creds: GitCredentials | null): string {
 
 export async function gitIsInstalled(): Promise<boolean> {
   return (await runGit(["--version"], process.cwd())).success;
+}
+
+/** Called at startup by the API and the worker so a missing git shows up in the logs immediately, not on the first user sync. */
+export async function warnIfGitMissing(log: (msg: string) => void): Promise<void> {
+  if (!(await gitIsInstalled())) {
+    log("WARNING: `git` is not installed in this container — Git sync and note history will fail. Add it to the image (apk add git).");
+  }
 }
 
 /** Lightweight connectivity check — doesn't clone, just lists remote refs. */

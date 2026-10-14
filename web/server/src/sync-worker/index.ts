@@ -6,6 +6,7 @@ import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { PrismaClient } from "@prisma/client";
 import { runSyncJob } from "../lib/syncRunner.js";
+import { warnIfGitMissing } from "../lib/gitSync.js";
 import { syncQueue, type SyncJobData } from "../lib/syncQueue.js";
 import { Queue } from "bullmq";
 import { trashCleanupQueue } from "../lib/trashCleanupQueue.js";
@@ -107,6 +108,7 @@ autoSyncWorker.on("failed", (job, err) => {
 await autoSyncQueue.add("tick", {}, { repeat: { every: 60 * 1000 }, jobId: "auto-sync-tick" });
 
 console.log("noteriv sync-worker started");
+void warnIfGitMissing((m) => console.error(`[sync-worker] ${m}`));
 
 process.on("SIGTERM", async () => {
   await worker.close();

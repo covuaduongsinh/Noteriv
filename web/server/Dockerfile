@@ -18,8 +18,10 @@ RUN npm prune --omit=dev
 FROM node:22-alpine AS runner
 WORKDIR /app
 ENV NODE_ENV=production
-# Prisma's query engine on Alpine needs openssl present at runtime.
-RUN apk add --no-cache openssl
+# Prisma's query engine on Alpine needs openssl present at runtime. The sync engine and
+# note history shell out to the `git` binary (lib/gitSync.ts, lib/noteHistory.ts), and git
+# over HTTPS needs the CA bundle; without git every sync fails with "spawn git ENOENT".
+RUN apk add --no-cache openssl git ca-certificates
 
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist

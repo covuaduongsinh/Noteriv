@@ -13,6 +13,7 @@ import folderRoutes from "./routes/folders.js";
 import pluginRoutes from "./routes/plugins.js";
 import syncConnectionRoutes from "./routes/syncConnections.js";
 import vaultTransferRoutes from "./routes/vaultTransfer.js";
+import { warnIfGitMissing } from "./lib/gitSync.js";
 import { clipTokenRoutes, clipPublicRoutes } from "./routes/clipper.js";
 import userRoutes from "./routes/users.js";
 import userVaultStateRoutes from "./routes/userVaultState.js";
@@ -63,6 +64,8 @@ await fastify.register(attachmentRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(vaultTransferRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
+
+void warnIfGitMissing((m) => fastify.log.warn(m));
 
 fastify.get("/healthz", async () => ({ ok: true }));
 

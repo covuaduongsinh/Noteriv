@@ -89,7 +89,8 @@ services:
         condition: service_healthy
       noteriv-redis:
         condition: service_healthy
-    mem_limit: 256m
+    # git clone/rebase of a large vault repo plus the Node heap: 256m was too tight.
+    mem_limit: 384m
 
   # S3-compatible object storage for attachments (Phase C3), same Garage setup
   # as web/infra/docker-compose.dev.yml (MinIO is gone from Docker Hub as of
