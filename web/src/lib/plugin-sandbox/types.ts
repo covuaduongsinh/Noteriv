@@ -1,4 +1,4 @@
-export type PluginPermission = "vault:read" | "vault:write" | "editor:read" | "editor:write" | "ui:commands";
+export type PluginPermission = "vault:read" | "vault:write" | "editor:read" | "editor:write" | "ui:commands" | "ui:statusbar";
 
 export interface PluginManifest {
   id: string;
@@ -17,6 +17,32 @@ export interface PluginCommandRef {
   name: string;
   icon?: string;
 }
+
+export interface PluginStatusItem {
+  pluginDbId: string;
+  pluginId: string;
+  id: string;
+  text: string;
+  title?: string;
+  clickable: boolean;
+}
+
+/** Everything a plugin may read synchronously via api.editor.* / api.app.currentFile. */
+export interface EditorSnapshot {
+  content: string | null;
+  selection: string;
+  cursor: { line: number; ch: number };
+  currentFile: string | null;
+}
+
+export type PluginEventName =
+  | "file-open"
+  | "file-save"
+  | "file-create"
+  | "file-delete"
+  | "editor-change"
+  | "vault-change"
+  | "layout-change";
 
 export interface PluginNotice {
   key: string;

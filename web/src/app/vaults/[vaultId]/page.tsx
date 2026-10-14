@@ -43,6 +43,7 @@ import { setImageLightboxHandler } from "@/components/markdown/renderers/images"
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
+import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
   webApi,
@@ -254,6 +255,7 @@ export default function VaultPage() {
     await webApi.notes.update(vaultId, noteId, { content });
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
     refreshIndex();
+    pluginHost.emitEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
   }
 
   function scheduleSave(noteId: string, content: string) {
@@ -341,6 +343,82 @@ export default function VaultPage() {
     },
     refreshIndex
   );
+
+  // --- Plugin sandbox feeds (sync editor snapshot + desktop-style events) ---
+  // The sandbox's api.editor.* are synchronous like desktop's, so we push a
+  // snapshot instead of answering RPC calls. See public/plugin-sandbox.html.
+  const activePath = activeTab?.path ?? null;
+  const buildEditorSnapshot = useCallback((): EditorSnapshot => {
+    const view = editorViewRef.current;
+    let selection = "";
+    let cursor = { line: 0, ch: 0 };
+    if (view) {
+      const sel = view.state.selection.main;
+      selection = view.state.sliceDoc(sel.from, sel.to);
+      const line = view.state.doc.lineAt(sel.head);
+      cursor = { line: line.number - 1, ch: sel.head - line.from };
+    }
+    return { content: activePath ? draftRef.current : null, selection, cursor, currentFile: activePath };
+  }, [activePath]);
+
+  useEffect(() => {
+    pluginHost.syncEditorState(buildEditorSnapshot());
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, activePath, editorViewVersion, buildEditorSnapshot]);
+
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onSelection = () => {
+      if (timer) return;
+      timer = setTimeout(() => {
+        timer = null;
+        pluginHost.syncEditorState(buildEditorSnapshot());
+      }, 150);
+    };
+    document.addEventListener("selectionchange", onSelection);
+    return () => {
+      document.removeEventListener("selectionchange", onSelection);
+      if (timer) clearTimeout(timer);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [buildEditorSnapshot]);
+
+  const prevDraftRef = useRef<{ tabId: string | null; content: string }>({ tabId: null, content: "" });
+  useEffect(() => {
+    const prev = prevDraftRef.current;
+    if (prev.tabId === activeTabId && prev.content !== draft) pluginHost.emitEvent("editor-change", draft);
+    prevDraftRef.current = { tabId: activeTabId, content: draft };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, activeTabId]);
+
+  useEffect(() => {
+    if (activePath) pluginHost.emitEvent("file-open", activePath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTabId]);
+
+  const prevNotePathsRef = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    if (!index) return;
+    const current = new Map(index.notes.map((n) => [n.id, n.path]));
+    const prev = prevNotePathsRef.current;
+    prevNotePathsRef.current = current;
+    if (!prev) return; // first load isn't a change
+    let changed = false;
+    for (const [id, path] of current) {
+      if (!prev.has(id)) {
+        pluginHost.emitEvent("file-create", path);
+        changed = true;
+      }
+    }
+    for (const [id, path] of prev) {
+      if (!current.has(id)) {
+        pluginHost.emitEvent("file-delete", path);
+        changed = true;
+      }
+    }
+    if (changed) pluginHost.emitEvent("vault-change");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [index]);
 
   const openNote = useCallback(
     async (noteId: string) => {
@@ -473,6 +551,10 @@ export default function VaultPage() {
       .catch(() => router.replace("/vaults"));
     refreshIndex();
 
+    // A superseded run (StrictMode double-effect, vaultId change) must not
+    // apply its results: a late setActiveTabId would clobber a tab that
+    // `?note=` already opened after the first run signalled ready.
+    let cancelled = false;
     webApi.workspace
       .getState(vaultId)
       .then(async (state) => {
@@ -492,14 +574,17 @@ export default function VaultPage() {
               })
           )
         );
+        if (cancelled) return;
         const restoredTabs = notes.filter((t): t is OpenTab => t !== null);
         if (transientFailure) {
           restoreIncompleteRef.current = true;
           setPageNotice("Không khôi phục được một số tab do lỗi kết nối; tải lại trang để thử lại.");
         }
         setTabs(restoredTabs);
-        setPinnedTabIds(new Set(state.pinnedTabIds));
-        setFileViewModes(state.fileViewModes);
+        // Prune ids of dropped tabs so dead pins/view-modes don't linger server-side.
+        const liveIds = new Set(restoredTabs.map((t) => t.noteId));
+        setPinnedTabIds(new Set(state.pinnedTabIds.filter((id) => liveIds.has(id))));
+        setFileViewModes(Object.fromEntries(Object.entries(state.fileViewModes).filter(([id]) => liveIds.has(id))));
         setActiveTabId(
           state.activeTabId && restoredTabs.some((t) => t.noteId === state.activeTabId)
             ? state.activeTabId
@@ -511,9 +596,13 @@ export default function VaultPage() {
         restoreIncompleteRef.current = true;
       })
       .finally(() => {
+        if (cancelled) return;
         workspaceLoadedRef.current = !restoreIncompleteRef.current;
         setWorkspaceReady(true);
       });
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, router, refreshIndex]);
 
@@ -1157,6 +1246,8 @@ export default function VaultPage() {
                     : "sync: chưa chạy"
                 }
                 onOpenSync={() => openSettings("sync")}
+                pluginItems={pluginHost.statusItems}
+                onPluginItemClick={pluginHost.clickStatusItem}
               />
             </>
           ) : (

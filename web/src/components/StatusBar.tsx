@@ -1,6 +1,7 @@
 "use client";
 
 import type { ViewMode } from "@/lib/webApi";
+import type { PluginStatusItem } from "@/lib/plugin-sandbox/types";
 
 interface StatusBarProps {
   viewMode: ViewMode;
@@ -10,6 +11,8 @@ interface StatusBarProps {
   dirty: boolean;
   syncSummary?: string | null;
   onOpenSync?: () => void;
+  pluginItems?: PluginStatusItem[];
+  onPluginItemClick?: (pluginDbId: string, itemId: string) => void;
 }
 
 const VIEW_MODE_LABEL: Record<ViewMode, string> = {
@@ -31,7 +34,17 @@ const VIEW_MODE_LABEL: Record<ViewMode, string> = {
  * items once the plugin sandbox gains a `ui.addStatusBarItem` RPC method
  * (not yet implemented, see usePluginHost.ts's METHOD_PERMISSIONS).
  */
-export default function StatusBar({ viewMode, vaultName, notePath, content, dirty, syncSummary, onOpenSync }: StatusBarProps) {
+export default function StatusBar({
+  viewMode,
+  vaultName,
+  notePath,
+  content,
+  dirty,
+  syncSummary,
+  onOpenSync,
+  pluginItems = [],
+  onPluginItemClick,
+}: StatusBarProps) {
   return (
     <div className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] select-none shrink-0">
       <div className="flex items-center gap-3 min-w-0">
@@ -56,7 +69,24 @@ export default function StatusBar({ viewMode, vaultName, notePath, content, dirt
             {syncSummary}
           </button>
         )}
-        <div className="flex items-center gap-3" />
+        <div className="flex items-center gap-3">
+          {pluginItems.map((item) =>
+            item.clickable ? (
+              <button
+                key={`${item.pluginDbId}:${item.id}`}
+                onClick={() => onPluginItemClick?.(item.pluginDbId, item.id)}
+                title={item.title}
+                className="hover:text-[var(--text-primary)]"
+              >
+                {item.text}
+              </button>
+            ) : (
+              <span key={`${item.pluginDbId}:${item.id}`} title={item.title}>
+                {item.text}
+              </span>
+            )
+          )}
+        </div>
       </div>
     </div>
   );

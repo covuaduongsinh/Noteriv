@@ -30,6 +30,19 @@ function rpcCall(method, args) {
   });
 }
 
+// desktop's api.editor.getContent()/getSelection() are synchronous, so plugins
+// call them as plain strings. postMessage can't be sync, so the host pushes a
+// snapshot (noteriv:editor-state) on every change and the getters read from it.
+// Without the editor:read permission the host never sends one: content stays null.
+var editorState = { content: null, selection: "", cursor: { line: 0, ch: 0 }, currentFile: null };
+var statusClickHandlers = Object.create(null);
+
+function unsupported(name) {
+  return function () {
+    parent.postMessage({ type: "noteriv:log", level: "warn", message: name + " is not supported in the web sandbox" }, "*");
+  };
+}
+
 function buildApi() {
   return {
     vault: {
@@ -49,6 +62,27 @@ function buildApi() {
         return rpcCall("ui.removeCommand", [id]);
       },
       showNotice: function (message, duration) { return rpcCall("ui.showNotice", [message, duration]); },
+      // Declarative status bar item: the host renders text/title; onClick is
+      // kept here and invoked via noteriv:invoke-status-click.
+      addStatusBarItem: function (item) {
+        if (typeof item.onClick === "function") statusClickHandlers[item.id] = item.onClick;
+        else delete statusClickHandlers[item.id];
+        return rpcCall("ui.addStatusBarItem", [{
+          id: item.id,
+          text: String(item.text == null ? "" : item.text),
+          title: item.title == null ? undefined : String(item.title),
+          clickable: typeof item.onClick === "function",
+        }]);
+      },
+      removeStatusBarItem: function (id) {
+        delete statusClickHandlers[id];
+        return rpcCall("ui.removeStatusBarItem", [id]);
+      },
+      // Need real DOM access, which the sandbox deliberately doesn't give plugins.
+      addSidebarPanel: unsupported("ui.addSidebarPanel"),
+      removeSidebarPanel: unsupported("ui.removeSidebarPanel"),
+      addSettingsTab: unsupported("ui.addSettingsTab"),
+      removeSettingsTab: unsupported("ui.removeSettingsTab"),
     },
     events: {
       on: function (event, handler) {
@@ -59,15 +93,30 @@ function buildApi() {
         if (!eventHandlers[event]) return;
         eventHandlers[event] = eventHandlers[event].filter(function (h) { return h !== handler; });
       },
+      // Plugin-to-plugin emit isn't bridged; deliver within this plugin only.
+      emit: function (event) {
+        var args = Array.prototype.slice.call(arguments, 1);
+        (eventHandlers[event] || []).forEach(function (h) {
+          try { h.apply(null, args); } catch (e) { /* ignore plugin handler errors */ }
+        });
+      },
     },
     editor: {
-      getContent: function () { return rpcCall("editor.getContent", []); },
-      setContent: function (content) { return rpcCall("editor.setContent", [content]); },
-      insertAtCursor: function (text) { return rpcCall("editor.insertAtCursor", [text]); },
-      getSelection: function () { return rpcCall("editor.getSelection", []); },
-      replaceSelection: function (text) { return rpcCall("editor.replaceSelection", [text]); },
+      getContent: function () { return editorState.content; },
+      setContent: function (content) { rpcCall("editor.setContent", [content]).catch(function () {}); },
+      insertAtCursor: function (text) { rpcCall("editor.insertAtCursor", [text]).catch(function () {}); },
+      getSelection: function () { return editorState.selection; },
+      replaceSelection: function (text) { rpcCall("editor.replaceSelection", [text]).catch(function () {}); },
+      getCursorPosition: function () { return { line: editorState.cursor.line, ch: editorState.cursor.ch }; },
+    },
+    markdown: {
+      registerCodeBlockProcessor: unsupported("markdown.registerCodeBlockProcessor"),
+      unregisterCodeBlockProcessor: unsupported("markdown.unregisterCodeBlockProcessor"),
     },
     app: {
+      version: "web",
+      vaultPath: null,
+      get currentFile() { return editorState.currentFile; },
       loadSettings: function () { return rpcCall("app.loadSettings", []); },
       saveSettings: function (data) { return rpcCall("app.saveSettings", [data]); },
     },
@@ -96,6 +145,31 @@ window.addEventListener("message", function (event) {
         });
       } catch (err) {
         parent.postMessage({ type: "noteriv:log", level: "error", message: "command error: " + (err && err.message) }, "*");
+      }
+    }
+    return;
+  }
+
+  if (data.type === "noteriv:editor-state") {
+    var s = data.state || {};
+    editorState = {
+      content: typeof s.content === "string" ? s.content : null,
+      selection: typeof s.selection === "string" ? s.selection : "",
+      cursor: s.cursor && typeof s.cursor.line === "number" ? { line: s.cursor.line, ch: s.cursor.ch | 0 } : { line: 0, ch: 0 },
+      currentFile: typeof s.currentFile === "string" ? s.currentFile : null,
+    };
+    return;
+  }
+
+  if (data.type === "noteriv:invoke-status-click") {
+    var click = statusClickHandlers[data.itemId];
+    if (typeof click === "function") {
+      try {
+        Promise.resolve(click()).catch(function (err) {
+          parent.postMessage({ type: "noteriv:log", level: "error", message: "status item error: " + (err && err.message) }, "*");
+        });
+      } catch (err) {
+        parent.postMessage({ type: "noteriv:log", level: "error", message: "status item error: " + (err && err.message) }, "*");
       }
     }
     return;

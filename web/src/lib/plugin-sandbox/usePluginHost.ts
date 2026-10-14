@@ -2,7 +2,15 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { webApi, type ApiPlugin, type VaultIndex } from "@/lib/webApi";
-import type { PluginCommandRef, PluginNotice, EditorBridge, PluginPermission } from "./types";
+import type {
+  PluginCommandRef,
+  PluginNotice,
+  PluginStatusItem,
+  EditorBridge,
+  EditorSnapshot,
+  PluginEventName,
+  PluginPermission,
+} from "./types";
 
 const SANDBOX_URL = "/plugin-sandbox.html";
 
@@ -19,6 +27,8 @@ const METHOD_PERMISSIONS: Record<string, PluginPermission | null> = {
   "editor.replaceSelection": "editor:write",
   "ui.addCommand": "ui:commands",
   "ui.removeCommand": "ui:commands",
+  "ui.addStatusBarItem": "ui:statusbar",
+  "ui.removeStatusBarItem": "ui:statusbar",
   "ui.showNotice": null, // always allowed, informational only
   "app.loadSettings": null,
   "app.saveSettings": null,
@@ -50,6 +60,8 @@ export function usePluginHost(
   vaultIndexRef.current = vaultIndex;
 
   const [commands, setCommands] = useState<PluginCommandRef[]>([]);
+  const [statusItems, setStatusItems] = useState<PluginStatusItem[]>([]);
+  const latestSnapshotRef = useRef<EditorSnapshot | null>(null);
   const [notices, setNotices] = useState<PluginNotice[]>([]);
   const [installed, setInstalled] = useState<ApiPlugin[]>([]);
 
@@ -146,6 +158,32 @@ export function usePluginHost(
         setCommands((prev) => prev.filter((c) => !(c.pluginDbId === plugin.dbId && c.id === id)));
         return undefined;
       }
+      case "ui.addStatusBarItem": {
+        const item = args[0] as { id?: unknown; text?: unknown; title?: unknown; clickable?: unknown } | undefined;
+        if (!item || typeof item.id !== "string" || !item.id || item.id.length > 100) {
+          throw new Error("ui.addStatusBarItem: invalid item id");
+        }
+        const next: PluginStatusItem = {
+          pluginDbId: plugin.dbId,
+          pluginId: plugin.pluginId,
+          id: item.id,
+          text: String(item.text ?? "").slice(0, 200),
+          title: typeof item.title === "string" ? item.title.slice(0, 500) : undefined,
+          clickable: item.clickable === true,
+        };
+        setStatusItems((prev) => {
+          const others = prev.filter((i) => !(i.pluginDbId === plugin.dbId && i.id === next.id));
+          // Cap per plugin so a runaway plugin can't flood the bar.
+          if (others.filter((i) => i.pluginDbId === plugin.dbId).length >= 10) return prev;
+          return [...others, next];
+        });
+        return undefined;
+      }
+      case "ui.removeStatusBarItem": {
+        const id = args[0] as string;
+        setStatusItems((prev) => prev.filter((i) => !(i.pluginDbId === plugin.dbId && i.id === id)));
+        return undefined;
+      }
       case "ui.showNotice": {
         const message = args[0] as string;
         const key = `${plugin.dbId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
@@ -182,6 +220,7 @@ export function usePluginHost(
         loaded.iframe.remove();
         pluginsRef.current.delete(win);
         setCommands((prev) => prev.filter((c) => c.pluginDbId !== loaded.dbId));
+        setStatusItems((prev) => prev.filter((i) => i.pluginDbId !== loaded.dbId));
       }
     }
 
@@ -212,6 +251,10 @@ export function usePluginHost(
           ready: true,
         };
         pluginsRef.current.set(iframe.contentWindow as Window, loaded);
+        // State first so the snapshot is in place before onLoad reads it synchronously.
+        if (latestSnapshotRef.current && loaded.permissions.includes("editor:read")) {
+          iframe.contentWindow?.postMessage({ type: "noteriv:editor-state", state: latestSnapshotRef.current }, "*");
+        }
         iframe.contentWindow?.postMessage({ type: "noteriv:boot", mainJs: plugin.mainJs }, "*");
       };
       window.addEventListener("message", bootWhenReady);
@@ -265,5 +308,43 @@ export function usePluginHost(
     }
   }, []);
 
-  return { containerRef, commands, notices, dismissNotice, runCommand, installed, refreshInstalled };
+  /** Push the latest editor snapshot to every plugin allowed to read the editor (feeds the sandbox's synchronous api.editor.*). */
+  const syncEditorState = useCallback((snapshot: EditorSnapshot) => {
+    latestSnapshotRef.current = snapshot;
+    for (const loaded of pluginsRef.current.values()) {
+      if (!loaded.permissions.includes("editor:read")) continue;
+      loaded.iframe.contentWindow?.postMessage({ type: "noteriv:editor-state", state: snapshot }, "*");
+    }
+  }, []);
+
+  /** Deliver a desktop-style PluginEvent. Plugins without editor:read get the event but no payload. */
+  const emitEvent = useCallback((event: PluginEventName, ...args: unknown[]) => {
+    for (const loaded of pluginsRef.current.values()) {
+      const payload = loaded.permissions.includes("editor:read") ? args : [];
+      loaded.iframe.contentWindow?.postMessage({ type: "noteriv:emit-event", event, args: payload }, "*");
+    }
+  }, []);
+
+  const clickStatusItem = useCallback((pluginDbId: string, itemId: string) => {
+    for (const loaded of pluginsRef.current.values()) {
+      if (loaded.dbId === pluginDbId) {
+        loaded.iframe.contentWindow?.postMessage({ type: "noteriv:invoke-status-click", itemId }, "*");
+        return;
+      }
+    }
+  }, []);
+
+  return {
+    containerRef,
+    commands,
+    statusItems,
+    notices,
+    dismissNotice,
+    runCommand,
+    clickStatusItem,
+    syncEditorState,
+    emitEvent,
+    installed,
+    refreshInstalled,
+  };
 }

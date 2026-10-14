@@ -48,6 +48,41 @@ async function fetchCommunityPluginFile(filePath: string): Promise<string | null
   }
 }
 
+// api.<namespace>.<method> -> permission the web sandbox requires for it.
+// Desktop plugins have no permission model, so community manifests omit
+// `permissions`; we derive the request from the methods the code references.
+// This only ever *proposes* grants (shown to the user before install) —
+// enforcement stays default-deny in usePluginHost, so a plugin that hides a
+// call from this scan simply gets that call rejected at runtime.
+const METHOD_TO_PERMISSION: Record<string, string> = {
+  "vault.read": "vault:read",
+  "vault.list": "vault:read",
+  "vault.exists": "vault:read",
+  "vault.write": "vault:write",
+  "vault.delete": "vault:write",
+  "editor.getContent": "editor:read",
+  "editor.getSelection": "editor:read",
+  "editor.getCursorPosition": "editor:read",
+  "editor.setContent": "editor:write",
+  "editor.insertAtCursor": "editor:write",
+  "editor.replaceSelection": "editor:write",
+  "ui.addCommand": "ui:commands",
+  "ui.removeCommand": "ui:commands",
+  "ui.addStatusBarItem": "ui:statusbar",
+  "ui.removeStatusBarItem": "ui:statusbar",
+};
+
+export function inferPermissions(mainJs: string): string[] {
+  const found = new Set<string>();
+  const re = /\b(vault|editor|ui)\s*\.\s*(\w+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(mainJs)) !== null) {
+    const perm = METHOD_TO_PERMISSION[`${m[1]}.${m[2]}`];
+    if (perm) found.add(perm);
+  }
+  return Array.from(found);
+}
+
 /** Fetches a community plugin's manifest.json + main.js. Returns null if either file is unavailable. */
 export async function fetchCommunityPluginSource(
   entry: CommunityPluginEntry
@@ -59,6 +94,7 @@ export async function fetchCommunityPluginSource(
   if (!manifestRaw || !mainJs) return null;
   try {
     const manifest = JSON.parse(manifestRaw) as Record<string, unknown>;
+    if (!Array.isArray(manifest.permissions)) manifest.permissions = inferPermissions(mainJs);
     return { manifest, mainJs };
   } catch {
     return null;
