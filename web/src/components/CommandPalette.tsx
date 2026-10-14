@@ -1,14 +1,24 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { HotkeyBinding, HotkeyAction, formatHotkey } from "@/lib/hotkeys";
+import { HotkeyBinding, formatHotkey } from "@/lib/hotkeys";
+
+/** A palette row: either a built-in HotkeyAction or a plugin command ("plugin:<dbId>:<cmdId>"). */
+export interface PaletteItem {
+  action: string;
+  label: string;
+  keys: string;
+  category: string;
+}
 
 interface CommandPaletteProps {
   hotkeys: HotkeyBinding[];
+  /** Commands registered by installed plugins (shown under their own category). */
+  extraItems?: PaletteItem[];
   platform: string;
-  recentActions?: HotkeyAction[];
-  onExecute: (action: HotkeyAction) => void;
-  onRecent?: (action: HotkeyAction) => void;
+  recentActions?: string[];
+  onExecute: (action: string) => void;
+  onRecent?: (action: string) => void;
   onClose: () => void;
 }
 
@@ -19,7 +29,8 @@ interface CommandPaletteProps {
  * subset in lib/hotkeys.ts). Distinct from QuickOpen.tsx (Ctrl/Cmd+K, note
  * switcher only) — this is the general action palette (Ctrl/Cmd+Shift+P).
  */
-export default function CommandPalette({ hotkeys, platform, recentActions = [], onExecute, onRecent, onClose }: CommandPaletteProps) {
+export default function CommandPalette({ hotkeys: builtIn, extraItems = [], platform, recentActions = [], onExecute, onRecent, onClose }: CommandPaletteProps) {
+  const hotkeys: PaletteItem[] = useMemo(() => [...builtIn, ...extraItems], [builtIn, extraItems]);
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -40,11 +51,11 @@ export default function CommandPalette({ hotkeys, platform, recentActions = [], 
     if (query.trim()) return [];
     return recentActions
       .map((action) => hotkeys.find((h) => h.action === action))
-      .filter((h): h is HotkeyBinding => h !== undefined);
+      .filter((h): h is PaletteItem => h !== undefined);
   }, [query, recentActions, hotkeys]);
 
   const grouped = useMemo(() => {
-    const groups: { category: string; items: HotkeyBinding[] }[] = [];
+    const groups: { category: string; items: PaletteItem[] }[] = [];
     const seen = new Set<string>();
     for (const item of filtered) {
       if (!seen.has(item.category)) {
@@ -74,7 +85,7 @@ export default function CommandPalette({ hotkeys, platform, recentActions = [], 
   }, [selectedIdx]);
 
   const executeCommand = useCallback(
-    (action: HotkeyAction) => {
+    (action: string) => {
       onRecent?.(action);
       onExecute(action);
       onClose();

@@ -2,19 +2,25 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { VaultChevronIcon, PlusIcon } from "@/components/icons";
+import { VaultChevronIcon, PlusIcon, RenameIcon, TrashIcon } from "@/components/icons";
 import { webApi, type ApiVault } from "@/lib/webApi";
 
 interface VaultSwitcherProps {
   vaults: ApiVault[];
   activeVault: ApiVault | null;
+  onVaultsChanged?: () => void;
 }
 
-export default function VaultSwitcher({ vaults, activeVault }: VaultSwitcherProps) {
+export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged }: VaultSwitcherProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [newVaultName, setNewVaultName] = useState("");
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+  // Two-click delete (no window.confirm — project rule): first click arms, second deletes.
+  const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -48,6 +54,33 @@ export default function VaultSwitcher({ vaults, activeVault }: VaultSwitcherProp
     router.push(`/vaults/${vault.id}`);
   }
 
+  async function submitRename(vault: ApiVault) {
+    const name = renameValue.trim();
+    setRenamingId(null);
+    if (!name || name === vault.name) return;
+    try {
+      await webApi.vaults.update(vault.id, { name });
+      onVaultsChanged?.();
+    } catch {
+      setActionError("Không đổi tên được vault.");
+    }
+  }
+
+  async function deleteVault(vault: ApiVault) {
+    if (armedDeleteId !== vault.id) {
+      setArmedDeleteId(vault.id);
+      return;
+    }
+    setArmedDeleteId(null);
+    try {
+      await webApi.vaults.remove(vault.id);
+      onVaultsChanged?.();
+      if (vault.id === activeVault?.id) router.push("/vaults");
+    } catch {
+      setActionError("Không xoá được vault (chỉ chủ sở hữu mới xoá được).");
+    }
+  }
+
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
       <button onClick={() => setOpen(!open)} className="vault-trigger">
@@ -67,18 +100,56 @@ export default function VaultSwitcher({ vaults, activeVault }: VaultSwitcherProp
                   key={vault.id}
                   className={`vault-item${isActive ? " vault-item-active" : ""}`}
                   onClick={() => {
+                    if (renamingId === vault.id) return;
                     setOpen(false);
                     router.push(`/vaults/${vault.id}`);
                   }}
                 >
                   <div className="vault-item-info">
-                    <span className="vault-item-name">{vault.name}</span>
+                    {renamingId === vault.id ? (
+                      <input
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onBlur={() => submitRename(vault)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") submitRename(vault);
+                          if (e.key === "Escape") setRenamingId(null);
+                        }}
+                        className="w-full text-sm px-1 py-0.5 rounded bg-[var(--bg-tertiary)] outline-none ring-1 ring-[var(--accent)]"
+                      />
+                    ) : (
+                      <span className="vault-item-name">{vault.name}</span>
+                    )}
+                  </div>
+                  <div className="vault-item-actions" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      className="vault-action-btn"
+                      title="Đổi tên vault"
+                      onClick={() => {
+                        setRenameValue(vault.name);
+                        setRenamingId(vault.id);
+                      }}
+                    >
+                      <RenameIcon size={12} />
+                    </button>
+                    <button
+                      className="vault-action-btn vault-delete"
+                      title={armedDeleteId === vault.id ? "Bấm lần nữa để xoá vĩnh viễn" : "Xoá vault"}
+                      onClick={() => deleteVault(vault)}
+                      onBlur={() => setArmedDeleteId((id) => (id === vault.id ? null : id))}
+                      style={armedDeleteId === vault.id ? { color: "var(--red)", opacity: 1 } : undefined}
+                    >
+                      <TrashIcon size={12} />
+                    </button>
                   </div>
                 </div>
               );
             })}
           </div>
 
+          {actionError && <div className="px-3 py-1 text-xs text-[var(--red)]">{actionError}</div>}
           <div className="vault-dropdown-footer">
             {creating ? (
               <form onSubmit={submitCreateVault} className="flex gap-1">

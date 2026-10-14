@@ -316,3 +316,27 @@ export function MicIcon({ size = 16, className }: IconProps) {
     </svg>
   );
 }
+
+// ── Phase 1 discoverability additions (docs/plans/2026-10-14-noteriv-web-desktop-parity-v2.md) ──
+
+export function SyncIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M2.5 8a5.5 5.5 0 0 1 9.4-3.9L13.5 5.5" />
+      <path d="M13.5 2.5v3h-3" />
+      <path d="M13.5 8a5.5 5.5 0 0 1-9.4 3.9L2.5 10.5" />
+      <path d="M2.5 13.5v-3h3" />
+    </svg>
+  );
+}
+
+export function ThemeIcon({ size = 16, className }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+      <path d="M8 1.5a6.5 6.5 0 1 0 0 13c1 0 1.5-.7 1.5-1.4 0-.9-.7-1.1-.7-1.9 0-.7.6-1.2 1.3-1.2h1.4a2.5 2.5 0 0 0 2.5-2.5C14 4.1 11.3 1.5 8 1.5Z" />
+      <circle cx="5" cy="7" r=".6" fill="currentColor" />
+      <circle cx="8" cy="4.8" r=".6" fill="currentColor" />
+      <circle cx="11" cy="7" r=".6" fill="currentColor" />
+    </svg>
+  );
+}

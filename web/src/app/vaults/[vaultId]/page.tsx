@@ -74,16 +74,16 @@ import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
 
-function loadRecentCommands(): HotkeyAction[] {
+function loadRecentCommands(): string[] {
   try {
     const raw = localStorage.getItem(RECENT_COMMANDS_KEY);
-    return raw ? (JSON.parse(raw) as HotkeyAction[]) : [];
+    return raw ? (JSON.parse(raw) as string[]) : [];
   } catch {
     return [];
   }
 }
 
-function saveRecentCommand(action: HotkeyAction) {
+function saveRecentCommand(action: string) {
   try {
     const prev = loadRecentCommands().filter((a) => a !== action);
     localStorage.setItem(RECENT_COMMANDS_KEY, JSON.stringify([action, ...prev].slice(0, 5)));
@@ -167,7 +167,7 @@ export default function VaultPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsInitialSection, setSettingsInitialSection] = useState<"general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem">("general");
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
+  const [recentCommands, setRecentCommands] = useState<string[]>([]);
   const [hotkeyBindings, setHotkeyBindings] = useState<HotkeyBinding[]>(DEFAULT_HOTKEYS);
   const [editorSettings, setEditorSettingsState] = useState(DEFAULT_EDITOR_SETTINGS);
   const [platform, setPlatform] = useState("web");
@@ -672,6 +672,23 @@ export default function VaultPage() {
     refreshSyncConnections();
   }, [refreshSyncConnections]);
 
+  const syncSummaryText =
+    syncConnections.length === 0
+      ? "Git: chưa kết nối"
+      : syncConnections.some((c) => c.lastSyncStatus?.status === "conflict")
+      ? "sync: xung đột"
+      : syncConnections.some((c) => c.lastSyncStatus?.status === "error")
+      ? "sync: lỗi"
+      : syncConnections[0].lastSyncedAt
+      ? `sync: ${new Date(syncConnections[0].lastSyncedAt).toLocaleTimeString()}`
+      : "sync: chưa chạy";
+  const syncTone: "muted" | "warn" | "error" =
+    syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")
+      ? "error"
+      : syncConnections.length === 0
+      ? "warn"
+      : "muted";
+
   function openSettings(section: typeof settingsInitialSection = "general") {
     setSettingsInitialSection(section);
     setSettingsOpen(true);
@@ -817,6 +834,12 @@ export default function VaultPage() {
         break;
       case "vaultInsights":
         setShowInsights(true);
+        break;
+      case "syncSettings":
+        openSettings("sync");
+        break;
+      case "themePicker":
+        openSettings("appearance");
         break;
     }
   }
@@ -1040,6 +1063,13 @@ export default function VaultPage() {
         viewMode={viewMode}
         onViewModeChange={handleViewModeChange}
         showViewModes={!!activeTab}
+        hotkeys={hotkeyBindings}
+        platform={platform}
+        onMenuAction={executeCommand}
+        onVaultsChanged={() => {
+          webApi.vaults.list().then(setAllVaults).catch(() => undefined);
+          webApi.vaults.get(vaultId).then(setVault).catch(() => undefined);
+        }}
       />
 
       {tabs.length > 0 && (
@@ -1077,6 +1107,11 @@ export default function VaultPage() {
           onNoteComposer={() => setShowNoteComposer(true)}
           onAttachments={() => setShowAttachments(true)}
           onAudioRecorder={() => setShowAudioRecorder(true)}
+          onSync={() => openSettings("sync")}
+          onPlugins={() => setPluginManagerOpen(true)}
+          onThemes={() => openSettings("appearance")}
+          onSnippets={() => setShowCSSSnippets(true)}
+          syncAttention={syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")}
           outlineActive={outlineVisible}
           tagsActive={tagPaneVisible}
           bookmarksActive={bookmarksVisible}
@@ -1238,13 +1273,8 @@ export default function VaultPage() {
                 notePath={activeTab.path}
                 content={draft}
                 dirty={activeTab.content !== activeTab.savedContent}
-                syncSummary={
-                  syncConnections.length === 0
-                    ? null
-                    : syncConnections[0].lastSyncedAt
-                    ? `sync: ${new Date(syncConnections[0].lastSyncedAt).toLocaleTimeString()}`
-                    : "sync: chưa chạy"
-                }
+                syncSummary={syncSummaryText}
+                syncTone={syncTone}
                 onOpenSync={() => openSettings("sync")}
                 pluginItems={pluginHost.statusItems}
                 onPluginItemClick={pluginHost.clickStatusItem}
@@ -1256,6 +1286,32 @@ export default function VaultPage() {
               <button onClick={() => setQuickOpenVisible(true)} className="text-sm hover:text-[var(--text-primary)]">
                 Quick open (⌘K)
               </button>
+              <div className="mt-4 flex flex-wrap justify-center gap-3">
+                <button
+                  onClick={handleQuickNewNote}
+                  style={{ padding: "12px 16px" }}
+                  className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
+                >
+                  <div className="font-medium">Tạo note mới</div>
+                  <div className="text-xs text-[var(--text-muted)]">Bắt đầu viết ngay</div>
+                </button>
+                <button
+                  onClick={() => openSettings("sync")}
+                  style={{ padding: "12px 16px" }}
+                  className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
+                >
+                  <div className="font-medium">Kết nối GitHub / WebDAV</div>
+                  <div className="text-xs text-[var(--text-muted)]">Đồng bộ vault với repo của bạn</div>
+                </button>
+                <button
+                  onClick={() => setPluginManagerOpen(true)}
+                  style={{ padding: "12px 16px" }}
+                  className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
+                >
+                  <div className="font-medium">Cài plugin</div>
+                  <div className="text-xs text-[var(--text-muted)]">Mở rộng bằng plugin cộng đồng</div>
+                </button>
+              </div>
             </div>
           )}
         </main>
@@ -1309,9 +1365,22 @@ export default function VaultPage() {
       {commandPaletteOpen && (
         <CommandPalette
           hotkeys={hotkeyBindings}
+          extraItems={pluginHost.commands.map((c) => ({
+            action: `plugin:${c.pluginDbId}:${c.id}`,
+            label: c.name,
+            keys: "",
+            category: `Plugin · ${c.pluginId}`,
+          }))}
           platform={platform}
           recentActions={recentCommands}
-          onExecute={executeCommand}
+          onExecute={(action) => {
+            if (action.startsWith("plugin:")) {
+              const [, dbId, ...rest] = action.split(":");
+              pluginHost.runCommand(dbId, rest.join(":"));
+            } else {
+              executeCommand(action as HotkeyAction);
+            }
+          }}
           onRecent={(action) => {
             saveRecentCommand(action);
             setRecentCommands(loadRecentCommands());

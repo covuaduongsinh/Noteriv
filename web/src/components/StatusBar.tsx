@@ -10,6 +10,7 @@ interface StatusBarProps {
   content: string;
   dirty: boolean;
   syncSummary?: string | null;
+  syncTone?: "muted" | "warn" | "error";
   onOpenSync?: () => void;
   pluginItems?: PluginStatusItem[];
   onPluginItemClick?: (pluginDbId: string, itemId: string) => void;
@@ -41,6 +42,7 @@ export default function StatusBar({
   content,
   dirty,
   syncSummary,
+  syncTone = "muted",
   onOpenSync,
   pluginItems = [],
   onPluginItemClick,
@@ -65,7 +67,12 @@ export default function StatusBar({
           </>
         )}
         {syncSummary && (
-          <button onClick={onOpenSync} className="hover:text-[var(--text-primary)]" title="Mở Settings > Sync">
+          <button
+            onClick={onOpenSync}
+            className="hover:text-[var(--text-primary)]"
+            style={syncTone === "error" ? { color: "var(--red)" } : syncTone === "warn" ? { color: "var(--yellow)" } : undefined}
+            title="Mở Settings > Sync"
+          >
             {syncSummary}
           </button>
         )}

@@ -2,6 +2,8 @@
 
 import { SidebarToggleIcon } from "@/components/icons";
 import VaultSwitcher from "@/components/VaultSwitcher";
+import AppMenu from "@/components/AppMenu";
+import type { HotkeyAction, HotkeyBinding } from "@/lib/hotkeys";
 import type { ApiVault, ViewMode } from "@/lib/webApi";
 
 interface VaultHeaderProps {
@@ -13,6 +15,10 @@ interface VaultHeaderProps {
   viewMode?: ViewMode;
   onViewModeChange?: (mode: ViewMode) => void;
   showViewModes?: boolean;
+  hotkeys?: HotkeyBinding[];
+  platform?: string;
+  onMenuAction?: (action: HotkeyAction) => void;
+  onVaultsChanged?: () => void;
 }
 
 /**
@@ -35,6 +41,10 @@ export default function VaultHeader({
   viewMode,
   onViewModeChange,
   showViewModes = false,
+  hotkeys,
+  platform = "web",
+  onMenuAction,
+  onVaultsChanged,
 }: VaultHeaderProps) {
   const displayedPath = activeNotePath || vault?.name || "Noteriv";
 
@@ -46,7 +56,13 @@ export default function VaultHeader({
             <SidebarToggleIcon collapsed={sidebarCollapsed} />
           </button>
           <div className="titlebar-divider" />
-          <VaultSwitcher vaults={vaults} activeVault={vault} />
+          <VaultSwitcher vaults={vaults} activeVault={vault} onVaultsChanged={onVaultsChanged} />
+          {hotkeys && onMenuAction && (
+            <>
+              <div className="titlebar-divider" />
+              <AppMenu hotkeys={hotkeys} platform={platform} onExecute={onMenuAction} />
+            </>
+          )}
         </div>
 
         <div className="titlebar-path" title={displayedPath}>

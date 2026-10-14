@@ -17,6 +17,10 @@ import {
   ComposerIcon,
   AttachmentIcon,
   MicIcon,
+  SyncIcon,
+  ThemeIcon,
+  PluginIcon,
+  SnippetsIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
@@ -36,6 +40,11 @@ interface RibbonProps {
   onNoteComposer: () => void;
   onAttachments: () => void;
   onAudioRecorder: () => void;
+  onSync: () => void;
+  onPlugins: () => void;
+  onThemes: () => void;
+  onSnippets: () => void;
+  syncAttention?: boolean;
   outlineActive?: boolean;
   tagsActive?: boolean;
   bookmarksActive?: boolean;
@@ -64,6 +73,11 @@ export default function Ribbon({
   onNoteComposer,
   onAttachments,
   onAudioRecorder,
+  onSync,
+  onPlugins,
+  onThemes,
+  onSnippets,
+  syncAttention,
   outlineActive,
   tagsActive,
   bookmarksActive,
@@ -130,6 +144,23 @@ export default function Ribbon({
         </button>
       </div>
       <div className="ribbon-bottom">
+        <button
+          className="ribbon-btn"
+          title="Đồng bộ Git / WebDAV"
+          onClick={onSync}
+          style={syncAttention ? { color: "var(--yellow)" } : undefined}
+        >
+          <SyncIcon />
+        </button>
+        <button className="ribbon-btn" title="Plugins" onClick={onPlugins}>
+          <PluginIcon />
+        </button>
+        <button className="ribbon-btn" title="Themes" onClick={onThemes}>
+          <ThemeIcon />
+        </button>
+        <button className="ribbon-btn" title="CSS Snippets" onClick={onSnippets}>
+          <SnippetsIcon />
+        </button>
         <button className="ribbon-btn" title="Trash" onClick={onTrash}>
           <TrashIcon size={16} />
         </button>

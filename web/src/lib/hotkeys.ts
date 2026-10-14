@@ -59,7 +59,11 @@ export type HotkeyAction =
   | "openTrash"
   | "insertTemplate"
   | "noteComposer"
-  | "vaultInsights";
+  | "vaultInsights"
+  // Phase 1 discoverability (parity plan v2): entries that already existed as
+  // ribbon/settings paths but had no palette/menu action.
+  | "syncSettings"
+  | "themePicker";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -97,6 +101,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
+  { action: "syncSettings", label: "Sync Settings (Git / WebDAV)", keys: "", category: "Sync" },
+  { action: "themePicker", label: "Themes", keys: "", category: "Ecosystem" },
 
   { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },
   { action: "toggleItalic", label: "Italic", keys: "Ctrl+I", category: "Formatting" },
