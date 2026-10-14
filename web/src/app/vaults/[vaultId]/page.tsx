@@ -1589,6 +1589,7 @@ export default function VaultPage() {
 
       {pluginManagerOpen && (
         <PluginManager
+          denied={pluginHost.deniedPermissions}
           vaultId={vaultId}
           installed={pluginHost.installed}
           onChanged={pluginHost.refreshInstalled}

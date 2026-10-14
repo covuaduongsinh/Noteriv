@@ -31,6 +31,9 @@ const installSchema = z.object({
 
 const updateSchema = z.object({
   enabled: z.boolean().optional(),
+  // The user can grant/revoke permissions after install (e.g. a manually pasted plugin whose
+  // manifest declared none). Only values from ALLOWED_PERMISSIONS are accepted.
+  permissions: z.array(z.enum(ALLOWED_PERMISSIONS)).optional(),
   settings: z.record(z.any()).optional(),
 });
 
@@ -89,11 +92,17 @@ export default async function pluginRoutes(fastify: FastifyInstance) {
         where: { id: pid },
         data: {
           ...(parsed.data.enabled !== undefined ? { enabled: parsed.data.enabled } : {}),
+          ...(parsed.data.permissions !== undefined
+            ? { manifest: { ...(existing.manifest as object), permissions: parsed.data.permissions } }
+            : {}),
           ...(parsed.data.settings !== undefined
             ? { settings: { ...(existing.settings as object), ...parsed.data.settings } }
             : {}),
         },
       });
+      if (parsed.data.permissions !== undefined) {
+        logAudit(prisma, { userId: request.user!.id, action: "plugin_permissions_changed", resourceType: "plugin", resourceId: pid, metadata: { pluginId: existing.pluginId, permissions: parsed.data.permissions }, ip: request.ip });
+      }
       return reply.send(plugin);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

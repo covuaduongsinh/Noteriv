@@ -359,7 +359,11 @@ export const webApi = {
     list: (vaultId: string) => request<ApiPlugin[]>(`/vaults/${vaultId}/plugins`),
     install: (vaultId: string, data: { manifest: ApiPlugin["manifest"]; mainJs: string }) =>
       request<ApiPlugin>(`/vaults/${vaultId}/plugins/install`, { method: "POST", body: JSON.stringify(data) }),
-    update: (vaultId: string, pluginDbId: string, data: { enabled?: boolean; settings?: Record<string, unknown> }) =>
+    update: (
+      vaultId: string,
+      pluginDbId: string,
+      data: { enabled?: boolean; settings?: Record<string, unknown>; permissions?: string[] }
+    ) =>
       request<ApiPlugin>(`/vaults/${vaultId}/plugins/${pluginDbId}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (vaultId: string, pluginDbId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/plugins/${pluginDbId}`, { method: "DELETE" }),

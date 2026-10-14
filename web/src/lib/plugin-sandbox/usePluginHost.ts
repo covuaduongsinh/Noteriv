@@ -53,6 +53,8 @@ interface LoadedPlugin {
   permissions: PluginPermission[];
   iframe: HTMLIFrameElement;
   ready: boolean;
+  /** Permissions the plugin booted with; a different value in the manifest means it must be remounted. */
+  permsKey: string;
 }
 
 /**
@@ -75,6 +77,9 @@ export function usePluginHost(
   const [commands, setCommands] = useState<PluginCommandRef[]>([]);
   const [statusItems, setStatusItems] = useState<PluginStatusItem[]>([]);
   const [panels, setPanels] = useState<PluginPanelRef[]>([]);
+  // Permissions each plugin tried to use without holding them (pluginDbId -> permissions). Lets the
+  // Plugin Manager explain a plugin that silently does nothing and offer a one-click grant.
+  const [denied, setDenied] = useState<Record<string, string[]>>({});
   // Code-block renders in flight (callId -> resolver) and a small result cache so
   // widgets that CodeMirror re-creates don't flash while the sandbox re-renders.
   const pendingBlocksRef = useRef<Map<string, (r: { html: string; css: string } | null) => void>>(new Map());
@@ -183,6 +188,7 @@ export function usePluginHost(
     const required = METHOD_PERMISSIONS[method];
     if (required === undefined) throw new Error(`unknown method "${method}"`);
     if (required && !plugin.permissions.includes(required)) {
+      setDenied((prev) => (prev[plugin.dbId]?.includes(required) ? prev : { ...prev, [plugin.dbId]: [...(prev[plugin.dbId] ?? []), required] }));
       throw new Error(`plugin "${plugin.pluginId}" lacks permission "${required}" for ${method}`);
     }
 
@@ -335,8 +341,10 @@ export function usePluginHost(
     const wanted = new Set(enabled.map((p) => p.id));
 
     // Tear down iframes for plugins that are no longer enabled/installed.
+    const permsKeyOf = (id: string) => JSON.stringify(((enabled.find((p) => p.id === id)?.manifest.permissions ?? []) as string[]).slice().sort());
     for (const [win, loaded] of pluginsRef.current) {
-      if (!wanted.has(loaded.dbId)) {
+      // Remount when the user changed this plugin's permissions so it boots with the new grant.
+      if (!wanted.has(loaded.dbId) || loaded.permsKey !== permsKeyOf(loaded.dbId)) {
         loaded.iframe.remove();
         pluginsRef.current.delete(win);
         setCommands((prev) => prev.filter((c) => c.pluginDbId !== loaded.dbId));
@@ -373,6 +381,7 @@ export function usePluginHost(
           permissions: (plugin.manifest.permissions ?? []) as PluginPermission[],
           iframe,
           ready: true,
+          permsKey: JSON.stringify(((plugin.manifest.permissions ?? []) as string[]).slice().sort()),
         };
         pluginsRef.current.set(iframe.contentWindow as Window, loaded);
         // State first so the snapshot is in place before onLoad reads it synchronously.
@@ -497,6 +506,8 @@ export function usePluginHost(
     commands,
     statusItems,
     panels,
+    deniedPermissions: denied,
+    clearDenied: (pluginDbId: string) => setDenied((prev) => (pluginDbId in prev ? Object.fromEntries(Object.entries(prev).filter(([k]) => k !== pluginDbId)) : prev)),
     sendMirrorEvent,
     notices,
     dismissNotice,
