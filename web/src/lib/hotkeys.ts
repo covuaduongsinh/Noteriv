@@ -67,7 +67,9 @@ export type HotkeyAction =
   | "importVault"
   | "exportVault"
   | "importNewVault"
-  | "newVaultFromGithub";
+  | "newVaultFromGithub"
+  | "dailyNote"
+  | "randomNote";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -110,6 +112,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
+  { action: "dailyNote", label: "Open Today's Daily Note", keys: "Ctrl+D", category: "Navigation" },
+  { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
   { action: "exportVault", label: "Export vault as zip", keys: "", category: "File" },
 
   { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },

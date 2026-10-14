@@ -99,17 +99,26 @@ export default async function noteRoutes(fastify: FastifyInstance) {
         path = await resolvePath(prisma, vid, nextFolderId, nextName);
       }
 
-      const note = await prisma.note.update({
-        where: { id: nid },
-        data: {
-          ...(content !== undefined ? { content, sizeBytes: Buffer.byteLength(content, "utf8") } : {}),
-          ...(frontmatter !== undefined ? { frontmatter } : {}),
-          name: nextName,
-          folderId: nextFolderId,
-          path,
-          updatedById: request.user!.id,
-        },
-      });
+      let note;
+      try {
+        note = await prisma.note.update({
+          where: { id: nid },
+          data: {
+            ...(content !== undefined ? { content, sizeBytes: Buffer.byteLength(content, "utf8") } : {}),
+            ...(frontmatter !== undefined ? { frontmatter } : {}),
+            name: nextName,
+            folderId: nextFolderId,
+            path,
+            updatedById: request.user!.id,
+          },
+        });
+      } catch (err) {
+        // A note (or trashed note) already occupies that path: report it instead of a 500.
+        if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
+          return reply.code(409).send({ error: "path_exists" });
+        }
+        throw err;
+      }
       if (content !== undefined) {
         await recomputeBacklinksForNote(prisma, vid, note.id, content);
       }

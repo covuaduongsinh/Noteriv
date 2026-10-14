@@ -21,6 +21,7 @@ const SECTIONS: MenuSection[] = [
     title: "File",
     entries: [
       { action: "newNote", label: "New Note" },
+      { action: "dailyNote", label: "Today's Daily Note" },
       { action: "insertTemplate", label: "New from Template…" },
       "sep",
       { action: "save", label: "Save" },
@@ -59,6 +60,7 @@ const SECTIONS: MenuSection[] = [
       { action: "toggleBacklinks", label: "Backlinks" },
       { action: "graphView", label: "Graph View" },
       "sep",
+      { action: "randomNote", label: "Random Note" },
       { action: "calendarView", label: "Calendar" },
       { action: "flashcardReview", label: "Flashcards" },
       { action: "vaultInsights", label: "Vault Insights" },

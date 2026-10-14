@@ -3,7 +3,13 @@
 import { useState, useMemo, useRef, useCallback } from "react";
 import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
-import { webApi, type VaultIndex } from "@/lib/webApi";
+import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
+
+const DND_TYPE = "application/x-noteriv-node";
+interface DragPayload {
+  type: "folder" | "note";
+  id: string;
+}
 
 type TreeNode =
   | { type: "folder"; id: string; name: string; children: TreeNode[] }
@@ -59,6 +65,19 @@ interface TreeRowProps {
   onRenameChange: (val: string) => void;
   onRenameSubmit: () => void;
   onRenameCancel: () => void;
+  dragOverId: string | null;
+  onDragOverFolder: (id: string | null) => void;
+  onMove: (payload: DragPayload, targetFolderId: string | null) => void;
+  onHoverExpand: (id: string) => void;
+}
+
+function readPayload(e: React.DragEvent): DragPayload | null {
+  try {
+    const raw = e.dataTransfer.getData(DND_TYPE);
+    return raw ? (JSON.parse(raw) as DragPayload) : null;
+  } catch {
+    return null;
+  }
 }
 
 function TreeRow({
@@ -74,6 +93,10 @@ function TreeRow({
   onRenameChange,
   onRenameSubmit,
   onRenameCancel,
+  dragOverId,
+  onDragOverFolder,
+  onMove,
+  onHoverExpand,
 }: TreeRowProps) {
   const indent = depth * 12 + 12;
   const isRenaming = renamingId === node.id;
@@ -96,15 +119,43 @@ function TreeRow({
     />
   );
 
+  const dragStart = (e: React.DragEvent) => {
+    e.dataTransfer.setData(DND_TYPE, JSON.stringify({ type: node.type, id: node.id } satisfies DragPayload));
+    e.dataTransfer.effectAllowed = "move";
+  };
+
   if (node.type === "folder") {
     const expanded = expandedFolders.has(node.id);
+    const isDropTarget = dragOverId === node.id;
     return (
       <div>
         <button
           onClick={() => onToggleFolder(node.id)}
           onContextMenu={(e) => onContextMenu(e, node)}
           className="sb-row sb-folder"
-          style={{ paddingLeft: `${indent}px` }}
+          draggable={!isRenaming}
+          onDragStart={dragStart}
+          onDragEnter={() => !expanded && onHoverExpand(node.id)}
+          onDragOver={(e) => {
+            if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+            e.preventDefault();
+            e.stopPropagation();
+            e.dataTransfer.dropEffect = "move";
+            if (dragOverId !== node.id) onDragOverFolder(node.id);
+          }}
+          onDragLeave={() => dragOverId === node.id && onDragOverFolder(null)}
+          onDrop={(e) => {
+            const payload = readPayload(e);
+            if (!payload) return;
+            e.preventDefault();
+            e.stopPropagation();
+            onDragOverFolder(null);
+            onMove(payload, node.id);
+          }}
+          style={{
+            paddingLeft: `${indent}px`,
+            ...(isDropTarget ? { background: "var(--bg-hover)", outline: "1px solid var(--accent)" } : {}),
+          }}
           title={node.name}
         >
           {guides}
@@ -127,6 +178,10 @@ function TreeRow({
               onRenameChange={onRenameChange}
               onRenameSubmit={onRenameSubmit}
               onRenameCancel={onRenameCancel}
+              dragOverId={dragOverId}
+              onDragOverFolder={onDragOverFolder}
+              onMove={onMove}
+              onHoverExpand={onHoverExpand}
             />
           ))}
       </div>
@@ -139,6 +194,8 @@ function TreeRow({
       onClick={() => onFileSelect(node.id)}
       onContextMenu={(e) => onContextMenu(e, node)}
       className={`sb-row${isActive ? " sb-active" : ""}`}
+      draggable={!isRenaming}
+      onDragStart={dragStart}
       style={{ paddingLeft: `${indent}px` }}
       title={node.path}
     >
@@ -164,9 +221,9 @@ interface SidebarProps {
 /**
  * Recursive folder/note tree, built fresh against webApi + VaultIndex (not a
  * direct port of desktop's Sidebar.tsx, which is shaped around
- * electronAPI.readDir). Deliberately skips drag-and-drop reorder/move —
- * ~100 lines of pointer-based state machine in desktop's version with no
- * static visual signature, not needed for visual parity. See the plan doc.
+ * electronAPI.readDir). Drag-and-drop here is native HTML5 move-into-folder
+ * (parity plan v2, Pha 4); manual reordering within a folder is not supported
+ * (children are sorted by name).
  */
 export default function Sidebar({
   vaultId,
@@ -183,6 +240,10 @@ export default function Sidebar({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: TreeNode | null } | null>(null);
+  const [dragOverId, setDragOverId] = useState<string | null>(null);
+  const [rootDropActive, setRootDropActive] = useState(false);
+  const [moveError, setMoveError] = useState("");
+  const hoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const tree = useMemo(() => (index ? buildTree(index) : []), [index]);
 
@@ -194,6 +255,42 @@ export default function Sidebar({
       return next;
     });
   }, []);
+
+  // Expand a collapsed folder after the pointer rests on it mid-drag, so nested targets are reachable.
+  const hoverExpand = useCallback((id: string) => {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => {
+      setExpandedFolders((prev) => new Set(prev).add(id));
+    }, 600);
+  }, []);
+
+  async function moveNode(payload: DragPayload, targetFolderId: string | null) {
+    if (hoverTimer.current) clearTimeout(hoverTimer.current);
+    setMoveError("");
+    try {
+      if (payload.type === "note") {
+        const note = index?.notes.find((n) => n.id === payload.id);
+        if (!note || note.folderId === targetFolderId) return;
+        await webApi.notes.update(vaultId, payload.id, { folderId: targetFolderId });
+      } else {
+        const folder = index?.folders.find((f) => f.id === payload.id);
+        if (!folder || folder.parentId === targetFolderId || payload.id === targetFolderId) return;
+        await webApi.folders.update(vaultId, payload.id, { parentId: targetFolderId });
+      }
+      if (targetFolderId) setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
+      onRefresh();
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
+      setMoveError(
+        status === 409
+          ? "Đã có mục cùng tên ở thư mục đích."
+          : status === 400
+          ? "Không thể di chuyển thư mục vào chính nó."
+          : "Không di chuyển được."
+      );
+      setTimeout(() => setMoveError(""), 4000);
+    }
+  }
 
   function startRename(node: TreeNode) {
     setRenamingId(node.id);
@@ -318,7 +415,26 @@ export default function Sidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto py-1" onContextMenu={handleEmptyContextMenu}>
+      {moveError && <div className="px-3 py-1 text-xs text-[var(--red)]">{moveError}</div>}
+      <div
+        className="flex-1 overflow-y-auto py-1"
+        onContextMenu={handleEmptyContextMenu}
+        // Dropping on empty space (not on a folder) moves the item to the vault root.
+        onDragOver={(e) => {
+          if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+          e.preventDefault();
+          setRootDropActive(true);
+        }}
+        onDragLeave={(e) => e.currentTarget === e.target && setRootDropActive(false)}
+        onDrop={(e) => {
+          setRootDropActive(false);
+          const payload = readPayload(e);
+          if (!payload) return;
+          e.preventDefault();
+          moveNode(payload, null);
+        }}
+        style={rootDropActive ? { outline: "1px dashed var(--accent)", outlineOffset: -2 } : undefined}
+      >
         {tree.length > 0 ? (
           tree.map((node) => (
             <TreeRow
@@ -335,6 +451,10 @@ export default function Sidebar({
               onRenameChange={setRenameValue}
               onRenameSubmit={submitRename}
               onRenameCancel={() => setRenamingId(null)}
+              dragOverId={dragOverId}
+              onDragOverFolder={setDragOverId}
+              onMove={moveNode}
+              onHoverExpand={hoverExpand}
             />
           ))
         ) : (

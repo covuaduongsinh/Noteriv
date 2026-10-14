@@ -49,12 +49,45 @@ export default async function folderRoutes(fastify: FastifyInstance) {
 
       const nextName = parsed.data.name ?? existing.name;
       const nextParentId = parsed.data.parentId === undefined ? existing.parentId : parsed.data.parentId;
-      const path = await resolvePath(prisma, vid, nextParentId, nextName);
 
-      const folder = await prisma.folder.update({
-        where: { id: fid },
-        data: { name: nextName, parentId: nextParentId, path },
-      });
+      // A folder can't move into itself or one of its own descendants.
+      for (let cur = nextParentId; cur; ) {
+        if (cur === fid) return reply.code(400).send({ error: "cannot_move_into_self" });
+        const parent = await prisma.folder.findFirst({ where: { id: cur, vaultId: vid }, select: { parentId: true } });
+        cur = parent?.parentId ?? null;
+      }
+
+      const path = await resolvePath(prisma, vid, nextParentId, nextName);
+      const oldPath = existing.path;
+
+      // Descendant folders and notes store their full path, so a rename/move must rewrite
+      // their prefix too — otherwise they keep pointing at the old location.
+      const prefix = `${oldPath}/`;
+      const [childFolders, childNotes] =
+        path === oldPath
+          ? [[], []]
+          : await Promise.all([
+              prisma.folder.findMany({ where: { vaultId: vid, path: { startsWith: prefix } }, select: { id: true, path: true } }),
+              prisma.note.findMany({ where: { vaultId: vid, path: { startsWith: prefix } }, select: { id: true, path: true } }),
+            ]);
+
+      let folder;
+      try {
+        folder = await prisma.$transaction(async (tx) => {
+          const updated = await tx.folder.update({
+            where: { id: fid },
+            data: { name: nextName, parentId: nextParentId, path },
+          });
+          for (const f of childFolders) await tx.folder.update({ where: { id: f.id }, data: { path: path + f.path.slice(oldPath.length) } });
+          for (const n of childNotes) await tx.note.update({ where: { id: n.id }, data: { path: path + n.path.slice(oldPath.length) } });
+          return updated;
+        });
+      } catch (err) {
+        if (err && typeof err === "object" && (err as { code?: string }).code === "P2002") {
+          return reply.code(409).send({ error: "path_exists" });
+        }
+        throw err;
+      }
       return reply.send(folder);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

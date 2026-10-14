@@ -864,6 +864,12 @@ export default function VaultPage() {
       case "newVaultFromGithub":
         setShowNewFromGithub(true);
         break;
+      case "dailyNote":
+        handleDailyNote();
+        break;
+      case "randomNote":
+        handleRandomNote();
+        break;
       case "exportVault":
         window.location.href = webApi.vaultTransfer.exportUrl(vaultId);
         break;
@@ -942,11 +948,51 @@ export default function VaultPage() {
     await exportToPDF(draft, activeTab.name);
   }
 
+  // Same convention as desktop: Daily/YYYY-MM-DD.md, created on first use.
   async function handleCreateDailyNote(date: string) {
-    const note = await webApi.notes.create(vaultId, { name: `${date}.md`, folderId: null, content: `# ${date}\n` });
+    const idx = await webApi.vaults.index(vaultId);
+    const path = `Daily/${date}.md`;
+    const existing = idx.notes.find((n) => n.path === path);
+    if (existing) {
+      openNote(existing.id);
+      return;
+    }
+    let folder = idx.folders.find((f) => f.path === "Daily");
+    if (!folder) folder = await webApi.folders.create(vaultId, { name: "Daily", parentId: null });
+    const note = await webApi.notes.create(vaultId, { name: `${date}.md`, folderId: folder.id, content: `# ${date}\n\n` });
     refreshIndex();
     openNote(note.id);
   }
+
+  function handleDailyNote() {
+    const now = new Date();
+    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    handleCreateDailyNote(date);
+  }
+
+  function handleRandomNote() {
+    const candidates = (index?.notes ?? []).filter((n) => n.id !== activeTabId);
+    if (candidates.length === 0) return;
+    openNote(candidates[Math.floor(Math.random() * candidates.length)].id);
+  }
+
+  // Keep open tabs' name/path in step with renames and moves done in the file tree.
+  useEffect(() => {
+    if (!index) return;
+    const byId = new Map(index.notes.map((n) => [n.id, n]));
+    setTabs((prev) => {
+      let changed = false;
+      const next = prev.map((t) => {
+        const n = byId.get(t.noteId);
+        if (n && (n.path !== t.path || n.name !== t.name)) {
+          changed = true;
+          return { ...t, path: n.path, name: n.name };
+        }
+        return t;
+      });
+      return changed ? next : prev;
+    });
+  }, [index]);
 
   async function handleQuickNewNote() {
     const note = await webApi.notes.create(vaultId, { name: "Untitled.md", folderId: null, content: "" });
