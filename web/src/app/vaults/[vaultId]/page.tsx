@@ -29,6 +29,7 @@ import TagPane from "@/components/TagPane";
 import SettingsModal from "@/components/SettingsModal";
 import CommandPalette from "@/components/CommandPalette";
 import ImportVault from "@/components/ImportVault";
+import PluginMirror from "@/components/PluginMirror";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import BookmarksPanel from "@/components/BookmarksPanel";
@@ -181,6 +182,8 @@ export default function VaultPage() {
   // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
   const [showTrash, setShowTrash] = useState(false);
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
+  // key = `${pluginDbId}:${panelId}` of the plugin sidebar panel shown in place of the file tree
+  const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
@@ -1188,6 +1191,14 @@ export default function VaultPage() {
           onPlugins={() => setPluginManagerOpen(true)}
           onThemes={() => openSettings("appearance")}
           onSnippets={() => setShowCSSSnippets(true)}
+          pluginPanels={pluginHost.panels
+            .filter((p) => p.kind === "sidebar")
+            .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
+          activePluginPanel={activePluginPanel}
+          onPluginPanel={(key) => {
+            setActivePluginPanel((cur) => (cur === key ? null : key));
+            setSidebarCollapsed(false);
+          }}
           syncAttention={syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")}
           outlineActive={outlineVisible}
           tagsActive={tagPaneVisible}
@@ -1195,7 +1206,30 @@ export default function VaultPage() {
         />
 
         {!sidebarCollapsed &&
-          (searchVisible ? (
+          (activePluginPanel && pluginHost.panels.some((p) => `${p.pluginDbId}:${p.id}` === activePluginPanel && p.kind === "sidebar") ? (
+            (() => {
+              const panel = pluginHost.panels.find((p) => `${p.pluginDbId}:${p.id}` === activePluginPanel && p.kind === "sidebar")!;
+              return (
+                <div className="sidebar-root flex flex-col" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+                  <div className="sidebar-header">
+                    <span className="sidebar-title">{panel.title}</span>
+                    <div className="sidebar-actions">
+                      <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title="Đóng panel">
+                        <CloseIcon size={12} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="flex-1 overflow-y-auto px-2 py-2">
+                    <PluginMirror
+                      html={panel.html}
+                      css={panel.css}
+                      onEvent={(e) => pluginHost.sendMirrorEvent(panel.pluginDbId, "sidebar", panel.id, e)}
+                    />
+                  </div>
+                </div>
+              );
+            })()
+          ) : searchVisible ? (
             <div className="sidebar-root flex flex-col" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
               <div className="sidebar-header">
                 <span className="sidebar-title">Tìm kiếm</span>
@@ -1430,6 +1464,8 @@ export default function VaultPage() {
       {settingsOpen && (
         <SettingsModal
           vaultId={vaultId}
+          pluginTabs={pluginHost.panels.filter((p) => p.kind === "settings")}
+          onPluginEvent={(tab, e) => pluginHost.sendMirrorEvent(tab.pluginDbId, "settings", tab.id, e)}
           currentThemeId={currentThemeId}
           onThemeSelect={handleThemeSelect}
           hotkeys={hotkeyBindings}

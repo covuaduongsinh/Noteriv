@@ -5,7 +5,8 @@ import {
   ViewUpdate,
   EditorView,
 } from "@codemirror/view";
-import { EditorState, RangeSetBuilder, Facet } from "@codemirror/state";
+import { EditorState, RangeSetBuilder, Facet, StateEffect } from "@codemirror/state";
+import { subscribeCodeBlockRegistry } from "@/lib/markdown-code-block-registry";
 import { RenderedMarkdownWidget } from "./widget";
 import { getBlockRenderers, getInlineRenderers } from "./registry";
 import { CodeBlockTracker } from "./renderers/code-blocks";
@@ -201,6 +202,22 @@ function buildDecorations(
   return builder.finish();
 }
 
+/** Dispatched to force a decoration rebuild without a doc/selection change (e.g. a plugin registered a code-block processor). */
+export const refreshMarkdownEffect = StateEffect.define<null>();
+
+const liveViews = new Set<EditorView>();
+if (typeof window !== "undefined") {
+  subscribeCodeBlockRegistry(() => {
+    liveViews.forEach((view) => {
+      try {
+        view.dispatch({ effects: refreshMarkdownEffect.of(null) });
+      } catch {
+        // view mid-update or destroyed — it will pick the change up on its next rebuild
+      }
+    });
+  });
+}
+
 /** CodeMirror ViewPlugin that applies live markdown rendering. */
 export const liveMarkdownPlugin = ViewPlugin.fromClass(
   class {
@@ -210,11 +227,16 @@ export const liveMarkdownPlugin = ViewPlugin.fromClass(
     private cachedHeadings: { level: number; text: string; line: number }[] | null = null;
     private rebuildTimer: ReturnType<typeof setTimeout> | null = null;
 
-    constructor(view: EditorView) {
+    constructor(private readonly view: EditorView) {
       this.codeTracker = new CodeBlockTracker();
       this.htmlTracker = new HtmlBlockTracker();
       this.runPreScans(view);
       this.decorations = buildDecorations(view, this.codeTracker, this.htmlTracker, this.cachedHeadings);
+      liveViews.add(view);
+    }
+
+    destroy() {
+      liveViews.delete(this.view);
     }
 
     private runPreScans(view: EditorView) {
@@ -236,6 +258,8 @@ export const liveMarkdownPlugin = ViewPlugin.fromClass(
       if (update.docChanged) {
         // Document changed — re-scan block structure and rebuild
         this.runPreScans(update.view);
+        this.decorations = buildDecorations(update.view, this.codeTracker, this.htmlTracker, this.cachedHeadings);
+      } else if (update.transactions.some((tr) => tr.effects.some((e) => e.is(refreshMarkdownEffect)))) {
         this.decorations = buildDecorations(update.view, this.codeTracker, this.htmlTracker, this.cachedHeadings);
       } else if (update.selectionSet || update.viewportChanged) {
         // Cursor moved or scrolled — rebuild viewport decorations only (cheap, no pre-scan)

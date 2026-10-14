@@ -16,6 +16,8 @@ const PERMISSION_LABELS: Record<string, string> = {
   "editor:write": "Sửa nội dung đang mở",
   "ui:commands": "Thêm lệnh vào giao diện",
   "ui:statusbar": "Hiện thông tin trên thanh trạng thái",
+  "ui:panel": "Thêm panel bên cạnh và tab trong Settings",
+  "markdown:render": "Hiển thị nội dung đặc biệt trong note (code block)",
 };
 
 export default function PluginManager({

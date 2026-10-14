@@ -10,6 +10,8 @@ const ALLOWED_PERMISSIONS = [
   "editor:write",
   "ui:commands",
   "ui:statusbar",
+  "ui:panel",
+  "markdown:render",
 ] as const;
 
 const manifestSchema = z.object({

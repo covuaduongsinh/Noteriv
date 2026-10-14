@@ -2,10 +2,17 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { webApi, type ApiPlugin, type VaultIndex } from "@/lib/webApi";
+import {
+  registerCodeBlockProcessor,
+  unregisterCodeBlockProcessor,
+  unregisterAllCodeBlockProcessorsForPlugin,
+} from "@/lib/markdown-code-block-registry";
+import { mountMirror, type MirrorEvent } from "./mirror";
 import type {
   PluginCommandRef,
   PluginNotice,
   PluginStatusItem,
+  PluginPanelRef,
   EditorBridge,
   EditorSnapshot,
   PluginEventName,
@@ -29,6 +36,12 @@ const METHOD_PERMISSIONS: Record<string, PluginPermission | null> = {
   "ui.removeCommand": "ui:commands",
   "ui.addStatusBarItem": "ui:statusbar",
   "ui.removeStatusBarItem": "ui:statusbar",
+  "ui.addSidebarPanel": "ui:panel",
+  "ui.removeSidebarPanel": "ui:panel",
+  "ui.addSettingsTab": "ui:panel",
+  "ui.removeSettingsTab": "ui:panel",
+  "markdown.registerCodeBlockProcessor": "markdown:render",
+  "markdown.unregisterCodeBlockProcessor": "markdown:render",
   "ui.showNotice": null, // always allowed, informational only
   "app.loadSettings": null,
   "app.saveSettings": null,
@@ -61,6 +74,12 @@ export function usePluginHost(
 
   const [commands, setCommands] = useState<PluginCommandRef[]>([]);
   const [statusItems, setStatusItems] = useState<PluginStatusItem[]>([]);
+  const [panels, setPanels] = useState<PluginPanelRef[]>([]);
+  // Code-block renders in flight (callId -> resolver) and a small result cache so
+  // widgets that CodeMirror re-creates don't flash while the sandbox re-renders.
+  const pendingBlocksRef = useRef<Map<string, (r: { html: string; css: string } | null) => void>>(new Map());
+  const blockCacheRef = useRef<Map<string, { html: string; css: string }>>(new Map());
+  const blockLangsRef = useRef<Map<string, Set<string>>>(new Map()); // pluginDbId -> languages
   const latestSnapshotRef = useRef<EditorSnapshot | null>(null);
   const [notices, setNotices] = useState<PluginNotice[]>([]);
   const [installed, setInstalled] = useState<ApiPlugin[]>([]);
@@ -80,6 +99,57 @@ export function usePluginHost(
   async function resolveNoteIdByPath(path: string): Promise<string | null> {
     const note = vaultIndexRef.current?.notes.find((n) => n.path === path);
     return note?.id ?? null;
+  }
+
+  /** Asks the plugin's sandbox to render one fenced block; resolves null on failure/timeout. */
+  function renderCodeBlock(pluginDbId: string, language: string, source: string): Promise<{ html: string; css: string } | null> {
+    const key = `${pluginDbId}|${language}|${source}`;
+    const cached = blockCacheRef.current.get(key);
+    if (cached) return Promise.resolve(cached);
+    let target: LoadedPlugin | null = null;
+    for (const l of pluginsRef.current.values()) if (l.dbId === pluginDbId) target = l;
+    if (!target) return Promise.resolve(null);
+    const callId = `cb-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return new Promise((resolve) => {
+      const timer = setTimeout(() => {
+        pendingBlocksRef.current.delete(callId);
+        resolve(null);
+      }, 8000);
+      pendingBlocksRef.current.set(callId, (r) => {
+        clearTimeout(timer);
+        if (r) {
+          if (blockCacheRef.current.size > 150) blockCacheRef.current.clear();
+          blockCacheRef.current.set(key, r);
+        }
+        resolve(r);
+      });
+      target!.iframe.contentWindow?.postMessage(
+        { type: "noteriv:render-codeblock", callId, language, source, sourcePath: null },
+        "*"
+      );
+    });
+  }
+
+  /** The processor handed to the markdown renderer: shows the sandbox's render inside a shadow root. */
+  function makeBlockProcessor(pluginDbId: string, language: string) {
+    return (source: string, el: HTMLElement) => {
+      const mirror = mountMirror(el);
+      let disposed = false;
+      const cached = blockCacheRef.current.get(`${pluginDbId}|${language}|${source}`);
+      if (cached) {
+        mirror.update(cached);
+      } else {
+        mirror.update({ html: '<div style="opacity:.6;font-size:12px">…</div>', css: "" });
+        renderCodeBlock(pluginDbId, language, source).then((r) => {
+          if (disposed) return;
+          mirror.update(r ?? { html: '<div style="color:#f38ba8;font-size:12px">Plugin không render được khối này.</div>', css: "" });
+        });
+      }
+      return () => {
+        disposed = true;
+        mirror.dispose();
+      };
+    };
   }
 
   async function handleVaultRead(path: string): Promise<string | null> {
@@ -184,6 +254,50 @@ export function usePluginHost(
         setStatusItems((prev) => prev.filter((i) => !(i.pluginDbId === plugin.dbId && i.id === id)));
         return undefined;
       }
+      case "ui.addSidebarPanel":
+      case "ui.addSettingsTab": {
+        const def = args[0] as { id?: unknown; title?: unknown; icon?: unknown } | undefined;
+        if (!def || typeof def.id !== "string" || !def.id || def.id.length > 100) throw new Error(`${method}: invalid id`);
+        const kind = method === "ui.addSidebarPanel" ? "sidebar" : "settings";
+        const ref: PluginPanelRef = {
+          pluginDbId: plugin.dbId,
+          pluginId: plugin.pluginId,
+          kind,
+          id: def.id,
+          title: String(def.title ?? def.id).slice(0, 80),
+          icon: typeof def.icon === "string" ? def.icon.slice(0, 40) : undefined,
+          html: "",
+          css: "",
+        };
+        setPanels((prev) => {
+          const others = prev.filter((p) => !(p.pluginDbId === plugin.dbId && p.kind === kind && p.id === ref.id));
+          if (others.filter((p) => p.pluginDbId === plugin.dbId).length >= 10) return prev;
+          return [...others, ref];
+        });
+        return undefined;
+      }
+      case "ui.removeSidebarPanel":
+      case "ui.removeSettingsTab": {
+        const kind = method === "ui.removeSidebarPanel" ? "sidebar" : "settings";
+        const id = args[0] as string;
+        setPanels((prev) => prev.filter((p) => !(p.pluginDbId === plugin.dbId && p.kind === kind && p.id === id)));
+        return undefined;
+      }
+      case "markdown.registerCodeBlockProcessor": {
+        const lang = String(args[0] ?? "").trim().toLowerCase();
+        if (!lang || lang.length > 40) throw new Error("markdown.registerCodeBlockProcessor: invalid language");
+        const langs = blockLangsRef.current.get(plugin.dbId) ?? new Set<string>();
+        langs.add(lang);
+        blockLangsRef.current.set(plugin.dbId, langs);
+        registerCodeBlockProcessor(plugin.pluginId, lang, makeBlockProcessor(plugin.dbId, lang));
+        return undefined;
+      }
+      case "markdown.unregisterCodeBlockProcessor": {
+        const lang = String(args[0] ?? "").trim().toLowerCase();
+        blockLangsRef.current.get(plugin.dbId)?.delete(lang);
+        unregisterCodeBlockProcessor(plugin.pluginId, lang);
+        return undefined;
+      }
       case "ui.showNotice": {
         const message = args[0] as string;
         const key = `${plugin.dbId}:${Date.now()}:${Math.random().toString(36).slice(2)}`;
@@ -199,6 +313,12 @@ export function usePluginHost(
       case "app.saveSettings": {
         await webApi.plugins.update(vaultId, plugin.dbId, { settings: args[0] as Record<string, unknown> });
         refreshInstalled();
+        // Saved settings (e.g. a board theme) usually change how the plugin's blocks look:
+        // drop cached renders and re-register so open editors redraw them.
+        for (const k of Array.from(blockCacheRef.current.keys())) if (k.startsWith(`${plugin.dbId}|`)) blockCacheRef.current.delete(k);
+        for (const lang of blockLangsRef.current.get(plugin.dbId) ?? []) {
+          registerCodeBlockProcessor(plugin.pluginId, lang, makeBlockProcessor(plugin.dbId, lang));
+        }
         return undefined;
       }
       default:
@@ -221,6 +341,10 @@ export function usePluginHost(
         pluginsRef.current.delete(win);
         setCommands((prev) => prev.filter((c) => c.pluginDbId !== loaded.dbId));
         setStatusItems((prev) => prev.filter((i) => i.pluginDbId !== loaded.dbId));
+        setPanels((prev) => prev.filter((p) => p.pluginDbId !== loaded.dbId));
+        unregisterAllCodeBlockProcessorsForPlugin(loaded.pluginId);
+        blockLangsRef.current.delete(loaded.dbId);
+        for (const k of Array.from(blockCacheRef.current.keys())) if (k.startsWith(`${loaded.dbId}|`)) blockCacheRef.current.delete(k);
       }
     }
 
@@ -283,6 +407,27 @@ export function usePluginHost(
         return;
       }
 
+      if (data.type === "noteriv:codeblock-result") {
+        const done = pendingBlocksRef.current.get(String(data.callId));
+        if (done) {
+          pendingBlocksRef.current.delete(String(data.callId));
+          done(data.ok === true && typeof data.html === "string" ? { html: data.html, css: typeof data.css === "string" ? data.css : "" } : null);
+        }
+        return;
+      }
+
+      if (data.type === "noteriv:mirror-html") {
+        const kind = data.kind === "settings" ? "settings" : "sidebar";
+        setPanels((prev) =>
+          prev.map((p) =>
+            p.pluginDbId === loaded.dbId && p.kind === kind && p.id === data.id
+              ? { ...p, html: String(data.html ?? ""), css: String(data.css ?? "") }
+              : p
+          )
+        );
+        return;
+      }
+
       if (data.type === "noteriv:boot-result" && data.ok === false) {
         const key = `${loaded.dbId}:boot-error`;
         setNotices((prev) => [...prev, { key, message: `Plugin "${loaded.pluginId}" lỗi: ${data.error}` }]);
@@ -325,6 +470,19 @@ export function usePluginHost(
     }
   }, []);
 
+  /** Forward a click/input/change from a mirrored panel back to the plugin that owns it. */
+  const sendMirrorEvent = useCallback((pluginDbId: string, kind: "sidebar" | "settings", id: string, ev: MirrorEvent) => {
+    for (const loaded of pluginsRef.current.values()) {
+      if (loaded.dbId === pluginDbId) {
+        loaded.iframe.contentWindow?.postMessage(
+          { type: "noteriv:mirror-event", kind, id, index: ev.index, eventType: ev.type, value: ev.value, checked: ev.checked },
+          "*"
+        );
+        return;
+      }
+    }
+  }, []);
+
   const clickStatusItem = useCallback((pluginDbId: string, itemId: string) => {
     for (const loaded of pluginsRef.current.values()) {
       if (loaded.dbId === pluginDbId) {
@@ -338,6 +496,8 @@ export function usePluginHost(
     containerRef,
     commands,
     statusItems,
+    panels,
+    sendMirrorEvent,
     notices,
     dismissNotice,
     runCommand,

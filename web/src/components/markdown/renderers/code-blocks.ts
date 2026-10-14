@@ -3,6 +3,7 @@ import { Text } from "@codemirror/state";
 import type { BlockContext } from "../types";
 import {
   getCodeBlockProcessor,
+  getRegistryVersion,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
 } from "@/lib/markdown-code-block-registry";
@@ -374,6 +375,9 @@ class DataviewWidget extends WidgetType {
 class CodeBlockWidget extends WidgetType {
   private cleanupFns: Array<() => void> = [];
 
+  // Captured at construction: a processor registering later makes older widgets unequal, so they re-render.
+  private readonly registryVersion = getRegistryVersion();
+
   constructor(readonly lang: string, readonly code: string) {
     super();
   }
@@ -565,7 +569,7 @@ class CodeBlockWidget extends WidgetType {
   ignoreEvent() { return true; }
 
   eq(other: CodeBlockWidget) {
-    return this.lang === other.lang && this.code === other.code;
+    return this.lang === other.lang && this.code === other.code && this.registryVersion === other.registryVersion;
   }
 }
 

@@ -11,10 +11,15 @@ import {
 import { EDITOR_FONTS, AUTO_SAVE_OPTIONS } from "@/lib/settings";
 import ThemePicker from "@/components/ThemePicker";
 import SyncSection from "@/components/sync/SyncSection";
+import PluginMirror from "@/components/PluginMirror";
+import type { PluginPanelRef } from "@/lib/plugin-sandbox/types";
+import type { MirrorEvent } from "@/lib/plugin-sandbox/mirror";
 
-type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem";
+type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem";
+/** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
+type Section = BuiltInSection | `plugin:${string}`;
 
-const SECTIONS: { id: Section; label: string }[] = [
+const SECTIONS: { id: BuiltInSection; label: string }[] = [
   { id: "general", label: "General" },
   { id: "appearance", label: "Appearance" },
   { id: "editor", label: "Editor" },
@@ -43,7 +48,10 @@ interface SettingsModalProps {
   onOpenPlugins: () => void;
   onOpenSnippets: () => void;
   onClose: () => void;
-  initialSection?: Section;
+  initialSection?: BuiltInSection;
+  /** Settings tabs registered by plugins (ui.addSettingsTab). */
+  pluginTabs?: PluginPanelRef[];
+  onPluginEvent?: (tab: PluginPanelRef, e: MirrorEvent) => void;
 }
 
 export default function SettingsModal({
@@ -59,6 +67,8 @@ export default function SettingsModal({
   onOpenSnippets,
   onClose,
   initialSection,
+  pluginTabs = [],
+  onPluginEvent,
 }: SettingsModalProps) {
   const [active, setActive] = useState<Section>(initialSection ?? "general");
   const [recording, setRecording] = useState<HotkeyAction | null>(null);
@@ -307,7 +317,7 @@ export default function SettingsModal({
     </div>
   );
 
-  const sectionContent: Record<Section, () => React.JSX.Element> = {
+  const builtInContent: Record<BuiltInSection, () => React.JSX.Element> = {
     general: renderGeneral,
     appearance: renderAppearance,
     editor: renderEditor,
@@ -316,12 +326,32 @@ export default function SettingsModal({
     ecosystem: renderEcosystem,
   };
 
+  const navItems: { id: Section; label: string }[] = [
+    ...SECTIONS,
+    ...pluginTabs.map((t) => ({ id: `plugin:${t.pluginDbId}:${t.id}` as Section, label: t.title })),
+  ];
+  const activePluginTab = active.startsWith("plugin:")
+    ? pluginTabs.find((t) => `plugin:${t.pluginDbId}:${t.id}` === active)
+    : undefined;
+
+  function renderActive() {
+    if (active.startsWith("plugin:")) {
+      // A plugin tab can disappear while open (plugin disabled): fall back to a notice, not a crash.
+      return activePluginTab ? (
+        <PluginMirror html={activePluginTab.html} css={activePluginTab.css} onEvent={(e) => onPluginEvent?.(activePluginTab, e)} />
+      ) : (
+        <div className="st-row-desc">Tab này không còn khả dụng (plugin đã tắt?).</div>
+      );
+    }
+    return builtInContent[active as BuiltInSection]();
+  }
+
   return (
     <div ref={overlayRef} className="settings-overlay" onClick={handleBackdrop}>
       <div className="settings-modal">
         <div className="st-nav">
           <div className="st-nav-title">Settings</div>
-          {SECTIONS.map((s) => (
+          {navItems.map((s) => (
             <button key={s.id} className={`st-nav-item${active === s.id ? " st-nav-active" : ""}`} onClick={() => setActive(s.id)}>
               <span>{s.label}</span>
             </button>
@@ -329,14 +359,14 @@ export default function SettingsModal({
         </div>
         <div className="st-main">
           <div className="st-header">
-            <h2 className="st-title">{SECTIONS.find((s) => s.id === active)?.label}</h2>
+            <h2 className="st-title">{navItems.find((s) => s.id === active)?.label}</h2>
             <button onClick={onClose} className="settings-close-btn">
               <svg width="14" height="14" viewBox="0 0 14 14">
                 <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               </svg>
             </button>
           </div>
-          <div className="st-content">{sectionContent[active]()}</div>
+          <div className="st-content">{renderActive()}</div>
         </div>
       </div>
     </div>

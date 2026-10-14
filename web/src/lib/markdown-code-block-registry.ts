@@ -31,6 +31,27 @@ const RESERVED_LANGUAGES = new Set(["dataview", "mermaid"]);
 
 const registry = new Map<string, RegistryEntry>();
 
+// Registration can happen after notes are already on screen (plugins boot in
+// iframes asynchronously), so open editors need a nudge to re-render fences that
+// just gained a processor. Widgets compare `getRegistryVersion()` in eq(), and
+// views subscribe here to re-run their decorations.
+let registryVersion = 0;
+const listeners = new Set<() => void>();
+
+export function getRegistryVersion(): number {
+  return registryVersion;
+}
+
+export function subscribeCodeBlockRegistry(listener: () => void): () => void {
+  listeners.add(listener);
+  return () => listeners.delete(listener);
+}
+
+function bump() {
+  registryVersion++;
+  listeners.forEach((l) => l());
+}
+
 export function registerCodeBlockProcessor(
   pluginId: string,
   language: string,
@@ -49,6 +70,7 @@ export function registerCodeBlockProcessor(
     );
   }
   registry.set(key, { pluginId, processor });
+  bump();
 }
 
 export function unregisterCodeBlockProcessor(pluginId: string, language: string): void {
@@ -56,14 +78,20 @@ export function unregisterCodeBlockProcessor(pluginId: string, language: string)
   const existing = registry.get(key);
   if (existing && existing.pluginId === pluginId) {
     registry.delete(key);
+    bump();
   }
 }
 
 /** Called from PluginManager.unloadPlugin — removes every processor owned by this plugin. */
 export function unregisterAllCodeBlockProcessorsForPlugin(pluginId: string): void {
+  let removed = false;
   for (const [key, entry] of registry) {
-    if (entry.pluginId === pluginId) registry.delete(key);
+    if (entry.pluginId === pluginId) {
+      registry.delete(key);
+      removed = true;
+    }
   }
+  if (removed) bump();
 }
 
 export function getCodeBlockProcessor(language: string): RegistryEntry | undefined {

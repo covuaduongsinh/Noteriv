@@ -70,11 +70,17 @@ const METHOD_TO_PERMISSION: Record<string, string> = {
   "ui.removeCommand": "ui:commands",
   "ui.addStatusBarItem": "ui:statusbar",
   "ui.removeStatusBarItem": "ui:statusbar",
+  "ui.addSidebarPanel": "ui:panel",
+  "ui.removeSidebarPanel": "ui:panel",
+  "ui.addSettingsTab": "ui:panel",
+  "ui.removeSettingsTab": "ui:panel",
+  "markdown.registerCodeBlockProcessor": "markdown:render",
+  "markdown.unregisterCodeBlockProcessor": "markdown:render",
 };
 
 export function inferPermissions(mainJs: string): string[] {
   const found = new Set<string>();
-  const re = /\b(vault|editor|ui)\s*\.\s*(\w+)/g;
+  const re = /\b(vault|editor|ui|markdown)\s*\.\s*(\w+)/g;
   let m: RegExpExecArray | null;
   while ((m = re.exec(mainJs)) !== null) {
     const perm = METHOD_TO_PERMISSION[`${m[1]}.${m[2]}`];

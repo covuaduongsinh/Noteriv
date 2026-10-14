@@ -45,6 +45,10 @@ interface RibbonProps {
   onThemes: () => void;
   onSnippets: () => void;
   syncAttention?: boolean;
+  /** Sidebar panels registered by plugins; one extra button each. */
+  pluginPanels?: { key: string; title: string; icon?: string }[];
+  activePluginPanel?: string | null;
+  onPluginPanel?: (key: string) => void;
   outlineActive?: boolean;
   tagsActive?: boolean;
   bookmarksActive?: boolean;
@@ -78,6 +82,9 @@ export default function Ribbon({
   onThemes,
   onSnippets,
   syncAttention,
+  pluginPanels = [],
+  activePluginPanel = null,
+  onPluginPanel,
   outlineActive,
   tagsActive,
   bookmarksActive,
@@ -144,6 +151,17 @@ export default function Ribbon({
         </button>
       </div>
       <div className="ribbon-bottom">
+        {pluginPanels.map((p) => (
+          <button
+            key={p.key}
+            className="ribbon-btn"
+            title={p.title}
+            onClick={() => onPluginPanel?.(p.key)}
+            style={{ fontSize: 12, fontWeight: 600, ...(activePluginPanel === p.key ? { color: "var(--accent)" } : {}) }}
+          >
+            {(p.icon && p.icon.length <= 2 ? p.icon : p.title.charAt(0)).toUpperCase()}
+          </button>
+        ))}
         <button
           className="ribbon-btn"
           title="Đồng bộ Git / WebDAV"

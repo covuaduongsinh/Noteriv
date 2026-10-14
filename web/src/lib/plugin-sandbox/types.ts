@@ -1,4 +1,4 @@
-export type PluginPermission = "vault:read" | "vault:write" | "editor:read" | "editor:write" | "ui:commands" | "ui:statusbar";
+export type PluginPermission = "vault:read" | "vault:write" | "editor:read" | "editor:write" | "ui:commands" | "ui:statusbar" | "ui:panel" | "markdown:render";
 
 export interface PluginManifest {
   id: string;
@@ -43,6 +43,18 @@ export type PluginEventName =
   | "editor-change"
   | "vault-change"
   | "layout-change";
+
+/** A sidebar panel or settings tab a plugin registered; `html`/`css` is the sandbox's latest serialised render. */
+export interface PluginPanelRef {
+  pluginDbId: string;
+  pluginId: string;
+  kind: "sidebar" | "settings";
+  id: string;
+  title: string;
+  icon?: string;
+  html: string;
+  css: string;
+}
 
 export interface PluginNotice {
   key: string;
