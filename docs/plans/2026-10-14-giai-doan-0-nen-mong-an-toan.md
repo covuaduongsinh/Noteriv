@@ -190,7 +190,7 @@ Giai đoạn tiếp theo: [Giai đoạn 1: tách repo, package dùng chung, Plug
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
 | 0.1 | **Xong** | 2026-10-15 | `c72438a` (deploy production). Repo `covuaduongsinh/noteriv-backups` (private, deploy key ghi). Bản đầu tiên: khe `daily-thu` + nhánh `attachments`; mọi file trừ `manifest.json`/`README.txt` đã mã hoá age. healthchecks.io: chạy lỗi cố ý (sai mật khẩu DB) → đỏ + email; chạy đúng → xanh. DB dump mã hoá ~16MB (23 khe ≈ 380MB). Dokploy không cung cấp commit nguồn → manifest ghi `sourceCommit: "unknown"`. **Chưa kiểm:** lần chạy tự động 02:00 đầu tiên (xem healthchecks sáng 2026-10-15). |
-| 0.2 | Chưa làm | | |
+| 0.2 | **Xong** (chờ merge `main`) | 2026-10-15 | Nhánh `next` + `phase0/staging` (`bda6350`, tài liệu `029560f`). Compose staging `klW9MC4cRpRHiPHMcMwIq`, secret riêng, basic-auth + noindex, webhook GitHub riêng. Đã kiểm: 401/200, đăng ký, vault, note, đính kèm (Garage), PDF, WebSocket cộng tác (101), Chẩn đoán xanh, DNS staging trỏ api staging, không có container backup, production vẫn 200 và không deploy lại khi push `next`. Quy trình: `docs/ops/trien-khai.md`. **Chưa làm:** merge `phase0/staging` vào `main` (cần chủ dự án đồng ý); thử Stop/Start; xoá user thử; tắt staging. Mật khẩu basic-auth hiện 9 ký tự, nên đặt dài hơn. |
 | Diễn tập khôi phục | **Xong** | 2026-10-15 | Khe `daily-thu` khôi phục vào Postgres + Garage tạm trên VPS (`drill.sh`): users 1, notes 1925, attachments 1, migration `20261014160000_clip_tokens` khớp manifest và DB đang chạy; sha256 đính kèm khớp bản trên Garage production. Khoá age và môi trường tạm đã xoá. Nên diễn tập lại 3 tháng/lần. |
 | 0.3 | Chưa làm | | |
 | 0.4 | Chưa làm | | |
