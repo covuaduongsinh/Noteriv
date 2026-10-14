@@ -30,6 +30,7 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - Chủ dự án **không chuyên IT**: giải thích bằng tiếng Việt dễ hiểu, đưa **khuyến nghị kèm lý do**, hỏi khi cần quyết định (dùng câu hỏi có lựa chọn).
 - **Ngôn ngữ:** trả lời và tài liệu bằng tiếng Việt; code, tên file, commit message, PR bằng tiếng Anh.
 - **Kế hoạch luôn lưu trong `docs/plans/`** (đặt tên `YYYY-MM-DD-<chủ-đề>.md`). Plan mode: chỉ đọc và viết file kế hoạch, **không chạy shell** (kể cả lệnh "chỉ kiểm tra").
+- **Mô hình nhánh:** `main` = production (Dokploy tự deploy); `next` = tái cấu trúc (Giai đoạn 1 trở đi), bản staging deploy từ `next`. Sửa lỗi production: nhánh từ `main`, rồi **merge `main` vào `next`** (một chiều). Gộp `next` vào `main` chỉ ở mốc được chủ dự án duyệt. **Không bao giờ force-push `main`.**
 - **Hỏi trước khi push hoặc deploy.** Chủ dự án thường trả lời "push và deploy luôn" khi đồng ý.
 - **Không dán hoặc ghi secret** vào chat, tài liệu, commit. Khi đọc env Dokploy chỉ in **tên** biến.
 - **Không đụng các file chưa commit của chủ dự án** (hiện có: `desktop/examples/plugins/chessboard/*`, `docs/plans/2026-10-12-chessboard-plugin-improvements.md`). Khi `git add`, liệt kê từng file, không dùng `git add -A` hay `git add docs`.
@@ -41,7 +42,7 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - **Web là sản phẩm chính**; **desktop vẫn được duy trì với cùng tính năng** nhờ dùng chung mã (`packages/*` từ Giai đoạn 1). Mọi tính năng mới phải chạy trên cả hai.
 - Đối tượng: **cộng đồng PKM cờ vua**. Tên: **Noteriv**.
 - **Noteriv thay thế ChessNote** (`D:\code\chessnote`, fork SilverBullet). ChessNote đã ngừng chạy; chỉ chuyển **tính năng**, không có dữ liệu cần chuyển. Tài liệu thuật toán cờ: `D:\code\chessnote\docs\CHESS_MODULES.md` và `docs/modules/`. Kiểm tra giấy phép trước khi chép mã (xem mục 3 của lộ trình).
-- Upstream `thejacedev/Noteriv` (remote `upstream`): **chỉ học ý tưởng**, không merge. Repo sẽ được **tách thành repo riêng ở đầu Giai đoạn 1** (phiên 1.1); khi đó cập nhật URL repo ở file này.
+- Upstream `thejacedev/Noteriv` (remote `upstream`): **chỉ học ý tưởng**, không merge. **Chưa tách repo** (quyết định 2026-10-14); việc tách được xem lại ở cuối Giai đoạn 2.
 - Thứ tự: 0 an toàn → 1 nền móng chung + Plugin API → 2 thu gọn thành core plugin → 3 cờ vua (core plugin) → 4 hệ sinh thái plugin → 5 đồng bộ/PWA/chia sẻ/lớp học → 6 AI/MCP/ra mắt.
 - Mốc: tag `v-web-parity-2026-10-14` (commit `05f7318`).
 

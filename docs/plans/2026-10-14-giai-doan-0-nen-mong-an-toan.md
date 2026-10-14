@@ -18,7 +18,7 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
 
 ## Quy ước chung cho mọi phiên
 
-- Mỗi phiên làm trên nhánh riêng `phase0/<tên>` (ví dụ `phase0/backup`). Từ phiên 0.2 trở đi, merge vào `staging` để thử trước khi vào `main`.
+- Mỗi phiên làm trên nhánh riêng `phase0/<tên>` (ví dụ `phase0/backup`) tách từ `main`. Từ phiên 0.2 trở đi, merge vào `next` để thử trên staging, rồi merge vào `main`.
 - Đầu phiên: viết kế hoạch chi tiết của phiên (file riêng trong `docs/plans/`, ví dụ `2026-10-xx-phien-0-1-sao-luu.md`), chủ dự án duyệt rồi mới làm.
 - Cuối phiên: cập nhật mục **"Trạng thái"** ở cuối file này (ngày, commit, việc còn dở).
 - **Hỏi chủ dự án trước khi push hoặc deploy.** Không ghi secret vào chat, tài liệu hay commit.
@@ -87,7 +87,7 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
 ## Phiên 0.2: Bản staging và quy trình "thử trước, lên thật sau"
 
 ### Thiết kế
-- **Ứng dụng Dokploy compose thứ hai** (tạo qua giao diện hoặc API `compose.create`), nguồn là repo này, **nhánh `staging`**, cùng file `web/infra/docker-compose.prod.yml`.
+- **Ứng dụng Dokploy compose thứ hai** (tạo qua giao diện hoặc API `compose.create`), nguồn là repo này, **nhánh `next`** (nhánh tái cấu trúc, tạo ở phiên này từ `main`; xem mô hình nhánh ở Giai đoạn 1, phiên 1.1), cùng file `web/infra/docker-compose.prod.yml`.
 - Tên miền: `staging-noteriv.dsc.edu.vn`. Volume tự tách riêng vì khác compose project. **Secret riêng**, sinh mới, không dùng lại secret production.
 - **Mặc định tắt**, chỉ bật khi cần thử (Dokploy "Stop/Start"), vì RAM VPS khoảng 7,9GB, còn trống khoảng 3,5GB, và bộ staging đầy đủ chiếm tới khoảng 2,5GB giới hạn.
 - **Sửa compose dùng chung 2 môi trường:** thay giá trị cứng bằng biến có mặc định là production, để production không đổi hành vi:
@@ -98,11 +98,12 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
 - **Dữ liệu staging:** chỉ dữ liệu thử. Khi diễn tập khôi phục (0.1) thì dữ liệu thật được nạp tạm, **xoá ngay sau khi diễn tập**.
 
 ### Quy trình git (ghi cả vào file bàn giao)
-1. Nhánh tính năng (`feature/...`, `phase0/...`) từ `main`.
-2. Xong thì merge vào `staging`, push, Dokploy tự deploy staging. Bật staging nếu đang tắt.
-3. Chủ dự án thử trên staging.
-4. Đạt thì merge vào `main` (production), sau khi chủ dự án đồng ý.
-5. Hotfix khẩn: nhánh từ `main`, sửa, deploy, rồi merge ngược vào `staging`.
+- `main` = production; `next` = staging và tái cấu trúc.
+1. Việc của Giai đoạn 0 và sửa lỗi production: nhánh `phase0/...` hoặc `fix/...` từ `main`.
+2. Cần thử trên staging thì merge nhánh đó vào `next`, push, Dokploy tự deploy staging. Bật staging nếu đang tắt.
+3. Chủ dự án thử trên staging. Đạt thì merge nhánh vào `main` (production), sau khi chủ dự án đồng ý.
+4. Luôn **merge `main` vào `next`** sau mỗi thay đổi production (một chiều), để `next` không tụt hậu.
+5. Việc tái cấu trúc (Giai đoạn 1 trở đi) làm trên `next`; chỉ gộp `next` vào `main` ở các mốc đã duyệt.
 - Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx prisma migrate deploy`), rồi mới chạy trên production.
 
 ### Việc chủ dự án làm
@@ -111,7 +112,7 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
 
 ### Thế nào là xong
 - Đăng nhập staging bằng user thử, mở note và tải PDF được.
-- Push vào `staging` không làm production deploy lại.
+- Push vào `next` không làm production deploy lại.
 - Diễn tập khôi phục của 0.1 làm trên staging thành công, rồi dữ liệu đã được xoá.
 
 ---

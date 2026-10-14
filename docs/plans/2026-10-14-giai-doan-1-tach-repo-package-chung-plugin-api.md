@@ -1,4 +1,4 @@
-# Giai đoạn 1: Tách repo, package dùng chung, bản nháp Plugin API v1
+# Giai đoạn 1: Nhánh `next`, package dùng chung, bản nháp Plugin API v1
 
 > Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
@@ -6,7 +6,7 @@
 
 ## Mục tiêu
 
-1. Noteriv có **repo riêng**, không còn là fork, nhưng vẫn giữ toàn bộ lịch sử và ghi công tác giả gốc.
+1. Việc tái cấu trúc diễn ra **trên nhánh `next` của repo hiện tại** (vẫn giữ liên kết upstream), cách ly hoàn toàn với production (`main`). Repo được dọn gọn (đưa file APK ra GitHub Releases).
 2. Web và desktop **dùng chung một lõi mã** (render markdown, editor, tiện ích, plugin host). Sửa một lần, cả hai nền tảng cùng có.
 3. Có **bản nháp Plugin API v1 hai tầng** dùng được trên cả web và desktop:
    - **Core plugin** (do dự án viết, tin cậy): chạy trực tiếp trong ứng dụng, đủ mạnh cho giao diện phức tạp (bàn cờ, canvas).
@@ -24,27 +24,28 @@ Người dùng **chưa thấy tính năng mới** ở giai đoạn này. Thành 
 
 ---
 
-## Phiên 1.1: Tách repo khỏi upstream
+## Phiên 1.1: Nhánh `next`, dọn repo, ghi công
+
+> **Quyết định 2026-10-14:** **chưa tách repo khỏi upstream**. Upstream ít hoạt động (commit cuối 2026-09-06, không có commit nào ta chưa có), nên giữ liên kết không tốn gì. Thử nghiệm tái cấu trúc bằng **nhánh `next`** thay vì repo riêng: an toàn tương đương, không phải duy trì hai nơi, giữ đủ lịch sử. Việc tách repo chuyển thành **điểm quyết định** ở cuối Giai đoạn 2 (xem phụ lục cuối file).
+
+### Mô hình nhánh (ghi cả vào file bàn giao)
+- `main`: **production**. Chỉ nhận sửa lỗi, việc của Giai đoạn 0, và các lần gộp `next` đã được duyệt.
+- `next`: **tái cấu trúc** (Giai đoạn 1 trở đi). Bản staging (phiên 0.2) deploy từ nhánh này.
+- Nhánh làm việc: `feature/...` hoặc `phase1/...` tách từ `next` rồi merge lại vào `next`. Sửa lỗi production: tách từ `main`, merge vào `main`, rồi **merge `main` vào `next`** (luôn một chiều `main` sang `next`, để `next` không tụt hậu).
+- `next` gộp vào `main` **chỉ ở mốc** (cuối mỗi giai đoạn, hoặc khi chủ dự án chọn), sau khi đã thử đầy đủ trên staging, có bản sao lưu mới nhất, và chủ dự án đồng ý.
 
 ### Việc cụ thể
-1. Tạo repo mới **không phải fork**: `covuaduongsinh/noteriv` (chủ dự án tạo repo trống trên GitHub; nếu tên đã dùng thì chọn tên khác và ghi lại ở đây).
-2. Đẩy **toàn bộ lịch sử và tag** từ repo hiện tại: `git push --mirror` từ một bản clone `--bare` (giữ commit của thejacedev và của chủ dự án).
-3. Giấy phép và ghi công:
-   - Giữ nguyên `LICENSE` (MIT, © Jace) và thêm dòng bản quyền của chủ dự án cho phần đóng góp mới.
-   - Thêm `NOTICE.md`: nguồn gốc (fork từ `thejacedev/Noteriv`), các thành phần bên thứ ba sẽ chuyển từ ChessNote (SilverBullet MIT, Arasan, chess.js BSD-2, bộ quân cờ: từng giấy phép).
-   - Sửa `README.md`: giới thiệu Noteriv (Chess PKM), ghi rõ nguồn gốc.
-4. Giữ remote `upstream` (`thejacedev/Noteriv`) **chỉ để tham khảo** (`git fetch upstream`, không merge).
-5. **Chuyển Dokploy** sang repo mới cho cả production (`3tKquEXFX1KEN2EueeUGm`) và staging: đổi nguồn git, cấu hình lại webhook. Kiểm tra deploy thành công trên staging trước, rồi production.
-6. Repo fork cũ: **Archive** (chỉ đọc) sau khi repo mới chạy ổn 1 tuần; README cũ trỏ sang repo mới.
-7. Cập nhật file bàn giao: URL repo mới, quy tắc upstream.
+1. Tạo nhánh `next` từ `main` (nếu phiên 0.2 chưa tạo); bật bảo vệ nhánh `main` trên GitHub (cấm force-push).
+2. **Dọn repo:** gỡ `app-apk/noteriv.apk` (84MB, file nhị phân trong repo) khỏi cây thư mục, đăng lên **GitHub Releases** (cùng các bản build desktop sau này); thêm `*.apk` vào `.gitignore`. **Không** viết lại lịch sử git (file vẫn nằm trong lịch sử; giữ lịch sử quan trọng hơn vài chục MB).
+3. **Ghi công và giấy phép:** giữ nguyên `LICENSE` (MIT, © Jace), thêm dòng bản quyền của chủ dự án cho phần đóng góp mới; thêm `NOTICE.md` (nguồn gốc fork từ `thejacedev/Noteriv`; các thành phần bên thứ ba sẽ chuyển từ ChessNote, mỗi thành phần ghi giấy phép).
+4. **README:** giới thiệu Noteriv hướng Chess PKM, ghi rõ nguồn gốc và mô hình nhánh.
+5. **Theo dõi upstream:** mỗi tháng `git fetch upstream` rồi `git log main..upstream/main`; ghi ý tưởng đáng làm lại vào `docs/upstream-notes.md`. Có thể cherry-pick sửa lỗi bảo mật của upstream vào `desktop/` nếu còn áp dụng được.
 
 ### Chủ dự án làm
-- Tạo repo trống `noteriv` trên GitHub (private hay public: **khuyến nghị public** vì hướng tới cộng đồng và giấy phép MIT; có thể để private đến khi ra mắt).
-- Xác nhận trước khi chuyển nguồn Dokploy và archive repo cũ.
+- Đồng ý mô hình nhánh; xác nhận chuyển file APK sang Releases.
 
 ### Xong khi
-- Repo mới có đủ lịch sử (`git log` khớp, tag `v-web-parity-2026-10-14` có mặt).
-- Production và staging deploy từ repo mới thành công; tính năng sync và PDF vẫn chạy.
+- Có nhánh `next`, staging deploy từ `next`; `main` được bảo vệ; APK nằm ở Releases; có `NOTICE.md` và README mới.
 
 ---
 
@@ -139,14 +140,27 @@ Người dùng **chưa thấy tính năng mới** ở giai đoạn này. Thành 
 | `phone/` không còn được duy trì | Ghi rõ trong README là ngừng phát triển (thay bằng PWA, Giai đoạn 5); không xoá |
 
 ## Ước lượng
-Khoảng 6–9 buổi: 1.1 (1), 1.2 (1–2), 1.3 (1–2), 1.4 (2–3), 1.5 (1–2).
+Khoảng 6–9 buổi: 1.1 (dưới 1), 1.2 (1–2), 1.3 (1–2), 1.4 (2–3), 1.5 (1–2).
 
 ## Trạng thái
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 1.1 Tách repo | Chưa làm | | |
+| 1.1 Nhánh `next`, dọn repo | Chưa làm | | |
 | 1.2 Monorepo + `@noteriv/core` | Chưa làm | | |
 | 1.3 VaultAdapter | Chưa làm | | |
 | 1.4 `@noteriv/ui` | Chưa làm | | |
 | 1.5 Plugin API v1 nháp | Chưa làm | | |
+
+---
+
+## Phụ lục: Tách repo khỏi upstream (khi có quyết định)
+
+**Không làm bây giờ.** Xem xét lại ở **cuối Giai đoạn 2**, hoặc sớm hơn nếu một trong các điều sau xảy ra: đổi tên hoặc thương hiệu; upstream thay đổi theo hướng không còn phù hợp; cần repo public riêng để ra mắt cộng đồng.
+
+Cách làm khi quyết định tách:
+1. Chủ dự án tạo repo trống (không phải fork), ví dụ `covuaduongsinh/noteriv`.
+2. Đẩy **toàn bộ lịch sử và tag** (`git clone --bare` rồi `git push --mirror`). **Không** tạo repo bằng cách tải file zip, vì sẽ mất lịch sử và ghi công.
+3. Giữ `LICENSE`, `NOTICE.md`; remote `upstream` vẫn để tham khảo.
+4. Chuyển nguồn git của Dokploy (production `3tKquEXFX1KEN2EueeUGm` và staging) sang repo mới, cấu hình lại webhook; thử staging trước, rồi production.
+5. Repo cũ: Archive sau 1 tuần chạy ổn; README trỏ sang repo mới. Cập nhật file bàn giao.

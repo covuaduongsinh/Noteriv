@@ -18,7 +18,7 @@
 | Đối tượng | **Cộng đồng PKM cờ vua** (người học, người dạy, câu lạc bộ cờ) |
 | Tên sản phẩm | Tạm giữ **Noteriv** |
 | Quan hệ với ChessNote | **Noteriv thay thế ChessNote** |
-| Upstream (`thejacedev/Noteriv`) | **Tách repo ở đầu Giai đoạn 1**; vẫn theo dõi upstream để học ý tưởng, không merge |
+| Upstream (`thejacedev/Noteriv`) | **Chưa tách**, giữ liên kết; thử nghiệm tái cấu trúc trên **nhánh `next`**; xem lại việc tách repo ở cuối Giai đoạn 2 |
 | Máy chủ | **VPS hiện tại** (dùng chung, phải theo dõi tài nguyên) |
 | Sao lưu | **GitHub (repo private)**, mã hoá, giới hạn kích thước |
 | Thứ tự | **0 an toàn → 1 nền móng chung + API → 2 thu gọn → 3 cờ vua → 4 hệ sinh thái plugin → 5 đồng bộ/di động/chia sẻ → 6 AI/MCP/ra mắt** |
@@ -39,12 +39,14 @@
 
 ## 3. Chiến lược mã nguồn
 
-1. **Đến hết Giai đoạn 0:** giữ repo fork `covuaduongsinh/Noteriv`; việc lớn làm trên nhánh riêng, thử trên staging trước khi vào `main`.
-2. **Đầu Giai đoạn 1:** tách thành repo riêng (không phải fork) **giữ toàn bộ lịch sử**, giữ `LICENSE` MIT (© Jace) + `NOTICE.md` ghi công. Remote `upstream` chỉ để tham khảo; mỗi tháng xem có ý tưởng nào đáng làm lại.
-3. **Dùng chung mã giữa web và desktop:** monorepo npm workspaces với `packages/core`, `packages/ui`, `packages/plugin-api`, `packages/chess`, `packages/plugins/*`. `web/` và `desktop/` giữ nguyên vị trí, chỉ khác nhau ở **tầng lưu trữ** (`VaultAdapter`: REST so với file cục bộ).
-4. **Tính năng = core plugin:** lõi mỏng; mọi tính năng không thiết yếu (kể cả các tính năng cờ) là core plugin, bật/tắt được, tắt thì không tải mã.
-5. **Giấy phép:** kiểm từng thành phần trước khi chép từ ChessNote (SilverBullet MIT, Arasan, chess.js BSD-2, từng bộ quân). Chỉ chép những gì tương thích MIT (chi tiết: Giai đoạn 3, phiên 3.0).
-6. `phone/` (React Native): ngừng phát triển, thay bằng PWA (Giai đoạn 5). `extension/` (web clipper) giữ. `mcp/` giữ cho desktop; thêm MCP máy chủ ở Giai đoạn 6.
+1. **Giữ repo hiện tại** `covuaduongsinh/Noteriv`, vẫn liên kết upstream. Kiểm tra 2026-10-14: upstream có commit cuối 2026-09-06 và không có commit nào ta chưa có, nên giữ liên kết không tốn gì; mỗi tháng xem có ý tưởng nào đáng làm lại.
+2. **Mô hình nhánh:** `main` = production; `next` = tái cấu trúc (Giai đoạn 1 trở đi), staging deploy từ `next`; luôn merge `main` vào `next` (một chiều); gộp `next` vào `main` chỉ ở mốc đã duyệt. **Không** tạo repo thử nghiệm song song, vì hai nơi cùng phát triển sẽ lệch nhau, và tải mã dạng zip thì mất lịch sử và ghi công.
+3. **Tách repo** là **điểm quyết định ở cuối Giai đoạn 2** (hoặc khi đổi thương hiệu, hay cần repo public riêng để ra mắt). Khi tách: đẩy đủ lịch sử, giữ `LICENSE` MIT (© Jace) + `NOTICE.md` (chi tiết ở phụ lục file Giai đoạn 1).
+4. **Repo không cồng kềnh về kích thước** (đo 2026-10-14: web khoảng 35.000 dòng, desktop khoảng 37.500, phone khoảng 18.500; gói 51MB, phần lớn do file `app-apk/noteriv.apk` 84MB, sẽ chuyển sang GitHub Releases ở phiên 1.1). Cái cần xử lý là **trùng lặp web/desktop** (Giai đoạn 1) và **tính năng dồn vào lõi** (Giai đoạn 2, làm sau khi đo).
+5. **Dùng chung mã giữa web và desktop:** monorepo npm workspaces với `packages/core`, `packages/ui`, `packages/plugin-api`, `packages/chess`, `packages/plugins/*`. `web/` và `desktop/` giữ nguyên vị trí, chỉ khác nhau ở **tầng lưu trữ** (`VaultAdapter`: REST so với file cục bộ).
+6. **Tính năng = core plugin:** lõi mỏng; mọi tính năng không thiết yếu (kể cả các tính năng cờ) là core plugin, bật/tắt được, tắt thì không tải mã.
+7. **Giấy phép:** kiểm từng thành phần trước khi chép từ ChessNote (SilverBullet MIT, Arasan, chess.js BSD-2, từng bộ quân). Chỉ chép những gì tương thích MIT (chi tiết: Giai đoạn 3, phiên 3.0).
+8. `phone/` (React Native): ngừng phát triển, thay bằng PWA (Giai đoạn 5). `extension/` (web clipper) giữ. `mcp/` giữ cho desktop; thêm MCP máy chủ ở Giai đoạn 6.
 
 ---
 
@@ -53,7 +55,7 @@
 | GĐ | Tên | Kế hoạch chi tiết | Ước lượng | Người dùng thấy gì |
 |---|---|---|---|---|
 | **0** | Nền móng an toàn: sao lưu, staging, theo dõi, bảo mật | [giai-doan-0](2026-10-14-giai-doan-0-nen-mong-an-toan.md) | 4–6 buổi | Đăng ký bằng mã mời, trang điều khoản |
-| **1** | Tách repo, package dùng chung, Plugin API v1 (nháp, hai tầng) | [giai-doan-1](2026-10-14-giai-doan-1-tach-repo-package-chung-plugin-api.md) | 6–9 buổi | Gần như không đổi (nền móng) |
+| **1** | Nhánh `next`, package dùng chung, Plugin API v1 (nháp, hai tầng) | [giai-doan-1](2026-10-14-giai-doan-1-tach-repo-package-chung-plugin-api.md) | 6–9 buổi | Gần như không đổi (nền móng) |
 | **2** | Thu gọn: tính năng hiện có thành core plugin | [giai-doan-2](2026-10-14-giai-doan-2-thu-gon-core-plugin.md) | 6–8 buổi | Mở nhanh hơn; bật/tắt tính năng trong Cài đặt |
 | **3** | Cờ vua: bàn cờ/PGN/sửa bàn → engine/Game Review/nhập Lichess → thẻ thế cờ/khai cuộc | [giai-doan-3](2026-10-14-giai-doan-3-co-vua-core-plugin.md) | 10–13 buổi | **Toàn bộ trải nghiệm cờ vua**, trên web và desktop |
 | **4** | API v1.0 ổn định, tài liệu, plugin mẫu, CLI, kho plugin | [giai-doan-4](2026-10-14-giai-doan-4-tai-lieu-plugin-cli.md) | 5–7 buổi | Plugin cờ từ cộng đồng |
@@ -137,10 +139,10 @@ desktop/           Next static export + Tauri (DesktopVaultAdapter → file cụ
 
 ## 9. Các quyết định của chủ dự án
 
-**Đã chốt (2026-10-14):** tên Noteriv; VPS hiện tại; sao lưu GitHub; web là chính nhưng desktop vẫn duy trì; đối tượng là cộng đồng PKM cờ vua; Noteriv thay ChessNote; tách repo đầu GĐ 1; thứ tự 0 → 6 như mục 4.
+**Đã chốt (2026-10-14):** tên Noteriv; VPS hiện tại; sao lưu GitHub; web là chính nhưng desktop vẫn duy trì; đối tượng là cộng đồng PKM cờ vua; Noteriv thay ChessNote; **chưa tách upstream**, thử nghiệm trên nhánh `next`; thứ tự 0 → 6 như mục 4.
 
 **Còn mở (quyết trước giai đoạn tương ứng):**
-1. **Repo mới public hay private** (trước 1.1). Khuyến nghị public khi ra mắt.
+1. **Có tách repo khỏi upstream không, và repo public hay private** (cuối GĐ 2). Khuyến nghị public khi ra mắt.
 2. **Mặc định bật/tắt từng core plugin** (phiên 2.1, sau khi đo đạc).
 3. **Chính sách AI** (trước 6.1): miễn phí giới hạn, trả phí, hay người dùng tự nhập API key.
 4. **Nhóm thử nghiệm đầu tiên** (sau 3A): ai, bao nhiêu người, khi nào.
@@ -153,7 +155,7 @@ desktop/           Next static export + Tauri (DesktopVaultAdapter → file cụ
 
 Trong lúc tư vấn từng có thứ tự 5 bước: (1) package dùng chung + API v1, (2) thí điểm core plugin, (3) tài liệu/mẫu/CLI, (4) xung đột sync + PWA + Ghi nhanh, (5) MCP + tiếp thị. Lộ trình này **giữ nguyên tinh thần đó** và:
 - Thêm **GĐ 0 (an toàn dữ liệu)** lên đầu, vì production đang chạy chưa có sao lưu.
-- Bước (1) là **GĐ 1** (thêm tách repo và tầng `VaultAdapter`; desktop vẫn duy trì nên package dùng chung là cần thiết).
+- Bước (1) là **GĐ 1** (làm trên nhánh `next`, thêm tầng `VaultAdapter`; desktop vẫn duy trì nên package dùng chung là cần thiết).
 - Bước (2) mở rộng thành **GĐ 2: thu gọn toàn bộ** (thí điểm Flashcards rồi chuyển các tính năng còn lại), theo ý chủ dự án "bớt cồng kềnh trước khi làm sâu về cờ".
 - Thêm **GĐ 3: cờ vua dưới dạng core plugin**, nơi API được kiểm chứng bằng tính năng chính của sản phẩm.
 - Bước (3) là **GĐ 4**, bước (4) là **GĐ 5** (thêm xuất bản công khai và lớp học), bước (5) là **GĐ 6** (thêm AI Coach).
