@@ -205,7 +205,7 @@ export async function importNewNotesOnly(
   }
 }
 
-async function ensureFolderChain(
+export async function ensureFolderChain(
   prisma: PrismaClient,
   vaultId: string,
   folderPath: string,

@@ -63,7 +63,11 @@ export type HotkeyAction =
   // Phase 1 discoverability (parity plan v2): entries that already existed as
   // ribbon/settings paths but had no palette/menu action.
   | "syncSettings"
-  | "themePicker";
+  | "themePicker"
+  | "importVault"
+  | "exportVault"
+  | "importNewVault"
+  | "newVaultFromGithub";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -103,6 +107,10 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
   { action: "syncSettings", label: "Sync Settings (Git / WebDAV)", keys: "", category: "Sync" },
   { action: "themePicker", label: "Themes", keys: "", category: "Ecosystem" },
+  { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
+  { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
+  { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
+  { action: "exportVault", label: "Export vault as zip", keys: "", category: "File" },
 
   { action: "toggleBold", label: "Bold", keys: "", category: "Formatting" },
   { action: "toggleItalic", label: "Italic", keys: "Ctrl+I", category: "Formatting" },

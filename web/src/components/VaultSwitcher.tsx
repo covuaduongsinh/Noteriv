@@ -9,9 +9,11 @@ interface VaultSwitcherProps {
   vaults: ApiVault[];
   activeVault: ApiVault | null;
   onVaultsChanged?: () => void;
+  onImportNewVault?: () => void;
+  onNewFromGithub?: () => void;
 }
 
-export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged }: VaultSwitcherProps) {
+export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, onImportNewVault, onNewFromGithub }: VaultSwitcherProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -164,10 +166,36 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged }: 
                 />
               </form>
             ) : (
-              <button onClick={() => setCreating(true)} className="vault-create-btn">
-                <PlusIcon size={12} />
-                New vault
-              </button>
+              <>
+                <button onClick={() => setCreating(true)} className="vault-create-btn">
+                  <PlusIcon size={12} />
+                  New vault
+                </button>
+                {onNewFromGithub && (
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      onNewFromGithub();
+                    }}
+                    className="vault-create-btn"
+                  >
+                    <PlusIcon size={12} />
+                    New vault from GitHub…
+                  </button>
+                )}
+                {onImportNewVault && (
+                  <button
+                    onClick={() => {
+                      setOpen(false);
+                      onImportNewVault();
+                    }}
+                    className="vault-create-btn"
+                  >
+                    <PlusIcon size={12} />
+                    Import folder / zip…
+                  </button>
+                )}
+              </>
             )}
           </div>
         </div>

@@ -481,6 +481,18 @@ export const webApi = {
     downloadUrl: (vaultId: string, attachmentId: string) => `/api/v1/vaults/${vaultId}/attachments/${attachmentId}/download`,
   },
 
+  vaultTransfer: {
+    importNotes: (vaultId: string, files: { path: string; content: string }[], onConflict: "skip" | "overwrite") =>
+      request<{ created: number; updated: number; skipped: number; errors: { path: string; error: string }[] }>(
+        `/vaults/${vaultId}/import/notes`,
+        { method: "POST", body: JSON.stringify({ files, onConflict }) }
+      ),
+    finalize: (vaultId: string) =>
+      request<{ ok: true; notes: number }>(`/vaults/${vaultId}/import/finalize`, { method: "POST" }),
+    // Plain same-origin URL: the browser downloads the zip using the auth cookie.
+    exportUrl: (vaultId: string) => `/api/v1/vaults/${vaultId}/export`,
+  },
+
   trash: {
     list: (vaultId: string) => request<ApiTrash>(`/vaults/${vaultId}/trash`),
     restoreNote: (vaultId: string, noteId: string) =>

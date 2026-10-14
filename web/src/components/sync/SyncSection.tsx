@@ -554,7 +554,15 @@ function EditPanel({ vaultId, connection, onSaved }: { vaultId: string; connecti
   );
 }
 
-function GithubWizard({ vaultId, onDone, onCancel }: { vaultId: string; onDone: () => void; onCancel: () => void }) {
+export function GithubWizard({
+  vaultId,
+  onDone,
+  onCancel,
+}: {
+  vaultId: string;
+  onDone: (connection: ApiSyncConnection, repo: ApiGithubRepo) => void;
+  onCancel: () => void;
+}) {
   const [token, setToken] = useState("");
   const [user, setUser] = useState<ApiGithubUser | null>(null);
   const [repos, setRepos] = useState<ApiGithubRepo[]>([]);
@@ -617,7 +625,7 @@ function GithubWizard({ vaultId, onDone, onCancel }: { vaultId: string; onDone: 
     setBusy(true);
     setError("");
     try {
-      await webApi.sync.createGit(vaultId, {
+      const conn = await webApi.sync.createGit(vaultId, {
         providerType: "github",
         remoteUrl: picked.cloneUrl,
         branch: branch.trim() || picked.defaultBranch || "main",
@@ -625,7 +633,7 @@ function GithubWizard({ vaultId, onDone, onCancel }: { vaultId: string; onDone: 
         token: token.trim(),
         ...opts,
       });
-      onDone();
+      onDone(conn, picked);
     } catch (err) {
       setError(describeError(err, "Không tạo được kết nối."));
     } finally {

@@ -19,6 +19,8 @@ interface VaultHeaderProps {
   platform?: string;
   onMenuAction?: (action: HotkeyAction) => void;
   onVaultsChanged?: () => void;
+  onImportNewVault?: () => void;
+  onNewFromGithub?: () => void;
 }
 
 /**
@@ -45,6 +47,8 @@ export default function VaultHeader({
   platform = "web",
   onMenuAction,
   onVaultsChanged,
+  onImportNewVault,
+  onNewFromGithub,
 }: VaultHeaderProps) {
   const displayedPath = activeNotePath || vault?.name || "Noteriv";
 
@@ -56,7 +60,7 @@ export default function VaultHeader({
             <SidebarToggleIcon collapsed={sidebarCollapsed} />
           </button>
           <div className="titlebar-divider" />
-          <VaultSwitcher vaults={vaults} activeVault={vault} onVaultsChanged={onVaultsChanged} />
+          <VaultSwitcher vaults={vaults} activeVault={vault} onVaultsChanged={onVaultsChanged} onImportNewVault={onImportNewVault} onNewFromGithub={onNewFromGithub} />
           {hotkeys && onMenuAction && (
             <>
               <div className="titlebar-divider" />

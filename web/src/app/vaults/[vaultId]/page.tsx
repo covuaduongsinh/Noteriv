@@ -28,6 +28,8 @@ import OutlinePanel from "@/components/OutlinePanel";
 import TagPane from "@/components/TagPane";
 import SettingsModal from "@/components/SettingsModal";
 import CommandPalette from "@/components/CommandPalette";
+import ImportVault from "@/components/ImportVault";
+import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import BookmarksPanel from "@/components/BookmarksPanel";
 import VaultInsights from "@/components/VaultInsights";
@@ -178,6 +180,8 @@ export default function VaultPage() {
   // Phase C — Trash/Bookmarks/Vault Insights/Templates/Note Composer/hover preview
   // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
   const [showTrash, setShowTrash] = useState(false);
+  const [showNewFromGithub, setShowNewFromGithub] = useState(false);
+  const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const [showInsights, setShowInsights] = useState(false);
@@ -851,6 +855,18 @@ export default function VaultPage() {
       case "syncSettings":
         openSettings("sync");
         break;
+      case "importVault":
+        setImportMode("current");
+        break;
+      case "importNewVault":
+        setImportMode("new");
+        break;
+      case "newVaultFromGithub":
+        setShowNewFromGithub(true);
+        break;
+      case "exportVault":
+        window.location.href = webApi.vaultTransfer.exportUrl(vaultId);
+        break;
       case "themePicker":
         openSettings("appearance");
         break;
@@ -1079,6 +1095,8 @@ export default function VaultPage() {
         hotkeys={hotkeyBindings}
         platform={platform}
         onMenuAction={executeCommand}
+        onImportNewVault={() => setImportMode("new")}
+        onNewFromGithub={() => setShowNewFromGithub(true)}
         onVaultsChanged={() => {
           webApi.vaults.list().then(setAllVaults).catch(() => undefined);
           webApi.vaults.get(vaultId).then(setVault).catch(() => undefined);
@@ -1315,6 +1333,14 @@ export default function VaultPage() {
                 >
                   <div className="font-medium">Kết nối GitHub / WebDAV</div>
                   <div className="text-xs text-[var(--text-muted)]">Đồng bộ vault với repo của bạn</div>
+                </button>
+                <button
+                  onClick={() => setImportMode("current")}
+                  style={{ padding: "12px 16px" }}
+                  className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
+                >
+                  <div className="font-medium">Import thư mục / zip</div>
+                  <div className="text-xs text-[var(--text-muted)]">Đưa vault có sẵn lên web</div>
                 </button>
                 <button
                   onClick={() => setPluginManagerOpen(true)}
@@ -1572,6 +1598,29 @@ export default function VaultPage() {
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
       <div ref={pluginHost.containerRef} style={{ display: "none" }} />
+
+      {showNewFromGithub && (
+        <CreateVaultFromGithub
+          onClose={() => setShowNewFromGithub(false)}
+          onCreated={(id) => {
+            setShowNewFromGithub(false);
+            router.push(`/vaults/${id}`);
+          }}
+        />
+      )}
+
+      {importMode && (
+        <ImportVault
+          vaultId={importMode === "current" ? vaultId : null}
+          vaultName={vault?.name}
+          onClose={() => setImportMode(null)}
+          onFinished={(id) => {
+            setImportMode(null);
+            if (id !== vaultId) router.push(`/vaults/${id}`);
+            else refreshIndex();
+          }}
+        />
+      )}
 
       {pageNotice && (
         <div
