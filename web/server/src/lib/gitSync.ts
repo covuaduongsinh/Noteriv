@@ -1,12 +1,22 @@
 // Shells out to the `git` binary. Ports desktop/src-tauri/src/commands_git.rs's
 // `git_sync` core (and its hard-won recovery logic) from Rust to Node — see that
 // file for the full original comments on *why* each guard exists.
+//
+// Credentials never travel on the git command line: they are answered through a
+// short-lived GIT_ASKPASS helper (see runGit), so a `ps` listing or git's own
+// error text can't leak the token.
 
 import { spawn } from "node:child_process";
 import { writeFile, rm, mkdir, realpath } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { randomBytes } from "node:crypto";
+
+export interface GitCredentials {
+  username: string;
+  token: string;
+}
 
 interface GitRunResult {
   stdout: string;
@@ -14,7 +24,35 @@ interface GitRunResult {
   success: boolean;
 }
 
-function runGit(args: string[], cwd: string, token?: string, timeoutMs?: number): Promise<GitRunResult> {
+/** Thrown when a pull/rebase hit conflicts; `files` lists the unmerged paths. */
+export class SyncConflictError extends Error {
+  constructor(message: string, public files: string[]) {
+    super(message);
+    this.name = "SyncConflictError";
+  }
+}
+
+function shQuote(v: string): string {
+  return `'${v.replace(/'/g, `'\\''`)}'`;
+}
+
+/** Builds the askpass script body: "Username…" prompts get the user, anything else the token. */
+export function askpassBody(creds: GitCredentials, isWin: boolean): string {
+  const user = creds.username || "oauth2";
+  if (isWin) {
+    return `@echo off\r\necho %~1| findstr /i "Username" >nul && (echo ${user}) || (echo ${creds.token})\r\n`;
+  }
+  return [
+    "#!/bin/sh",
+    'case "$1" in',
+    `  *sername*) printf '%s\\n' ${shQuote(user)} ;;`,
+    `  *) printf '%s\\n' ${shQuote(creds.token)} ;;`,
+    "esac",
+    "",
+  ].join("\n");
+}
+
+function runGit(args: string[], cwd: string, creds?: GitCredentials | null, timeoutMs?: number): Promise<GitRunResult> {
   return new Promise((resolve) => {
     const env: NodeJS.ProcessEnv = {
       ...process.env,
@@ -23,22 +61,35 @@ function runGit(args: string[], cwd: string, token?: string, timeoutMs?: number)
       SSH_ASKPASS: "",
     };
 
-    const fullArgs = ["-c", "credential.helper=", "-c", "core.askPass=", "-c", "credential.modalPrompt=false", ...args];
+    // autocrlf=false: note content must round-trip byte-for-byte; a host git configured
+    // with core.autocrlf=true (Windows) would otherwise rewrite line endings in the working copy.
+    const fullArgs = [
+      "-c", "credential.helper=",
+      "-c", "core.askPass=",
+      "-c", "credential.modalPrompt=false",
+      "-c", "core.autocrlf=false",
+      "-c", "core.safecrlf=false",
+      ...args,
+    ];
+
+    const useCreds = !!creds?.token;
+    if (useCreds && (/[\r\n]/.test(creds!.token) || /[\r\n]/.test(creds!.username ?? ""))) {
+      resolve({ stdout: "", stderr: "credentials contain a line break", success: false });
+      return;
+    }
 
     let askpassFile: string | null = null;
-    if (token) {
-      const isWin = process.platform === "win32";
-      askpassFile = path.join(tmpdir(), `noteriv-askpass-${process.pid}-${Date.now()}.${isWin ? "bat" : "sh"}`);
+    const isWin = process.platform === "win32";
+    if (useCreds) {
+      askpassFile = path.join(tmpdir(), `noteriv-askpass-${process.pid}-${randomBytes(6).toString("hex")}.${isWin ? "bat" : "sh"}`);
       env.GIT_ASKPASS = askpassFile;
     }
 
-    const timeout = timeoutMs ?? (token ? 60_000 : 30_000);
+    const timeout = timeoutMs ?? (useCreds ? 60_000 : 30_000);
 
     const launch = async () => {
       if (askpassFile) {
-        const isWin = process.platform === "win32";
-        const body = isWin ? `@echo ${token}\r\n` : `#!/bin/sh\necho "${token}"\n`;
-        await writeFile(askpassFile, body, { mode: isWin ? undefined : 0o700 });
+        await writeFile(askpassFile, askpassBody(creds!, isWin), { mode: isWin ? undefined : 0o700 });
       }
 
       const child = spawn("git", fullArgs, { cwd, env });
@@ -83,40 +134,21 @@ async function onBranch(dir: string): Promise<boolean> {
   return (await runGit(["symbolic-ref", "--quiet", "HEAD"], dir)).success;
 }
 
-async function currentBranch(dir: string): Promise<string> {
-  let r = await runGit(["branch", "--show-current"], dir);
-  if (r.success && r.stdout) return r.stdout;
-  r = await runGit(["symbolic-ref", "--short", "HEAD"], dir);
-  if (r.success && r.stdout) return r.stdout;
-  r = await runGit(["remote", "show", "origin"], dir);
-  if (r.success) {
-    for (const line of r.stdout.split("\n")) {
-      const m = line.trim().match(/^HEAD branch:\s*(.+)$/);
-      if (m) return m[1].trim();
-    }
-  }
-  return "main";
+/**
+ * Converts an ssh:// or git@host:path remote to plain https. Credentials are NOT
+ * embedded (they go through GIT_ASKPASS, see runGit). Remotes that are already
+ * https, or local paths / file:// (used by tests), are returned unchanged.
+ */
+export function toHttpsUrl(remoteUrl: string): string {
+  const scpMatch = remoteUrl.match(/^git@([^:]+):(.+)$/);
+  if (scpMatch) return `https://${scpMatch[1]}/${scpMatch[2]}`;
+  if (remoteUrl.startsWith("ssh://")) return "https://" + remoteUrl.slice("ssh://".length).replace(/^[^@]*@/, "");
+  return remoteUrl;
 }
 
-/** Converts an ssh:// or git@host:path remote to https, then embeds username:token. */
-export function makeAuthUrl(remoteUrl: string, username: string, token: string): string {
-  if (!token) return remoteUrl;
-  let working = remoteUrl;
-  const scpMatch = remoteUrl.match(/^git@([^:]+):(.+)$/);
-  if (scpMatch) working = `https://${scpMatch[1]}/${scpMatch[2]}`;
-  else if (remoteUrl.startsWith("ssh://")) working = "https://" + remoteUrl.slice("ssh://".length).replace(/^[^@]*@/, "");
-
-  try {
-    const url = new URL(working);
-    if (url.protocol === "https:") {
-      url.username = username || "oauth2";
-      url.password = token;
-      return url.toString();
-    }
-  } catch {
-    // fall through
-  }
-  return remoteUrl;
+/** The URL actually handed to git: normalised to https when we hold credentials. */
+function effectiveUrl(remote: string, creds: GitCredentials | null): string {
+  return creds?.token ? toHttpsUrl(remote) : remote;
 }
 
 export async function gitIsInstalled(): Promise<boolean> {
@@ -128,14 +160,10 @@ export async function testGitRemote(
   remoteUrl: string,
   creds: GitCredentials | null
 ): Promise<{ ok: boolean; error?: string }> {
-  const url = creds ? makeAuthUrl(remoteUrl, creds.username, creds.token) : remoteUrl;
-  const r = await runGit(["ls-remote", "--exit-code", url, "HEAD"], process.cwd(), creds?.token, 20_000);
+  // No --exit-code: a reachable but empty repo (no refs yet) exits 0 here, which is a
+  // working connection; only network/auth failures exit non-zero.
+  const r = await runGit(["ls-remote", effectiveUrl(remoteUrl, creds)], process.cwd(), creds, 20_000);
   return r.success ? { ok: true } : { ok: false, error: r.stderr || "could not reach remote" };
-}
-
-export interface GitCredentials {
-  username: string;
-  token: string;
 }
 
 /**
@@ -200,11 +228,29 @@ export async function ensureWorkingCopy(
 
   // Try to fetch+checkout the branch if it already exists on the remote (repo
   // isn't necessarily empty — the user may be connecting an existing vault).
-  const fetchUrl = creds ? makeAuthUrl(remoteUrl, creds.username, creds.token) : remoteUrl;
-  const fetch = await runGit(["fetch", fetchUrl, branch], dir, creds?.token);
+  const fetch = await runGit(["fetch", effectiveUrl(remoteUrl, creds), branch], dir, creds);
   if (fetch.success) {
     okOrThrow(await runGit(["checkout", "-B", branch, "FETCH_HEAD"], dir));
   }
+}
+
+const DEFAULT_GITIGNORE = [".DS_Store", "Thumbs.db", ".trash/", "*.tmp", ""].join("\n");
+
+/** Writes desktop's default .gitignore if the working copy has none. */
+export async function ensureGitignore(dir: string): Promise<void> {
+  const file = path.join(dir, ".gitignore");
+  if (!existsSync(file)) await writeFile(file, DEFAULT_GITIGNORE, "utf8");
+}
+
+export interface GitSyncOptions {
+  /**
+   * Fetch + rebase remote changes into the working copy (default true). A push-only
+   * connection still needs this at the git level (a push is rejected if the remote moved
+   * ahead); "push-only" only means remote changes are never imported into the vault.
+   */
+  pull?: boolean;
+  /** Commit local changes and push them (default true). */
+  push?: boolean;
 }
 
 export interface GitSyncResult {
@@ -221,8 +267,12 @@ export async function gitSyncCore(
   dir: string,
   branch: string,
   creds: GitCredentials | null,
-  message: string
+  message: string | ((changedCount: number) => string),
+  opts: GitSyncOptions = {}
 ): Promise<GitSyncResult> {
+  const doPull = opts.pull !== false;
+  const doPush = opts.push !== false;
+
   await assertIsOwnRepoRoot(dir);
 
   if (await rebaseInProgress(dir)) {
@@ -232,22 +282,25 @@ export async function gitSyncCore(
   const remoteR = await runGit(["remote", "get-url", "origin"], dir);
   const remote = remoteR.success ? remoteR.stdout : null;
 
-  if (remote) {
-    const pullUrl = creds ? makeAuthUrl(remote, creds.username, creds.token) : "origin";
+  if (remote && doPull) {
+    const pullUrl = effectiveUrl(remote, creds);
     const hasChanges = await runGit(["status", "--porcelain"], dir);
     const needsStash = hasChanges.success && hasChanges.stdout.length > 0;
     if (needsStash) {
       await runGit(["stash", "push", "-m", "noteriv-sync-stash"], dir);
     }
 
-    await runGit(["fetch", pullUrl], dir, creds?.token);
-    const pull = await runGit(["pull", "--rebase", pullUrl, branch], dir, creds?.token);
+    await runGit(["fetch", pullUrl], dir, creds);
+    const pull = await runGit(["pull", "--rebase", pullUrl, branch], dir, creds);
 
     if (!pull.success && (await rebaseInProgress(dir))) {
+      const unmerged = await runGit(["diff", "--name-only", "--diff-filter=U"], dir);
+      const files = unmerged.success ? unmerged.stdout.split("\n").map((l) => l.trim()).filter(Boolean) : [];
       await runGit(["rebase", "--abort"], dir);
       if (needsStash) await runGit(["stash", "pop"], dir);
-      throw new Error(
-        `Sync paused: remote changes conflict with local edits and need manual resolution. ${pull.stderr}`
+      throw new SyncConflictError(
+        `Sync paused: remote changes conflict with local edits and need manual resolution. ${pull.stderr}`,
+        files
       );
     }
 
@@ -260,29 +313,75 @@ export async function gitSyncCore(
     throw new Error("Sync paused: repository is in a detached HEAD state and needs manual attention.");
   }
 
-  okOrThrow(await runGit(["add", "-A"], dir));
   let pushedCommit = false;
-  const status = await runGit(["status", "--porcelain"], dir);
-  if (status.success && status.stdout.length > 0) {
-    okOrThrow(await runGit(["commit", "-m", message], dir));
-    pushedCommit = true;
-  }
+  if (doPush) {
+    okOrThrow(await runGit(["add", "-A"], dir));
+    const status = await runGit(["status", "--porcelain"], dir);
+    if (status.success && status.stdout.length > 0) {
+      const changed = status.stdout.split("\n").filter(Boolean).length;
+      okOrThrow(await runGit(["commit", "-m", typeof message === "function" ? message(changed) : message], dir));
+      pushedCommit = true;
+    }
 
-  if (remote) {
-    const pushUrl = creds ? makeAuthUrl(remote, creds.username, creds.token) : "origin";
-    const push = await runGit(["push", "-u", pushUrl, branch], dir, creds?.token);
-    if (!push.success) {
-      // Unreachable host, bad credentials, and non-fast-forward rejections all land
-      // here — this result was previously discarded entirely, which is how a sync
-      // job against a nonexistent remote + fake token could still report "success".
-      const rejected = /\[rejected\]|non-fast-forward|fetch first|stale info/i.test(push.stderr);
-      throw new Error(
-        rejected
-          ? `Sync paused: remote has changes that weren't merged locally; push was rejected. ${push.stderr}`
-          : `Sync failed: could not push to remote. ${push.stderr || "unknown git push error"}`
-      );
+    if (remote) {
+      const push = await runGit(["push", "-u", effectiveUrl(remote, creds), branch], dir, creds);
+      if (!push.success) {
+        // Unreachable host, bad credentials, and non-fast-forward rejections all land
+        // here — this result was previously discarded entirely, which is how a sync
+        // job against a nonexistent remote + fake token could still report "success".
+        const rejected = /\[rejected\]|non-fast-forward|fetch first|stale info/i.test(push.stderr);
+        throw new Error(
+          rejected
+            ? `Sync paused: remote has changes that weren't merged locally; push was rejected. ${push.stderr}`
+            : `Sync failed: could not push to remote. ${push.stderr || "unknown git push error"}`
+        );
+      }
     }
   }
 
   return { pushedCommit };
+}
+
+/**
+ * Conflict resolution helper: moves the working copy's branch to the remote tip.
+ *  - "hard"  : working tree becomes the remote's content (caller then imports it
+ *              into the DB — "take remote").
+ *  - "mixed" : branch moves to the remote tip but the working tree keeps what the
+ *              caller already exported from the DB, so the next add/commit/push is a
+ *              plain fast-forward carrying the web's content ("keep web"). No force push.
+ */
+export async function adoptRemoteTip(
+  dir: string,
+  remote: string,
+  branch: string,
+  creds: GitCredentials | null,
+  mode: "hard" | "mixed"
+): Promise<void> {
+  await assertIsOwnRepoRoot(dir);
+  if (await rebaseInProgress(dir)) await runGit(["rebase", "--abort"], dir);
+  okOrThrow(await runGit(["fetch", effectiveUrl(remote, creds), branch], dir, creds));
+  okOrThrow(await runGit(["reset", mode === "hard" ? "--hard" : "--mixed", "FETCH_HEAD"], dir));
+}
+
+export interface RemoteState {
+  /** Remote tip differs from what the working copy last saw. */
+  remoteChanged: boolean;
+  remoteReachable: boolean;
+  error?: string;
+}
+
+/** Cheap "is there something new on the remote?" check — one ls-remote, no fetch. */
+export async function getRemoteState(
+  dir: string,
+  remoteUrl: string,
+  branch: string,
+  creds: GitCredentials | null
+): Promise<RemoteState> {
+  const ls = await runGit(["ls-remote", effectiveUrl(remoteUrl, creds), `refs/heads/${branch}`], process.cwd(), creds, 20_000);
+  if (!ls.success) return { remoteChanged: false, remoteReachable: false, error: ls.stderr || "could not reach remote" };
+  const remoteSha = ls.stdout.split(/\s+/)[0] ?? "";
+  if (!hasOwnGitDir(dir)) return { remoteChanged: !!remoteSha, remoteReachable: true };
+  const local = await runGit(["rev-parse", "HEAD"], dir);
+  const localSha = local.success ? local.stdout : "";
+  return { remoteChanged: !!remoteSha && remoteSha !== localSha, remoteReachable: true };
 }

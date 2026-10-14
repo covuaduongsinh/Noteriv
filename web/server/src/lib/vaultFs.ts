@@ -7,9 +7,16 @@ import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { recomputeBacklinksForNote } from "./backlinks.js";
 
-/** Writes every note in the vault to `dir/<path>`, removing files for notes that no longer exist. */
-export async function exportNotesToDir(prisma: PrismaClient, vaultId: string, dir: string): Promise<void> {
-  const notes = await prisma.note.findMany({ where: { vaultId }, select: { path: true, content: true } });
+/** Writes every note in the vault to `dir/<path>`, removing files for notes that no longer exist (unless `prune: false`). */
+export async function exportNotesToDir(
+  prisma: PrismaClient,
+  vaultId: string,
+  dir: string,
+  opts: { prune?: boolean } = {}
+): Promise<void> {
+  const prune = opts.prune !== false;
+  // Trashed notes (deletedAt set) stay out of the export so they leave the repo too.
+  const notes = await prisma.note.findMany({ where: { vaultId, deletedAt: null }, select: { path: true, content: true } });
   const wanted = new Set(notes.map((n) => n.path));
 
   await mkdir(dir, { recursive: true });
@@ -38,7 +45,7 @@ export async function exportNotesToDir(prisma: PrismaClient, vaultId: string, di
       }
     }
   }
-  await pruneRecurse(dir);
+  if (prune) await pruneRecurse(dir);
 }
 
 /** Reads every `.md` file in `dir` back into Postgres: upserts by path, deletes notes whose file is gone. */

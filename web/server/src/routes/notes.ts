@@ -5,6 +5,7 @@ import { resolvePath } from "../lib/notePath.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { trashNote } from "../lib/trash.js";
 import { listSnapshots, getSnapshotContent } from "../lib/noteSnapshots.js";
+import { scheduleSyncOnSave } from "../lib/syncOnSave.js";
 import { getNoteGitHistory, getNoteContentAtCommit } from "../lib/noteHistory.js";
 
 const createNoteSchema = z.object({
@@ -70,6 +71,7 @@ export default async function noteRoutes(fastify: FastifyInstance) {
         },
       });
       await recomputeBacklinksForNote(prisma, vid, note.id, content);
+      void scheduleSyncOnSave(prisma, vid);
       return reply.code(201).send(note);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
@@ -111,6 +113,7 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       if (content !== undefined) {
         await recomputeBacklinksForNote(prisma, vid, note.id, content);
       }
+      void scheduleSyncOnSave(prisma, vid);
       return reply.send(note);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

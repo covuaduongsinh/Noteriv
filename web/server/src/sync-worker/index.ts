@@ -6,6 +6,8 @@ import { Worker } from "bullmq";
 import { Redis } from "ioredis";
 import { PrismaClient } from "@prisma/client";
 import { runSyncJob } from "../lib/syncRunner.js";
+import { syncQueue, type SyncJobData } from "../lib/syncQueue.js";
+import { Queue } from "bullmq";
 import { trashCleanupQueue } from "../lib/trashCleanupQueue.js";
 import { cleanupExpiredTrash } from "../lib/trash.js";
 import { noteSnapshotQueue } from "../lib/noteSnapshotQueue.js";
@@ -16,11 +18,11 @@ const connection = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:56379",
 });
 const prisma = new PrismaClient();
 
-const worker = new Worker<{ connectionId: string }>(
+const worker = new Worker<SyncJobData>(
   "sync-jobs",
   async (job) => {
     console.log(`[sync-worker] running sync for connection ${job.data.connectionId}`);
-    await runSyncJob(prisma, job.data.connectionId);
+    await runSyncJob(prisma, job.data.connectionId, job.data.mode ?? "sync");
     console.log(`[sync-worker] finished sync for connection ${job.data.connectionId}`);
   },
   { connection, concurrency: 2 }
@@ -69,12 +71,48 @@ await noteSnapshotQueue.add(
   { repeat: { every: 10 * 60 * 1000 }, jobId: "capture-snapshots" }
 );
 
+// Auto-sync (parity plan v2, Pha 2): one 60s tick looks at every connection with
+// autoSync on and enqueues those whose interval has elapsed. A per-connection
+// repeatable job would need schedule bookkeeping every time a connection is
+// edited; a single tick re-reads the current settings on every pass instead.
+const autoSyncQueue = new Queue("auto-sync-tick", { connection });
+const autoSyncWorker = new Worker(
+  "auto-sync-tick",
+  async () => {
+    const conns = await prisma.syncConnection.findMany({
+      where: { autoSync: true },
+      select: { id: true, direction: true, syncIntervalMinutes: true, lastSyncedAt: true },
+    });
+    const now = Date.now();
+    for (const c of conns) {
+      const latest = await prisma.syncJob.findFirst({
+        where: { syncConnectionId: c.id },
+        orderBy: { createdAt: "desc" },
+        select: { status: true, createdAt: true },
+      });
+      if (latest && (latest.status === "running" || latest.status === "queued")) continue;
+      // Don't hammer a connection that needs a human (conflict) or keeps failing:
+      // wait a full interval from the last attempt, whatever its outcome.
+      const lastAttempt = Math.max(c.lastSyncedAt?.getTime() ?? 0, latest?.createdAt.getTime() ?? 0);
+      if (now - lastAttempt < Math.max(1, c.syncIntervalMinutes) * 60_000) continue;
+      if (latest?.status === "conflict") continue;
+      await syncQueue.add("sync", { connectionId: c.id, mode: "sync" }, { removeOnComplete: 50, removeOnFail: 50 });
+    }
+  },
+  { connection, concurrency: 1 }
+);
+autoSyncWorker.on("failed", (job, err) => {
+  console.error(`[sync-worker] auto-sync tick ${job?.id} failed:`, err.message);
+});
+await autoSyncQueue.add("tick", {}, { repeat: { every: 60 * 1000 }, jobId: "auto-sync-tick" });
+
 console.log("noteriv sync-worker started");
 
 process.on("SIGTERM", async () => {
   await worker.close();
   await trashWorker.close();
   await snapshotWorker.close();
+  await autoSyncWorker.close();
   await prisma.$disconnect();
   process.exit(0);
 });
