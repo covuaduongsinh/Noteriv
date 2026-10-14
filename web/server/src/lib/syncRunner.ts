@@ -12,7 +12,7 @@ import {
   type GitCredentials,
 } from "./gitSync.js";
 import { webdavSyncCore, type WebdavConfig } from "./webdavSync.js";
-import { exportAttachmentsToDir, importAttachmentsFromDir } from "./attachmentSync.js";
+import { exportAttachmentsToDir, importAttachmentsFromDir, type AttachmentSyncReport } from "./attachmentSync.js";
 import { toRelativeLinks, fromRelativeLinks } from "./attachmentLinks.js";
 import type { SyncJobMode } from "./syncQueue.js";
 
@@ -36,8 +36,14 @@ interface WebdavCredentialsBlob {
 }
 
 /** Writes the vault's notes AND attachments into `dir`, with note links made repo-relative. */
-async function exportVaultToDir(prisma: PrismaClient, vaultId: string, dir: string, prune: boolean): Promise<void> {
-  const pathById = await exportAttachmentsToDir(prisma, vaultId, dir);
+async function exportVaultToDir(
+  prisma: PrismaClient,
+  vaultId: string,
+  dir: string,
+  prune: boolean,
+  report: AttachmentSyncReport
+): Promise<void> {
+  const pathById = await exportAttachmentsToDir(prisma, vaultId, dir, report);
   await exportNotesToDir(prisma, vaultId, dir, {
     prune,
     transform: (notePath, content) => toRelativeLinks(vaultId, notePath, content, pathById),
@@ -48,9 +54,10 @@ async function exportVaultToDir(prisma: PrismaClient, vaultId: string, dir: stri
 async function attachmentLinkTransform(
   prisma: PrismaClient,
   vaultId: string,
-  dir: string
+  dir: string,
+  report: AttachmentSyncReport
 ): Promise<(notePath: string, content: string) => string> {
-  const idByPath = await importAttachmentsFromDir(prisma, vaultId, dir, null);
+  const idByPath = await importAttachmentsFromDir(prisma, vaultId, dir, null, report);
   return (notePath, content) => fromRelativeLinks(vaultId, notePath, content, idByPath);
 }
 
@@ -73,6 +80,8 @@ export async function runSyncJob(
   const job = await prisma.syncJob.create({
     data: { syncConnectionId: connectionId, status: "running", startedAt: new Date() },
   });
+  // Attachment (object storage) trouble is reported as a warning on a successful job, not as a failure.
+  const attachmentReport: AttachmentSyncReport = { skipped: 0 };
 
   try {
     const dir = path.resolve(SCRATCH_ROOT, connectionId);
@@ -124,13 +133,13 @@ export async function runSyncJob(
       if (mode === "resolve-remote") {
         // Take the remote's content wholesale, then mirror it into the DB.
         await adoptRemoteTip(dir, remoteUrl, connection.branch, gitCreds, "hard");
-        await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
+        await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
         pulled = 1;
       } else if (mode === "resolve-web") {
         // Keep the web's content: move to the remote tip but keep the DB export as the
         // working tree, so the commit below is a plain fast-forward push (no force).
         await adoptRemoteTip(dir, remoteUrl, connection.branch, gitCreds, "mixed");
-        await exportVaultToDir(prisma, connection.vaultId, dir, true);
+        await exportVaultToDir(prisma, connection.vaultId, dir, true, attachmentReport);
         await ensureGitignore(dir);
         const result = await gitSyncCore(
           dir,
@@ -142,12 +151,12 @@ export async function runSyncJob(
         pushed = result.pushedCommit ? 1 : 0;
       } else {
         if (doPull) {
-          await importNewNotesOnly(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
+          await importNewNotesOnly(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
         }
         if (doPush) {
           // Push-only never imports, so remote-only files must not be pruned either —
           // otherwise the push would delete notes the remote has but the vault doesn't.
-          await exportVaultToDir(prisma, connection.vaultId, dir, doPull);
+          await exportVaultToDir(prisma, connection.vaultId, dir, doPull, attachmentReport);
           await ensureGitignore(dir);
         }
         const result = await gitSyncCore(
@@ -161,19 +170,22 @@ export async function runSyncJob(
         // Pull-only never re-exports the DB, so the working tree is exactly the remote's.
         if (doPull) {
           // Re-scan: the pull may have brought new attachment files whose links the notes now reference.
-          await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir));
+          await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
         }
       }
     }
 
     const status = "success" as const;
+    const warning = attachmentReport.problem
+      ? `Đã đồng bộ note; bỏ qua ${attachmentReport.skipped} file đính kèm: ${attachmentReport.problem}.`
+      : null;
     await prisma.syncJob.update({
       where: { id: job.id },
-      data: { status, pushedCount: pushed, pulledCount: pulled, finishedAt: new Date() },
+      data: { status, pushedCount: pushed, pulledCount: pulled, finishedAt: new Date(), errorMessage: warning },
     });
     await prisma.syncConnection.update({
       where: { id: connectionId },
-      data: { lastSyncedAt: new Date(), lastSyncStatus: { status, pushed, pulled } },
+      data: { lastSyncedAt: new Date(), lastSyncStatus: { status, pushed, pulled, ...(warning ? { warning } : {}) } },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

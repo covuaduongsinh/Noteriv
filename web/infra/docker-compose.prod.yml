@@ -84,6 +84,13 @@ services:
       DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
       REDIS_URL: redis://noteriv-redis:6379
       ENCRYPTION_KEY: ${ENCRYPTION_KEY:?set ENCRYPTION_KEY}
+      # Git sync also moves attachments between Garage and the repo, so the worker needs the same
+      # object-storage settings as the API (without them the SDK defaults to 127.0.0.1:59000).
+      ATTACHMENTS_S3_ENDPOINT: http://noteriv-garage:3900
+      ATTACHMENTS_S3_REGION: garage
+      ATTACHMENTS_S3_BUCKET: noteriv-attachments
+      ATTACHMENTS_S3_ACCESS_KEY_ID: ${ATTACHMENTS_S3_ACCESS_KEY_ID:-}
+      ATTACHMENTS_S3_SECRET_ACCESS_KEY: ${ATTACHMENTS_S3_SECRET_ACCESS_KEY:-}
     depends_on:
       noteriv-postgres:
         condition: service_healthy

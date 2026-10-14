@@ -334,6 +334,11 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
                   {view?.remote && !view.remote.remoteReachable && ` · không tới được remote (${view.remote.error ?? ""})`}
                   {c.autoSync && ` · tự động mỗi ${c.syncIntervalMinutes} phút`}
                 </span>
+                {job?.status === "success" && job.errorMessage && (
+                  <span className="st-row-desc" style={{ color: "var(--yellow)" }}>
+                    ⚠ {job.errorMessage}
+                  </span>
+                )}
                 {job?.status === "error" && job.errorMessage && (
                   <span className="st-row-desc" style={{ color: "var(--red)" }}>
                     Lỗi: {job.errorMessage}
@@ -430,7 +435,7 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
                       {j.status}
                     </span>
                     <span style={{ flex: 1, wordBreak: "break-word" }}>
-                      {j.status === "success" ? `↑${j.pushedCount} ↓${j.pulledCount}` : j.errorMessage?.slice(0, 160)}
+                      {j.status === "success" ? `↑${j.pushedCount} ↓${j.pulledCount}${j.errorMessage ? ` · ⚠ ${j.errorMessage.slice(0, 140)}` : ""}` : j.errorMessage?.slice(0, 160)}
                     </span>
                   </div>
                 ))}
