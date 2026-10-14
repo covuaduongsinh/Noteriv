@@ -208,6 +208,45 @@ fn on_branch(dir: &Path) -> bool {
     run_git(&["symbolic-ref", "--quiet", "HEAD"], dir, None).success
 }
 
+/// True only if `dir` itself has a `.git` entry — i.e. it is a repo root, not
+/// merely *inside* one. `git rev-parse --is-inside-work-tree` is NOT safe for
+/// this: it walks up to any ancestor `.git` and reports true from inside
+/// someone else's repo. (Mirrors `hasOwnGitDir` in web/server/src/lib/gitSync.ts,
+/// added there after a real incident where this exact check let a sync job
+/// run `git add -A`/commit/push against an unrelated ancestor repository.)
+fn has_own_git_dir(dir: &Path) -> bool {
+    dir.join(".git").exists()
+}
+
+/// Refuses to proceed unless `dir` really is its own repo's top level — the
+/// hard backstop against ever running `add -A`/commit/push against an
+/// ancestor repository. Ported from web's `assertIsOwnRepoRoot` (see that
+/// function's comment for the full incident writeup); desktop runs git
+/// directly on the user's real vault folder with no scratch-dir buffer, so a
+/// false positive here is worse than it was on web, not just equally bad.
+fn assert_is_own_repo_root(dir: &Path) -> Result<(), String> {
+    let r = run_git(&["rev-parse", "--show-toplevel"], dir, None);
+    if !r.success {
+        return Err(format!("refusing to sync: \"{}\" is not a git repo at all.", dir.display()));
+    }
+    // canonicalize (via `dunce`, already used elsewhere in this file) resolves
+    // Windows short-form vs long-form path segments and symlinks, which a raw
+    // string compare doesn't — a naive compare false-positived on exactly this
+    // during the equivalent web fix's testing.
+    let resolved_dir = dunce::canonicalize(dir).unwrap_or_else(|_| dir.to_path_buf());
+    let toplevel = dunce::canonicalize(Path::new(&r.stdout)).unwrap_or_else(|_| PathBuf::from(&r.stdout));
+    let normalize = |p: &Path| p.to_string_lossy().replace('\\', "/").to_lowercase();
+    if normalize(&resolved_dir) != normalize(&toplevel) {
+        return Err(format!(
+            "refusing to sync: \"{}\" is not its own git repo root (found top-level \"{}\"). \
+             This guards against ever running git commands against the wrong repository.",
+            dir.display(),
+            r.stdout
+        ));
+    }
+    Ok(())
+}
+
 fn current_branch(dir: &Path) -> String {
     let r = run_git(&["branch", "--show-current"], dir, None);
     if r.success && !r.stdout.is_empty() {
@@ -241,7 +280,12 @@ pub async fn git_is_repo(dir: String) -> bool {
 #[tauri::command]
 pub async fn git_init(dir: String) -> Result<bool, String> {
     let p = Path::new(&dir);
-    let already = run_git(&["rev-parse", "--is-inside-work-tree"], p, None).success;
+    // `has_own_git_dir`, not `is-inside-work-tree` — the latter is true from
+    // inside any ancestor repo, which would make git_init silently skip
+    // creating `dir`'s own `.git` whenever the vault folder happens to be
+    // nested inside some unrelated repo, leaving later git_sync calls with no
+    // repo root of their own to find.
+    let already = has_own_git_dir(p);
     if !already {
         let r = run_git(&["init"], p, None);
         if !r.success {
@@ -337,6 +381,7 @@ pub struct GitSyncInput {
 #[tauri::command]
 pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
     let p = Path::new(&args.dir);
+    assert_is_own_repo_root(p)?;
     let creds = credentials_for_vault(args.vault_id.as_deref());
     let token_ref = creds.as_ref().map(|c| c.token.as_str());
 
@@ -408,7 +453,28 @@ pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
             Some(c) => c.auth_url(r),
             None => "origin".into(),
         };
-        let _ = run_git(&["push", "-u", &push_url, &branch], p, token_ref);
+        let push = run_git(&["push", "-u", &push_url, &branch], p, token_ref);
+        if !push.success {
+            // Unreachable host, bad credentials, and non-fast-forward rejections
+            // all land here — this result used to be discarded entirely, which
+            // is how a sync against a bad remote/credentials could still return
+            // Ok(true) and report success to the UI.
+            let rejected = push.stderr.contains("[rejected]")
+                || push.stderr.to_lowercase().contains("non-fast-forward")
+                || push.stderr.to_lowercase().contains("fetch first")
+                || push.stderr.to_lowercase().contains("stale info");
+            return Err(if rejected {
+                format!(
+                    "Sync paused: remote has changes that weren't merged locally; push was rejected. {}",
+                    push.stderr
+                )
+            } else {
+                format!(
+                    "Sync failed: could not push to remote. {}",
+                    if push.stderr.is_empty() { "unknown git push error" } else { &push.stderr }
+                )
+            });
+        }
     }
     Ok(true)
 }
@@ -614,5 +680,223 @@ pub async fn git_show_file(args: GitShowFileInput) -> Option<String> {
         Some(r.stdout)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod repo_root_tests {
+    use super::*;
+    use std::fs;
+    use std::process::Command;
+
+    /// A throwaway directory under the OS temp dir, removed on drop. Mirrors
+    /// the web fix's test fixtures (never nested inside this project's own
+    /// working tree — exactly the mistake this whole fix exists to catch).
+    struct TempDir(PathBuf);
+    impl TempDir {
+        fn new(label: &str) -> Self {
+            let unique = format!(
+                "noteriv-git-test-{label}-{}-{}",
+                std::process::id(),
+                std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap()
+                    .as_nanos()
+            );
+            let p = env::temp_dir().join(unique);
+            fs::create_dir_all(&p).unwrap();
+            TempDir(p)
+        }
+        fn path(&self) -> &Path {
+            &self.0
+        }
+    }
+    impl Drop for TempDir {
+        fn drop(&mut self) {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+
+    fn git(dir: &Path, args: &[&str]) {
+        let status = Command::new("git")
+            .args(args)
+            .current_dir(dir)
+            .status()
+            .expect("git fixture command failed to spawn");
+        assert!(status.success(), "git {:?} failed in {:?}", args, dir);
+    }
+
+    fn init_repo_with_commit(dir: &Path) {
+        git(dir, &["init", "-q"]);
+        git(dir, &["config", "user.email", "test@example.com"]);
+        git(dir, &["config", "user.name", "Test"]);
+        fs::write(dir.join("note.md"), "hello").unwrap();
+        git(dir, &["add", "-A"]);
+        git(dir, &["commit", "-q", "-m", "initial"]);
+    }
+
+    #[test]
+    fn has_own_git_dir_false_for_plain_folder() {
+        let t = TempDir::new("plain");
+        assert!(!has_own_git_dir(t.path()));
+    }
+
+    #[test]
+    fn has_own_git_dir_true_after_init() {
+        let t = TempDir::new("inited");
+        init_repo_with_commit(t.path());
+        assert!(has_own_git_dir(t.path()));
+    }
+
+    #[test]
+    fn assert_is_own_repo_root_passes_for_real_root() {
+        let t = TempDir::new("ownroot");
+        init_repo_with_commit(t.path());
+        assert!(assert_is_own_repo_root(t.path()).is_ok());
+    }
+
+    /// The exact incident scenario: an "outer" repo with a vault-like
+    /// subdirectory inside it that is NOT itself a git repo. Before this fix,
+    /// nothing stopped `git_sync` from treating that subdirectory as safe to
+    /// run `add -A`/commit/push in — those commands would silently operate on
+    /// the outer repo instead, because `git` resolves `--show-toplevel` (and
+    /// used to resolve `--is-inside-work-tree`) from the nearest ANCESTOR
+    /// `.git`, not the directory actually passed in.
+    #[test]
+    fn assert_is_own_repo_root_fails_for_subdir_of_another_repo() {
+        let outer = TempDir::new("outer");
+        init_repo_with_commit(outer.path());
+        let inner = outer.path().join("vault-subdir");
+        fs::create_dir_all(&inner).unwrap();
+        fs::write(inner.join("other.md"), "unrelated content").unwrap();
+
+        let result = assert_is_own_repo_root(&inner);
+        assert!(
+            result.is_err(),
+            "expected rejection for a directory that is only INSIDE a repo, not its root"
+        );
+        // Confirm old unsafe check really would have said "yes, this is a repo" —
+        // documents exactly what has_own_git_dir correctly refuses that
+        // is-inside-work-tree would have waved through.
+        assert!(!has_own_git_dir(&inner));
+    }
+
+    #[test]
+    fn assert_is_own_repo_root_fails_for_non_repo() {
+        let t = TempDir::new("notrepo");
+        assert!(assert_is_own_repo_root(t.path()).is_err());
+    }
+
+    #[tokio::test]
+    async fn git_sync_rejects_subdir_of_another_repo_instead_of_corrupting_it() {
+        let outer = TempDir::new("outer-sync");
+        init_repo_with_commit(outer.path());
+        let outer_head_before = {
+            let out = Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(outer.path())
+                .output()
+                .unwrap();
+            String::from_utf8(out.stdout).unwrap().trim().to_string()
+        };
+
+        let inner = outer.path().join("vault-subdir");
+        fs::create_dir_all(&inner).unwrap();
+        fs::write(inner.join("new-note.md"), "should never reach the outer repo").unwrap();
+
+        let result = git_sync(GitSyncInput {
+            dir: inner.to_string_lossy().into_owned(),
+            message: None,
+            vault_id: None,
+        })
+        .await;
+
+        assert!(result.is_err(), "git_sync must refuse to run inside someone else's repo");
+
+        // The real regression check: the outer repo's HEAD must be untouched —
+        // no commit was created in it from the inner directory's content.
+        let outer_head_after = {
+            let out = Command::new("git")
+                .args(["rev-parse", "HEAD"])
+                .current_dir(outer.path())
+                .output()
+                .unwrap();
+            String::from_utf8(out.stdout).unwrap().trim().to_string()
+        };
+        assert_eq!(
+            outer_head_before, outer_head_after,
+            "outer repo must not have received a new commit from the inner vault-subdir"
+        );
+    }
+
+    #[tokio::test]
+    async fn git_sync_reports_real_push_failure_instead_of_false_success() {
+        // First attempt used a seeded-bare-remote + diverged-history setup,
+        // expecting `pull --rebase` to hit a conflict — it didn't: git cleanly
+        // rebases non-conflicting diverged histories, so that sync legitimately
+        // succeeded (test design flaw, not a product bug). A nonexistent
+        // remote is the deterministic way to force a real failure, same
+        // approach already verified against the equivalent web bug this
+        // mirrors (web/server/src/lib/gitSync.ts, see that file's history).
+        let local = TempDir::new("bad-remote-local");
+        init_repo_with_commit(local.path());
+        let fake_remote = env::temp_dir().join(format!(
+            "noteriv-git-test-does-not-exist-{}-{}",
+            std::process::id(),
+            std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos()
+        ));
+        git(
+            local.path(),
+            &["remote", "add", "origin", &fake_remote.to_string_lossy().into_owned()],
+        );
+
+        let result = git_sync(GitSyncInput {
+            dir: local.path().to_string_lossy().into_owned(),
+            message: Some("test sync".into()),
+            vault_id: None,
+        })
+        .await;
+
+        // Before the fix this returned Ok(true) unconditionally regardless of
+        // whether the push (or here, even the fetch) actually reached
+        // anything. Against a remote that doesn't exist at all, this must now
+        // surface as a real Err.
+        assert!(result.is_err(), "sync against a nonexistent remote must not report success");
+    }
+
+    /// Regression check: a normal sync against a real, reachable, empty bare
+    /// remote (the common case — connecting a brand-new vault to a brand-new
+    /// repo) must still succeed after adding the root-check and push-result
+    /// handling above. Neither change should affect the happy path.
+    #[tokio::test]
+    async fn git_sync_still_succeeds_against_a_real_empty_remote() {
+        let bare = TempDir::new("happy-bare-remote");
+        git(bare.path(), &["init", "-q", "--bare"]);
+
+        let local = TempDir::new("happy-local");
+        init_repo_with_commit(local.path());
+        git(
+            local.path(),
+            &["remote", "add", "origin", &bare.path().to_string_lossy().into_owned()],
+        );
+        git(local.path(), &["branch", "-M", "main"]);
+
+        let result = git_sync(GitSyncInput {
+            dir: local.path().to_string_lossy().into_owned(),
+            message: Some("test sync".into()),
+            vault_id: None,
+        })
+        .await;
+
+        assert!(result.is_ok(), "sync against a real, reachable, empty remote must still succeed: {result:?}");
+
+        // Confirm the push actually landed on the remote, not just that
+        // git_sync returned Ok.
+        let log = Command::new("git")
+            .args(["log", "--oneline", "main"])
+            .current_dir(bare.path())
+            .output()
+            .unwrap();
+        assert!(log.status.success() && !log.stdout.is_empty(), "remote bare repo should have received the pushed commit");
     }
 }
