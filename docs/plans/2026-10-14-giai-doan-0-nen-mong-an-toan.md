@@ -1,6 +1,6 @@
 # Giai đoạn 0: Nền móng an toàn (trước khi mời người dùng)
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Thuộc lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai** (0.1 xong 2026-10-15) · Thuộc lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md) (quy tắc, hạ tầng, cách chạy dev, cách kiểm thử).
 
 ## Mục tiêu
@@ -39,6 +39,8 @@ Noteriv sắp giữ dữ liệu của người khác (học viên, giáo viên).
   - `mem_limit: 128m`, `restart: unless-stopped`, không publish cổng.
   - Env: `DATABASE_URL` (như API), `ATTACHMENTS_S3_*` (như worker), `BACKUP_AGE_RECIPIENT` (khoá **công khai** age), `BACKUP_DEPLOY_KEY_B64`, `BACKUP_REPO=git@github.com:covuaduongsinh/noteriv-backups.git`, `BACKUP_HEALTHCHECK_URL`, `BACKUP_SECRETS_BUNDLE` (xem dưới), `TZ=Asia/Ho_Chi_Minh`.
 - **File mã:** `web/infra/backup/Dockerfile`, `backup.sh`, `restore.sh`, `crontab`, `README.md`.
+
+> **Đã điều chỉnh khi triển khai (2026-10-15):** đính kèm **không** nằm trong từng khe mà ở nhánh riêng `attachments` chỉ-thêm (mỗi object mã hoá và đẩy một lần; khoá object bất biến). Nếu để trong khe thì 23 khe × đính kèm làm repo vượt 2GB rất nhanh. Mỗi khe có thêm `attachments.list.age` (danh sách khoá lúc sao lưu). Chi tiết: [2026-10-14-phien-0-1-sao-luu.md](2026-10-14-phien-0-1-sao-luu.md).
 
 ### Nội dung mỗi bản sao lưu (02:00 hằng ngày, giờ Việt Nam)
 1. `db.dump.age`: `pg_dump -Fc` rồi mã hoá bằng age.
@@ -187,8 +189,8 @@ Giai đoạn tiếp theo: [Giai đoạn 1: tách repo, package dùng chung, Plug
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 0.1 | Chưa làm | | |
+| 0.1 | **Xong** | 2026-10-15 | `c72438a` (deploy production). Repo `covuaduongsinh/noteriv-backups` (private, deploy key ghi). Bản đầu tiên: khe `daily-thu` + nhánh `attachments`; mọi file trừ `manifest.json`/`README.txt` đã mã hoá age. healthchecks.io: chạy lỗi cố ý (sai mật khẩu DB) → đỏ + email; chạy đúng → xanh. DB dump mã hoá ~16MB (23 khe ≈ 380MB). Dokploy không cung cấp commit nguồn → manifest ghi `sourceCommit: "unknown"`. **Chưa kiểm:** lần chạy tự động 02:00 đầu tiên (xem healthchecks sáng 2026-10-15). |
 | 0.2 | Chưa làm | | |
-| Diễn tập khôi phục | Chưa làm | | |
+| Diễn tập khôi phục | **Xong** | 2026-10-15 | Khe `daily-thu` khôi phục vào Postgres + Garage tạm trên VPS (`drill.sh`): users 1, notes 1925, attachments 1, migration `20261014160000_clip_tokens` khớp manifest và DB đang chạy; sha256 đính kèm khớp bản trên Garage production. Khoá age và môi trường tạm đã xoá. Nên diễn tập lại 3 tháng/lần. |
 | 0.3 | Chưa làm | | |
 | 0.4 | Chưa làm | | |

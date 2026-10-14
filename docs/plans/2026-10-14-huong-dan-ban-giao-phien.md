@@ -66,10 +66,11 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - **VPS** `217.15.160.118` (SSH alias sẵn, user `root`). **Dùng chung** với ERPNext và các dịch vụ khác, nên **mọi container phải có `mem_limit`**. Kiểm `df -h /` và `free -h` trước khi thêm dịch vụ (ngày 2026-10-14: đĩa 89%, RAM khoảng 7,9GB).
 - **Dokploy** `https://dokploy.dsc.edu.vn`, composeId production `3tKquEXFX1KEN2EueeUGm`, file compose `web/infra/docker-compose.prod.yml`, nhánh `main`.
   - Push `main` thì tự deploy (5–8 phút). Xem trạng thái: `GET /api/deployment.allByCompose?composeId=…` với header `x-api-key`.
-  - API key: đọc từ file cục bộ của chủ dự án (sau Phiên 0.4: `~/.config/noteriv/dokploy.key`); nếu chưa có, hỏi chủ dự án. **Không ghi key vào file trong repo.**
+  - API key: đọc từ file cục bộ của chủ dự án `~/.config/noteriv/dokploy.key` (có từ 2026-10-15); nếu chưa có, hỏi chủ dự án. **Không ghi key vào file trong repo.**
   - Secret nằm trong env compose của Dokploy (`compose.one` để đọc, `compose.update` để sửa; khi in chỉ in tên biến).
 - **Tên miền:** `https://noteriv.dsc.edu.vn` (Traefik của Dokploy định tuyến tới `noteriv-web` và `noteriv-collab`).
-- **Container** (tiền tố `compose-parse-mobile-card-ue7dq8-`): `noteriv-web`, `noteriv-api`, `noteriv-worker`, `noteriv-collab`, `noteriv-pdf`, `noteriv-postgres`, `noteriv-redis`, `noteriv-garage`. Tên service có tiền tố `noteriv-` là **bắt buộc** (tránh trùng DNS trên mạng `dokploy-network` dùng chung).
+- **Container** (tiền tố `compose-parse-mobile-card-ue7dq8-`): `noteriv-web`, `noteriv-api`, `noteriv-worker`, `noteriv-collab`, `noteriv-pdf`, `noteriv-postgres`, `noteriv-redis`, `noteriv-garage`, `noteriv-backup` (từ 2026-10-15).
+- **Sao lưu:** `noteriv-backup` chạy 02:00 mỗi đêm, mã hoá age, đẩy vào repo private `covuaduongsinh/noteriv-backups`; giám sát healthchecks.io. Runbook: `docs/ops/sao-luu-khoi-phuc.md`. Khoá age bí mật **chỉ chủ dự án giữ**. Các file khoá cục bộ của chủ dự án nằm ở `~/.config/noteriv/` (`dokploy.key`, `backup-age.key`, `backup-deploy-key`) — đọc từ file, không in giá trị. Tên service có tiền tố `noteriv-` là **bắt buộc** (tránh trùng DNS trên mạng `dokploy-network` dùng chung).
 - **Migration Prisma chạy tay** sau deploy: `docker exec <container noteriv-api> npx prisma migrate deploy`.
 - **Sau mỗi deploy** kiểm: `docker ps | grep noteriv`, trang chủ trả 200, menu Developer → Chẩn đoán (DB, Redis, git, S3, worker, dịch vụ PDF).
 

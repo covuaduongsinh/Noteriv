@@ -19,7 +19,9 @@ Mỗi bản sao lưu nằm trong một nhánh gọi là "khe". Bản mới đè 
 | `weekly-0` … `weekly-3` | 4 Chủ nhật gần nhất |
 | `monthly-01` … `monthly-12` | ngày 1 của 12 tháng gần nhất |
 
-Đính kèm nằm riêng ở nhánh `attachments`: mỗi file chỉ lưu một lần và không bao giờ bị xoá khỏi đó.
+Đính kèm nằm riêng ở nhánh `attachments`: mỗi file chỉ lưu một lần và không bao giờ bị xoá khỏi đó. Nhánh này là nhánh mặc định của repo.
+
+> Clone nhánh `attachments` về máy Windows sẽ báo "Filename too long" (giới hạn đường dẫn của Windows). Không sao: việc khôi phục luôn chạy trong container Linux trên VPS.
 
 ## 2. Khoá bí mật — quan trọng nhất
 
