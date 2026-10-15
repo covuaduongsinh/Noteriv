@@ -63,3 +63,6 @@ eas.json
 bundletool-*.jar
 phone/eas.json
 web/server/dist/
+
+# build artifacts: binaries are published via releases or hosted upstream, never committed
+*.apk
