@@ -33,14 +33,14 @@ Bản staging dùng để thử trước khi lên production và là riêng tư.
 
 ```sh
 npm install                 # gốc repo; cho nhanh: npm install -w web -w @noteriv/core --include-workspace-root
-npm test                    # test @noteriv/core (Vitest)
+npm test                    # test @noteriv/core và @noteriv/ui (Vitest)
 npm run typecheck           # core, web, desktop
 npm run dev:web             # web ở http://localhost:3457 (cần API chạy ở cổng 4001)
 npm run build:web           # Next standalone
 npm run build:desktop       # giao diện desktop (xuất tĩnh); đóng gói Tauri: cd desktop && npm run build
 ```
 
-Logic dùng chung nằm ở `packages/core` (`@noteriv/core`, TypeScript thuần, import bằng `@noteriv/core/<module>`). API: `cd web/server && npm install && npm run dev`.
+Logic dùng chung nằm ở `packages/core` (`@noteriv/core`, TypeScript thuần, import bằng `@noteriv/core/<module>`); giao diện dùng chung (renderer markdown, editor, panel) ở `packages/ui` (`@noteriv/ui`). API: `cd web/server && npm install && npm run dev`.
 
 ## Tài liệu
 
