@@ -18,7 +18,9 @@ COPY package.json package-lock.json ./
 COPY web/package.json web/
 COPY desktop/package.json desktop/
 COPY packages/core/package.json packages/core/
-RUN npm install -w web --include-workspace-root --no-audit --no-fund
+COPY packages/ui/package.json packages/ui/
+# -w @noteriv/ui as well: its own dependencies (mermaid, katex) are not web dependencies any more.
+RUN npm install -w web -w @noteriv/ui --include-workspace-root --no-audit --no-fund
 
 FROM node:22-alpine AS builder
 WORKDIR /app

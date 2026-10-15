@@ -78,13 +78,13 @@ jobs:
       # reconciles instead of hard-failing on the mismatch.
       # Only web and the shared core are needed here (desktop's Tauri tooling is skipped).
       - name: Install deps
-        run: npm install -w web -w @noteriv/core --include-workspace-root --no-audit --no-fund
+        run: npm install -w web -w @noteriv/core -w @noteriv/ui --include-workspace-root --no-audit --no-fund
 
-      - name: Test shared core
-        run: npm test -w @noteriv/core
+      - name: Test shared packages
+        run: npm test -w @noteriv/core -w @noteriv/ui
 
-      - name: Typecheck core and web
-        run: npm run typecheck -w @noteriv/core -w noteriv-web
+      - name: Typecheck packages and web
+        run: npm run typecheck -w @noteriv/core -w @noteriv/ui -w noteriv-web
 
       - name: Build web
         run: npm run build -w noteriv-web
@@ -104,7 +104,7 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Install deps
-        run: npm install -w noteriv -w @noteriv/core --include-workspace-root --no-audit --no-fund
+        run: npm install -w noteriv -w @noteriv/core -w @noteriv/ui --include-workspace-root --no-audit --no-fund
 
       - name: Typecheck desktop
         run: npm run typecheck -w noteriv

@@ -1,4 +1,6 @@
 @import "tailwindcss";
+/* Tailwind v4 scans only the project tree; classes used by the shared UI package must be sourced explicitly. */
+@source "../../../packages/ui";
 
 :root {
   --bg-primary: #1e1e2e;
