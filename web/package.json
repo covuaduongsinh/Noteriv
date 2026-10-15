@@ -6,9 +6,11 @@
     "dev": "next dev --port 3457",
     "build": "next build",
     "start": "next start --port 3457",
-    "lint": "eslint"
+    "lint": "eslint",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@noteriv/core": "*",
     "@codemirror/autocomplete": "^6.20.1",
     "@codemirror/commands": "^6.10.2",
     "@codemirror/lang-markdown": "^6.5.0",

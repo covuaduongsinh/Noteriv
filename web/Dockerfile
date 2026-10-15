@@ -1,17 +1,28 @@
-# Build context must be the repo root so this can COPY both web/ and
-# web/server/'s own .env.example-documented env vars stay container-only —
-# actual secrets come from Dokploy's env injection at deploy time, never
-# baked into the image.
+# Build context must be the repo root: the app is an npm workspace (root package.json /
+# package-lock.json) and imports shared code from packages/. Secrets are never baked into
+# the image; they come from Dokploy's env injection at deploy time.
+#
+# Only `web` and the shared packages are installed here (`-w web`), not desktop's Tauri tooling.
+# desktop/package.json is still copied because npm validates the lockfile against every
+# workspace manifest.
 
 FROM node:22-alpine AS deps
 WORKDIR /app
-COPY web/package.json web/package-lock.json ./
-RUN npm install
+COPY package.json package-lock.json ./
+COPY web/package.json web/
+COPY desktop/package.json desktop/
+COPY packages/core/package.json packages/core/
+RUN npm install -w web --include-workspace-root --no-audit --no-fund
 
 FROM node:22-alpine AS builder
 WORKDIR /app
+# Hoisted packages (root) and the few this app resolves differently (web/node_modules).
 COPY --from=deps /app/node_modules ./node_modules
-COPY web/ ./
+COPY --from=deps /app/web/node_modules ./web/node_modules
+COPY package.json package-lock.json ./
+COPY packages ./packages
+COPY web ./web
+WORKDIR /app/web
 # Both of these must be build args, not plain Dokploy runtime env vars:
 # NEXT_PUBLIC_* is inlined into the client bundle, and next.config.ts's
 # rewrites() destination gets resolved once into routes-manifest.json at
@@ -31,9 +42,11 @@ ENV NODE_ENV=production
 ENV HOSTNAME=0.0.0.0
 ENV PORT=3000
 
-COPY --from=builder /app/public ./public
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/.next/static ./.next/static
+# next.config.ts sets outputFileTracingRoot to the repo root, so the standalone output nests the
+# app under web/ (web/server.js) next to the hoisted node_modules.
+COPY --from=builder /app/web/.next/standalone ./
+COPY --from=builder /app/web/public ./web/public
+COPY --from=builder /app/web/.next/static ./web/.next/static
 
 EXPOSE 3000
-CMD ["node", "server.js"]
+CMD ["node", "web/server.js"]

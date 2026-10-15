@@ -5,7 +5,7 @@
  */
 
 import { parseTags } from "./tag-utils";
-import { hasFrontmatter } from "./frontmatter-utils";
+import { hasFrontmatter } from "@noteriv/core/frontmatter-utils";
 
 // ── Types ──────────────────────────────────────────────────
 

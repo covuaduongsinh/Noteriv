@@ -5,7 +5,7 @@ import {
   parseFrontmatter,
   updateFrontmatter,
   hasFrontmatter,
-} from "../lib/frontmatter-utils";
+} from "@noteriv/core/frontmatter-utils";
 import "../styles/frontmatter.css";
 
 interface FrontmatterEditorProps {

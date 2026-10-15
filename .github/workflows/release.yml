@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: desktop/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Install Rust toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -56,8 +56,13 @@ jobs:
         with:
           workspaces: desktop/src-tauri -> target
 
+      # desktop is an npm workspace (root package.json / package-lock.json) next to packages/core,
+      # so install from the repo root. UNTESTED in CI: this job only runs on `v*` tags. The same
+      # install and `next build` were run locally and in a Linux container (see
+      # docs/plans/2026-10-15-phien-1-2-monorepo-core.md); check the first tag run.
       - name: Install npm deps
-        run: npm ci
+        working-directory: .
+        run: npm install -w noteriv -w @noteriv/core --include-workspace-root --no-audit --no-fund
 
       - name: Build
         env:

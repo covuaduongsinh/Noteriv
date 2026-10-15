@@ -1,3 +1,4 @@
+import path from "node:path";
 import type { NextConfig } from "next";
 
 const API_ORIGIN = process.env.NOTERIV_API_ORIGIN ?? "http://127.0.0.1:4001";
@@ -32,6 +33,12 @@ const reportOnlyCsp = [
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  // This app lives in an npm workspace: packages are hoisted to the repo root's node_modules and the
+  // shared code sits in ../packages. Trace from the repo root so the standalone server includes
+  // them (the output then nests the app under .next/standalone/web/, see web/Dockerfile).
+  outputFileTracingRoot: path.join(__dirname, ".."),
+  // @noteriv/core ships TypeScript source (no build step); compile it with the app.
+  transpilePackages: ["@noteriv/core"],
   // Shown in Developer > Diagnostics so "which version is deployed?" has an answer.
   env: { NEXT_PUBLIC_BUILD_TIME: new Date().toISOString() },
   async rewrites() {
