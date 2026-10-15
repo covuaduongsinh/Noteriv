@@ -61,7 +61,14 @@ df -h /; free -m                                                       # đĩa, 
   - "Mã mời không đúng…": mã sai, hết lượt, hết hạn hoặc bị thu hồi. Quản trị viên vào **Vault của bạn → Quản lý mã mời** (`/admin/invites`) để xem trạng thái, tạo mã mới.
   - "Chưa mở đăng ký": biến `REGISTRATION_MODE` đang là `closed` (hoặc gõ sai, vì giá trị lạ cũng được coi là đóng). Sửa trong Dokploy (`invite`, `open` hoặc `closed`) rồi deploy lại.
   - "Bạn thử quá nhiều lần": giới hạn 10 lần/phút/IP; đợi một phút (cả lớp dùng chung một mạng có thể chạm ngưỡng).
-- **Quên mật khẩu: hiện chưa có tính năng đặt lại mật khẩu** (chưa có máy chủ gửi email). Cách tạm: nhờ phiên Claude đặt lại thủ công cho tài khoản đó (băm mật khẩu mới, cập nhật `users.password_hash`) sau khi bạn xác minh người đó là ai. Việc này nằm trong danh sách cần làm.
+- **Quên mật khẩu: chưa có tự phục vụ** (chưa có máy chủ gửi email), nên chủ dự án nhờ phiên Claude đặt lại **thủ công**. Quy trình:
+  1. **Xác minh người yêu cầu** (nhắn qua kênh khác, hỏi thông tin chỉ chủ tài khoản biết, hoặc giáo viên xác nhận với học viên). Không đặt lại chỉ vì một email gửi tới.
+  2. Phiên Claude chạy công cụ có sẵn trong container API, mật khẩu mới đi qua stdin (không nằm trong lệnh, lịch sử shell hay `ps`):
+     ```sh
+     printf '%s\n' '<mật-khẩu-mới>' | docker exec -i <container noteriv-api> node dist/cli/reset-password.js email@nguoi-dung.com
+     ```
+     Công cụ băm mật khẩu bằng đúng hàm của ứng dụng, thu hồi mọi phiên đăng nhập của người đó và ghi nhật ký `password_reset_manual`.
+  3. Gửi mật khẩu tạm cho người dùng qua kênh riêng và dặn họ đổi ngay (hiện app chưa có màn hình đổi mật khẩu; ghi vào danh sách việc cần làm).
 - Muốn tạm dừng nhận người mới: đặt `REGISTRATION_MODE=closed` (người dùng cũ vẫn đăng nhập bình thường).
 
 ## 7. Khi nào khôi phục từ sao lưu
