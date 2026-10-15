@@ -31,10 +31,13 @@
   - Tắt Word count rồi tải lại trang: status và ribbon biến mất; sau khi tải lại chunk word-count **không** được tải; bàn cờ vẫn vẽ.
   - Công cụ chụp màn hình bị lỗi trong lần thử này (JavaScript trên trang vẫn chạy bình thường), nên phần trên được kiểm bằng truy vấn DOM và `performance` thay cho ảnh.
 
+- **Staging (2026-10-16, `next` = `547f387`):** build Docker xanh, `healthz` ok, production không deploy lại. Chủ dự án thử tay trên Chrome ẩn danh (ảnh chụp): **chessboard vẽ bàn cờ** qua host sandbox mới (plugin dán thủ công vì chưa có trên kho cộng đồng, việc đã biết); plugin cộng đồng Word Count (status bar + nút lệnh) cũng chạy; Preferences → **Core plugins** → bật Đếm từ: status bar "7 từ" (đếm cả tiêu đề, bỏ khối FEN), nút ribbon xuất hiện, `Ctrl+Alt+W` hiện "7 từ · 24 ký tự · khoảng 1 phút đọc". Đĩa VPS lên 92% trong lúc staging chạy, về 90% sau khi tắt; staging đã tắt.
+
 ## Chưa kiểm / còn lại (nói rõ)
 
-- **Web chạy thật:** chưa thử trên trình duyệt. Worktree chưa có `web/server/.env` và chưa cài `web/server`; cần staging (push `next`) hoặc dựng dev. Cần xem: Settings → Core plugins, bật/tắt word-count (Network: chunk chỉ tải khi bật), chessboard vẫn vẽ và tab cài đặt của nó vẫn chạy (host sandbox web đã được viết lại).
-- **Desktop trong Tauri thật:** chưa chạy. Bản thử dùng API giả; điểm cần xem riêng ở Tauri là iframe `/plugin-sandbox.html` tải từ asset protocol (CSP của Tauri đang `null`).
+- **Web:** chưa kiểm bằng Network tab rằng chunk word-count chỉ tải khi bật (đã kiểm bằng manifest bản build và bằng bản desktop chạy thật); chưa thử tab cài đặt của chessboard trên web sau khi viết lại host.
+- **Desktop trong Tauri thật:** chưa chạy.
+- Mục "Core plugins" nằm trong cửa sổ Preferences (không có trong menu thả xuống Settings); chủ dự án lúc đầu không thấy. Có thể thêm lối tắt vào menu sau. Bản thử dùng API giả; điểm cần xem riêng ở Tauri là iframe `/plugin-sandbox.html` tải từ asset protocol (CSP của Tauri đang `null`).
 - Thay đổi hành vi nhỏ của sandbox web: `vault.list(dir)` nay trả **con trực tiếp** của thư mục (có thư mục con), giống desktop cũ, thay vì danh sách phẳng mọi ghi chú. `vault.*` của plugin cộng đồng trên desktop nay chỉ thấy ghi chú markdown (qua `VaultAdapter`), không đọc được tệp bất kỳ như trước.
 - Desktop vẫn **không hiện panel sidebar** của plugin cộng đồng (trước đây cũng không); web có.
 - `markdown.registerPostProcessor`: host đã lưu và có `runPostProcessors`, nhưng renderer chưa gọi. `ui.registerView`/`workspace.openView`: host có, app chưa có tab cho view (cần ở Giai đoạn 2).
