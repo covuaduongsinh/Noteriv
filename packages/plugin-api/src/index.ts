@@ -1,0 +1,251 @@
+/**
+ * Noteriv Plugin API v1 — DRAFT (0.x, not frozen). Types only; there is no runtime code in this package.
+ * Spec and rationale: docs/plugin-api/v1.md.
+ *
+ * Two tiers share this one surface:
+ *  - core plugins: ES modules inside this repo, loaded with a dynamic import() and given real DOM;
+ *  - community plugins: plain scripts run in a sandboxed iframe, where every call below is an RPC that the host
+ *    checks against the permissions the user granted (see `PluginPermission`).
+ *
+ * Anything that hands back DOM (`registerView`, panels, modals) is only available to core plugins as written
+ * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
+ */
+
+export const PLUGIN_API_VERSION = "1.0.0-draft.1";
+
+// ─── Permissions (community tier) ───
+
+export type PluginPermission =
+  | "vault:read"
+  | "vault:write"
+  | "editor:read"
+  | "editor:write"
+  | "ui:commands"
+  | "ui:statusbar"
+  | "ui:panel"
+  | "markdown:render";
+
+// ─── Vault ───
+
+export interface VaultEntry {
+  /** Vault-relative path, `/` separated. */
+  path: string;
+  name: string;
+  isDir: boolean;
+}
+
+export interface VaultApi {
+  read(path: string): Promise<string | null>;
+  write(path: string, content: string): Promise<boolean>;
+  list(dir?: string): Promise<VaultEntry[]>;
+  exists(path: string): Promise<boolean>;
+  delete(path: string): Promise<boolean>;
+}
+
+// ─── Editor ───
+
+export interface CursorPosition {
+  line: number;
+  ch: number;
+}
+
+export interface EditorApi {
+  getContent(): string | null;
+  setContent(content: string): void;
+  insertAtCursor(text: string): void;
+  getSelection(): string;
+  replaceSelection(text: string): void;
+  getCursorPosition(): CursorPosition;
+}
+
+// ─── Markdown ───
+
+export interface CodeBlockProcessorContext {
+  source: string;
+  language: string;
+  sourcePath: string | null;
+}
+
+/** May return a cleanup function, called when the block is re-rendered or removed. */
+export type CodeBlockProcessor = (
+  source: string,
+  el: HTMLElement,
+  ctx: CodeBlockProcessorContext
+) => void | (() => void);
+
+export interface PostProcessorContext {
+  sourcePath: string | null;
+}
+
+/** Runs over the rendered DOM of a note (reading view / publish preview). Core tier only. */
+export type MarkdownPostProcessor = (el: HTMLElement, ctx: PostProcessorContext) => void;
+
+export interface MarkdownApi {
+  registerCodeBlockProcessor(language: string, processor: CodeBlockProcessor): void;
+  unregisterCodeBlockProcessor(language: string): void;
+  /** Core tier only. */
+  registerPostProcessor(processor: MarkdownPostProcessor): void;
+}
+
+// ─── UI ───
+
+export interface PluginCommand {
+  /** Unique within the plugin; the host namespaces it as `<pluginId>:<id>`. */
+  id: string;
+  name: string;
+  icon?: string;
+  /** Accelerator such as `Mod+Shift+W`. `Mod` is Ctrl on Windows/Linux and Cmd on macOS. */
+  hotkey?: string;
+  callback(): void | Promise<void>;
+}
+
+export interface StatusBarItem {
+  id: string;
+  text: string;
+  title?: string;
+  onClick?: () => void;
+}
+
+export interface RibbonIcon {
+  id: string;
+  title: string;
+  /** Icon name from the host's icon set, or an inline `<svg>` string. */
+  icon?: string;
+  onClick(): void;
+}
+
+export interface SidebarPanel {
+  id: string;
+  title: string;
+  icon: string;
+  render(container: HTMLElement): void | (() => void);
+}
+
+export interface SettingsTab {
+  id: string;
+  name: string;
+  render(container: HTMLElement): void | (() => void);
+}
+
+/** A whole-tab view (Canvas, Board, a chess board…). Core tier only. */
+export interface ViewHandle {
+  /** Called with the tab's content element; return value is the cleanup. */
+  mount(container: HTMLElement, state: ViewState): void | (() => void);
+}
+
+export interface ViewState {
+  /** Vault-relative path the view was opened for, if any. */
+  path: string | null;
+}
+
+export type ViewFactory = () => ViewHandle;
+
+export interface UiApi {
+  addCommand(cmd: PluginCommand): void;
+  removeCommand(id: string): void;
+  addStatusBarItem(item: StatusBarItem): void;
+  removeStatusBarItem(id: string): void;
+  addSidebarPanel(panel: SidebarPanel): void;
+  removeSidebarPanel(id: string): void;
+  addSettingsTab(tab: SettingsTab): void;
+  removeSettingsTab(id: string): void;
+  showNotice(message: string, durationMs?: number): void;
+  /** Core tier only. Registers a view type that `workspace.openView` can open in a tab. */
+  registerView(type: string, factory: ViewFactory): void;
+  unregisterView(type: string): void;
+  /** Core tier only. */
+  addRibbonIcon(icon: RibbonIcon): void;
+  removeRibbonIcon(id: string): void;
+}
+
+// ─── Events ───
+
+export type PluginEvent =
+  | "file-open"
+  | "file-save"
+  | "file-create"
+  | "file-delete"
+  | "editor-change"
+  | "vault-change"
+  | "layout-change"
+  | "plugin-loaded"
+  | "plugin-unloaded";
+
+export interface EventsApi {
+  on(event: PluginEvent, handler: (...args: any[]) => void): void;
+  off(event: PluginEvent, handler: (...args: any[]) => void): void;
+  emit(event: PluginEvent, ...args: any[]): void;
+}
+
+// ─── Workspace, settings, app ───
+
+export interface WorkspaceApi {
+  /** Open a note in a tab. Resolves false when the path does not exist. */
+  openFile(path: string): Promise<boolean>;
+  /** Core tier only. Open a view registered with `ui.registerView`. */
+  openView(type: string, state?: ViewState): Promise<boolean>;
+}
+
+export interface SettingsApi {
+  /** Per-plugin JSON blob, stored per vault. */
+  load(): Promise<Record<string, unknown>>;
+  save(data: Record<string, unknown>): Promise<void>;
+}
+
+export type PluginPlatform = "web" | "desktop";
+
+export interface AppApi {
+  /** Plugin API version (`PLUGIN_API_VERSION`). */
+  version: string;
+  platform: PluginPlatform;
+  /** Absolute vault path on desktop, null on web. */
+  vaultPath: string | null;
+  currentFile: string | null;
+  /** @deprecated Use `settings.load`. Kept so v0 community plugins keep working. */
+  loadSettings(): Promise<Record<string, unknown>>;
+  /** @deprecated Use `settings.save`. */
+  saveSettings(data: Record<string, unknown>): Promise<void>;
+}
+
+// ─── The API object a plugin receives ───
+
+export interface PluginApi {
+  vault: VaultApi;
+  editor: EditorApi;
+  markdown: MarkdownApi;
+  ui: UiApi;
+  events: EventsApi;
+  workspace: WorkspaceApi;
+  settings: SettingsApi;
+  app: AppApi;
+}
+
+// ─── Plugin module shapes ───
+
+/** Default export of a core plugin module. */
+export interface CorePlugin {
+  onload(api: PluginApi): void | Promise<void>;
+  /** Optional. Everything registered through `api` is removed by the host afterwards regardless. */
+  onunload?(): void | Promise<void>;
+}
+
+/** Shape of a community plugin script's `module.exports`. */
+export interface CommunityPluginExports {
+  onLoad?(api: PluginApi): void | Promise<void>;
+  onUnload?(): void | Promise<void>;
+}
+
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  /** Entry script, relative to the plugin folder (community tier). */
+  main: string;
+  minAppVersion?: string;
+  /** Fence languages the plugin renders; lets hosts load it lazily. */
+  codeBlockLanguages?: string[];
+  /** Community tier. When absent the host infers a proposal from the code and asks the user. */
+  permissions?: PluginPermission[];
+}
