@@ -15,6 +15,22 @@ export interface ApiUser {
   email: string;
   displayName: string;
   avatarUrl?: string | null;
+  /** Only set by /auth/me: true when the email is in the server's ADMIN_EMAILS list. */
+  isAdmin?: boolean;
+}
+
+export type RegistrationMode = "invite" | "open" | "closed";
+
+export interface ApiInvite {
+  id: string;
+  code: string;
+  note: string;
+  maxUses: number;
+  usedCount: number;
+  expiresAt: string | null;
+  revokedAt: string | null;
+  createdAt: string;
+  status: "active" | "used_up" | "expired" | "revoked";
 }
 
 export interface ApiVault {
@@ -321,8 +337,9 @@ async function requestBlob(path: string, body: unknown, _retrying = false): Prom
 
 export const webApi = {
   auth: {
-    register: (data: { email: string; password: string; displayName: string }) =>
+    register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true }) =>
       request<ApiUser>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
+    registration: () => request<{ mode: RegistrationMode }>("/auth/registration"),
     login: (data: { email: string; password: string }) =>
       request<ApiUser>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
     logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
@@ -533,6 +550,15 @@ export const webApi = {
         body: JSON.stringify({ name, vaultId }),
       }),
     revoke: (id: string) => request<{ ok: true }>(`/users/me/clip-tokens/${id}`, { method: "DELETE" }),
+  },
+
+  admin: {
+    invites: {
+      list: () => request<ApiInvite[]>("/admin/invites"),
+      create: (data: { note: string; maxUses: number; expiresInDays?: number }) =>
+        request<{ id: string; code: string }>("/admin/invites", { method: "POST", body: JSON.stringify(data) }),
+      revoke: (id: string) => request<{ ok: true }>(`/admin/invites/${id}`, { method: "DELETE" }),
+    },
   },
 
   pdf: {

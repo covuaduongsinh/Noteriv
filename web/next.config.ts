@@ -2,6 +2,34 @@ import type { NextConfig } from "next";
 
 const API_ORIGIN = process.env.NOTERIV_API_ORIGIN ?? "http://127.0.0.1:4001";
 
+// Origin (scheme + host) of the collab WebSocket, so the report-only policy does not flag it.
+// Build-time value, like NEXT_PUBLIC_COLLAB_WS_URL itself.
+const COLLAB_ORIGIN = (() => {
+  try {
+    return new URL(process.env.NEXT_PUBLIC_COLLAB_WS_URL ?? "").origin;
+  } catch {
+    return "";
+  }
+})();
+
+// Full policy, REPORT-ONLY on purpose: it only shows violations in the browser console. Enforcing a
+// CSP could break the plugin sandbox (public/plugin-sandbox.html, an iframe with sandbox="allow-scripts"
+// and an opaque origin), the blob: iframe of the PDF preview, and Next's own inline bootstrap scripts
+// (a nonce policy would force every page to render dynamically). Tighten and enforce later, with evidence.
+const reportOnlyCsp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline'",
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  `connect-src 'self' ${COLLAB_ORIGIN}`.trim(),
+  "frame-src 'self' blob:",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+].join("; ");
+
 const nextConfig: NextConfig = {
   output: "standalone",
   // Shown in Developer > Diagnostics so "which version is deployed?" has an answer.
@@ -11,6 +39,23 @@ const nextConfig: NextConfig = {
       {
         source: "/api/:path*",
         destination: `${API_ORIGIN}/api/:path*`,
+      },
+    ];
+  },
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // No includeSubDomains: the host is a subdomain of a domain that serves other sites.
+          { key: "Strict-Transport-Security", value: "max-age=15552000" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // Enforced: nothing outside this origin may frame the app. The plugin sandbox and the PDF
+          // preview are framed by the app itself, so 'self' covers them.
+          { key: "Content-Security-Policy", value: "frame-ancestors 'self'" },
+          { key: "Content-Security-Policy-Report-Only", value: reportOnlyCsp },
+        ],
       },
     ];
   },
