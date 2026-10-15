@@ -48,7 +48,14 @@ model User {
   avatarUrl    String?  @map("avatar_url")
   createdAt    DateTime @default(now()) @map("created_at")
   updatedAt    DateTime @updatedAt @map("updated_at")
+  /// Which invite code this account registered with (null: registered before invites existed, or open mode).
+  inviteCodeId     String?   @map("invite_code_id")
+  /// When and which version of the Terms/Privacy the user agreed to at registration (null for older accounts).
+  termsAcceptedAt  DateTime? @map("terms_accepted_at")
+  termsVersion     String?   @map("terms_version")
 
+  invitedWith      InviteCode?        @relation("InviteUsedBy", fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  createdInvites   InviteCode[]       @relation("InviteCreatedBy")
   ownedWorkspaces  Workspace[]        @relation("WorkspaceOwner")
   memberships      WorkspaceMember[]
   refreshTokens    RefreshToken[]
@@ -60,6 +67,25 @@ model User {
   preference       UserPreference?
 
   @@map("users")
+}
+
+/// Registration is invite-only by default (REGISTRATION_MODE, see routes/auth.ts). A code is revoked,
+/// never deleted, so accounts that used it keep their trail.
+model InviteCode {
+  id          String    @id @default(uuid())
+  code        String    @unique
+  note        String    @default("")
+  maxUses     Int       @default(1) @map("max_uses")
+  usedCount   Int       @default(0) @map("used_count")
+  expiresAt   DateTime? @map("expires_at")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String?   @map("created_by_id")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  createdBy User?  @relation("InviteCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  users     User[] @relation("InviteUsedBy")
+
+  @@map("invite_codes")
 }
 
 model UserPreference {

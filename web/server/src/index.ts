@@ -22,6 +22,7 @@ import userVaultStateRoutes from "./routes/userVaultState.js";
 import trashRoutes from "./routes/trash.js";
 import attachmentRoutes from "./routes/attachments.js";
 import { syncQueue } from "./lib/syncQueue.js";
+import adminRoutes from "./routes/admin.js";
 
 const fastify = Fastify({ logger: true, trustProxy: true });
 
@@ -69,6 +70,7 @@ await fastify.register(vaultTransferRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(diagnosticsRoutes, { prefix: "/api/v1/diagnostics" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
+await fastify.register(adminRoutes, { prefix: "/api/v1/admin" });
 
 void warnIfGitMissing((m) => fastify.log.warn(m));
 
