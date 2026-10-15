@@ -25,6 +25,7 @@
 ## Kiểm chứng
 
 - `npm test` (core): 256 test xanh; `tsc` core, web, desktop sạch; `build:web` và `build:desktop` chạy.
+- Staging build xanh (deploy `done`, `/api/v1/healthz` 200) sau khi đẩy `next` (2026-10-15). **Thử tay bốn panel trên trình duyệt bị bỏ qua**: hộp basic-auth trong Chrome cứ hiện lại dù đăng nhập bằng file thì được (nghi mật khẩu Chrome lưu sai; thử lại bằng cửa sổ ẩn danh). Staging đã tắt (`compose.stop`) sau phiên.
 - **Chưa kiểm:** chạy thật `desktopVaultAdapter` (không chạy được Tauri/Electron trong môi trường này); thử tay trên staging web sau khi đẩy `next` (xem bảng trạng thái).
 
 ## Việc còn lại / cho phiên sau
