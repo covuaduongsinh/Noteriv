@@ -11,10 +11,10 @@ import {
 import { EDITOR_FONTS, AUTO_SAVE_OPTIONS, ACCENT_COLORS, TAB_SIZES } from "@/lib/settings";
 import ThemePicker from "@/components/ThemePicker";
 import SyncSection from "@/components/sync/SyncSection";
-import PluginMirror from "@/components/PluginMirror";
+import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import ClipperSection from "@/components/ClipperSection";
-import type { PluginPanelRef } from "@/lib/plugin-sandbox/types";
-import type { MirrorEvent } from "@/lib/plugin-sandbox/mirror";
+import type { PluginPanelRef } from "@noteriv/ui/plugins/sandbox";
+import type { MirrorEvent } from "@noteriv/ui/plugins/sandbox";
 import { CorePluginsSection } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 

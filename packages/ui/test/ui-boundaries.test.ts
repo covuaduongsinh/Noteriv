@@ -28,7 +28,7 @@ function specifiers(source: string): string[] {
 }
 
 /** Packages the UI may import. Adding one is a deliberate decision: list it here and in package.json. */
-const ALLOWED_PACKAGE = /^(react|react-dom|katex|mermaid|@noteriv\/core\/[\w-]+|@noteriv\/plugin-api|@codemirror\/[\w-]+|@lezer\/[\w-]+|@replit\/codemirror-vim)$/;
+const ALLOWED_PACKAGE = /^(react|react-dom|katex|mermaid|dompurify|@noteriv\/core\/[\w-]+|@noteriv\/plugin-api|@codemirror\/[\w-]+|@lezer\/[\w-]+|@replit\/codemirror-vim)$/;
 
 describe("@noteriv/ui boundaries", () => {
   it("imports only siblings and explicitly allowed packages", () => {

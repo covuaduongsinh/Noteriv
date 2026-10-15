@@ -1,7 +1,7 @@
 "use client";
 
 import type { ViewMode } from "@/lib/webApi";
-import type { PluginStatusItem } from "@/lib/plugin-sandbox/types";
+import type { PluginStatusItem } from "@noteriv/ui/plugins/sandbox";
 
 interface StatusBarProps {
   viewMode: ViewMode;

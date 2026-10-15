@@ -16,7 +16,9 @@
     "./panels/*": "./src/panels/*.ts",
     "./styles/*": "./styles/*",
     "./plugins": "./src/plugins/index.ts",
-    "./plugins/*": "./src/plugins/*.ts"
+    "./plugins/*": "./src/plugins/*.ts",
+    "./plugins/sandbox": "./src/plugins/sandbox/index.ts",
+    "./public/*": "./public/*"
   },
   "scripts": {
     "test": "vitest run",
@@ -26,7 +28,8 @@
     "@noteriv/core": "*",
     "katex": "^0.19.0",
     "mermaid": "^11.13.0",
-    "@noteriv/plugin-api": "*"
+    "@noteriv/plugin-api": "*",
+    "dompurify": "^3.4.13"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "^6.20.1",

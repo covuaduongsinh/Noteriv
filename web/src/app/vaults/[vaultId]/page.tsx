@@ -22,7 +22,7 @@ import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
 import SettingsModal from "@/components/SettingsModal";
 import ImportVault from "@/components/ImportVault";
-import PluginMirror from "@/components/PluginMirror";
+import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import LintPanel from "@/components/LintPanel";
 import DiagnosticsModal from "@/components/DiagnosticsModal";
 import { createUntitledNote } from "@/lib/note-names";
@@ -52,7 +52,7 @@ import {
   useCorePlugins,
 } from "@noteriv/ui/plugins";
 import type { EditorApi } from "@noteriv/plugin-api";
-import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
+import type { EditorSnapshot } from "@noteriv/ui/plugins/sandbox";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
   webApi,
@@ -380,7 +380,14 @@ export default function VaultPage() {
         return { line: line.number - 1, ch: head - line.from };
       },
   };
-  const pluginHost = usePluginHost(vaultId, index, editorBridge, refreshIndex);
+  /** `workspace.openFile` for both plugin tiers. */
+  const openPluginPath = (path: string) => {
+    const note = index?.notes.find((n) => n.path === path);
+    if (!note) return false;
+    openNote(note.id);
+    return true;
+  };
+  const pluginHost = usePluginHost(vaultId, vaultAdapter, editorBridge, refreshIndex, openPluginPath);
 
   // Core plugins (Plugin API v1, trusted tier): loaded in-page by dynamic import, state in vault settings.
   const activePathRef = useRef<string | null>(null);
@@ -389,12 +396,7 @@ export default function VaultPage() {
   const corePluginHost = useCorePluginHost(corePluginConfig, {
     editor: editorBridge,
     getCurrentFile: () => activePathRef.current,
-    openFile: (path) => {
-      const note = index?.notes.find((n) => n.path === path);
-      if (!note) return false;
-      openNote(note.id);
-      return true;
-    },
+    openFile: openPluginPath,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);

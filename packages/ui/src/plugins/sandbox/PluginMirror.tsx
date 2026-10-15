@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef } from "react";
-import { mountMirror, type MirrorEvent } from "@/lib/plugin-sandbox/mirror";
+import { mountMirror, type MirrorEvent } from "./mirror";
 
 /**
  * Shows a plugin's sandbox-rendered panel (sanitised, CSS-scoped copy of its DOM) and

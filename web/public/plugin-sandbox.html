@@ -116,13 +116,14 @@ function unmountMirror(kind, id) {
   delete mirrors[key];
 }
 
-function unsupported(name) {
+// Plugin API v1 calls that hand out real app DOM exist for core plugins only (docs/plugin-api/v1.md, "Sandbox subset").
+function coreOnly(name) {
   return function () {
-    parent.postMessage({ type: "noteriv:log", level: "warn", message: name + " is not supported in the web sandbox" }, "*");
+    throw new Error(name + " is only available to core plugins");
   };
 }
 
-function buildApi() {
+function buildApi(boot) {
   return {
     vault: {
       read: function (path) { return rpcCall("vault.read", [path]); },
@@ -172,6 +173,10 @@ function buildApi() {
         unmountMirror("settings", id);
         return rpcCall("ui.removeSettingsTab", [id]);
       },
+      registerView: coreOnly("ui.registerView"),
+      unregisterView: coreOnly("ui.unregisterView"),
+      addRibbonIcon: coreOnly("ui.addRibbonIcon"),
+      removeRibbonIcon: coreOnly("ui.removeRibbonIcon"),
     },
     events: {
       on: function (event, handler) {
@@ -210,9 +215,19 @@ function buildApi() {
         delete codeBlockProcessors[lang];
         return rpcCall("markdown.unregisterCodeBlockProcessor", [lang]);
       },
+      registerPostProcessor: coreOnly("markdown.registerPostProcessor"),
+    },
+    workspace: {
+      openFile: function (path) { return rpcCall("workspace.openFile", [path]); },
+      openView: coreOnly("workspace.openView"),
+    },
+    settings: {
+      load: function () { return rpcCall("app.loadSettings", []); },
+      save: function (data) { return rpcCall("app.saveSettings", [data]); },
     },
     app: {
-      version: "web",
+      version: typeof boot.version === "string" ? boot.version : "web",
+      platform: boot.platform === "desktop" ? "desktop" : "web",
       vaultPath: null,
       get currentFile() { return editorState.currentFile; },
       loadSettings: function () { return rpcCall("app.loadSettings", []); },
@@ -332,7 +347,7 @@ window.addEventListener("message", function (event) {
   }
 
   if (data.type === "noteriv:boot") {
-    var api = buildApi();
+    var api = buildApi(data);
     var wrapped = [
       '"use strict";',
       "var module = { exports: {} };",
