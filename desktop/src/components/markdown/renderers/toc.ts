@@ -1,5 +1,5 @@
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
-import { extractHeadings } from "@/lib/toc-utils";
+import { extractHeadings } from "@noteriv/core/toc-utils";
 
 class TocWidget extends WidgetType {
   constructor(readonly headings: { level: number; text: string; line: number }[]) {

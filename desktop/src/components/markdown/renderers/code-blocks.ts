@@ -240,7 +240,7 @@ class DataviewWidget extends WidgetType {
       }
 
       // Dynamic import to avoid circular deps
-      const { parseQuery, executeQuery, parseNoteData } = await import("@/lib/dataview");
+      const { parseQuery, executeQuery, parseNoteData } = await import("@noteriv/core/dataview");
 
       const parsed = parseQuery(this.query);
       if ("error" in parsed) {

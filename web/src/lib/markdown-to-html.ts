@@ -5,7 +5,7 @@
  * [TOC] placeholder, dataview code blocks, and excalidraw embeds.
  */
 
-import { renderTocHTML } from "@/lib/toc-utils";
+import { renderTocHTML } from "@noteriv/core/toc-utils";
 import {
   getCodeBlockProcessor,
   type CodeBlockProcessor,

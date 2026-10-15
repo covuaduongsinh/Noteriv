@@ -27,7 +27,7 @@ import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
 import CalendarView from "@/components/CalendarView";
 import DataviewBlock from "@/components/DataviewBlock";
-import { isBoardContent, isBoardFile, createBoardContent } from "@/lib/board-utils";
+import { isBoardContent, isBoardFile, createBoardContent } from "@noteriv/core/board-utils";
 import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@/lib/drawing-utils";
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
@@ -39,7 +39,7 @@ import NoteHistory from "@/components/NoteHistory";
 import TimeScrubber from "@/components/TimeScrubber";
 import LintPanel from "@/components/LintPanel";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
-import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@/lib/toc-utils";
+import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
 import { insertAtCursor } from "@/lib/editor-commands";
 import {
   HotkeyBinding,

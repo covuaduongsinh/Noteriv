@@ -233,7 +233,7 @@ class DataviewWidget extends WidgetType {
 
   private async runQuery(container: HTMLElement, loading: HTMLElement) {
     try {
-      const { parseQuery, executeQuery, parseNoteData } = await import("@/lib/dataview");
+      const { parseQuery, executeQuery, parseNoteData } = await import("@noteriv/core/dataview");
       const { webApi } = await import("@/lib/webApi");
 
       const parsed = parseQuery(this.query);

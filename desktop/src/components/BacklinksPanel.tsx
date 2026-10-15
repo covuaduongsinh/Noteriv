@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { findBacklinks } from "@/lib/wiki-link-utils";
-import type { Backlink, FileInfo } from "@/lib/wiki-link-utils";
+import { findBacklinks } from "@noteriv/core/wiki-link-utils";
+import type { Backlink, FileInfo } from "@noteriv/core/wiki-link-utils";
 
 interface BacklinksPanelProps {
   /** Full path of the current file being viewed. */

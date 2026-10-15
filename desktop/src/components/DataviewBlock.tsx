@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { parseQuery, executeQuery, parseNoteData, type QueryResult, type NoteData } from "@/lib/dataview";
+import { parseQuery, executeQuery, parseNoteData, type QueryResult, type NoteData } from "@noteriv/core/dataview";
 
 interface DataviewBlockProps {
   query: string;

@@ -12,7 +12,7 @@ import { CodeBlockTracker } from "./renderers/code-blocks";
 import { MathBlockTracker } from "./renderers/math";
 import { HtmlBlockTracker } from "./renderers/html";
 import { processTocLine } from "./renderers/toc";
-import { extractHeadings } from "@/lib/toc-utils";
+import { extractHeadings } from "@noteriv/core/toc-utils";
 import type { BlockContext, InlineReplacement } from "./types";
 
 /** When true, all lines render as non-cursor (pure view mode). */

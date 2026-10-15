@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useMemo, useRef, useCallback } from "react";
-import { lintMarkdown, type LintWarning } from "@/lib/markdown-lint";
+import { lintMarkdown, type LintWarning } from "@noteriv/core/markdown-lint";
 
 interface LintPanelProps {
   content: string;

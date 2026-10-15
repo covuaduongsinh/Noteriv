@@ -12,7 +12,7 @@ import {
   toggleCard,
   type BoardData,
   type BoardCard,
-} from "@/lib/board-utils";
+} from "@noteriv/core/board-utils";
 
 interface BoardViewProps {
   content: string;

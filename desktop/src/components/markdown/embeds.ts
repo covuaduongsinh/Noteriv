@@ -15,8 +15,8 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { RangeSetBuilder, Facet } from "@codemirror/state";
-import { parseWikiLink, resolveWikiLink } from "@/lib/wiki-link-utils";
-import type { FileInfo } from "@/lib/wiki-link-utils";
+import { parseWikiLink, resolveWikiLink } from "@noteriv/core/wiki-link-utils";
+import type { FileInfo } from "@noteriv/core/wiki-link-utils";
 
 // ── Facets for configuration ──
 

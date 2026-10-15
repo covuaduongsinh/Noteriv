@@ -60,7 +60,7 @@ import {
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
-import { isBoardContent } from "@/lib/board-utils";
+import { isBoardContent } from "@noteriv/core/board-utils";
 import { isCanvasContent } from "@/lib/canvas-utils";
 import { isDrawingContent } from "@/lib/drawing-utils";
 import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
