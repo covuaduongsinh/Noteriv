@@ -48,6 +48,7 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - Menu Developer → Chẩn đoán: DB, Redis, storage, worker, PDF đều xanh.
 - `docker ps | grep cdil47`: **không có** container `noteriv-backup`.
 - `docker exec <web-staging> getent hosts noteriv-api` ra IP của api **staging** (không phải production).
+- `curl -u user:… https://staging-noteriv.dsc.edu.vn/api/v1/healthz` → `{"ok":true}` (200). Production: `curl https://noteriv.dsc.edu.vn/api/v1/healthz`. Giám sát: xem [`giam-sat.md`](giam-sat.md).
 
 ## 6. Lưu ý
 
