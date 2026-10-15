@@ -23,6 +23,8 @@ Các tài liệu định hướng (theo thứ tự thực hiện):
 
 Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và các file `docs/plans/2026-10-1x-*.md`.
 
+**Phiên kế tiếp: 1.5 (Plugin API v1 nháp).** Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-1-tach-repo-package-chung-plugin-api.md`, rồi lập kế hoạch và triển khai **Phiên 1.5**." Đọc thêm `docs/plans/2026-10-16-phien-1-4-ui.md` (cổng tiêm vào của `@noteriv/ui`) và `docs/plans/2026-10-15-phien-1-3-vault-adapter.md` (`VaultAdapter`): API plugin dựng trên hai thứ này. Trạng thái nhánh: `covuaduongsinh/phase1-core` = `next` (1.1–1.4), chưa gộp vào `main`; worktree Orca `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup`. Việc chủ dự án còn nợ: dọn đĩa VPS (~90%), thử nốt 1.4 trên staging (sequence diagram, `[[`, 4 panel, Graph), quyết định sửa lỗi đổi tên note ở web (xem file 1.4).
+
 **Trước khi làm một phiên:** kiểm bảng "Trạng thái" cuối file giai đoạn (phiên trước đã xong chưa) và mục "Điều kiện bắt đầu" ở đầu file.
 
 ## 2. Về chủ dự án và cách làm việc

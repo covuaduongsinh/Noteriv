@@ -22,6 +22,8 @@ Khác biệt giữa hai môi trường nằm hết trong **env của compose tr�
 - Dokploy → compose `noteriv-staging` → **Start / Stop**. Hoặc API: `compose.start`, `compose.stop` với header `x-api-key` (key ở `~/.config/noteriv/dokploy.key`).
 - Staging dùng khoảng 0,6GB RAM khi rảnh (giới hạn tổng ≈ 3GB). Trước khi bật kiểm `free -m` và `df -h /` trên VPS; **đĩa ≥ 92% thì dừng và hỏi chủ dự án**.
 - Push vào `next` sẽ tự deploy staging (kể cả khi đang tắt thì deploy sẽ bật nó lên): xong việc thì tắt lại.
+- **Cơ sở dữ liệu staging có thể trống mỗi lần dựng lại** (2026-10-16: 0 người dùng, 0 vault dù trước đó đã đăng ký). Đăng ký chỉ bằng mã mời, nên khi bật staging để thử tay: tạo mã mời bằng `psql` trên container postgres staging (`insert into invite_codes (id, code, note, max_uses, expires_at) values (gen_random_uuid(), '<mã 10 ký tự, bảng chữ cái không có 0/O/1/I/L>', 'ghi chú', 1, now() + interval '2 days')`), rồi chủ dự án tự đăng ký (mật khẩu do chính họ đặt). Không dùng dữ liệu staging để giữ ghi chú thật.
+- **Mở staging trong Chrome:** nhập basic-auth một lần trong cửa sổ ẩn danh; địa chỉ không có dấu chấm cuối (`…dsc.edu.vn.` gây `ERR_SSL_PROTOCOL_ERROR`). Phiên Claude không nhập được mật khẩu vào hộp này (hộp của trình duyệt, ngoài máy local), nên chủ dự án tự làm bước đăng nhập rồi chụp màn hình.
 
 ## 3. Quy trình git
 
