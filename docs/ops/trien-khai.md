@@ -53,3 +53,12 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 
 - Dữ liệu staging chỉ là dữ liệu thử. Khi diễn tập khôi phục dùng dữ liệu thật, phải xoá ngay sau đó.
 - Staging chia sẻ VPS với ERPNext và dịch vụ khác: mọi container đều có `mem_limit`. Build image staging tốn thêm vài GB đĩa (lần đầu ~5GB).
+
+## 7. Đăng ký và quản trị (từ Phiên 0.4)
+
+- `REGISTRATION_MODE` (env của `noteriv-api`): `invite` (mặc định, cần mã mời), `open` (ai cũng đăng ký) hoặc `closed` (đóng). **Giá trị lạ hoặc rỗng = đóng**, để gõ sai không vô tình mở đăng ký. Đổi trong Dokploy rồi deploy lại.
+- `ADMIN_EMAILS` (cùng chỗ): danh sách email (cách nhau dấu phẩy) được quản lý mã mời. Rỗng = không ai là admin. Production: `duongsinhchess@gmail.com`.
+- Tạo mã mời: đăng nhập bằng email admin → **Vault của bạn → Quản lý mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
+- Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.
+- Trang `/terms` và `/privacy` hiện nhãn **Bản nháp** cho tới khi điền `OPERATOR_NAME` và `CONTACT_EMAIL` trong `web/src/lib/legal.ts`.
+- Migration `20261015120000_invite_codes` phải chạy sau deploy: `docker exec <noteriv-api> npx prisma migrate deploy` (thử trên staging trước).
