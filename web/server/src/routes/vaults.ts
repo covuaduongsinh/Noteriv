@@ -3,6 +3,7 @@ import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { logAudit } from "../lib/auditLog.js";
+import { deleteObjectsBestEffort } from "../lib/attachments.js";
 
 const createVaultSchema = z.object({
   name: z.string().min(1).max(200),
@@ -99,8 +100,12 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
       if (role !== "owner") {
         return reply.code(403).send({ error: "forbidden" });
       }
+      // Attachment rows go with the vault (cascade); their files in object storage must be removed too.
+      const keys = (await prisma.attachment.findMany({ where: { vaultId: id }, select: { storageKey: true } })).map((a) => a.storageKey);
       await prisma.vault.delete({ where: { id } });
-      logAudit(prisma, { userId: request.user!.id, action: "vault_deleted", resourceType: "vault", resourceId: id, ip: request.ip });
+      const failed = await deleteObjectsBestEffort(keys);
+      if (failed) request.log.warn({ vaultId: id, failed, total: keys.length }, "some attachment files were not removed from storage");
+      logAudit(prisma, { userId: request.user!.id, action: "vault_deleted", resourceType: "vault", resourceId: id, metadata: { attachmentFiles: keys.length, attachmentFilesFailed: failed }, ip: request.ip });
       return reply.send({ ok: true });
     } catch (err) {
       if (err instanceof VaultAccessError) {

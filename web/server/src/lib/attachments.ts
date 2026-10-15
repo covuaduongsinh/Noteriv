@@ -82,3 +82,19 @@ export async function getObjectStream(storageKey: string) {
 export async function deleteObject(storageKey: string): Promise<void> {
   await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: storageKey }));
 }
+
+/**
+ * Removes the stored files of attachments whose DB rows are gone (vault or account deletion: the
+ * rows vanish by cascade but the objects would otherwise stay in the bucket forever). Call it AFTER
+ * the DB delete succeeded, with keys read BEFORE it: if it ran first and the delete then failed, the
+ * user would keep rows pointing at missing files. Best effort: returns how many keys failed so the
+ * caller can log it; an object-store hiccup must not turn a completed deletion into an error.
+ */
+export async function deleteObjectsBestEffort(storageKeys: string[]): Promise<number> {
+  let failed = 0;
+  for (let i = 0; i < storageKeys.length; i += 10) {
+    const results = await Promise.allSettled(storageKeys.slice(i, i + 10).map(deleteObject));
+    failed += results.filter((r) => r.status === "rejected").length;
+  }
+  return failed;
+}
