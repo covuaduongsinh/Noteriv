@@ -8,6 +8,12 @@
 
 FROM node:22-alpine AS deps
 WORKDIR /app
+# The VPS's route to the npm registry drops connections now and then (ECONNRESET twice during
+# deploys on 2026-10-15). Let npm retry instead of failing the whole build.
+ENV NPM_CONFIG_FETCH_RETRIES=6 \
+    NPM_CONFIG_FETCH_RETRY_MINTIMEOUT=10000 \
+    NPM_CONFIG_FETCH_RETRY_MAXTIMEOUT=60000 \
+    NPM_CONFIG_FETCH_TIMEOUT=120000
 COPY package.json package-lock.json ./
 COPY web/package.json web/
 COPY desktop/package.json desktop/
