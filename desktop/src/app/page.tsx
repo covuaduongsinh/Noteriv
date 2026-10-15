@@ -78,7 +78,8 @@ import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { getRandomNote } from "@/lib/random-note";
 import { exportToPDF } from "@/lib/pdf-export";
 import { saveSnapshot } from "@/lib/file-recovery";
-import { PluginManager, type PluginInstance } from "@/lib/plugin-api";
+import { DesktopPluginStore, PLUGIN_APP_VERSION, toSandboxRecord, type DesktopPlugin } from "@/lib/plugin-api";
+import { useSandboxPluginHost, type EditorSnapshot } from "@noteriv/ui/plugins/sandbox";
 import { BUILT_IN_THEMES, applyTheme, loadCustomThemes } from "@/lib/theme-utils";
 import { loadSnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import type { EditorView } from "@codemirror/view";
@@ -200,11 +201,8 @@ export default function Home() {
   const [showLintPanel, setShowLintPanel] = useState(false);
   const [showVaultInsights, setShowVaultInsights] = useState(false);
   const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
-  const [pluginInstances, setPluginInstances] = useState<PluginInstance[]>([]);
+  const [communityPlugins, setCommunityPlugins] = useState<DesktopPlugin[]>([]);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [pluginUITick, setPluginUITick] = useState(0);
-  const pluginManagerRef = useRef<PluginManager | null>(null);
 
   // Editor view ref (for formatting commands)
   const editorViewRef = useRef<EditorView | null>(null);
@@ -466,44 +464,6 @@ export default function Home() {
           refreshSnippets(snips);
         } catch {}
 
-        // Initialize plugin manager
-        try {
-          const pm = new PluginManager(vault.path, () => {
-            const view = editorViewRef.current;
-            return {
-              content: contentRef.current,
-              currentFile: activeTabRef.current,
-              insertAtCursor: (text: string) => {
-                if (!view) return;
-                const pos = view.state.selection.main.head;
-                view.dispatch({ changes: { from: pos, insert: text } });
-              },
-              getSelection: () => {
-                if (!view) return "";
-                return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
-              },
-              replaceSelection: (text: string) => {
-                if (!view) return;
-                view.dispatch(view.state.replaceSelection(text));
-              },
-              getCursorPosition: () => {
-                if (!view) return { line: 0, ch: 0 };
-                const pos = view.state.selection.main.head;
-                const line = view.state.doc.lineAt(pos);
-                return { line: line.number, ch: pos - line.from };
-              },
-              setContent: (newContent: string) => {
-                if (!view) return;
-                view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: newContent } });
-              },
-            };
-          });
-          pm.setUIChangeHandler(() => setPluginUITick((t) => t + 1));
-          pluginManagerRef.current = pm;
-          await pm.loadAllEnabled();
-          setPluginInstances(pm.getPlugins());
-        } catch {}
-
         // Load custom themes and apply if active theme is custom
         try {
           const customs = await loadCustomThemes(vault.path);
@@ -547,13 +507,6 @@ export default function Home() {
     // Re-apply CSS snippets
     if (cssSnippets.length > 0) {
       refreshSnippets(cssSnippets);
-    }
-    // Re-load enabled plugins
-    const pm = pluginManagerRef.current;
-    if (pm) {
-      pm.loadAllEnabled().then(() => {
-        setPluginInstances(pm.getPlugins());
-      }).catch(() => {});
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appState]);
@@ -1758,6 +1711,87 @@ export default function Home() {
     if (coreEventTab) corePluginHost.host?.emit("editor-change", content);
   }, [content, coreEventTab, corePluginHost.host]);
 
+  // ============================================================
+  // Community plugins: same sandboxed iframe host as web (default-deny permissions)
+  // ============================================================
+
+  const pluginStore = useMemo(() => (activeVaultPath ? new DesktopPluginStore(activeVaultPath) : null), [activeVaultPath]);
+  const refreshCommunityPlugins = useCallback(async () => {
+    setCommunityPlugins(pluginStore ? await pluginStore.list() : []);
+  }, [pluginStore]);
+  useEffect(() => {
+    if (appState === "app") void refreshCommunityPlugins();
+  }, [appState, refreshCommunityPlugins]);
+  const sandboxRecords = useMemo(() => communityPlugins.map(toSandboxRecord), [communityPlugins]);
+  const sandboxHost = useSandboxPluginHost({
+    sandboxUrl: "/plugin-sandbox.html",
+    platform: "desktop",
+    appVersion: PLUGIN_APP_VERSION,
+    installed: sandboxRecords,
+    adapter: vaultAdapter,
+    editor: {
+      getContent: () => (activeTabRef.current ? contentRef.current : null),
+      setContent: (next) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+      },
+      insertAtCursor: (text) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const pos = view.state.selection.main.head;
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+      },
+      getSelection: () => {
+        const view = editorViewRef.current;
+        if (!view) return "";
+        return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+      },
+      replaceSelection: (text) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch(view.state.replaceSelection(text));
+      },
+    },
+    onVaultMutated: () => setSidebarRefresh((n) => n + 1),
+    saveSettings: async (id, data) => {
+      await pluginStore?.saveSettings(id, data);
+      await refreshCommunityPlugins();
+    },
+    openFile: async (path) => {
+      const ref = (await vaultAdapter?.listNotes())?.find((n) => n.path === path);
+      if (!ref) return false;
+      await openFile(ref.id);
+      return true;
+    },
+  });
+
+  // The sandbox's api.editor.* are synchronous, so the host pushes a snapshot instead of answering RPC calls.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    let selection = "";
+    let cursor = { line: 0, ch: 0 };
+    if (view) {
+      const sel = view.state.selection.main;
+      selection = view.state.sliceDoc(sel.from, sel.to);
+      const line = view.state.doc.lineAt(sel.head);
+      cursor = { line: line.number - 1, ch: sel.head - line.from };
+    }
+    const currentFile = coreEventTab && activeVaultPath ? relativeVaultPath(activeVaultPath, coreEventTab) : null;
+    const snapshot: EditorSnapshot = { content: coreEventTab ? content : null, selection, cursor, currentFile };
+    sandboxHost.syncEditorState(snapshot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, coreEventTab, activeVaultPath]);
+  useEffect(() => {
+    if (coreEventTab && activeVaultPath) sandboxHost.emitEvent("file-open", relativeVaultPath(activeVaultPath, coreEventTab));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coreEventTab, activeVaultPath]);
+  const prevSandboxContentRef = useRef<{ tab: string | null; content: string }>({ tab: null, content: "" });
+  useEffect(() => {
+    const prev = prevSandboxContentRef.current;
+    if (coreEventTab && prev.tab === coreEventTab && prev.content !== content) sandboxHost.emitEvent("editor-change", content);
+    prevSandboxContentRef.current = { tab: coreEventTab, content };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, coreEventTab]);
+
   // Web clipper: refresh sidebar when a note is clipped
   useEffect(() => {
     if (typeof window === "undefined" || !window.electronAPI || appState !== "app") return;
@@ -2131,11 +2165,11 @@ export default function Home() {
             {!currentTab?.kind && (
               <CorePluginStatusItems items={corePlugins.contributions.statusItems} buttonClassName="cursor-pointer hover:text-[var(--text-secondary)]" />
             )}
-            {!currentTab?.kind && pluginManagerRef.current?.getStatusBarItems().map((item) => (
+            {!currentTab?.kind && sandboxHost.statusItems.map((item) => (
               <span
-                key={item.id}
-                className={item.onClick ? "cursor-pointer hover:text-[var(--text-secondary)]" : ""}
-                onClick={item.onClick}
+                key={`${item.pluginDbId}:${item.id}`}
+                className={item.clickable ? "cursor-pointer hover:text-[var(--text-secondary)]" : ""}
+                onClick={item.clickable ? () => sandboxHost.clickStatusItem(item.pluginDbId, item.id) : undefined}
                 title={item.title}
               >
                 {item.text}
@@ -2195,10 +2229,18 @@ export default function Home() {
             // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
             keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
             category: "Core plugin",
-          }))}
+          })).concat(sandboxHost.commands.map((c) => ({
+            action: `plugin:${c.pluginDbId}:${c.id}`,
+            label: c.name,
+            keys: "",
+            category: `Plugin · ${c.pluginId}`,
+          })))}
           onExecute={(action) => {
             if (action.startsWith("core:")) corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();
-            else handleCommandExecute(action as HotkeyAction);
+            else if (action.startsWith("plugin:")) {
+              const [, dbId, ...rest] = action.split(":");
+              sandboxHost.runCommand(dbId, rest.join(":"));
+            } else handleCommandExecute(action as HotkeyAction);
           }}
           onRecent={(action) => handleRecentCommand(action as HotkeyAction)}
           onClose={() => setShowCommandPalette(false)}
@@ -2299,36 +2341,34 @@ export default function Home() {
       {showPluginManager && activeVault && (
         <PluginManagerModal
           vaultPath={activeVault.path}
-          plugins={pluginInstances}
+          plugins={communityPlugins}
+          denied={sandboxHost.deniedPermissions}
+          settingsPanels={sandboxHost.panels}
+          onPanelEvent={(panel, e) => sandboxHost.sendMirrorEvent(panel.pluginDbId, panel.kind, panel.id, e)}
           onTogglePlugin={async (id, enabled) => {
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              await pm.setPluginEnabled(id, enabled);
-              setPluginInstances(pm.getPlugins());
-            }
+            await pluginStore?.setEnabled(id, enabled);
+            await refreshCommunityPlugins();
+          }}
+          onGrantPermissions={async (id, permissions) => {
+            await pluginStore?.setPermissions(id, permissions);
+            sandboxHost.clearDenied(id);
+            await refreshCommunityPlugins();
           }}
           onInstallPlugin={async () => {
-            if (!window.electronAPI) return;
+            if (!window.electronAPI || !pluginStore) return;
             const folder = await window.electronAPI.openFolder();
             if (!folder) return;
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              try {
-                await pm.installPlugin(folder);
-                await pm.loadAllEnabled();
-                setPluginInstances(pm.getPlugins());
-              } catch {}
-            }
+            try {
+              await pluginStore.installFromFolder(folder);
+              await refreshCommunityPlugins();
+            } catch {}
           }}
+          onInstalled={refreshCommunityPlugins}
           onUninstallPlugin={async (id) => {
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              await pm.uninstallPlugin(id);
-              setPluginInstances(pm.getPlugins());
-            }
+            await pluginStore?.uninstall(id);
+            await refreshCommunityPlugins();
           }}
           onClose={() => setShowPluginManager(false)}
-          getSettingsTabs={() => pluginManagerRef.current?.getSettingsTabs() ?? []}
         />
       )}
 
@@ -2434,13 +2474,16 @@ export default function Home() {
         />
       )}
 
-      {/* Notices from core plugins (api.ui.showNotice) */}
-      {corePluginHost.notices.length > 0 && (
+      {/* Hidden sandboxed <iframe> per enabled community plugin (see @noteriv/ui/plugins/sandbox) */}
+      <div ref={sandboxHost.containerRef} style={{ display: "none" }} />
+
+      {/* Notices from plugins (api.ui.showNotice) */}
+      {corePluginHost.notices.length + sandboxHost.notices.length > 0 && (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
-          {corePluginHost.notices.map((n) => (
+          {[...corePluginHost.notices, ...sandboxHost.notices].map((n) => (
             <div
               key={n.key}
-              onClick={() => corePluginHost.dismissNotice(n.key)}
+              onClick={() => (n.key.startsWith("core:") ? corePluginHost.dismissNotice(n.key) : sandboxHost.dismissNotice(n.key))}
               className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
             >
               {n.message}

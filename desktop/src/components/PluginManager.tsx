@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import type { PluginInstance, SettingsTab } from "@/lib/plugin-api";
+import type { PluginPermission } from "@noteriv/plugin-api";
+import { PluginMirror, type MirrorEvent, type PluginPanelRef } from "@noteriv/ui/plugins/sandbox";
+import type { PluginInstance } from "@/lib/plugin-api";
 import {
   CommunityPluginEntry,
   fetchCommunityPluginManifest,
@@ -11,52 +13,64 @@ import "@/styles/plugins.css";
 
 type Tab = "installed" | "community";
 
+const PERMISSION_LABELS: Record<PluginPermission, string> = {
+  "vault:read": "read notes",
+  "vault:write": "create, edit and delete notes",
+  "editor:read": "read the open note",
+  "editor:write": "edit the open note",
+  "ui:commands": "add commands",
+  "ui:statusbar": "add status bar items",
+  "ui:panel": "add panels and settings tabs",
+  "markdown:render": "render code blocks",
+};
+
+function describePermissions(perms: string[]): string {
+  return perms.length === 0 ? "no special permissions" : perms.map((p) => PERMISSION_LABELS[p as PluginPermission] ?? p).join(", ");
+}
+
 interface PluginManagerProps {
   vaultPath: string;
   plugins: PluginInstance[];
   onTogglePlugin: (id: string, enabled: boolean) => void;
+  /** Store a new grant for a plugin (the sandbox remounts it with the new permissions). */
+  onGrantPermissions: (id: string, permissions: PluginPermission[]) => Promise<void>;
   onInstallPlugin: () => void;
+  /** After a community install, so the parent re-reads the plugin list. */
+  onInstalled: () => Promise<void>;
   onUninstallPlugin: (id: string) => void;
   onClose: () => void;
-  /** Re-invoked on every render so newly-registered tabs (e.g. right after
-   * onLoad resolves) show up without requiring a remount of this modal. */
-  getSettingsTabs?: () => SettingsTab[];
+  /** Permissions each plugin tried to use without holding them (from the sandbox host). */
+  denied?: Record<string, string[]>;
+  /** Settings tabs plugins registered (mirrored from their sandbox). */
+  settingsPanels?: PluginPanelRef[];
+  onPanelEvent?: (panel: PluginPanelRef, e: MirrorEvent) => void;
 }
 
 export default function PluginManagerModal({
   vaultPath,
   plugins,
   onTogglePlugin,
+  onGrantPermissions,
   onInstallPlugin,
+  onInstalled,
   onUninstallPlugin,
   onClose,
-  getSettingsTabs,
+  denied = {},
+  settingsPanels = [],
+  onPanelEvent,
 }: PluginManagerProps) {
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [search, setSearch] = useState("");
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null);
+  /** Key `<pluginId>:<tabId>` of the settings tab shown under its plugin card. */
   const [openSettingsTabId, setOpenSettingsTabId] = useState<string | null>(null);
+  /** Plugin waiting for the user to allow its permissions before it is enabled. */
+  const [pendingGrant, setPendingGrant] = useState<string | null>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
-  const settingsContainerRef = useRef<HTMLDivElement>(null);
-
-  // Re-computed every render (not memoized) so it reflects tabs a plugin
-  // registers asynchronously right after its onLoad resolves.
-  const settingsTabs = getSettingsTabs ? getSettingsTabs() : [];
-
-  // Mount/unmount the active settings tab's render() into its container.
-  useEffect(() => {
-    if (!openSettingsTabId || !settingsContainerRef.current) return;
-    const tab = settingsTabs.find((t) => t.id === openSettingsTabId);
-    if (!tab) return;
-    const container = settingsContainerRef.current;
-    container.innerHTML = "";
-    const cleanup = tab.render(container);
-    return () => {
-      if (typeof cleanup === "function") cleanup();
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [openSettingsTabId]);
+  const settingsTabs = settingsPanels.filter((p) => p.kind === "settings");
+  const tabKey = (t: PluginPanelRef) => `${t.pluginDbId}:${t.id}`;
+  const missingPermissions = (p: PluginInstance) => p.requested.filter((x) => !p.permissions.includes(x));
 
   // Community state
   const [communityEntries, setCommunityEntries] = useState<CommunityPluginEntry[]>([]);
@@ -124,11 +138,13 @@ export default function PluginManagerModal({
       const ok = await installCommunityPlugin(vaultPath, entry);
       setInstallingId(null);
       if (ok) {
-        // Reload the page's plugin list — toggle it on
-        onTogglePlugin(entry.id, true);
+        // Installed plugins start off and without permissions: show it and ask before enabling.
+        await onInstalled();
+        setActiveTab("installed");
+        setPendingGrant(entry.id);
       }
     },
-    [vaultPath, onTogglePlugin]
+    [vaultPath, onInstalled]
   );
 
   const isInstalled = (id: string) => plugins.some((p) => p.manifest.id === id);
@@ -163,10 +179,23 @@ export default function PluginManagerModal({
   };
 
   const handleToggle = (id: string, enabled: boolean) => {
+    const plugin = plugins.find((p) => p.manifest.id === id);
+    // First enable of a plugin that asks for more than it holds: ask once, then enable with the grant.
+    if (enabled && plugin && missingPermissions(plugin).length > 0) {
+      setPendingGrant(id);
+      return;
+    }
     onTogglePlugin(id, enabled);
     if (!enabled) {
       setOpenSettingsTabId((cur) => (cur && cur.startsWith(`${id}:`) ? null : cur));
     }
+  };
+
+  const allowAndEnable = async (plugin: PluginInstance) => {
+    const grant = Array.from(new Set([...plugin.permissions, ...plugin.requested]));
+    await onGrantPermissions(plugin.manifest.id, grant);
+    if (!plugin.enabled) onTogglePlugin(plugin.manifest.id, true);
+    setPendingGrant(null);
   };
 
   return (
@@ -274,10 +303,9 @@ export default function PluginManagerModal({
               ) : (
                 <div className="pm-plugin-list">
                   {filteredPlugins.map((plugin) => {
-                    const pluginTabs = settingsTabs.filter((t) =>
-                      t.id.startsWith(`${plugin.manifest.id}:`)
-                    );
-                    const activeTabForPlugin = pluginTabs.find((t) => t.id === openSettingsTabId);
+                    const pluginTabs = settingsTabs.filter((t) => t.pluginDbId === plugin.manifest.id);
+                    const activeTabForPlugin = pluginTabs.find((t) => tabKey(t) === openSettingsTabId);
+                    const blocked = (denied[plugin.manifest.id] ?? []).filter((x) => !plugin.permissions.includes(x as PluginPermission));
                     return (
                       <div
                         key={plugin.manifest.id}
@@ -300,6 +328,38 @@ export default function PluginManagerModal({
                               </span>
                               <span className="pm-plugin-id">{plugin.manifest.id}</span>
                             </div>
+                            <p className="pm-plugin-desc" style={{ marginTop: 4 }}>
+                              Runs in a sandbox. Allowed: {describePermissions(plugin.permissions)}.
+                            </p>
+                            {pendingGrant === plugin.manifest.id && (
+                              <div className="pm-plugin-desc" style={{ marginTop: 6 }}>
+                                This plugin asks to: <strong>{describePermissions(plugin.requested)}</strong>.{" "}
+                                <button className="pm-inline-link" onClick={() => allowAndEnable(plugin)}>
+                                  Allow and enable
+                                </button>{" "}
+                                <button className="pm-inline-link" onClick={() => setPendingGrant(null)}>
+                                  Cancel
+                                </button>
+                              </div>
+                            )}
+                            {pendingGrant !== plugin.manifest.id && plugin.enabled && (blocked.length > 0 || missingPermissions(plugin).length > 0) && (
+                              <div className="pm-plugin-error">
+                                <span>
+                                  Blocked: {describePermissions(blocked.length > 0 ? blocked : missingPermissions(plugin))}.{" "}
+                                  <button
+                                    className="pm-inline-link"
+                                    onClick={() =>
+                                      onGrantPermissions(
+                                        plugin.manifest.id,
+                                        Array.from(new Set([...plugin.permissions, ...missingPermissions(plugin), ...(blocked as PluginPermission[])]))
+                                      )
+                                    }
+                                  >
+                                    Allow
+                                  </button>
+                                </span>
+                              </div>
+                            )}
                             {plugin.error && (
                               <div className="pm-plugin-error">
                                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
@@ -317,7 +377,7 @@ export default function PluginManagerModal({
                               <button
                                 className={`pm-settings-btn${activeTabForPlugin ? " pm-settings-btn-active" : ""}`}
                                 onClick={() =>
-                                  setOpenSettingsTabId(activeTabForPlugin ? null : pluginTabs[0].id)
+                                  setOpenSettingsTabId(activeTabForPlugin ? null : tabKey(pluginTabs[0]))
                                 }
                                 title="Plugin settings"
                               >
@@ -368,7 +428,12 @@ export default function PluginManagerModal({
 
                         {activeTabForPlugin && (
                           <div className="pm-settings-panel">
-                            <div key={activeTabForPlugin.id} ref={settingsContainerRef} />
+                            <PluginMirror
+                              key={tabKey(activeTabForPlugin)}
+                              html={activeTabForPlugin.html}
+                              css={activeTabForPlugin.css}
+                              onEvent={(e) => onPanelEvent?.(activeTabForPlugin, e)}
+                            />
                           </div>
                         )}
                       </div>

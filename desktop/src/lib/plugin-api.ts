@@ -1,723 +1,194 @@
-// ─── Plugin System for Noteriv ───
-// Plugins live in {vaultPath}/.noteriv/plugins/{plugin-id}/
-// Each plugin has a manifest.json and a main.js entry file.
-// Plugin config (enabled/disabled + per-plugin settings) stored in
-// {vaultPath}/.noteriv/plugin-config.json
+// ─── Community plugins on desktop ───
+// Plugins live in {vaultPath}/.noteriv/plugins/{plugin-id}/ (manifest.json + main.js). Since Plugin API v1 they run
+// in the same sandboxed iframe as on web (@noteriv/ui/plugins/sandbox, public/plugin-sandbox.html) with
+// default-deny permissions, instead of being executed in the app window with full access.
+//
+// {vaultPath}/.noteriv/plugin-config.json holds, per vault:
+//   enabled      plugin ids that are on
+//   settings     per-plugin settings blobs (api.app.loadSettings / saveSettings)
+//   permissions  what the user granted each plugin
+//   core, coreSettings  core plugins (lib/core-plugins.ts)
+// Every write is read-modify-write so no writer drops another one's keys.
 
-import {
-  registerCodeBlockProcessor,
-  unregisterCodeBlockProcessor,
-  unregisterAllCodeBlockProcessorsForPlugin,
-  type CodeBlockProcessor,
-  type CodeBlockProcessorContext,
-} from "@noteriv/core/markdown-code-block-registry";
-export type { CodeBlockProcessor, CodeBlockProcessorContext };
+import type { PluginPermission } from "@noteriv/plugin-api";
+import { inferPermissions } from "@noteriv/core/permissions";
+import type { SandboxPluginRecord } from "@noteriv/ui/plugins/sandbox";
 
-// ─── Types ───
+/** Shown to plugins as `api.app.version`; manifests compare `minAppVersion` against it (chessboard needs 1.3.0). */
+export const PLUGIN_APP_VERSION = "1.3.0";
 
-export interface PluginManifest {
-  id: string;           // unique plugin id (e.g., "daily-stats")
-  name: string;         // display name
-  version: string;      // semver
-  description: string;  // what the plugin does
-  author: string;
-  minAppVersion?: string;
-  main: string;         // entry JS file relative to plugin dir
-  // Fenced code-block languages this plugin renders (e.g. ["chessboard"]).
-  // Not read by desktop (which registers languages dynamically at runtime via
-  // api.markdown.registerCodeBlockProcessor), but the Noteriv mobile app reads
-  // it statically to know which plugin to load for a given fence language
-  // without having to execute every installed plugin's code up front.
-  codeBlockLanguages?: string[];
-}
-
-export interface PluginInstance {
-  manifest: PluginManifest;
-  enabled: boolean;
-  loaded: boolean;
-  error?: string;
-  onLoad?: () => void | Promise<void>;
-  onUnload?: () => void | Promise<void>;
-}
-
-export interface PluginAPI {
-  vault: {
-    read: (path: string) => Promise<string | null>;
-    write: (path: string, content: string) => Promise<boolean>;
-    list: (dir?: string) => Promise<{ path: string; name: string; isDir: boolean }[]>;
-    exists: (path: string) => Promise<boolean>;
-    delete: (path: string) => Promise<boolean>;
-  };
-  ui: {
-    addCommand: (cmd: PluginCommand) => void;
-    removeCommand: (id: string) => void;
-    addStatusBarItem: (item: StatusBarItem) => void;
-    removeStatusBarItem: (id: string) => void;
-    addSidebarPanel: (panel: SidebarPanel) => void;
-    removeSidebarPanel: (id: string) => void;
-    addSettingsTab: (tab: SettingsTab) => void;
-    removeSettingsTab: (id: string) => void;
-    showNotice: (message: string, duration?: number) => void;
-  };
-  events: {
-    on: (event: PluginEvent, handler: (...args: any[]) => void) => void;
-    off: (event: PluginEvent, handler: (...args: any[]) => void) => void;
-    emit: (event: PluginEvent, ...args: any[]) => void;
-  };
-  editor: {
-    getContent: () => string | null;
-    setContent: (content: string) => void;
-    insertAtCursor: (text: string) => void;
-    getSelection: () => string;
-    replaceSelection: (text: string) => void;
-    getCursorPosition: () => { line: number; ch: number };
-  };
-  markdown: {
-    registerCodeBlockProcessor: (language: string, processor: CodeBlockProcessor) => void;
-    unregisterCodeBlockProcessor: (language: string) => void;
-  };
-  app: {
-    version: string;
-    vaultPath: string | null;
-    currentFile: string | null;
-    // Generic per-plugin persisted settings, stored in
-    // {vault}/.noteriv/plugin-config.json under settings[pluginId]. Data must
-    // be JSON-serializable (no functions/DOM nodes).
-    loadSettings: () => Promise<Record<string, unknown>>;
-    saveSettings: (data: Record<string, unknown>) => Promise<void>;
-  };
-}
-
-export interface PluginCommand {
-  id: string;
-  name: string;
-  icon?: string;
-  hotkey?: string;
-  callback: () => void | Promise<void>;
-}
-
-export interface StatusBarItem {
-  id: string;
-  text: string;
-  title?: string;
-  onClick?: () => void;
-}
-
-export interface SidebarPanel {
-  id: string;
-  title: string;
-  icon: string;
-  render: (container: HTMLElement) => void | (() => void);
-}
-
-export interface SettingsTab {
-  id: string;
-  name: string;
-  render: (container: HTMLElement) => void | (() => void);
-}
-
-export type PluginEvent =
-  | "file-open"
-  | "file-save"
-  | "file-create"
-  | "file-delete"
-  | "editor-change"
-  | "vault-change"
-  | "layout-change"
-  | "plugin-loaded"
-  | "plugin-unloaded";
-
-export interface EditorState {
-  content: string | null;
-  currentFile: string | null;
-  insertAtCursor: (text: string) => void;
-  getSelection: () => string;
-  replaceSelection: (text: string) => void;
-  getCursorPosition: () => { line: number; ch: number };
-  setContent: (content: string) => void;
-}
-
-// ─── Plugin Config ───
-
-interface PluginConfig {
-  enabled: string[];
-  // Arbitrary per-plugin settings blobs, keyed by plugin id. Written/read via
-  // api.app.loadSettings()/saveSettings() — see PluginManager.loadConfig/saveConfig
-  // for the read-modify-write semantics that keep this from clobbering `enabled`.
-  settings?: Record<string, Record<string, unknown>>;
-}
-
-const APP_VERSION = "1.3.0";
 const PLUGINS_DIR = ".noteriv/plugins";
 const CONFIG_FILE = ".noteriv/plugin-config.json";
 
-// ─── Plugin Manager ───
+const KNOWN_PERMISSIONS: readonly PluginPermission[] = [
+  "vault:read",
+  "vault:write",
+  "editor:read",
+  "editor:write",
+  "ui:commands",
+  "ui:statusbar",
+  "ui:panel",
+  "markdown:render",
+];
 
-export class PluginManager {
-  private plugins: Map<string, PluginInstance> = new Map();
-  private commands: Map<string, PluginCommand> = new Map();
-  private statusBarItems: Map<string, StatusBarItem> = new Map();
-  private sidebarPanels: Map<string, SidebarPanel> = new Map();
-  private settingsTabs: Map<string, SettingsTab> = new Map();
-  private eventHandlers: Map<string, Set<(...args: any[]) => void>> = new Map();
-  private noticeHandler: ((msg: string, dur?: number) => void) | null = null;
-  private uiChangeHandler: (() => void) | null = null;
+export interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  description: string;
+  author: string;
+  minAppVersion?: string;
+  main: string;
+  codeBlockLanguages?: string[];
+  permissions?: string[];
+}
 
-  constructor(
-    private vaultPath: string,
-    private getEditorState: () => EditorState | null
-  ) {}
+/** One installed plugin as the Plugin Manager shows it. */
+export interface PluginInstance {
+  manifest: PluginManifest;
+  enabled: boolean;
+  /** Granted by the user (enforced by the sandbox host). */
+  permissions: PluginPermission[];
+  /** What the plugin asks for: its manifest `permissions`, or inferred from its code when the manifest has none. */
+  requested: PluginPermission[];
+  error?: string;
+}
 
-  setUIChangeHandler(handler: () => void): void {
-    this.uiChangeHandler = handler;
-  }
+/** An installed plugin with its code, ready for the sandbox host. */
+export interface DesktopPlugin extends PluginInstance {
+  mainJs: string;
+  settings: Record<string, unknown>;
+}
 
-  private notifyUIChange(): void {
-    if (this.uiChangeHandler) this.uiChangeHandler();
-  }
+interface PluginConfig {
+  enabled?: string[];
+  settings?: Record<string, Record<string, unknown>>;
+  permissions?: Record<string, string[]>;
+  [key: string]: unknown;
+}
 
-  // ── Installed plugins ──
+function onlyKnown(perms: unknown): PluginPermission[] {
+  if (!Array.isArray(perms)) return [];
+  return perms.filter((p): p is PluginPermission => KNOWN_PERMISSIONS.includes(p as PluginPermission));
+}
 
-  async getInstalledPlugins(): Promise<PluginManifest[]> {
-    if (!window.electronAPI) return [];
-    const pluginsDir = `${this.vaultPath}/${PLUGINS_DIR}`;
+export function toSandboxRecord(p: DesktopPlugin): SandboxPluginRecord {
+  return {
+    id: p.manifest.id,
+    pluginId: p.manifest.id,
+    enabled: p.enabled && !p.error,
+    permissions: p.permissions,
+    mainJs: p.mainJs,
+    settings: p.settings,
+  };
+}
 
+export class DesktopPluginStore {
+  constructor(private readonly vaultPath: string) {}
+
+  private async readConfig(): Promise<PluginConfig> {
     try {
-      const entries = await window.electronAPI.readDir(pluginsDir);
-      const manifests: PluginManifest[] = [];
-
-      for (const entry of entries) {
-        if (!entry.isDirectory) continue;
-        try {
-          const manifestPath = `${pluginsDir}/${entry.name}/manifest.json`;
-          const raw = await window.electronAPI.readFile(manifestPath);
-          if (raw) {
-            const manifest: PluginManifest = JSON.parse(raw);
-            // Ensure the ID matches the folder name for consistency
-            manifest.id = entry.name;
-            manifests.push(manifest);
-          }
-        } catch {
-          // Skip plugins with invalid manifests
-        }
-      }
-
-      return manifests;
+      const raw = await window.electronAPI.readFile(`${this.vaultPath}/${CONFIG_FILE}`);
+      return raw ? (JSON.parse(raw) as PluginConfig) : {};
     } catch {
-      // plugins directory doesn't exist yet
-      return [];
+      return {};
     }
   }
 
-  // ── Config file (read-modify-write) ──
-  // Both `enabled` and `settings` live in the same plugin-config.json. Always
-  // read the full file, mutate only the key you care about, and write the
-  // full object back — writing a partial object (e.g. `{ enabled: ids }`)
-  // would silently wipe out the other key.
-
-  private async loadConfig(): Promise<PluginConfig> {
-    if (!window.electronAPI) return { enabled: [] };
-    try {
-      const configPath = `${this.vaultPath}/${CONFIG_FILE}`;
-      const raw = await window.electronAPI.readFile(configPath);
-      if (!raw) return { enabled: [] };
-      const config: PluginConfig = JSON.parse(raw);
-      // Keep keys this class does not own (core plugins store `core` / `coreSettings` here too).
-      return { ...config, enabled: config.enabled || [] };
-    } catch {
-      return { enabled: [] };
-    }
-  }
-
-  private async saveConfig(config: PluginConfig): Promise<void> {
-    if (!window.electronAPI) return;
-    const configPath = `${this.vaultPath}/${CONFIG_FILE}`;
-    // Ensure .noteriv directory exists
+  private async updateConfig(change: (c: PluginConfig) => PluginConfig): Promise<void> {
+    const next = change(await this.readConfig());
     await window.electronAPI.createDir(`${this.vaultPath}/.noteriv`);
-    await window.electronAPI.writeFile(configPath, JSON.stringify(config, null, 2));
+    await window.electronAPI.writeFile(`${this.vaultPath}/${CONFIG_FILE}`, JSON.stringify(next, null, 2));
   }
 
-  // ── Enabled plugin IDs ──
-
-  async getEnabledPluginIds(): Promise<string[]> {
-    const config = await this.loadConfig();
-    return config.enabled || [];
-  }
-
-  private async saveEnabledPluginIds(ids: string[]): Promise<void> {
-    const config = await this.loadConfig();
-    config.enabled = ids;
-    await this.saveConfig(config);
-  }
-
-  // ── Per-plugin settings (generic key/value blob, any plugin may use) ──
-
-  async loadPluginSettings(pluginId: string): Promise<Record<string, unknown>> {
-    const config = await this.loadConfig();
-    return config.settings?.[pluginId] ?? {};
-  }
-
-  async savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void> {
-    const config = await this.loadConfig();
-    config.settings = { ...(config.settings ?? {}), [pluginId]: data };
-    await this.saveConfig(config);
-  }
-
-  // ── Enable / Disable ──
-
-  async setPluginEnabled(id: string, enabled: boolean): Promise<void> {
-    const enabledIds = await this.getEnabledPluginIds();
-    const idx = enabledIds.indexOf(id);
-
-    if (enabled && idx === -1) {
-      enabledIds.push(id);
-    } else if (!enabled && idx !== -1) {
-      enabledIds.splice(idx, 1);
-    }
-
-    await this.saveEnabledPluginIds(enabledIds);
-
-    const plugin = this.plugins.get(id);
-    if (plugin) {
-      plugin.enabled = enabled;
-    }
-
-    if (enabled) {
-      await this.loadPlugin(id);
-    } else {
-      await this.unloadPlugin(id);
-    }
-  }
-
-  // ── Load plugin ──
-
-  async loadPlugin(id: string): Promise<void> {
-    if (!window.electronAPI) return;
-    const pluginDir = `${this.vaultPath}/${PLUGINS_DIR}/${id}`;
-
+  /** Every plugin folder with a readable manifest, with its code, grant and settings. */
+  async list(): Promise<DesktopPlugin[]> {
+    if (!window.electronAPI) return [];
+    const config = await this.readConfig();
+    const dir = `${this.vaultPath}/${PLUGINS_DIR}`;
+    let entries: { name: string; isDirectory: boolean }[];
     try {
-      // Read manifest
-      const manifestRaw = await window.electronAPI.readFile(`${pluginDir}/manifest.json`);
-      if (!manifestRaw) {
-        throw new Error(`Manifest not found for plugin "${id}"`);
-      }
-      const manifest: PluginManifest = JSON.parse(manifestRaw);
-      manifest.id = id;
-
-      // Read main JS file
-      const mainPath = `${pluginDir}/${manifest.main}`;
-      const mainCode = await window.electronAPI.readFile(mainPath);
-      if (!mainCode) {
-        throw new Error(`Main file "${manifest.main}" not found for plugin "${id}"`);
-      }
-
-      // Create the API for this plugin
-      const api = this.createAPI(id);
-
-      // Execute in sandboxed context using Function constructor.
-      // The plugin code should assign onLoad and onUnload to module.exports or exports.
-      const wrappedCode = [
-        '"use strict";',
-        "var module = { exports: {} };",
-        "var exports = module.exports;",
-        mainCode,
-        "return module.exports;",
-      ].join("\n");
-
-      let pluginExports: any;
+      entries = await window.electronAPI.readDir(dir);
+    } catch {
+      return []; // no plugins folder yet
+    }
+    const out: DesktopPlugin[] = [];
+    for (const entry of entries) {
+      if (!entry.isDirectory) continue;
+      let manifest: PluginManifest;
       try {
-        const factory = new Function(wrappedCode);
-        pluginExports = factory();
-      } catch (execError: any) {
-        throw new Error(`Failed to execute plugin "${id}": ${execError.message}`);
+        const raw = await window.electronAPI.readFile(`${dir}/${entry.name}/manifest.json`);
+        if (!raw) continue;
+        manifest = JSON.parse(raw) as PluginManifest;
+      } catch {
+        continue; // skip plugins with invalid manifests
       }
-
-      // Build plugin instance
-      const instance: PluginInstance = {
+      manifest.id = entry.name; // the folder name is the id, as before
+      const mainJs = (await window.electronAPI.readFile(`${dir}/${entry.name}/${manifest.main || "main.js"}`)) ?? "";
+      out.push({
         manifest,
-        enabled: true,
-        loaded: true,
-        onLoad: pluginExports.onLoad ? () => pluginExports.onLoad(api) : undefined,
-        onUnload: pluginExports.onUnload ? () => pluginExports.onUnload() : undefined,
-      };
-
-      this.plugins.set(id, instance);
-
-      // Call onLoad
-      if (instance.onLoad) {
-        await instance.onLoad();
-      }
-
-      this.emit("plugin-loaded", id);
-    } catch (err: any) {
-      // Store a failed instance with the error
-      const existing = this.plugins.get(id);
-      const manifest = existing?.manifest || {
-        id,
-        name: id,
-        version: "0.0.0",
-        description: "",
-        author: "",
-        main: "main.js",
-      };
-      this.plugins.set(id, {
-        manifest,
-        enabled: true,
-        loaded: false,
-        error: err.message || "Unknown error loading plugin",
+        enabled: (config.enabled ?? []).includes(manifest.id),
+        permissions: onlyKnown(config.permissions?.[manifest.id]),
+        requested: Array.isArray(manifest.permissions) ? onlyKnown(manifest.permissions) : onlyKnown(inferPermissions(mainJs)),
+        error: mainJs ? undefined : `Main file "${manifest.main}" not found`,
+        mainJs,
+        settings: config.settings?.[manifest.id] ?? {},
       });
     }
+    return out.sort((a, b) => a.manifest.name.localeCompare(b.manifest.name));
   }
 
-  // ── Unload plugin ──
-
-  async unloadPlugin(id: string): Promise<void> {
-    const plugin = this.plugins.get(id);
-    if (!plugin) return;
-
-    try {
-      if (plugin.loaded && plugin.onUnload) {
-        await plugin.onUnload();
-      }
-    } catch {
-      // Ignore errors during unload
-    }
-
-    // Remove all registrations from this plugin (prefixed with pluginId)
-    const prefix = `${id}:`;
-    for (const [cmdId] of this.commands) {
-      if (cmdId.startsWith(prefix)) this.commands.delete(cmdId);
-    }
-    for (const [itemId] of this.statusBarItems) {
-      if (itemId.startsWith(prefix)) this.statusBarItems.delete(itemId);
-    }
-    for (const [panelId] of this.sidebarPanels) {
-      if (panelId.startsWith(prefix)) this.sidebarPanels.delete(panelId);
-    }
-    for (const [tabId] of this.settingsTabs) {
-      if (tabId.startsWith(prefix)) this.settingsTabs.delete(tabId);
-    }
-
-    // Remove markdown code-block processors registered by this plugin
-    unregisterAllCodeBlockProcessorsForPlugin(id);
-
-    // Remove event handlers registered by this plugin (tracked under prefixed keys)
-    for (const [eventKey, handlers] of this.eventHandlers) {
-      if (eventKey.startsWith(prefix)) {
-        // Also remove these handlers from the unprefixed event set
-        const eventName = eventKey.slice(prefix.length);
-        const mainSet = this.eventHandlers.get(eventName);
-        if (mainSet) {
-          for (const h of handlers) {
-            mainSet.delete(h);
-          }
-        }
-        this.eventHandlers.delete(eventKey);
-      }
-    }
-
-    plugin.loaded = false;
-    plugin.onLoad = undefined;
-    plugin.onUnload = undefined;
-    plugin.error = undefined;
-
-    this.emit("plugin-unloaded", id);
+  setEnabled(id: string, enabled: boolean): Promise<void> {
+    return this.updateConfig((c) => {
+      const ids = new Set(c.enabled ?? []);
+      if (enabled) ids.add(id);
+      else ids.delete(id);
+      return { ...c, enabled: Array.from(ids) };
+    });
   }
 
-  // ── Install plugin ──
+  setPermissions(id: string, permissions: PluginPermission[]): Promise<void> {
+    return this.updateConfig((c) => ({ ...c, permissions: { ...(c.permissions ?? {}), [id]: onlyKnown(permissions) } }));
+  }
 
-  async installPlugin(sourcePath: string): Promise<PluginManifest> {
-    if (!window.electronAPI) {
-      throw new Error("Electron API not available");
-    }
+  saveSettings(id: string, data: Record<string, unknown>): Promise<void> {
+    return this.updateConfig((c) => ({ ...c, settings: { ...(c.settings ?? {}), [id]: data } }));
+  }
 
-    // Read manifest from source
+  /** Copy a plugin folder (top-level files) into the vault. Returns its manifest; the plugin starts disabled. */
+  async installFromFolder(sourcePath: string): Promise<PluginManifest> {
     const manifestRaw = await window.electronAPI.readFile(`${sourcePath}/manifest.json`);
-    if (!manifestRaw) {
-      throw new Error("No manifest.json found in the selected folder");
-    }
-    const manifest: PluginManifest = JSON.parse(manifestRaw);
+    if (!manifestRaw) throw new Error("No manifest.json found in the selected folder");
+    const manifest = JSON.parse(manifestRaw) as PluginManifest;
     if (!manifest.id || !manifest.name || !manifest.main) {
       throw new Error("Invalid manifest: missing required fields (id, name, main)");
     }
-
     const destDir = `${this.vaultPath}/${PLUGINS_DIR}/${manifest.id}`;
-
-    // Ensure directories exist
     await window.electronAPI.createDir(`${this.vaultPath}/.noteriv`);
     await window.electronAPI.createDir(`${this.vaultPath}/${PLUGINS_DIR}`);
     await window.electronAPI.createDir(destDir);
-
-    // Copy all files from source to dest
-    const entries = await window.electronAPI.readDir(sourcePath);
-    for (const entry of entries) {
-      if (entry.isDirectory) continue; // Only copy top-level files
+    for (const entry of await window.electronAPI.readDir(sourcePath)) {
+      if (entry.isDirectory) continue; // only top-level files
       const content = await window.electronAPI.readFile(`${sourcePath}/${entry.name}`);
-      if (content !== null) {
-        await window.electronAPI.writeFile(`${destDir}/${entry.name}`, content);
-      }
+      if (content !== null) await window.electronAPI.writeFile(`${destDir}/${entry.name}`, content);
     }
-
     return manifest;
   }
 
-  // ── Uninstall plugin ──
-
-  async uninstallPlugin(id: string): Promise<void> {
-    // Unload first
-    await this.unloadPlugin(id);
-
-    // Remove from enabled list
-    const enabledIds = await this.getEnabledPluginIds();
-    const filtered = enabledIds.filter((eid) => eid !== id);
-    await this.saveEnabledPluginIds(filtered);
-
-    // Remove plugin directory
-    if (window.electronAPI) {
-      const pluginDir = `${this.vaultPath}/${PLUGINS_DIR}/${id}`;
-      await window.electronAPI.deleteDir(pluginDir);
-    }
-
-    this.plugins.delete(id);
-  }
-
-  // ── Create Plugin API ──
-
-  private createAPI(pluginId: string): PluginAPI {
-    const manager = this;
-    const prefix = `${pluginId}:`;
-
-    return {
-      vault: {
-        read: async (path: string): Promise<string | null> => {
-          if (!window.electronAPI) return null;
-          const fullPath = `${manager.vaultPath}/${path}`;
-          return window.electronAPI.readFile(fullPath);
-        },
-        write: async (path: string, content: string): Promise<boolean> => {
-          if (!window.electronAPI) return false;
-          const fullPath = `${manager.vaultPath}/${path}`;
-          return window.electronAPI.writeFile(fullPath, content);
-        },
-        list: async (dir?: string): Promise<{ path: string; name: string; isDir: boolean }[]> => {
-          if (!window.electronAPI) return [];
-          const fullPath = dir ? `${manager.vaultPath}/${dir}` : manager.vaultPath;
-          try {
-            const entries = await window.electronAPI.readDir(fullPath);
-            return entries.map((e) => ({
-              path: dir ? `${dir}/${e.name}` : e.name,
-              name: e.name,
-              isDir: e.isDirectory,
-            }));
-          } catch {
-            return [];
-          }
-        },
-        exists: async (path: string): Promise<boolean> => {
-          if (!window.electronAPI) return false;
-          const fullPath = `${manager.vaultPath}/${path}`;
-          const content = await window.electronAPI.readFile(fullPath);
-          return content !== null;
-        },
-        delete: async (path: string): Promise<boolean> => {
-          if (!window.electronAPI) return false;
-          const fullPath = `${manager.vaultPath}/${path}`;
-          return window.electronAPI.deleteFile(fullPath);
-        },
-      },
-
-      ui: {
-        addCommand: (cmd: PluginCommand) => {
-          const fullId = `${prefix}${cmd.id}`;
-          manager.commands.set(fullId, { ...cmd, id: fullId });
-        },
-        removeCommand: (id: string) => {
-          manager.commands.delete(`${prefix}${id}`);
-        },
-        addStatusBarItem: (item: StatusBarItem) => {
-          const fullId = `${prefix}${item.id}`;
-          manager.statusBarItems.set(fullId, { ...item, id: fullId });
-          manager.notifyUIChange();
-        },
-        removeStatusBarItem: (id: string) => {
-          manager.statusBarItems.delete(`${prefix}${id}`);
-          manager.notifyUIChange();
-        },
-        addSidebarPanel: (panel: SidebarPanel) => {
-          const fullId = `${prefix}${panel.id}`;
-          manager.sidebarPanels.set(fullId, { ...panel, id: fullId });
-        },
-        removeSidebarPanel: (id: string) => {
-          manager.sidebarPanels.delete(`${prefix}${id}`);
-        },
-        addSettingsTab: (tab: SettingsTab) => {
-          const fullId = `${prefix}${tab.id}`;
-          manager.settingsTabs.set(fullId, { ...tab, id: fullId });
-        },
-        removeSettingsTab: (id: string) => {
-          manager.settingsTabs.delete(`${prefix}${id}`);
-        },
-        showNotice: (message: string, duration?: number) => {
-          if (manager.noticeHandler) {
-            manager.noticeHandler(message, duration);
-          }
-        },
-      },
-
-      events: {
-        on: (event: PluginEvent, handler: (...args: any[]) => void) => {
-          const key = `${prefix}${event}`;
-          if (!manager.eventHandlers.has(event)) {
-            manager.eventHandlers.set(event, new Set());
-          }
-          manager.eventHandlers.get(event)!.add(handler);
-          // Also track under prefixed key for cleanup on unload
-          if (!manager.eventHandlers.has(key)) {
-            manager.eventHandlers.set(key, new Set());
-          }
-          manager.eventHandlers.get(key)!.add(handler);
-        },
-        off: (event: PluginEvent, handler: (...args: any[]) => void) => {
-          const key = `${prefix}${event}`;
-          manager.eventHandlers.get(event)?.delete(handler);
-          manager.eventHandlers.get(key)?.delete(handler);
-        },
-        emit: (event: PluginEvent, ...args: any[]) => {
-          manager.emit(event, ...args);
-        },
-      },
-
-      editor: {
-        getContent: (): string | null => {
-          const state = manager.getEditorState();
-          return state?.content ?? null;
-        },
-        setContent: (content: string) => {
-          const state = manager.getEditorState();
-          state?.setContent(content);
-        },
-        insertAtCursor: (text: string) => {
-          const state = manager.getEditorState();
-          state?.insertAtCursor(text);
-        },
-        getSelection: (): string => {
-          const state = manager.getEditorState();
-          return state?.getSelection() ?? "";
-        },
-        replaceSelection: (text: string) => {
-          const state = manager.getEditorState();
-          state?.replaceSelection(text);
-        },
-        getCursorPosition: (): { line: number; ch: number } => {
-          const state = manager.getEditorState();
-          return state?.getCursorPosition() ?? { line: 0, ch: 0 };
-        },
-      },
-
-      markdown: {
-        registerCodeBlockProcessor: (language: string, processor: CodeBlockProcessor) => {
-          registerCodeBlockProcessor(pluginId, language, processor);
-        },
-        unregisterCodeBlockProcessor: (language: string) => {
-          unregisterCodeBlockProcessor(pluginId, language);
-        },
-      },
-
-      app: {
-        version: APP_VERSION,
-        vaultPath: manager.vaultPath,
-        currentFile: manager.getEditorState()?.currentFile ?? null,
-        loadSettings: () => manager.loadPluginSettings(pluginId),
-        saveSettings: (data: Record<string, unknown>) => manager.savePluginSettings(pluginId, data),
-      },
-    };
-  }
-
-  // ── Accessors for registered items ──
-
-  getCommands(): PluginCommand[] {
-    return Array.from(this.commands.values());
-  }
-
-  getStatusBarItems(): StatusBarItem[] {
-    return Array.from(this.statusBarItems.values());
-  }
-
-  getSidebarPanels(): SidebarPanel[] {
-    return Array.from(this.sidebarPanels.values());
-  }
-
-  getSettingsTabs(): SettingsTab[] {
-    return Array.from(this.settingsTabs.values());
-  }
-
-  getPlugins(): PluginInstance[] {
-    return Array.from(this.plugins.values());
-  }
-
-  getPlugin(id: string): PluginInstance | undefined {
-    return this.plugins.get(id);
-  }
-
-  // ── Events ──
-
-  emit(event: PluginEvent, ...args: any[]): void {
-    const handlers = this.eventHandlers.get(event);
-    if (!handlers) return;
-    for (const handler of handlers) {
-      try {
-        handler(...args);
-      } catch {
-        // Don't let a plugin error crash the event bus
-      }
-    }
-  }
-
-  // ── Notice handler ──
-
-  setNoticeHandler(handler: (msg: string, dur?: number) => void): void {
-    this.noticeHandler = handler;
-  }
-
-  // ── Initialize all enabled plugins ──
-
-  async loadAllEnabled(): Promise<void> {
-    const manifests = await this.getInstalledPlugins();
-    const enabledIds = await this.getEnabledPluginIds();
-
-    // Pre-populate the plugins map with all installed plugins
-    for (const manifest of manifests) {
-      const isEnabled = enabledIds.includes(manifest.id);
-      this.plugins.set(manifest.id, {
-        manifest,
-        enabled: isEnabled,
-        loaded: false,
-      });
-    }
-
-    // Load enabled plugins
-    for (const id of enabledIds) {
-      if (manifests.some((m) => m.id === id)) {
-        await this.loadPlugin(id);
-      }
-    }
-  }
-
-  // ── Unload all ──
-
-  async unloadAll(): Promise<void> {
-    for (const [id, plugin] of this.plugins) {
-      if (plugin.loaded) {
-        await this.unloadPlugin(id);
-      }
-    }
+  /** Remove the plugin folder and every config entry about it. */
+  async uninstall(id: string): Promise<void> {
+    await this.updateConfig((c) => {
+      const { [id]: _s, ...settings } = c.settings ?? {};
+      const { [id]: _p, ...permissions } = c.permissions ?? {};
+      return { ...c, enabled: (c.enabled ?? []).filter((x) => x !== id), settings, permissions };
+    });
+    await window.electronAPI.deleteDir(`${this.vaultPath}/${PLUGINS_DIR}/${id}`);
   }
 }
 
-// ── Community plugins ──
+// ── Community plugin directory (thejacedev/NoterivPlugins) ──
 
-const COMMUNITY_PLUGINS_BASE =
-  "https://raw.githubusercontent.com/thejacedev/NoterivPlugins/master";
+const COMMUNITY_PLUGINS_BASE = "https://raw.githubusercontent.com/thejacedev/NoterivPlugins/master";
 
 export interface CommunityPluginEntry {
   id: string;
@@ -755,25 +226,20 @@ export async function fetchCommunityPluginFile(filePath: string): Promise<string
   }
 }
 
-export async function installCommunityPlugin(
-  vaultPath: string,
-  entry: CommunityPluginEntry
-): Promise<boolean> {
+/** Download a community plugin into the vault. It starts disabled and without permissions until the user allows it. */
+export async function installCommunityPlugin(vaultPath: string, entry: CommunityPluginEntry): Promise<boolean> {
   if (!window.electronAPI) return false;
-
-  // Fetch manifest.json and main.js from the community repo
-  const manifestContent = await fetchCommunityPluginFile(`${entry.dir}/manifest.json`);
-  const mainContent = await fetchCommunityPluginFile(`${entry.dir}/main.js`);
-
+  const [manifestContent, mainContent] = await Promise.all([
+    fetchCommunityPluginFile(`${entry.dir}/manifest.json`),
+    fetchCommunityPluginFile(`${entry.dir}/main.js`),
+  ]);
   if (!manifestContent || !mainContent) return false;
 
   const pluginDir = `${vaultPath}/${PLUGINS_DIR}/${entry.id}`;
   await window.electronAPI.createDir(`${vaultPath}/.noteriv`);
   await window.electronAPI.createDir(`${vaultPath}/${PLUGINS_DIR}`);
   await window.electronAPI.createDir(pluginDir);
-
   await window.electronAPI.writeFile(`${pluginDir}/manifest.json`, manifestContent);
   await window.electronAPI.writeFile(`${pluginDir}/main.js`, mainContent);
-
   return true;
 }
