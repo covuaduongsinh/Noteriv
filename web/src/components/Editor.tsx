@@ -15,9 +15,9 @@ import {
   mdHighlightStyle,
   editorTheme,
   mathExtension,
-} from "./markdown";
+} from "@noteriv/ui/markdown";
 import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
-import { setEditorViewForImages } from "./markdown/renderers/images";
+import { setEditorViewForImages } from "@noteriv/ui/markdown";
 import { vimExtension } from "@/lib/vim-mode";
 import { prefsCompartment, prefsExtension } from "@/lib/editor-prefs";
 

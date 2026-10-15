@@ -3,9 +3,11 @@ import { Text } from "@codemirror/state";
 import type { BlockContext } from "../types";
 import {
   getCodeBlockProcessor,
+  getRegistryVersion,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
 } from "@noteriv/core/markdown-code-block-registry";
+import { getDataviewSource } from "../vault-hooks";
 
 // Simple token-based syntax highlighting
 // Each language defines regex patterns with associated CSS classes
@@ -225,7 +227,6 @@ class DataviewWidget extends WidgetType {
     loading.textContent = "Running query...";
     container.appendChild(loading);
 
-    // Execute query async
     this.runQuery(container, loading);
 
     return container;
@@ -233,13 +234,6 @@ class DataviewWidget extends WidgetType {
 
   private async runQuery(container: HTMLElement, loading: HTMLElement) {
     try {
-      if (!window.electronAPI) {
-        loading.textContent = "Electron API not available";
-        loading.style.color = "var(--red)";
-        return;
-      }
-
-      // Dynamic import to avoid circular deps
       const { parseQuery, executeQuery, parseNoteData } = await import("@noteriv/core/dataview");
 
       const parsed = parseQuery(this.query);
@@ -249,26 +243,20 @@ class DataviewWidget extends WidgetType {
         return;
       }
 
-      // Get vault path from the DOM (stored on the editor container)
-      const vaultPath = document.querySelector("[data-vault-path]")?.getAttribute("data-vault-path");
-      if (!vaultPath) {
-        loading.textContent = "No vault path found";
+      // The host app decides which notes a query runs over (see vault-hooks.ts).
+      const source = getDataviewSource();
+      if (!source) {
+        loading.textContent = "No vault found";
         loading.style.color = "var(--red)";
         return;
       }
 
-      const files = await window.electronAPI.listAllFiles(vaultPath);
-      const notes = [];
-      for (const file of files) {
-        if (!file.filePath.match(/\.(md|markdown)$/i)) continue;
-        const content = await window.electronAPI.readFile(file.filePath);
-        if (content === null) continue;
-        notes.push(parseNoteData(file.filePath, content, { created: "", modified: "", size: content.length }));
-      }
+      const notes = (await source()).map((n) =>
+        parseNoteData(n.path, n.content, { created: n.created, modified: n.modified, size: n.size })
+      );
 
       const result = executeQuery(parsed, notes);
 
-      // Clear loading
       container.removeChild(loading);
 
       if (result.type === "TABLE") {
@@ -314,7 +302,6 @@ class DataviewWidget extends WidgetType {
         footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
         footer.textContent = `${result.rows.length} results`;
         container.appendChild(footer);
-
       } else if (result.type === "LIST") {
         const ul = document.createElement("ul");
         ul.style.cssText = "list-style:none;padding:0;margin:0";
@@ -335,7 +322,6 @@ class DataviewWidget extends WidgetType {
         footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
         footer.textContent = `${result.rows.length} results`;
         container.appendChild(footer);
-
       } else if (result.type === "TASK" && result.tasks) {
         const ul = document.createElement("ul");
         ul.style.cssText = "list-style:none;padding:0;margin:0";
@@ -344,7 +330,7 @@ class DataviewWidget extends WidgetType {
           li.style.cssText = `display:flex;align-items:flex-start;gap:6px;padding:3px 0;color:${task.completed ? "var(--text-muted)" : "var(--text-primary)"};font-size:12px`;
           const check = document.createElement("span");
           check.style.cssText = `width:14px;height:14px;border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;${task.completed ? "background:var(--green);color:var(--bg-primary)" : "border:1.5px solid var(--text-muted)"}`;
-          check.textContent = task.completed ? "\u2713" : "";
+          check.textContent = task.completed ? "✓" : "";
           li.appendChild(check);
           const text = document.createElement("span");
           text.style.textDecoration = task.completed ? "line-through" : "none";
@@ -380,6 +366,9 @@ class DataviewWidget extends WidgetType {
 
 class CodeBlockWidget extends WidgetType {
   private cleanupFns: Array<() => void> = [];
+
+  // Captured at construction: a processor registering later makes older widgets unequal, so they re-render.
+  private readonly registryVersion = getRegistryVersion();
 
   constructor(readonly lang: string, readonly code: string) {
     super();
@@ -572,7 +561,7 @@ class CodeBlockWidget extends WidgetType {
   ignoreEvent() { return true; }
 
   eq(other: CodeBlockWidget) {
-    return this.lang === other.lang && this.code === other.code;
+    return this.lang === other.lang && this.code === other.code && this.registryVersion === other.registryVersion;
   }
 }
 

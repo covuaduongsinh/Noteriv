@@ -247,7 +247,7 @@ export const embedPlugin = ViewPlugin.fromClass(
  * Usage:
  *   embedExtension({
  *     files: allFiles,
- *     readFile: (path) => window.electronAPI.readFile(path),
+ *     readFile: (path) => adapter.readNote(path),
  *     onEmbedClick: (filePath) => openFile(filePath),
  *   })
  */

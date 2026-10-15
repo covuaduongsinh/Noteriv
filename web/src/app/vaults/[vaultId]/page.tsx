@@ -46,7 +46,8 @@ import AudioRecorder from "@/components/AudioRecorder";
 import FileRecovery from "@/components/FileRecovery";
 import TimeScrubber from "@/components/TimeScrubber";
 import NoteHistory from "@/components/NoteHistory";
-import { setImageLightboxHandler } from "@/components/markdown/renderers/images";
+import { setImageLightboxHandler, setDataviewSource } from "@noteriv/ui/markdown";
+import { createWebDataviewSource } from "@/lib/ui-hooks";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
@@ -253,6 +254,12 @@ export default function VaultPage() {
     webApi.auth.me().then((u) => setDisplayName(u.displayName)).catch(() => undefined);
     webApi.vaults.list().then(setAllVaults).catch(() => undefined);
   }, []);
+
+  // Dataview blocks in the live preview run over this vault's notes.
+  useEffect(() => {
+    setDataviewSource(createWebDataviewSource(vaultId));
+    return () => setDataviewSource(null);
+  }, [vaultId]);
 
   // D9 — image lightbox: double-click on a rendered <img> (Editor or
   // ReadOnlyView, both share the same renderer pipeline) opens it enlarged.

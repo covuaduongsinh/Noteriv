@@ -1,4 +1,5 @@
 import type { InlineRenderer, InlineReplacement } from "../types";
+import { getLocalImageLoader } from "../vault-hooks";
 
 // Global EditorView reference — set by Editor.tsx
 let _editorView: any = null;
@@ -40,9 +41,7 @@ function resolveToAbsPath(src: string): string | null {
   if (src.startsWith("http://") || src.startsWith("https://") || src.startsWith("data:") || src.startsWith("file://")) {
     return null;
   }
-  const vaultPath = document.querySelector("[data-vault-path]")?.getAttribute("data-vault-path");
-  if (!vaultPath) return null;
-  return `${vaultPath}/${src}`;
+  return getLocalImageLoader()?.resolve(src) ?? null;
 }
 
 function getMime(name: string): string {
@@ -59,8 +58,9 @@ async function loadLocalImage(absPath: string): Promise<string | null> {
   if (loadingPaths.has(absPath)) return null;
   loadingPaths.add(absPath);
   try {
-    if (!window.electronAPI?.readBinaryFile) return null;
-    const base64 = await window.electronAPI.readBinaryFile(absPath);
+    const loader = getLocalImageLoader();
+    if (!loader) return null;
+    const base64 = await loader.load(absPath);
     if (!base64) return null;
     const dataUrl = `data:${getMime(absPath)};base64,${base64}`;
     imageCache.set(absPath, dataUrl);

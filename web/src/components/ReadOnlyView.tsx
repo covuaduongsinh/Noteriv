@@ -13,7 +13,7 @@ import {
   editorTheme,
   renderAllLines,
   mathExtension,
-} from "./markdown";
+} from "@noteriv/ui/markdown";
 
 interface ReadOnlyViewProps {
   content: string;

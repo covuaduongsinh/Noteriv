@@ -19,6 +19,8 @@ import TagPane from "@/components/TagPane";
 import TemplatePicker from "@/components/TemplatePicker";
 import BookmarksPanel from "@/components/BookmarksPanel";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
+import { createDesktopImageLoader, createDesktopDataviewSource } from "@/lib/ui-hooks";
+import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
 import { refFromAbsolutePath } from "@noteriv/core/vault-adapter";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import NoteComposer from "@/components/NoteComposer";
@@ -152,6 +154,16 @@ export default function Home() {
     () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
     [activeVaultPath]
   );
+  // The live preview loads local images and runs dataview queries through the active vault.
+  useEffect(() => {
+    if (!activeVaultPath) return;
+    setLocalImageLoader(createDesktopImageLoader(activeVaultPath));
+    setDataviewSource(createDesktopDataviewSource(activeVaultPath));
+    return () => {
+      setLocalImageLoader(null);
+      setDataviewSource(null);
+    };
+  }, [activeVaultPath]);
   const bookmarkedNotes = useMemo(
     () => bookmarks.map((p) => refFromAbsolutePath(activeVaultPath, p)),
     [bookmarks, activeVaultPath]
