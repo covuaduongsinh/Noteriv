@@ -1,12 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-
-interface Heading {
-  level: number;
-  text: string;
-  line: number;
-}
+import { extractOutline } from "@noteriv/core/outline-utils";
 
 interface OutlinePanelProps {
   content: string;
@@ -15,32 +10,7 @@ interface OutlinePanelProps {
 }
 
 export default function OutlinePanel({ content, onHeadingClick, onClose }: OutlinePanelProps) {
-  const headings = useMemo(() => {
-    const result: Heading[] = [];
-    const lines = content.split("\n");
-    let inCodeBlock = false;
-
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-
-      // Track code fences to avoid matching headings inside code blocks
-      if (/^```/.test(line)) {
-        inCodeBlock = !inCodeBlock;
-        continue;
-      }
-      if (inCodeBlock) continue;
-
-      const match = line.match(/^(#{1,6})\s+(.+)/);
-      if (match) {
-        result.push({
-          level: match[1].length,
-          text: match[2].replace(/\s*#+\s*$/, ""), // strip trailing #
-          line: i + 1,
-        });
-      }
-    }
-    return result;
-  }, [content]);
+  const headings = useMemo(() => extractOutline(content), [content]);
 
   const minLevel = headings.length > 0 ? Math.min(...headings.map((h) => h.level)) : 1;
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TitleBar from "@/components/TitleBar";
@@ -18,6 +18,8 @@ import BacklinksPanel from "@/components/BacklinksPanel";
 import TagPane from "@/components/TagPane";
 import TemplatePicker from "@/components/TemplatePicker";
 import BookmarksPanel from "@/components/BookmarksPanel";
+import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
+import { refFromAbsolutePath } from "@noteriv/core/vault-adapter";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import NoteComposer from "@/components/NoteComposer";
 import FileRecovery from "@/components/FileRecovery";
@@ -145,6 +147,15 @@ export default function Home() {
   const [showAttachments, setShowAttachments] = useState(false);
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const activeVaultPath = activeVault?.path ?? "";
+  const vaultAdapter = useMemo(
+    () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
+    [activeVaultPath]
+  );
+  const bookmarkedNotes = useMemo(
+    () => bookmarks.map((p) => refFromAbsolutePath(activeVaultPath, p)),
+    [bookmarks, activeVaultPath]
+  );
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
 
   // Ecosystem
@@ -1963,23 +1974,22 @@ export default function Home() {
             onClose={() => setShowOutline(false)}
           />
         )}
-        {showBacklinks && activeVault && currentTab && (
+        {showBacklinks && vaultAdapter && currentTab && (
           <BacklinksPanel
-            filePath={currentTab.filePath}
-            vaultPath={activeVault.path}
-            onFileOpen={openFile}
+            adapter={vaultAdapter}
+            noteId={currentTab.filePath}
+            onNoteOpen={openFile}
             onClose={() => setShowBacklinks(false)}
           />
         )}
         <TagPane
-          vaultPath={activeVault?.path || ""}
+          adapter={vaultAdapter}
           onTagClick={() => {}}
           onFileSelect={openFile}
           visible={showTagPane}
         />
         <BookmarksPanel
-          bookmarks={bookmarks}
-          vaultPath={activeVault?.path || ""}
+          notes={bookmarkedNotes}
           currentFile={activeTab}
           onFileSelect={openFile}
           onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}

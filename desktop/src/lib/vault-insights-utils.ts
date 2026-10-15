@@ -4,7 +4,7 @@
  * tag distribution, daily streaks, growth, and vault health.
  */
 
-import { parseTags } from "./tag-utils";
+import { parseTags } from "@noteriv/core/tag-utils";
 import { hasFrontmatter } from "@noteriv/core/frontmatter-utils";
 
 // ── Types ──────────────────────────────────────────────────

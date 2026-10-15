@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
@@ -36,6 +36,7 @@ import { createUntitledNote } from "@/lib/note-names";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import BookmarksPanel from "@/components/BookmarksPanel";
+import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import VaultInsights from "@/components/VaultInsights";
 import TemplatePicker from "@/components/TemplatePicker";
 import NoteComposer from "@/components/NoteComposer";
@@ -122,6 +123,7 @@ export default function VaultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vaultId = params.vaultId;
+  const vaultAdapter = useMemo(() => createWebVaultAdapter(vaultId), [vaultId]);
 
   const [vault, setVault] = useState<ApiVault | null>(null);
   const [allVaults, setAllVaults] = useState<ApiVault[]>([]);
@@ -196,6 +198,14 @@ export default function VaultPage() {
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const bookmarkedNotes = useMemo(
+    () =>
+      bookmarks
+        .map((id) => index?.notes.find((n) => n.id === id))
+        .filter((n): n is NonNullable<typeof n> => !!n)
+        .map((n) => ({ id: n.id, name: n.name, path: n.path })),
+    [bookmarks, index]
+  );
   const [showInsights, setShowInsights] = useState(false);
   const [showTemplatePicker, setShowTemplatePicker] = useState(false);
   const [showNoteComposer, setShowNoteComposer] = useState(false);
@@ -1471,14 +1481,13 @@ export default function VaultPage() {
                 )}
                 {tagPaneVisible && (
                   <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
-                    <TagPane vaultId={vaultId} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
+                    <TagPane adapter={vaultAdapter} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
                   </div>
                 )}
                 {bookmarksVisible && (
                   <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
                     <BookmarksPanel
-                      bookmarks={bookmarks}
-                      index={index}
+                      notes={bookmarkedNotes}
                       currentNoteId={activeTabId}
                       onNoteSelect={openNote}
                       onBookmarkRemove={handleToggleBookmark}
@@ -1489,8 +1498,8 @@ export default function VaultPage() {
                 {backlinksVisible && (
                   <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
                     <BacklinksPanel
+                      adapter={vaultAdapter}
                       noteId={activeTab.noteId}
-                      vaultId={vaultId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
                     />

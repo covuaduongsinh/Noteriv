@@ -12,7 +12,7 @@
  */
 
 import { webApi, type VaultIndex } from "./webApi";
-import { parseTags } from "./tag-utils";
+import { parseTags } from "@noteriv/core/tag-utils";
 import { hasFrontmatter } from "@noteriv/core/frontmatter-utils";
 
 export interface HeatmapDay {

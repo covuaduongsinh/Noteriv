@@ -1,38 +1,18 @@
 "use client";
 
 import "../styles/bookmarks.css";
+import type { NoteRef } from "@noteriv/core/vault-adapter";
 
 interface BookmarksPanelProps {
-  bookmarks: string[]; // file paths
-  vaultPath: string;
+  notes: NoteRef[]; // bookmarked notes, in bookmark order (id = absolute file path)
   currentFile: string | null;
   onFileSelect: (filePath: string) => void;
   onBookmarkRemove: (filePath: string) => void;
   visible: boolean;
 }
 
-/**
- * Extract just the filename (without extension) from a full file path.
- */
-function getFileName(filePath: string): string {
-  const name = filePath.split("/").pop() || filePath;
-  return name.replace(/\.(md|markdown)$/i, "");
-}
-
-/**
- * Get relative path from the vault root for display.
- */
-function getRelativePath(filePath: string, vaultPath: string): string {
-  if (filePath.startsWith(vaultPath)) {
-    const rel = filePath.slice(vaultPath.length);
-    return rel.startsWith("/") ? rel.slice(1) : rel;
-  }
-  return filePath;
-}
-
 export default function BookmarksPanel({
-  bookmarks,
-  vaultPath,
+  notes,
   currentFile,
   onFileSelect,
   onBookmarkRemove,
@@ -59,11 +39,11 @@ export default function BookmarksPanel({
           />
         </svg>
         <span className="bm-header-label">Bookmarks</span>
-        <span className="bm-header-count">{bookmarks.length}</span>
+        <span className="bm-header-count">{notes.length}</span>
       </div>
 
       <div className="bm-list">
-        {bookmarks.length === 0 ? (
+        {notes.length === 0 ? (
           <div className="bm-empty">
             <svg
               width="24"
@@ -86,10 +66,11 @@ export default function BookmarksPanel({
             </p>
           </div>
         ) : (
-          bookmarks.map((filePath) => {
+          notes.map((note) => {
+            const filePath = note.id;
             const isActive = currentFile === filePath;
-            const displayName = getFileName(filePath);
-            const relativePath = getRelativePath(filePath, vaultPath);
+            const displayName = note.name.replace(/\.(md|markdown)$/i, "");
+            const relativePath = note.path;
 
             return (
               <div

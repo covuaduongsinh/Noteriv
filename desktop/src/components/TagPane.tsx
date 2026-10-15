@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { getAllTags } from "@/lib/tag-utils";
+import { aggregateTags } from "@noteriv/core/tag-utils";
+import type { NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
 
 interface TagPaneProps {
-  vaultPath: string;
+  adapter: VaultAdapter | null;
   onTagClick: (tag: string) => void;
   onFileSelect: (filePath: string) => void;
   visible: boolean;
@@ -13,7 +14,7 @@ interface TagPaneProps {
 interface TagInfo {
   tag: string;
   count: number;
-  files: string[];
+  notes: NoteRef[];
 }
 
 /**
@@ -25,7 +26,7 @@ interface TagTreeNode {
   segment: string;
   fullTag: string | null; // non-null if this node represents an actual tag
   count: number;
-  files: string[];
+  notes: NoteRef[];
   children: Map<string, TagTreeNode>;
 }
 
@@ -49,7 +50,7 @@ function buildTagTree(tags: TagInfo[]): Map<string, TagTreeNode> {
           segment,
           fullTag: null,
           count: 0,
-          files: [],
+          notes: [],
           children: new Map(),
         });
       }
@@ -59,7 +60,7 @@ function buildTagTree(tags: TagInfo[]): Map<string, TagTreeNode> {
       if (isLast) {
         node.fullTag = tagInfo.tag;
         node.count = tagInfo.count;
-        node.files = tagInfo.files;
+        node.notes = tagInfo.notes;
       }
 
       currentLevel = node.children;
@@ -167,20 +168,20 @@ function TagTreeItem({
       </button>
 
       {/* Show files if this tag is selected */}
-      {isSelected && node.fullTag && node.files.length > 0 && (
+      {isSelected && node.fullTag && node.notes.length > 0 && (
         <div className="tag-files-list">
-          {node.files.map((filePath) => {
-            const fileName = filePath.split("/").pop()?.replace(/\.(md|markdown)$/i, "") || filePath;
+          {node.notes.map((note) => {
+            const fileName = note.name.replace(/\.(md|markdown)$/i, "");
             return (
               <button
-                key={filePath}
+                key={note.id}
                 className="tag-file-item"
                 style={{ paddingLeft: `${(depth + 1) * 16 + 8}px` }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onFileSelect(filePath);
+                  onFileSelect(note.id);
                 }}
-                title={filePath}
+                title={note.path}
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="tag-file-icon">
                   <path
@@ -218,7 +219,7 @@ function TagTreeItem({
 }
 
 export default function TagPane({
-  vaultPath,
+  adapter,
   onTagClick,
   onFileSelect,
   visible,
@@ -231,24 +232,24 @@ export default function TagPane({
   const filterInputRef = useRef<HTMLInputElement>(null);
 
   const loadTags = useCallback(async () => {
-    if (!vaultPath) return;
+    if (!adapter) return;
     setLoading(true);
     try {
-      const result = await getAllTags(vaultPath);
+      const result = await aggregateTags(await adapter.listNotes(), (id) => adapter.readNote(id));
       setTags(result);
     } catch (err) {
       console.error("Failed to load tags:", err);
     } finally {
       setLoading(false);
     }
-  }, [vaultPath]);
+  }, [adapter]);
 
   // Load tags when the pane becomes visible or vault changes
   useEffect(() => {
-    if (visible && vaultPath) {
+    if (visible && adapter) {
       loadTags();
     }
-  }, [visible, vaultPath, loadTags]);
+  }, [visible, adapter, loadTags]);
 
   const tree = useMemo(() => buildTagTree(tags), [tags]);
 

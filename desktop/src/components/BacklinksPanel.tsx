@@ -1,103 +1,61 @@
 "use client";
 
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { findBacklinks } from "@noteriv/core/wiki-link-utils";
-import type { Backlink, FileInfo } from "@noteriv/core/wiki-link-utils";
+import type { NoteBacklink, NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
 
 interface BacklinksPanelProps {
-  /** Full path of the current file being viewed. */
-  filePath: string;
-  /** Base path of the vault directory. */
-  vaultPath: string;
-  /** Called when user clicks a backlink to open the linked file. */
-  onFileOpen: (filePath: string) => void;
+  adapter: VaultAdapter;
+  /** Id (adapter key) of the note being viewed. */
+  noteId: string;
+  /** Called when user clicks a backlink to open the linked note. */
+  onNoteOpen: (noteId: string) => void;
   /** Called when the panel close button is clicked. */
   onClose: () => void;
 }
 
-export default function BacklinksPanel({
-  filePath,
-  vaultPath,
-  onFileOpen,
-  onClose,
-}: BacklinksPanelProps) {
-  const [backlinks, setBacklinks] = useState<Backlink[]>([]);
+interface BacklinkGroup {
+  ref: NoteRef;
+  links: NoteBacklink[];
+}
+
+export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }: BacklinksPanelProps) {
+  const [backlinks, setBacklinks] = useState<NoteBacklink[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Extract the file name from the full path
-  const currentFileName = useMemo(() => {
-    const parts = filePath.split("/");
-    return parts[parts.length - 1] || "";
-  }, [filePath]);
-
-  // Scan for backlinks when the file changes
   useEffect(() => {
     let cancelled = false;
 
-    async function scan() {
-      if (!window.electronAPI || !currentFileName) {
-        setBacklinks([]);
-        setLoading(false);
-        return;
-      }
-
+    async function load() {
       setLoading(true);
-
       try {
-        const allFiles: FileInfo[] = await window.electronAPI.listAllFiles(vaultPath);
-
-        const results = await findBacklinks(
-          currentFileName,
-          vaultPath,
-          allFiles.map((f) => ({
-            filePath: f.filePath,
-            fileName: f.fileName,
-            relativePath: f.relativePath,
-          })),
-          (path: string) => window.electronAPI.readFile(path)
-        );
-
-        if (!cancelled) {
-          setBacklinks(results);
-        }
+        const results = await adapter.backlinks(noteId);
+        if (!cancelled) setBacklinks(results);
       } catch (err) {
-        console.error("Failed to scan for backlinks:", err);
-        if (!cancelled) {
-          setBacklinks([]);
-        }
+        console.error("Failed to load backlinks:", err);
+        if (!cancelled) setBacklinks([]);
       } finally {
-        if (!cancelled) {
-          setLoading(false);
-        }
+        if (!cancelled) setLoading(false);
       }
     }
 
-    scan();
+    load();
     return () => {
       cancelled = true;
     };
-  }, [filePath, vaultPath, currentFileName]);
+  }, [adapter, noteId]);
 
-  // Group backlinks by source file
-  const grouped = useMemo(() => {
-    const groups: Record<string, Backlink[]> = {};
+  // One group per source note; the web backend reports no line, so a group may hold a single bare entry.
+  const groups = useMemo(() => {
+    const byId = new Map<string, BacklinkGroup>();
     for (const bl of backlinks) {
-      if (!groups[bl.filePath]) {
-        groups[bl.filePath] = [];
-      }
-      groups[bl.filePath].push(bl);
+      const group = byId.get(bl.ref.id) ?? { ref: bl.ref, links: [] };
+      group.links.push(bl);
+      byId.set(bl.ref.id, group);
     }
-    return groups;
+    return Array.from(byId.values());
   }, [backlinks]);
 
-  const fileCount = Object.keys(grouped).length;
-
-  const handleBacklinkClick = useCallback(
-    (blFilePath: string) => {
-      onFileOpen(blFilePath);
-    },
-    [onFileOpen]
-  );
+  const handleBacklinkClick = useCallback((id: string) => onNoteOpen(id), [onNoteOpen]);
 
   return (
     <div className="bl-panel">
@@ -111,12 +69,7 @@ export default function BacklinksPanel({
           )}
           <button onClick={onClose} className="bl-close" title="Close">
             <svg width="12" height="12" viewBox="0 0 12 12">
-              <path
-                d="M3 3l6 6M9 3l-6 6"
-                stroke="currentColor"
-                strokeWidth="1.2"
-                strokeLinecap="round"
-              />
+              <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
           </button>
         </div>
@@ -129,57 +82,39 @@ export default function BacklinksPanel({
             <span>Scanning vault...</span>
           </div>
         ) : backlinks.length === 0 ? (
-          <div className="bl-empty">
-            No backlinks found for this note.
-          </div>
+          <div className="bl-empty">No backlinks found for this note.</div>
         ) : (
-          Object.entries(grouped).map(([sourceFilePath, bls]) => {
-            const displayName = bls[0].fileName.replace(/\.md$/i, "");
-            const relPath = bls[0].relativePath;
+          groups.map(({ ref, links }) => (
+            <div key={ref.id} className="bl-group">
+              <button className="bl-file-header" onClick={() => handleBacklinkClick(ref.id)} title={ref.path}>
+                <svg width="12" height="12" viewBox="0 0 16 16" className="bl-file-icon">
+                  <path
+                    d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    fill="none"
+                  />
+                  <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                </svg>
+                <span className="bl-file-name">{ref.name.replace(/\.md$/i, "")}</span>
+              </button>
 
-            return (
-              <div key={sourceFilePath} className="bl-group">
-                <button
-                  className="bl-file-header"
-                  onClick={() => handleBacklinkClick(sourceFilePath)}
-                  title={relPath}
-                >
-                  <svg
-                    width="12"
-                    height="12"
-                    viewBox="0 0 16 16"
-                    className="bl-file-icon"
-                  >
-                    <path
-                      d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      fill="none"
-                    />
-                    <path
-                      d="M9 1v4h4"
-                      stroke="currentColor"
-                      strokeWidth="1.2"
-                      fill="none"
-                    />
-                  </svg>
-                  <span className="bl-file-name">{displayName}</span>
-                </button>
-
-                {bls.map((bl, idx) => (
-                  <button
-                    key={`${bl.filePath}:${bl.line}:${idx}`}
-                    className="bl-snippet"
-                    onClick={() => handleBacklinkClick(bl.filePath)}
-                    title={`Line ${bl.line}`}
-                  >
-                    <span className="bl-line-num">L{bl.line}</span>
-                    <span className="bl-snippet-text">{bl.snippet}</span>
-                  </button>
-                ))}
-              </div>
-            );
-          })
+              {links.map(
+                (bl, idx) =>
+                  bl.line !== undefined && (
+                    <button
+                      key={`${ref.id}:${bl.line}:${idx}`}
+                      className="bl-snippet"
+                      onClick={() => handleBacklinkClick(ref.id)}
+                      title={`Line ${bl.line}`}
+                    >
+                      <span className="bl-line-num">L{bl.line}</span>
+                      <span className="bl-snippet-text">{bl.snippet}</span>
+                    </button>
+                  )
+              )}
+            </div>
+          ))
         )}
       </div>
     </div>

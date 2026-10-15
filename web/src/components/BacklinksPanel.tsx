@@ -1,20 +1,25 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
-import { webApi, type ApiBacklink } from "@/lib/webApi";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import type { NoteBacklink, NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
 
 interface BacklinksPanelProps {
-  /** Id of the note being viewed. */
+  adapter: VaultAdapter;
+  /** Id (adapter key) of the note being viewed. */
   noteId: string;
-  vaultId: string;
   /** Called when user clicks a backlink to open the linked note. */
   onNoteOpen: (noteId: string) => void;
   /** Called when the panel close button is clicked. */
   onClose: () => void;
 }
 
-export default function BacklinksPanel({ noteId, vaultId, onNoteOpen, onClose }: BacklinksPanelProps) {
-  const [backlinks, setBacklinks] = useState<ApiBacklink[]>([]);
+interface BacklinkGroup {
+  ref: NoteRef;
+  links: NoteBacklink[];
+}
+
+export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }: BacklinksPanelProps) {
+  const [backlinks, setBacklinks] = useState<NoteBacklink[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,7 +28,7 @@ export default function BacklinksPanel({ noteId, vaultId, onNoteOpen, onClose }:
     async function load() {
       setLoading(true);
       try {
-        const results = await webApi.notes.backlinks(vaultId, noteId);
+        const results = await adapter.backlinks(noteId);
         if (!cancelled) setBacklinks(results);
       } catch (err) {
         console.error("Failed to load backlinks:", err);
@@ -34,13 +39,23 @@ export default function BacklinksPanel({ noteId, vaultId, onNoteOpen, onClose }:
     }
 
     load();
-    return () => { cancelled = true; };
-  }, [noteId, vaultId]);
+    return () => {
+      cancelled = true;
+    };
+  }, [adapter, noteId]);
 
-  const handleBacklinkClick = useCallback(
-    (id: string) => onNoteOpen(id),
-    [onNoteOpen]
-  );
+  // One group per source note; the web backend reports no line, so a group may hold a single bare entry.
+  const groups = useMemo(() => {
+    const byId = new Map<string, BacklinkGroup>();
+    for (const bl of backlinks) {
+      const group = byId.get(bl.ref.id) ?? { ref: bl.ref, links: [] };
+      group.links.push(bl);
+      byId.set(bl.ref.id, group);
+    }
+    return Array.from(byId.values());
+  }, [backlinks]);
+
+  const handleBacklinkClick = useCallback((id: string) => onNoteOpen(id), [onNoteOpen]);
 
   return (
     <div className="bl-panel">
@@ -69,24 +84,37 @@ export default function BacklinksPanel({ noteId, vaultId, onNoteOpen, onClose }:
         ) : backlinks.length === 0 ? (
           <div className="bl-empty">No backlinks found for this note.</div>
         ) : (
-          backlinks.map((bl) => {
-            const displayName = bl.name.replace(/\.md$/i, "");
-            return (
-              <div key={bl.id} className="bl-group">
-                <button
-                  className="bl-file-header"
-                  onClick={() => handleBacklinkClick(bl.id)}
-                  title={bl.path}
-                >
-                  <svg width="12" height="12" viewBox="0 0 16 16" className="bl-file-icon">
-                    <path d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                    <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.2" fill="none" />
-                  </svg>
-                  <span className="bl-file-name">{displayName}</span>
-                </button>
-              </div>
-            );
-          })
+          groups.map(({ ref, links }) => (
+            <div key={ref.id} className="bl-group">
+              <button className="bl-file-header" onClick={() => handleBacklinkClick(ref.id)} title={ref.path}>
+                <svg width="12" height="12" viewBox="0 0 16 16" className="bl-file-icon">
+                  <path
+                    d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z"
+                    stroke="currentColor"
+                    strokeWidth="1.2"
+                    fill="none"
+                  />
+                  <path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.2" fill="none" />
+                </svg>
+                <span className="bl-file-name">{ref.name.replace(/\.md$/i, "")}</span>
+              </button>
+
+              {links.map(
+                (bl, idx) =>
+                  bl.line !== undefined && (
+                    <button
+                      key={`${ref.id}:${bl.line}:${idx}`}
+                      className="bl-snippet"
+                      onClick={() => handleBacklinkClick(ref.id)}
+                      title={`Line ${bl.line}`}
+                    >
+                      <span className="bl-line-num">L{bl.line}</span>
+                      <span className="bl-snippet-text">{bl.snippet}</span>
+                    </button>
+                  )
+              )}
+            </div>
+          ))
         )}
       </div>
     </div>

@@ -1,21 +1,16 @@
 "use client";
 
-import type { VaultIndex } from "@/lib/webApi";
+import type { NoteRef } from "@noteriv/core/vault-adapter";
 
 interface BookmarksPanelProps {
-  bookmarks: string[]; // note ids
-  index: VaultIndex | null;
+  notes: NoteRef[]; // bookmarked notes, in bookmark order
   currentNoteId: string | null;
   onNoteSelect: (noteId: string) => void;
   onBookmarkRemove: (noteId: string) => void;
   onClose: () => void;
 }
 
-export default function BookmarksPanel({ bookmarks, index, currentNoteId, onNoteSelect, onBookmarkRemove, onClose }: BookmarksPanelProps) {
-  const notes = bookmarks
-    .map((id) => index?.notes.find((n) => n.id === id))
-    .filter((n): n is NonNullable<typeof n> => !!n);
-
+export default function BookmarksPanel({ notes, currentNoteId, onNoteSelect, onBookmarkRemove, onClose }: BookmarksPanelProps) {
   return (
     <div className="bm-panel">
       <div className="bm-header">

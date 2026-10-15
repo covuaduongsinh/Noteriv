@@ -1,10 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { getAllTags, type TaggedNote } from "@/lib/tag-utils";
+import { aggregateTags } from "@noteriv/core/tag-utils";
+import type { NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
 
 interface TagPaneProps {
-  vaultId: string;
+  adapter: VaultAdapter | null;
   onTagClick: (tag: string) => void;
   onNoteSelect: (noteId: string) => void;
   visible: boolean;
@@ -13,7 +14,7 @@ interface TagPaneProps {
 interface TagInfo {
   tag: string;
   count: number;
-  notes: TaggedNote[];
+  notes: NoteRef[];
 }
 
 /**
@@ -25,7 +26,7 @@ interface TagTreeNode {
   segment: string;
   fullTag: string | null; // non-null if this node represents an actual tag
   count: number;
-  notes: TaggedNote[];
+  notes: NoteRef[];
   children: Map<string, TagTreeNode>;
 }
 
@@ -185,7 +186,7 @@ function TagTreeItem({
   );
 }
 
-export default function TagPane({ vaultId, onTagClick, onNoteSelect, visible }: TagPaneProps) {
+export default function TagPane({ adapter, onTagClick, onNoteSelect, visible }: TagPaneProps) {
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
@@ -194,21 +195,21 @@ export default function TagPane({ vaultId, onTagClick, onNoteSelect, visible }: 
   const filterInputRef = useRef<HTMLInputElement>(null);
 
   const loadTags = useCallback(async () => {
-    if (!vaultId) return;
+    if (!adapter) return;
     setLoading(true);
     try {
-      const result = await getAllTags(vaultId);
+      const result = await aggregateTags(await adapter.listNotes(), (id) => adapter.readNote(id));
       setTags(result);
     } catch (err) {
       console.error("Failed to load tags:", err);
     } finally {
       setLoading(false);
     }
-  }, [vaultId]);
+  }, [adapter]);
 
   useEffect(() => {
-    if (visible && vaultId) loadTags();
-  }, [visible, vaultId, loadTags]);
+    if (visible && adapter) loadTags();
+  }, [visible, adapter, loadTags]);
 
   const tree = useMemo(() => buildTagTree(tags), [tags]);
 
