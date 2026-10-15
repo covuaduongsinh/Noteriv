@@ -6,7 +6,7 @@ import {
   registerCodeBlockProcessor,
   unregisterCodeBlockProcessor,
   unregisterAllCodeBlockProcessorsForPlugin,
-} from "@/lib/markdown-code-block-registry";
+} from "@noteriv/core/markdown-code-block-registry";
 import { mountMirror, type MirrorEvent } from "./mirror";
 import type {
   PluginCommandRef,

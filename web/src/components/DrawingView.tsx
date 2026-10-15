@@ -20,7 +20,7 @@ import {
   serializeDrawing,
   type DrawingFile,
   type DrawingElement as DrawingElementType,
-} from "@/lib/drawing-utils";
+} from "@noteriv/core/drawing-utils";
 
 interface DrawingViewProps {
   content: string;

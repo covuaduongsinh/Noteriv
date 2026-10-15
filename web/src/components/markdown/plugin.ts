@@ -6,7 +6,7 @@ import {
   EditorView,
 } from "@codemirror/view";
 import { EditorState, RangeSetBuilder, Facet, StateEffect } from "@codemirror/state";
-import { subscribeCodeBlockRegistry } from "@/lib/markdown-code-block-registry";
+import { subscribeCodeBlockRegistry } from "@noteriv/core/markdown-code-block-registry";
 import { RenderedMarkdownWidget } from "./widget";
 import { getBlockRenderers, getInlineRenderers } from "./registry";
 import { CodeBlockTracker } from "./renderers/code-blocks";

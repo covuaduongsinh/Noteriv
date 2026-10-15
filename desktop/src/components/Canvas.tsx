@@ -24,7 +24,7 @@ import {
   generateId,
   recalcEdgeSides,
   STICKY_COLORS,
-} from "@/lib/canvas-utils";
+} from "@noteriv/core/canvas-utils";
 import "@/styles/canvas.css";
 
 // ─── Props ───

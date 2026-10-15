@@ -2,7 +2,7 @@
  * PDF Export — converts markdown to styled HTML and triggers the browser print dialog.
  */
 
-import { markdownToHTML } from "./markdown-to-html";
+import { markdownToHTML } from "@noteriv/core/markdown-to-html";
 
 /**
  * Print stylesheet for PDF export.

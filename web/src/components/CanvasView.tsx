@@ -39,7 +39,7 @@ import {
   generateId,
   recalcEdgeSides,
   STICKY_COLORS,
-} from "@/lib/canvas-utils";
+} from "@noteriv/core/canvas-utils";
 import { webApi, type VaultIndex } from "@/lib/webApi";
 import "@/styles/canvas.css";
 

@@ -60,6 +60,7 @@ jobs:
   # is NOT part of the workspace (it has its own lockfile and Docker build), see the job above.
   frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15 # a sync infinite loop would otherwise hold the runner for hours
     steps:
       - uses: actions/checkout@v4
 
@@ -92,6 +93,7 @@ jobs:
   # build itself runs only in release.yml).
   desktop-frontend:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
 

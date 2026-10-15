@@ -28,7 +28,7 @@ import CSSSnippets from "@/components/CSSSnippets";
 import CalendarView from "@/components/CalendarView";
 import DataviewBlock from "@/components/DataviewBlock";
 import { isBoardContent, isBoardFile, createBoardContent } from "@noteriv/core/board-utils";
-import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@/lib/drawing-utils";
+import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
 import PublishPreview from "@/components/PublishPreview";
@@ -66,7 +66,7 @@ import {
   insertTaskList as editorInsertTaskList,
   insertTable as editorInsertTable,
 } from "@/lib/editor-commands";
-import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
+import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { getRandomNote } from "@/lib/random-note";
 import { exportToPDF } from "@/lib/pdf-export";
 import { saveSnapshot } from "@/lib/file-recovery";

@@ -1,9 +1,7 @@
 // ─── Canvas File Format & Utilities ───
-// Ported from desktop/src/lib/canvas-utils.ts (pure, no changes needed —
-// desktop's version has zero electronAPI/filesystem calls). Web note-content
-// detection (isCanvasContent) is new, mirroring web's own isBoardContent
-// pattern (board-utils.ts) rather than desktop's `.canvas` file-extension
-// convention, since a web note has no filesystem path.
+// Shared by web and desktop (pure, no I/O). isCanvasContent detects a canvas by its frontmatter
+// (`canvas: true`), mirroring isBoardContent, because a web note has no file extension to go by;
+// desktop can additionally use its `.canvas` extension.
 
 /** Check if content represents a canvas (frontmatter `canvas: true`) */
 export function isCanvasContent(content: string): boolean {

@@ -9,7 +9,7 @@ import {
   extractFrontmatterDue,
   type CalendarDay,
   type TaskItem,
-} from "@/lib/calendar-utils";
+} from "@noteriv/core/calendar-utils";
 
 interface CalendarViewProps {
   vaultPath: string;

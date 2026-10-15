@@ -4,8 +4,8 @@
  * `document.createElement("iframe")` + `window.print()`, no Tauri API at all.
  */
 
-import { markdownToHTML } from "./markdown-to-html";
-import { getCodeBlockProcessor } from "./markdown-code-block-registry";
+import { markdownToHTML } from "@noteriv/core/markdown-to-html";
+import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registry";
 import { webApi } from "./webApi";
 
 /**

@@ -47,7 +47,7 @@ import TimeScrubber from "@/components/TimeScrubber";
 import NoteHistory from "@/components/NoteHistory";
 import { setImageLightboxHandler } from "@/components/markdown/renderers/images";
 import { CloseIcon } from "@/components/icons";
-import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
+import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
 import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
@@ -61,8 +61,8 @@ import {
   type ViewMode,
 } from "@/lib/webApi";
 import { isBoardContent } from "@noteriv/core/board-utils";
-import { isCanvasContent } from "@/lib/canvas-utils";
-import { isDrawingContent } from "@/lib/drawing-utils";
+import { isCanvasContent } from "@noteriv/core/canvas-utils";
+import { isDrawingContent } from "@noteriv/core/drawing-utils";
 import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
 import PdfPreviewModal from "@/components/PdfPreviewModal";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";

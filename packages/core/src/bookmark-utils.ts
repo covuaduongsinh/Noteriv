@@ -1,8 +1,6 @@
 /**
- * Bookmark utilities — web identifies a bookmark by stable note id (not file
- * path like desktop, since ids survive rename/move and web has no filesystem
- * path identity). Persisted in Vault.settings.bookmarks, same JSON-in-settings
- * pattern Phase 6 established for themes/snippets.
+ * Bookmark utilities. A bookmark is an opaque string key: web uses the stable note id (it survives
+ * rename/move; persisted in Vault.settings.bookmarks), desktop uses the file path.
  */
 
 export function toggleBookmark(bookmarks: string[], noteId: string): string[] {

@@ -2,10 +2,8 @@
  * Note Publish / Share — export a note as a standalone HTML page
  * using the user's current theme colors.
  *
- * Ported from desktop/src/lib/publish.ts. `publishNote()` (save-dialog +
- * electronAPI.writeFile) has no web equivalent — the web PublishPreview
- * component triggers a browser download (Blob + <a download>) instead, so
- * only the pure `generatePublishHTML` function is ported here.
+ * Shared by web and desktop. Writing the file is platform specific and stays in each app: web
+ * downloads a Blob from PublishPreview, desktop saves through its dialog (desktop/src/lib/publish.ts).
  */
 
 import { markdownToHTML } from "./markdown-to-html";

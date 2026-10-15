@@ -5,12 +5,12 @@
  * [TOC] placeholder, dataview code blocks, and excalidraw embeds.
  */
 
-import { renderTocHTML } from "@noteriv/core/toc-utils";
+import { renderTocHTML } from "./toc-utils";
 import {
   getCodeBlockProcessor,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
-} from "@/lib/markdown-code-block-registry";
+} from "./markdown-code-block-registry";
 
 /**
  * Render a fenced code block through a plugin-registered processor (the same
@@ -46,7 +46,15 @@ function renderCodeBlockWithProcessor(
 /**
  * Convert a markdown string to HTML.
  */
-export function markdownToHTML(md: string): string {
+export interface MarkdownToHtmlOptions {
+  /**
+   * Plugin blocks rendered ahead of time (key = `${language}\u0000${source}`). The web's plugin processors
+   * run in a sandboxed iframe and answer asynchronously, which this synchronous converter cannot await.
+   */
+  preRendered?: Map<string, string>;
+}
+
+export function markdownToHTML(md: string, opts: MarkdownToHtmlOptions = {}): string {
   const lines = md.split("\n");
   const html: string[] = [];
   let i = 0;
@@ -86,6 +94,11 @@ export function markdownToHTML(md: string): string {
       // through the same processor the live editor uses, so exports keep
       // the rendered widget instead of printing raw source text.
       const langKey = lang.split(/\s+/)[0]?.toLowerCase() ?? "";
+      const pre = opts.preRendered?.get(`${langKey}\u0000${rawLines.join("\n")}`);
+      if (pre) {
+        html.push(pre);
+        continue;
+      }
       const entry = typeof document !== "undefined" && langKey ? getCodeBlockProcessor(langKey) : undefined;
       if (entry) {
         const rendered = renderCodeBlockWithProcessor(entry.processor, langKey, rawLines.join("\n"));
@@ -301,7 +314,9 @@ function parseUnorderedList(
   let i = start;
 
   while (i < lines.length) {
-    const match = lines[i].match(/^(\s*)([-*+])\s(.+)/);
+    // (.*) rather than (.+): an empty item such as "- " must still match, otherwise this loop makes no
+    // progress and the caller (which resumes at the returned index) spins forever on that line.
+    const match = lines[i].match(/^(\s*)([-*+])\s(.*)/);
     if (!match) break;
 
     const text = match[3];
@@ -336,7 +351,8 @@ function parseOrderedList(
   let i = start;
 
   while (i < lines.length) {
-    const match = lines[i].match(/^(\s*)\d+\.\s(.+)/);
+    // (.*) rather than (.+): see parseUnorderedList.
+    const match = lines[i].match(/^(\s*)\d+\.\s(.*)/);
     if (!match) break;
 
     items.push(`<li>${inlineFormat(match[2])}</li>`);

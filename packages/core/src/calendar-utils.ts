@@ -1,5 +1,6 @@
 /**
  * Calendar utilities for date-based note navigation and task aggregation.
+ * Pure date/string logic shared by web and desktop (no I/O).
  */
 
 export interface CalendarDay {

@@ -1,6 +1,6 @@
 /**
  * Drawing utilities for creating, loading, saving, and exporting .drawing files.
- * Ported from desktop/src/lib/drawing-utils.ts (pure, no changes needed).
+ * Shared by web and desktop (pure, no I/O).
  */
 
 /** Check if content represents a drawing (frontmatter `drawing: true`) —

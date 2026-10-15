@@ -10,7 +10,7 @@ import {
   unregisterAllCodeBlockProcessorsForPlugin,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
-} from "./markdown-code-block-registry";
+} from "@noteriv/core/markdown-code-block-registry";
 export type { CodeBlockProcessor, CodeBlockProcessorContext };
 
 // ─── Types ───

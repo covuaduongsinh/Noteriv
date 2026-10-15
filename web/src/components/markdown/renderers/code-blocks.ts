@@ -6,7 +6,7 @@ import {
   getRegistryVersion,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
-} from "@/lib/markdown-code-block-registry";
+} from "@noteriv/core/markdown-code-block-registry";
 
 // Simple token-based syntax highlighting
 // Each language defines regex patterns with associated CSS classes
