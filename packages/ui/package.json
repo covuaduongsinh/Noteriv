@@ -14,7 +14,9 @@
     "./graph": "./src/graph/index.ts",
     "./panels": "./src/panels/index.ts",
     "./panels/*": "./src/panels/*.ts",
-    "./styles/*": "./styles/*"
+    "./styles/*": "./styles/*",
+    "./plugins": "./src/plugins/index.ts",
+    "./plugins/*": "./src/plugins/*.ts"
   },
   "scripts": {
     "test": "vitest run",
@@ -23,7 +25,8 @@
   "dependencies": {
     "@noteriv/core": "*",
     "katex": "^0.19.0",
-    "mermaid": "^11.13.0"
+    "mermaid": "^11.13.0",
+    "@noteriv/plugin-api": "*"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "^6.20.1",

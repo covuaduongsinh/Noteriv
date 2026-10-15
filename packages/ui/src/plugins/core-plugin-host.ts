@@ -1,0 +1,401 @@
+/**
+ * Host for core plugins (the trusted tier of Plugin API v1, see docs/plugin-api/v1.md).
+ *
+ * Framework-free: it builds the `PluginApi` each plugin receives on top of a `VaultAdapter` and the ports the app
+ * hands in, and keeps what plugins contribute (commands, status items, ribbon icons, views, panels) in a small store
+ * the app renders from (React: `useCorePlugins`). The `PluginRegistry` from core owns enable/disable and guarantees
+ * that every contribution of a plugin is removed when it stops.
+ */
+
+import {
+  PLUGIN_API_VERSION,
+  type EditorApi,
+  type MarkdownPostProcessor,
+  type PluginApi,
+  type PluginEvent,
+  type PluginPlatform,
+  type PostProcessorContext,
+  type SidebarPanel,
+  type SettingsTab,
+  type VaultEntry,
+  type ViewFactory,
+  type ViewState,
+} from "@noteriv/plugin-api";
+import { PluginRegistry, type CorePluginDef, type PluginStateStore } from "@noteriv/core/plugin-registry";
+import type { NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
+import {
+  registerCodeBlockProcessor,
+  unregisterAllCodeBlockProcessorsForPlugin,
+  unregisterCodeBlockProcessor,
+} from "@noteriv/core/markdown-code-block-registry";
+
+export interface CorePluginHostServices {
+  adapter: VaultAdapter;
+  platform: PluginPlatform;
+  /** Absolute vault path on desktop, null on web. */
+  vaultPath: string | null;
+  editor: EditorApi;
+  /** Vault-relative path of the note in the active tab. */
+  getCurrentFile(): string | null;
+  openFile(path: string): Promise<boolean>;
+  /** Absent until the app can show plugin views in tabs; `workspace.openView` then resolves false. */
+  openView?(type: string, state: ViewState): Promise<boolean>;
+  notify(message: string, durationMs?: number): void;
+  loadPluginSettings(pluginId: string): Promise<Record<string, unknown>>;
+  savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void>;
+  stateStore: PluginStateStore;
+  plugins: CorePluginDef<PluginApi>[];
+}
+
+interface Owned {
+  pluginId: string;
+  /** Namespaced `<pluginId>:<local id>`; unique across plugins. */
+  key: string;
+  /** The id the plugin used. */
+  id: string;
+}
+
+export interface HostCommand extends Owned {
+  name: string;
+  icon?: string;
+  hotkey?: string;
+  run(): void;
+}
+
+export interface HostStatusItem extends Owned {
+  text: string;
+  title?: string;
+  onClick?: () => void;
+}
+
+export interface HostRibbonIcon extends Owned {
+  title: string;
+  icon?: string;
+  onClick(): void;
+}
+
+export interface HostPanel extends Owned {
+  title: string;
+  icon?: string;
+  render(container: HTMLElement): void | (() => void);
+}
+
+export interface CorePluginContributions {
+  commands: HostCommand[];
+  statusItems: HostStatusItem[];
+  ribbonIcons: HostRibbonIcon[];
+  sidebarPanels: HostPanel[];
+  settingsTabs: HostPanel[];
+  /** View types plugins registered, in registration order. */
+  viewTypes: string[];
+}
+
+type Kind = "commands" | "statusItems" | "ribbonIcons" | "sidebarPanels" | "settingsTabs";
+
+const EMPTY: CorePluginContributions = {
+  commands: [],
+  statusItems: [],
+  ribbonIcons: [],
+  sidebarPanels: [],
+  settingsTabs: [],
+  viewTypes: [],
+};
+
+export interface CorePluginHost {
+  readonly registry: PluginRegistry<PluginApi>;
+  /** Stable between changes (safe as a `useSyncExternalStore` snapshot). */
+  getContributions(): CorePluginContributions;
+  subscribeContributions(listener: () => void): () => void;
+  /** App-side events (`file-open`, `editor-change`, …) delivered to every plugin's `events.on` handlers. */
+  emit(event: PluginEvent, ...args: unknown[]): void;
+  getView(type: string): ViewFactory | undefined;
+  /** For renderers: run every registered post-processor over a rendered note. */
+  runPostProcessors(el: HTMLElement, ctx: PostProcessorContext): void;
+  init(): Promise<void>;
+  dispose(): Promise<void>;
+}
+
+function report(pluginId: string, what: string, err: unknown) {
+  console.error(`[core-plugin:${pluginId}] ${what}:`, err);
+}
+
+/** Direct children of `dir` (vault-relative), with folders derived from note paths. */
+export function listVaultEntries(notes: NoteRef[], dir?: string): VaultEntry[] {
+  const base = (dir ?? "").replace(/^\/+|\/+$/g, "");
+  const prefix = base ? `${base}/` : "";
+  const out: VaultEntry[] = [];
+  const dirs = new Set<string>();
+  for (const n of notes) {
+    if (!n.path.startsWith(prefix)) continue;
+    const rest = n.path.slice(prefix.length);
+    const slash = rest.indexOf("/");
+    if (slash < 0) {
+      out.push({ path: n.path, name: n.name, isDir: false });
+    } else {
+      const name = rest.slice(0, slash);
+      if (!dirs.has(name)) {
+        dirs.add(name);
+        out.push({ path: prefix + name, name, isDir: true });
+      }
+    }
+  }
+  return out.sort((a, b) => (a.isDir === b.isDir ? a.name.localeCompare(b.name) : a.isDir ? -1 : 1));
+}
+
+export function createCorePluginHost(services: CorePluginHostServices): CorePluginHost {
+  const { adapter } = services;
+  let contributions: CorePluginContributions = EMPTY;
+  const listeners = new Set<() => void>();
+  const views = new Map<string, { pluginId: string; factory: ViewFactory }>();
+  const postProcessors: { pluginId: string; fn: MarkdownPostProcessor }[] = [];
+  const handlers = new Map<PluginEvent, Set<{ pluginId: string; fn: (...args: any[]) => void }>>();
+
+  function changed(next: CorePluginContributions) {
+    contributions = next;
+    for (const l of Array.from(listeners)) l();
+  }
+
+  function upsert<K extends Kind>(kind: K, item: CorePluginContributions[K][number]) {
+    const list = contributions[kind] as Owned[];
+    changed({ ...contributions, [kind]: [...list.filter((x) => x.key !== item.key), item] });
+  }
+
+  function remove(kind: Kind, key: string) {
+    const list = contributions[kind] as Owned[];
+    if (list.some((x) => x.key === key)) changed({ ...contributions, [kind]: list.filter((x) => x.key !== key) });
+  }
+
+  function viewTypes(): string[] {
+    return Array.from(views.keys());
+  }
+
+  async function findNote(path: string): Promise<NoteRef | undefined> {
+    const notes = await adapter.listNotes();
+    return notes.find((n) => n.path === path);
+  }
+
+  /** Call plugin code without letting it throw into the app. */
+  function guard<A extends unknown[]>(pluginId: string, what: string, fn: (...args: A) => unknown) {
+    return (...args: A) => {
+      try {
+        const r = fn(...args);
+        if (r && typeof (r as Promise<unknown>).catch === "function") (r as Promise<unknown>).catch((e) => report(pluginId, what, e));
+      } catch (e) {
+        report(pluginId, what, e);
+      }
+    };
+  }
+
+  function createApi(pluginId: string): PluginApi {
+    const key = (id: string) => `${pluginId}:${id}`;
+    const panel = (p: SidebarPanel | SettingsTab, title: string): HostPanel => ({
+      pluginId,
+      key: key(p.id),
+      id: p.id,
+      title,
+      icon: "icon" in p ? p.icon : undefined,
+      render: p.render,
+    });
+
+    return {
+      vault: {
+        async read(path) {
+          const ref = await findNote(path);
+          return ref ? adapter.readNote(ref.id) : null;
+        },
+        async write(path, content) {
+          const ref = await findNote(path);
+          if (ref) await adapter.writeNote(ref.id, content);
+          else await adapter.createNote(path, content);
+          return true;
+        },
+        async list(dir) {
+          return listVaultEntries(await adapter.listNotes(), dir);
+        },
+        async exists(path) {
+          return (await findNote(path)) !== undefined;
+        },
+        async delete(path) {
+          const ref = await findNote(path);
+          if (!ref) return false;
+          await adapter.deleteNote(ref.id);
+          return true;
+        },
+      },
+
+      editor: services.editor,
+
+      markdown: {
+        registerCodeBlockProcessor: (language, processor) => registerCodeBlockProcessor(pluginId, language, processor),
+        unregisterCodeBlockProcessor: (language) => unregisterCodeBlockProcessor(pluginId, language),
+        registerPostProcessor: (fn) => void postProcessors.push({ pluginId, fn }),
+      },
+
+      ui: {
+        addCommand: (cmd) =>
+          upsert("commands", {
+            pluginId,
+            key: key(cmd.id),
+            id: cmd.id,
+            name: cmd.name,
+            icon: cmd.icon,
+            hotkey: cmd.hotkey,
+            run: guard(pluginId, `command ${cmd.id}`, () => cmd.callback()),
+          }),
+        removeCommand: (id) => remove("commands", key(id)),
+        addStatusBarItem: (item) =>
+          upsert("statusItems", {
+            pluginId,
+            key: key(item.id),
+            id: item.id,
+            text: String(item.text ?? ""),
+            title: item.title,
+            onClick: item.onClick ? guard(pluginId, `status ${item.id}`, item.onClick) : undefined,
+          }),
+        removeStatusBarItem: (id) => remove("statusItems", key(id)),
+        addSidebarPanel: (p) => upsert("sidebarPanels", panel(p, p.title)),
+        removeSidebarPanel: (id) => remove("sidebarPanels", key(id)),
+        addSettingsTab: (t) => upsert("settingsTabs", panel(t, t.name)),
+        removeSettingsTab: (id) => remove("settingsTabs", key(id)),
+        showNotice: (message, durationMs) => services.notify(String(message), durationMs),
+        registerView: (type, factory) => {
+          views.set(type, { pluginId, factory });
+          changed({ ...contributions, viewTypes: viewTypes() });
+        },
+        unregisterView: (type) => {
+          if (views.get(type)?.pluginId !== pluginId) return;
+          views.delete(type);
+          changed({ ...contributions, viewTypes: viewTypes() });
+        },
+        addRibbonIcon: (icon) =>
+          upsert("ribbonIcons", {
+            pluginId,
+            key: key(icon.id),
+            id: icon.id,
+            title: icon.title,
+            icon: icon.icon,
+            onClick: guard(pluginId, `ribbon ${icon.id}`, () => icon.onClick()),
+          }),
+        removeRibbonIcon: (id) => remove("ribbonIcons", key(id)),
+      },
+
+      events: {
+        on: (event, fn) => {
+          if (!handlers.has(event)) handlers.set(event, new Set());
+          handlers.get(event)!.add({ pluginId, fn });
+        },
+        off: (event, fn) => {
+          const set = handlers.get(event);
+          if (!set) return;
+          for (const h of Array.from(set)) if (h.pluginId === pluginId && h.fn === fn) set.delete(h);
+        },
+        emit: (event, ...args) => host.emit(event, ...args),
+      },
+
+      workspace: {
+        openFile: (path) => services.openFile(path),
+        openView: (type, state) => (services.openView && views.has(type) ? services.openView(type, state ?? { path: null }) : Promise.resolve(false)),
+      },
+
+      settings: {
+        load: () => services.loadPluginSettings(pluginId),
+        save: (data) => services.savePluginSettings(pluginId, data),
+      },
+
+      app: {
+        version: PLUGIN_API_VERSION,
+        platform: services.platform,
+        vaultPath: services.vaultPath,
+        get currentFile() {
+          return services.getCurrentFile();
+        },
+        loadSettings: () => services.loadPluginSettings(pluginId),
+        saveSettings: (data) => services.savePluginSettings(pluginId, data),
+      },
+    };
+  }
+
+  function disposePlugin(pluginId: string) {
+    const keep = <T extends Owned>(list: T[]) => list.filter((x) => x.pluginId !== pluginId);
+    for (const [type, v] of Array.from(views)) if (v.pluginId === pluginId) views.delete(type);
+    for (let i = postProcessors.length - 1; i >= 0; i--) if (postProcessors[i].pluginId === pluginId) postProcessors.splice(i, 1);
+    for (const set of handlers.values()) for (const h of Array.from(set)) if (h.pluginId === pluginId) set.delete(h);
+    unregisterAllCodeBlockProcessorsForPlugin(pluginId);
+    changed({
+      commands: keep(contributions.commands),
+      statusItems: keep(contributions.statusItems),
+      ribbonIcons: keep(contributions.ribbonIcons),
+      sidebarPanels: keep(contributions.sidebarPanels),
+      settingsTabs: keep(contributions.settingsTabs),
+      viewTypes: viewTypes(),
+    });
+  }
+
+  const registry = new PluginRegistry<PluginApi>({
+    plugins: services.plugins,
+    store: services.stateStore,
+    createContext: (pluginId) => {
+      let disposed = false;
+      return {
+        api: createApi(pluginId),
+        dispose: () => {
+          if (disposed) return;
+          disposed = true;
+          disposePlugin(pluginId);
+        },
+      };
+    },
+  });
+
+  const host: CorePluginHost = {
+    registry,
+    getContributions: () => contributions,
+    subscribeContributions(listener) {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+    emit(event, ...args) {
+      for (const h of Array.from(handlers.get(event) ?? [])) {
+        try {
+          h.fn(...args);
+        } catch (e) {
+          report(h.pluginId, `event ${event}`, e);
+        }
+      }
+    },
+    getView: (type) => views.get(type)?.factory,
+    runPostProcessors(el, ctx) {
+      for (const p of postProcessors.slice()) {
+        try {
+          p.fn(el, ctx);
+        } catch (e) {
+          report(p.pluginId, "post-processor", e);
+        }
+      }
+    },
+    init: () => registry.init(),
+    dispose: () => registry.dispose(),
+  };
+  return host;
+}
+
+/**
+ * Stores on/off choices under one key of the vault settings blob, read-modify-write so other keys survive. Web uses
+ * this over `VaultAdapter.getSettings/saveSettings` (vault settings live in the DB).
+ */
+export function settingsKeyStateStore(
+  load: () => Promise<Record<string, unknown>>,
+  save: (settings: Record<string, unknown>) => Promise<void>,
+  key = "corePlugins"
+): PluginStateStore {
+  return {
+    async load() {
+      const value = (await load())[key];
+      return value && typeof value === "object" ? (value as Record<string, boolean>) : {};
+    },
+    async save(state) {
+      const current = await load();
+      await save({ ...current, [key]: state });
+    },
+  };
+}
