@@ -52,6 +52,8 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 
 | Thư mục | Nội dung |
 |---|---|
+| `package.json`, `package-lock.json` (gốc) | **npm workspaces**: `packages/*`, `web`, `desktop`. `web/server` và `web/pdf-service` **không** nằm trong workspace (mỗi cái có lockfile và Docker build riêng). Cài ở **gốc repo**, không còn `npm install` riêng trong `web/` hay `desktop/` |
+| `packages/core/` | `@noteriv/core`: logic TypeScript thuần dùng chung web + desktop (15 module từ 2026-10-15: frontmatter, toc, wiki-link, markdown-lint, board, dataview, calendar, drawing, canvas, bookmark, slide, sanitize-html, markdown-to-html, publish, markdown-code-block-registry). **Nạp theo mã nguồn** (`exports` trỏ `src/*.ts`, app import `@noteriv/core/<module>`, `transpilePackages`). Quy tắc: không import mã app, React, CodeMirror, Tauri; `test/core-boundaries.test.ts` ép điều này. Bảng kiểm kê: `docs/plans/2026-10-15-phien-1-2-kiem-ke-core.md` |
 | `web/` | Frontend Next.js 16 (App Router). **Đọc `web/AGENTS.md`**: Next 16 có thay đổi lớn, tra `node_modules/next/dist/docs/` trước khi viết code |
 | `web/src/app/vaults/[vaultId]/page.tsx` | Trang chính (editor, panel, lệnh, modal) |
 | `web/src/lib/` | `webApi.ts` (client REST), `pdf-export.ts`, `plugin-sandbox/*`, `hotkeys.ts`, `markdown-to-html.ts` |
@@ -83,18 +85,24 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 
 1. Tunnel tới dịch vụ dev trên VPS: `ssh -N -L 55432:127.0.0.1:55432 -L 56379:127.0.0.1:56379 -L 59000:127.0.0.1:59000 217.15.160.118` (chạy nền).
 2. API: trong `web/server`, chạy `npm run dev` (cổng 4001) và `npm run dev:worker`. Env ở `web/server/.env` (gitignored, đã có `PDF_SERVICE_URL=http://127.0.0.1:4003`, `PDF_SERVICE_TOKEN=devtoken`).
-3. Web: trong `web`, chạy `npx next dev -p 3457`. Mở bằng **`http://localhost:3457`** (không dùng `127.0.0.1`, vì cookie).
+3. Web: **cài một lần ở gốc repo** (`npm install` ở thư mục gốc, hoặc `-w web -w @noteriv/core --include-workspace-root` cho nhanh), rồi trong `web` chạy `npx next dev -p 3457` (hoặc `npm run dev:web` từ gốc). Mở bằng **`http://localhost:3457`** (không dùng `127.0.0.1`, vì cookie).
 4. Dịch vụ PDF (khi cần): `node web/pdf-service/src/index.mjs` với env `PDF_SERVICE_TOKEN=devtoken`, `PORT=4003`, `PDF_CHROME_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe`.
 5. Dọn sau khi thử: tắt các tiến trình đã mở, xoá user và vault thử (qua API).
 
 ## 7. Kiểm thử
 
-- Kiểu: `npx tsc --noEmit` trong `web/` và `web/server/`; build: `npx next build` trong `web/`.
+- Kiểu: `npm run typecheck` ở gốc (core, web, desktop) và `npx tsc --noEmit` trong `web/server/`; test logic dùng chung: `npm test` ở gốc (Vitest, `packages/core`); build: `npm run build:web` (Next standalone) và `npm run build:desktop` (xuất tĩnh ra `desktop/out/`). Image web: `web/Dockerfile` build từ **gốc repo**; standalone lồng thư mục (`CMD node web/server.js`) vì `outputFileTracingRoot` là gốc repo. CI (`web-ci.yml`) cài bằng `npm install -w …` (không `npm ci`, vì lockfile sinh trên Windows) và có job riêng cho desktop UI.
 - Sync: `web/server/scripts/test-sync-scenarios.ts` (và `test-s3-down.ts`).
 - Giao diện: claude-in-chrome. Nếu click hoặc gõ không tác dụng, dùng `javascript_tool` để bắn sự kiện DOM (`.click()`, setter `value` + sự kiện `input`). Menu tự đóng giữa hai lệnh, nên mở menu và bấm mục trong **cùng một** lệnh JS.
 - PDF: kiểm bằng PyMuPDF (`python -c "import fitz"` có sẵn) để dựng ảnh trang và xem font (`page.get_fonts()`).
 
 ## 8. Bài học đã trả giá (đừng lặp lại)
+
+- **Gói `@tauri-apps/*` của desktop phải khớp phiên bản crate Rust trong `desktop/src-tauri/Cargo.lock`** (api 2.10.1, plugin-dialog 2.7.0, plugin-shell 2.3.5, plugin-updater 2.10.1, cli 2.10.1 đã được ghim đúng số). Gộp lockfile làm các gói này tự nhảy lên; nếu để vậy `tauri build` lỗi do lệch phiên bản.
+- **`markdownToHTML` từng treo vô hạn** với mục danh sách rỗng (`"- "`, `"1. "`): mẫu mục đòi ít nhất một ký tự nên trình phân tích không tiến, vòng lặp chính quay lại đúng dòng đó. Đã sửa ở `core` và có test hồi quy. Test chạy mã đồng bộ không thể bị ngắt bằng `testTimeout`, nên các job CI có `timeout-minutes`.
+- **`markdownToHTML` không lọc URL `javascript:`** trong liên kết (khác `slide-utils`/`sanitizeHtml`). Test ghi lại hành vi này. Các nơi gọi đã xem (2026-10-15): xem trước publish dùng `iframe srcdoc` với `sandbox="allow-same-origin"` (không có `allow-scripts`, liên kết `javascript:` vô hại), PDF dựng bằng Chromium tắt JavaScript (vô hại); **rủi ro còn lại là tệp HTML đã xuất bản** (web tải Blob, desktop ghi tệp): ai mở tệp đó và bấm vào liên kết `javascript:` do một ghi chú không tin cậy (đồng bộ, clipper) mang vào thì script chạy. Cách vá gọn: lọc scheme bằng `isSafeUrl` (đã có trong `core/sanitize-html`) khi dựng `<a href>` và `<img src>` trong `markdownToHTML`, như `slide-utils`. Chưa làm.
+- Docker build trên VPS thỉnh thoảng đứt mạng khi `npm install` (`ECONNRESET`, 2 lần ngày 2026-10-15). `web/Dockerfile` đã bật `NPM_CONFIG_FETCH_RETRIES` để tự thử lại; nếu build lỗi đúng kiểu này, chỉ cần deploy lại.
+- Monitor chờ deploy bằng ngưỡng thời gian phải **sớm hơn** thời điểm push (đã nhầm hai lần); và nhớ phân biệt `done` với `error`.
 
 - **Không đặt thư mục scratch của git sync bên trong một repo git** (từng commit nhầm vào repo Noteriv thật). `gitSync.ts` đã có `assertIsOwnRepoRoot`; đừng gỡ nó.
 - Token git chỉ truyền qua `GIT_ASKPASS`, không đưa vào URL hay argv. Trên Windows dùng `-c core.autocrlf=false`.

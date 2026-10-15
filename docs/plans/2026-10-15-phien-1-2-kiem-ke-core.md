@@ -31,3 +31,29 @@ markdown-code-block-registry ─┴─> markdown-to-html ──> publish
 sanitize-html ──> slide-utils
 tag-utils + frontmatter-utils ──> vault-insights-utils   (loại B)
 ```
+
+---
+
+## Kết quả thực hiện (2026-10-15)
+
+`packages/core` có **15 module**, mỗi module có test (230 test, Vitest; `sanitize-html`, `slide-utils`, `markdown-to-html`, `publish`, registry chạy dưới jsdom). Test ranh giới `core-boundaries.test.ts` ép quy tắc "không import mã app/UI/nền tảng".
+
+| Module | Loại | Quyết định |
+|---|---|---|
+| `frontmatter-utils`, `board-utils`, `dataview`, `markdown-lint`, `toc-utils`, `wiki-link-utils`, `sanitize-html`, `slide-utils` | A | Chuyển nguyên (giống hệt hai bên). |
+| `calendar-utils` | C | Lấy bản web. Khác biệt chỉ là chú thích. |
+| `drawing-utils`, `canvas-utils` | C | Lấy bản web: thêm `isDrawingContent` / `isCanvasContent` (phát hiện bằng frontmatter vì ghi chú web không có phần mở rộng tệp); desktop vẫn dùng được đuôi `.drawing` / `.canvas`. |
+| `bookmark-utils` | C | Lấy bản web. Logic giống hệt, chỉ khác tên tham số; khoá là chuỗi bất kỳ (web: id ghi chú, desktop: đường dẫn). |
+| `markdown-code-block-registry` | C | Lấy bản web: thêm `getRegistryVersion` / `subscribeCodeBlockRegistry` để trình soạn thảo vẽ lại khi plugin đăng ký muộn. Desktop nhận thêm API, hành vi cũ không đổi. |
+| `markdown-to-html` | C | Lấy bản web: thêm tuỳ chọn `preRendered` (khối plugin dựng sẵn); chữ ký tương thích ngược. |
+| `publish` | C + tách | Phần thuần `generatePublishHTML` (bản web) về `core`. `publishNote()` (hộp thoại lưu + `electronAPI.writeFile`) ở lại `desktop/src/lib/publish.ts` và re-export hàm thuần. **Thay đổi nhìn thấy ở desktop:** chân trang tệp HTML xuất bản trỏ tới repo của dự án này thay vì upstream (web đã như vậy). `publishNote` hiện không ai gọi (chỉ `generatePublishHTML` được dùng qua `PublishPreview`); giữ lại để không xoá chức năng. |
+
+**Chưa chuyển (để 1.3 trở đi):** loại B (`tag-utils`, `template-utils`, `flashcard-utils`, `vault-insights-utils`: cần tách phần gọi `webApi`/`electronAPI` theo `VaultAdapter`), `css-snippets`, `theme-utils`, `note-history`, `pdf-export`, `wikilink-completion`; loại D như trên. Số module dùng chung vì thế dừng ở mức tối thiểu của mục tiêu (15).
+
+### Phát hiện trong lúc chuyển
+
+1. **Lỗi treo vô hạn** trong `markdownToHTML` với mục danh sách rỗng (`"- "`, `"1. "`), có sẵn ở cả hai app. Đã sửa (`(.*)` thay `(.+)`), có test hồi quy; các job CI có `timeout-minutes`.
+2. **`markdownToHTML` không lọc URL `javascript:`** trong `<a href>` / `<img src>` (khác `slide-utils`). Xem rủi ro cụ thể và cách vá gọn ở file bàn giao, mục 8. Chưa sửa; test ghi lại hành vi hiện tại.
+3. Lockfile gộp làm các gói `@tauri-apps/*` của desktop nhảy phiên bản; đã **ghim đúng số khớp `Cargo.lock`**. Các gói còn lại của desktop nhích lên theo bản web đang chạy ở production (CodeMirror, Tailwind…), không có thay đổi major.
+4. `dompurify` do `core` khai báo; `desktop/package.json` bỏ dòng `dompurify` vì chỉ còn đi qua `core`.
+5. Build image web trên VPS đứt mạng `ECONNRESET` lúc `npm install` (2 lần trong ngày); Dockerfile bật `NPM_CONFIG_FETCH_RETRIES`.

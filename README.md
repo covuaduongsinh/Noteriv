@@ -27,6 +27,21 @@ Bản staging dùng để thử trước khi lên production và là riêng tư.
 
 `next` chỉ được gộp vào `main` ở các mốc đã thử đầy đủ trên staging, có bản sao lưu mới nhất và được chủ dự án đồng ý.
 
+## Phát triển
+
+`web/`, `desktop/` và `packages/*` là **npm workspaces** (`web/server` và `web/pdf-service` thì không: mỗi cái có lockfile và Docker build riêng). Cài **một lần ở gốc repo**:
+
+```sh
+npm install                 # gốc repo; cho nhanh: npm install -w web -w @noteriv/core --include-workspace-root
+npm test                    # test @noteriv/core (Vitest)
+npm run typecheck           # core, web, desktop
+npm run dev:web             # web ở http://localhost:3457 (cần API chạy ở cổng 4001)
+npm run build:web           # Next standalone
+npm run build:desktop       # giao diện desktop (xuất tĩnh); đóng gói Tauri: cd desktop && npm run build
+```
+
+Logic dùng chung nằm ở `packages/core` (`@noteriv/core`, TypeScript thuần, import bằng `@noteriv/core/<module>`). API: `cd web/server && npm install && npm run dev`.
+
 ## Tài liệu
 
 - Lộ trình và kế hoạch từng giai đoạn: [`docs/plans/`](docs/plans/), bắt đầu từ [`2026-10-14-lo-trinh-noteriv-chess-pkm.md`](docs/plans/2026-10-14-lo-trinh-noteriv-chess-pkm.md). Người mới vào dự án đọc [`2026-10-14-huong-dan-ban-giao-phien.md`](docs/plans/2026-10-14-huong-dan-ban-giao-phien.md) trước.
