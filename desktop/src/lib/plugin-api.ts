@@ -222,7 +222,8 @@ export class PluginManager {
       const raw = await window.electronAPI.readFile(configPath);
       if (!raw) return { enabled: [] };
       const config: PluginConfig = JSON.parse(raw);
-      return { enabled: config.enabled || [], settings: config.settings };
+      // Keep keys this class does not own (core plugins store `core` / `coreSettings` here too).
+      return { ...config, enabled: config.enabled || [] };
     } catch {
       return { enabled: [] };
     }

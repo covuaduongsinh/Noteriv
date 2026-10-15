@@ -24,8 +24,10 @@ import {
   type SyncProviderType,
 } from "@/lib/sync-providers";
 import ThemePicker from "@/components/ThemePicker";
+import { CorePluginsSection } from "@noteriv/ui/plugins";
+import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 
-type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem";
+type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem";
 
 const SECTIONS: { id: Section; label: string }[] = [
   { id: "general", label: "General" },
@@ -33,6 +35,7 @@ const SECTIONS: { id: Section; label: string }[] = [
   { id: "editor", label: "Editor" },
   { id: "shortcuts", label: "Shortcuts" },
   { id: "sync", label: "Sync" },
+  { id: "corePlugins", label: "Core plugins" },
   { id: "ecosystem", label: "Ecosystem" },
 ];
 
@@ -84,6 +87,9 @@ interface SettingsModalProps {
   onVaultUpdate: (vault: Vault) => void;
   onOpenPlugins: () => void;
   onOpenSnippets: () => void;
+  /** Built-in plugins (Plugin API v1 core tier) and their on/off switch. */
+  corePlugins?: CorePluginInfo[];
+  onToggleCorePlugin?: (id: string, enabled: boolean) => void;
   onClose: () => void;
 }
 
@@ -98,6 +104,8 @@ export default function SettingsModal({
   onVaultUpdate,
   onOpenPlugins,
   onOpenSnippets,
+  corePlugins = [],
+  onToggleCorePlugin,
   onClose,
 }: SettingsModalProps) {
   const [active, setActive] = useState<Section>("general");
@@ -994,6 +1002,7 @@ export default function SettingsModal({
     editor: renderEditor,
     shortcuts: renderShortcuts,
     sync: renderSync,
+    corePlugins: () => <CorePluginsSection plugins={corePlugins} onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)} />,
     ecosystem: renderEcosystem,
   };
 
@@ -1131,6 +1140,14 @@ function SectionIcon({ section }: { section: Section }) {
       <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
         <path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
         <path d="M12 2v3h-3M4 14v-3h3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    ),
+    corePlugins: (
+      <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+        <rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        <rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        <rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" strokeWidth="1.2" />
+        <path d="M11.5 9v5M9 11.5h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
       </svg>
     ),
     ecosystem: (

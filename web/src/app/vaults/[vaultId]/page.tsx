@@ -43,8 +43,14 @@ import { createWebDataviewSource } from "@/lib/ui-hooks";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
-import { useWebCorePlugins } from "@/lib/core-plugins";
-import { CorePluginRibbonButtons, CorePluginStatusItems, useCorePluginHotkeys, useCorePlugins } from "@noteriv/ui/plugins";
+import { webCorePluginConfig } from "@/lib/core-plugins";
+import {
+  CorePluginRibbonButtons,
+  CorePluginStatusItems,
+  useCorePluginHost,
+  useCorePluginHotkeys,
+  useCorePlugins,
+} from "@noteriv/ui/plugins";
 import type { EditorApi } from "@noteriv/plugin-api";
 import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
@@ -379,7 +385,8 @@ export default function VaultPage() {
   // Core plugins (Plugin API v1, trusted tier): loaded in-page by dynamic import, state in vault settings.
   const activePathRef = useRef<string | null>(null);
   activePathRef.current = activeTab?.path ?? null;
-  const corePluginHost = useWebCorePlugins(vaultAdapter, {
+  const corePluginConfig = useMemo(() => webCorePluginConfig(vaultAdapter), [vaultAdapter]);
+  const corePluginHost = useCorePluginHost(corePluginConfig, {
     editor: editorBridge,
     getCurrentFile: () => activePathRef.current,
     openFile: (path) => {

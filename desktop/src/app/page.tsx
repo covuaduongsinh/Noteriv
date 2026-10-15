@@ -17,7 +17,15 @@ import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
 import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
-import { refFromAbsolutePath } from "@noteriv/core/vault-adapter";
+import { refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
+import {
+  CorePluginRibbonButtons,
+  CorePluginStatusItems,
+  useCorePluginHost,
+  useCorePluginHotkeys,
+  useCorePlugins,
+} from "@noteriv/ui/plugins";
+import { desktopCorePluginConfig } from "@/lib/core-plugins";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import NoteComposer from "@/components/NoteComposer";
 import FileRecovery from "@/components/FileRecovery";
@@ -1692,6 +1700,64 @@ export default function Home() {
     return window.electronAPI.onMenuOpenFolder(handleOpenFolderAsVault);
   }, [handleOpenFolderAsVault]);
 
+  // ============================================================
+  // Core plugins (Plugin API v1, trusted tier): dynamic import, state in .noteriv/plugin-config.json
+  // ============================================================
+
+  const corePluginConfig = useMemo(
+    () => (vaultAdapter && activeVaultPath ? desktopCorePluginConfig(activeVaultPath, vaultAdapter) : null),
+    [vaultAdapter, activeVaultPath]
+  );
+  const corePluginHost = useCorePluginHost(corePluginConfig, {
+    editor: {
+      getContent: () => (activeTabRef.current ? contentRef.current : null),
+      setContent: (next) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+      },
+      insertAtCursor: (text) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const pos = view.state.selection.main.head;
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+      },
+      getSelection: () => {
+        const view = editorViewRef.current;
+        if (!view) return "";
+        return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+      },
+      replaceSelection: (text) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch(view.state.replaceSelection(text));
+      },
+      getCursorPosition: () => {
+        const view = editorViewRef.current;
+        if (!view) return { line: 0, ch: 0 };
+        const head = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(head);
+        return { line: line.number - 1, ch: head - line.from };
+      },
+    },
+    getCurrentFile: () => (activeTabRef.current && activeVaultPath ? relativeVaultPath(activeVaultPath, activeTabRef.current) : null),
+    openFile: async (path) => {
+      const ref = (await vaultAdapter?.listNotes())?.find((n) => n.path === path);
+      if (!ref) return false;
+      await openFile(ref.id);
+      return true;
+    },
+  });
+  const corePlugins = useCorePlugins(corePluginHost.host);
+  useCorePluginHotkeys(corePlugins.contributions.commands);
+
+  // App events for core plugins. Text tabs only: canvas/drawing/PDF tabs have no editor content.
+  const coreEventTab = currentTab && !currentTab.kind ? currentTab.filePath : null;
+  useEffect(() => {
+    if (coreEventTab && activeVaultPath) corePluginHost.host?.emit("file-open", relativeVaultPath(activeVaultPath, coreEventTab));
+  }, [coreEventTab, activeVaultPath, corePluginHost.host]);
+  useEffect(() => {
+    if (coreEventTab) corePluginHost.host?.emit("editor-change", content);
+  }, [content, coreEventTab, corePluginHost.host]);
+
   // Web clipper: refresh sidebar when a note is clipped
   useEffect(() => {
     if (typeof window === "undefined" || !window.electronAPI || appState !== "app") return;
@@ -1845,6 +1911,7 @@ export default function Home() {
               </button>
             </div>
             <div className="ribbon-bottom">
+              <CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />
               <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -2061,6 +2128,9 @@ export default function Home() {
                 <span>{content.length} chars</span>
               </>
             )}
+            {!currentTab?.kind && (
+              <CorePluginStatusItems items={corePlugins.contributions.statusItems} buttonClassName="cursor-pointer hover:text-[var(--text-secondary)]" />
+            )}
             {!currentTab?.kind && pluginManagerRef.current?.getStatusBarItems().map((item) => (
               <span
                 key={item.id}
@@ -2088,6 +2158,8 @@ export default function Home() {
           onVaultUpdate={(v) => { setActiveVault(v); setVaults((prev) => prev.map((x) => x.id === v.id ? v : x)); }}
           onOpenPlugins={() => { setShowSettings(false); setShowPluginManager(true); }}
           onOpenSnippets={() => { setShowSettings(false); setShowCSSSnippets(true); }}
+          corePlugins={corePlugins.plugins}
+          onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -2113,12 +2185,22 @@ export default function Home() {
 
       {/* Command palette (Ctrl+Shift+P) */}
       {showCommandPalette && (
-        <CommandPalette
+        <CommandPalette<string>
           hotkeys={hotkeys}
           platform={platform}
           recentActions={recentCommands}
-          onExecute={handleCommandExecute}
-          onRecent={handleRecentCommand}
+          extraItems={corePlugins.contributions.commands.map((c) => ({
+            action: `core:${c.key}`,
+            label: c.name,
+            // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
+            keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
+            category: "Core plugin",
+          }))}
+          onExecute={(action) => {
+            if (action.startsWith("core:")) corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();
+            else handleCommandExecute(action as HotkeyAction);
+          }}
+          onRecent={(action) => handleRecentCommand(action as HotkeyAction)}
           onClose={() => setShowCommandPalette(false)}
         />
       )}
@@ -2350,6 +2432,21 @@ export default function Home() {
           onFileSelect={(f) => { openFile(f); setShowVaultInsights(false); }}
           onClose={() => setShowVaultInsights(false)}
         />
+      )}
+
+      {/* Notices from core plugins (api.ui.showNotice) */}
+      {corePluginHost.notices.length > 0 && (
+        <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
+          {corePluginHost.notices.map((n) => (
+            <div
+              key={n.key}
+              onClick={() => corePluginHost.dismissNotice(n.key)}
+              className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
+            >
+              {n.message}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
