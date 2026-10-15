@@ -9,6 +9,12 @@ describe("countText", () => {
     expect(countText(note).words).toBe(11);
   });
 
+  it("skips fenced blocks such as FEN diagrams, including an unclosed one", () => {
+    const note = "These are five words.\n\n```chessboard\nfen: rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq - 0 1\n```\n\nTwo more.";
+    expect(countText(note).words).toBe(6);
+    expect(countText("one two\n```\nnever closed code").words).toBe(2);
+  });
+
   it("keeps joined words together and reports zero for an empty note", () => {
     expect(countText("don't re-enter").words).toBe(2);
     expect(countText("")).toEqual({ words: 0, characters: 0, readingMinutes: 0 });
