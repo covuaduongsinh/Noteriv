@@ -60,6 +60,15 @@ export default function LoginPage() {
             Đăng ký
           </Link>
         </p>
+        <p className="text-xs text-[var(--text-secondary)] text-center">
+          <Link href="/terms" className="hover:text-[var(--text-primary)]">
+            Điều khoản
+          </Link>
+          {" · "}
+          <Link href="/privacy" className="hover:text-[var(--text-primary)]">
+            Quyền riêng tư
+          </Link>
+        </p>
       </form>
     </div>
   );
