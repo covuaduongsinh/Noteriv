@@ -1,58 +1,62 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
+import type { NoteRef } from "@noteriv/core/vault-adapter";
 
-interface QuickOpenFile {
-  filePath: string;
-  fileName: string;
-  relativePath: string;
+export interface QuickOpenLabels {
+  placeholder: string;
+  empty: string;
 }
 
-interface QuickOpenProps {
-  vaultPath: string;
-  onSelect: (filePath: string) => void;
+const DEFAULT_LABELS: QuickOpenLabels = { placeholder: "Type to search notes...", empty: "No notes found" };
+
+export interface QuickOpenProps {
+  /** Lists what can be opened. The host decides: the web app lists notes, the desktop app every file. */
+  load: () => Promise<NoteRef[]>;
+  onSelect: (id: string) => void;
   onClose: () => void;
+  labels?: Partial<QuickOpenLabels>;
 }
 
-export default function QuickOpen({ vaultPath, onSelect, onClose }: QuickOpenProps) {
+export default function QuickOpen({ load, onSelect, onClose, labels }: QuickOpenProps) {
+  const text = { ...DEFAULT_LABELS, ...labels };
   const [query, setQuery] = useState("");
-  const [files, setFiles] = useState<QuickOpenFile[]>([]);
-  const [filtered, setFiltered] = useState<QuickOpenFile[]>([]);
+  const [notes, setNotes] = useState<NoteRef[]>([]);
+  const [filtered, setFiltered] = useState<NoteRef[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Load all files on mount
+  // Load all notes on mount
   useEffect(() => {
-    if (!window.electronAPI) return;
-    window.electronAPI.listAllFiles(vaultPath).then(setFiles);
-  }, [vaultPath]);
+    let cancelled = false;
+    load().then((entries) => {
+      if (!cancelled) setNotes(entries);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [load]);
 
-  // Filter files as query changes
+  // Filter notes as query changes
   useEffect(() => {
     if (!query.trim()) {
-      setFiltered(files.slice(0, 50));
+      setFiltered(notes.slice(0, 50));
       setSelectedIdx(0);
       return;
     }
     const lower = query.toLowerCase();
-    const matches = files
-      .filter(
-        (f) =>
-          f.fileName.toLowerCase().includes(lower) ||
-          f.relativePath.toLowerCase().includes(lower)
-      )
+    const matches = notes
+      .filter((n) => n.name.toLowerCase().includes(lower) || n.path.toLowerCase().includes(lower))
       .slice(0, 50);
     setFiltered(matches);
     setSelectedIdx(0);
-  }, [query, files]);
+  }, [query, notes]);
 
-  // Focus input
   useEffect(() => {
     inputRef.current?.focus();
   }, []);
 
-  // Scroll selected into view
   useEffect(() => {
     const list = listRef.current;
     if (!list) return;
@@ -73,7 +77,7 @@ export default function QuickOpen({ vaultPath, onSelect, onClose }: QuickOpenPro
       } else if (e.key === "Enter") {
         e.preventDefault();
         if (filtered[selectedIdx]) {
-          onSelect(filtered[selectedIdx].filePath);
+          onSelect(filtered[selectedIdx].id);
           onClose();
         }
       }
@@ -95,28 +99,24 @@ export default function QuickOpen({ vaultPath, onSelect, onClose }: QuickOpenPro
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Type to search files..."
+            placeholder={text.placeholder}
             className="palette-input"
           />
         </div>
 
         <div className="palette-list" ref={listRef}>
-          {filtered.map((f, i) => (
+          {filtered.map((n, i) => (
             <button
-              key={f.filePath}
+              key={n.id}
               className={`palette-item ${i === selectedIdx ? "palette-item-active" : ""}`}
-              onClick={() => { onSelect(f.filePath); onClose(); }}
+              onClick={() => { onSelect(n.id); onClose(); }}
               onMouseEnter={() => setSelectedIdx(i)}
             >
-              <span className="palette-item-name">{f.fileName}</span>
-              <span className="palette-item-path">
-                {f.relativePath.replace(/\.(md|markdown)$/i, "")}
-              </span>
+              <span className="palette-item-name">{n.name}</span>
+              <span className="palette-item-path">{n.path.replace(/\.(md|markdown)$/i, "")}</span>
             </button>
           ))}
-          {filtered.length === 0 && (
-            <div className="palette-empty">No files found</div>
-          )}
+          {filtered.length === 0 && <div className="palette-empty">{text.empty}</div>}
         </div>
       </div>
     </div>

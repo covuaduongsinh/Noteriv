@@ -7,8 +7,7 @@ import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
 import { Editor, SourceEditor, ReadOnlyView, FormattingToolbar, runFormattingAction } from "@noteriv/ui/editor";
 import SplitPane from "@/components/SplitPane";
-import QuickOpen from "@/components/QuickOpen";
-import BacklinksPanel from "@/components/BacklinksPanel";
+import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel } from "@noteriv/ui/panels";
 import CollabPanel from "@/components/CollabPanel";
 import PluginManager from "@/components/PluginManager";
 import CalendarView from "@/components/CalendarView";
@@ -21,10 +20,7 @@ import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
-import OutlinePanel from "@/components/OutlinePanel";
-import TagPane from "@/components/TagPane";
 import SettingsModal from "@/components/SettingsModal";
-import CommandPalette from "@/components/CommandPalette";
 import ImportVault from "@/components/ImportVault";
 import PluginMirror from "@/components/PluginMirror";
 import LintPanel from "@/components/LintPanel";
@@ -32,7 +28,6 @@ import DiagnosticsModal from "@/components/DiagnosticsModal";
 import { createUntitledNote } from "@/lib/note-names";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
-import BookmarksPanel from "@/components/BookmarksPanel";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import VaultInsights from "@/components/VaultInsights";
 import TemplatePicker from "@/components/TemplatePicker";
@@ -122,6 +117,7 @@ export default function VaultPage() {
   const searchParams = useSearchParams();
   const vaultId = params.vaultId;
   const vaultAdapter = useMemo(() => createWebVaultAdapter(vaultId), [vaultId]);
+  const listNotes = useCallback(() => vaultAdapter.listNotes(), [vaultAdapter]);
 
   const [vault, setVault] = useState<ApiVault | null>(null);
   const [allVaults, setAllVaults] = useState<ApiVault[]>([]);
@@ -1494,6 +1490,12 @@ export default function VaultPage() {
                       onNoteSelect={openNote}
                       onBookmarkRemove={handleToggleBookmark}
                       onClose={() => setBookmarksVisible(false)}
+                      labels={{
+                        empty: "Chưa có bookmark nào.",
+                        hint: "Bấm icon bookmark trên thanh công cụ note để đánh dấu.",
+                        close: "Đóng",
+                        remove: "Bỏ bookmark",
+                      }}
                     />
                   </div>
                 )}
@@ -1585,7 +1587,7 @@ export default function VaultPage() {
 
       {quickOpenVisible && (
         <QuickOpen
-          vaultId={vaultId}
+          load={listNotes}
           onSelect={(noteId) => openNote(noteId)}
           onClose={() => setQuickOpenVisible(false)}
         />
@@ -1632,7 +1634,8 @@ export default function VaultPage() {
       )}
 
       {commandPaletteOpen && (
-        <CommandPalette
+        <CommandPalette<string>
+          labels={{ placeholder: "Gõ để tìm lệnh…", recent: "Gần đây", empty: "Không tìm thấy lệnh nào" }}
           hotkeys={hotkeyBindings}
           extraItems={pluginHost.commands.map((c) => ({
             action: `plugin:${c.pluginDbId}:${c.id}`,

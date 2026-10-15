@@ -9,16 +9,11 @@ import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import SettingsModal from "@/components/SettingsModal";
-import QuickOpen from "@/components/QuickOpen";
+import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
 import VaultSearch from "@/components/VaultSearch";
-import CommandPalette from "@/components/CommandPalette";
-import OutlinePanel from "@/components/OutlinePanel";
-import BacklinksPanel from "@/components/BacklinksPanel";
-import TagPane from "@/components/TagPane";
 import TemplatePicker from "@/components/TemplatePicker";
-import BookmarksPanel from "@/components/BookmarksPanel";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
-import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop } from "@/lib/ui-hooks";
+import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
 import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
 import { refFromAbsolutePath } from "@noteriv/core/vault-adapter";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
@@ -164,6 +159,10 @@ export default function Home() {
       setDataviewSource(null);
     };
   }, [activeVaultPath]);
+  const listFiles = useMemo(
+    () => (activeVaultPath ? createDesktopFileLister(activeVaultPath) : async () => []),
+    [activeVaultPath]
+  );
   const onImageDrop = useMemo(
     () => (activeVaultPath ? createDesktopImageDrop(activeVaultPath) : undefined),
     [activeVaultPath]
@@ -2001,16 +2000,18 @@ export default function Home() {
         <TagPane
           adapter={vaultAdapter}
           onTagClick={() => {}}
-          onFileSelect={openFile}
+          onNoteSelect={openFile}
           visible={showTagPane}
         />
-        <BookmarksPanel
-          notes={bookmarkedNotes}
-          currentFile={activeTab}
-          onFileSelect={openFile}
-          onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}
-          visible={bookmarks.length > 0 || showTagPane}
-        />
+        {(bookmarks.length > 0 || showTagPane) && (
+          <BookmarksPanel
+            notes={bookmarkedNotes}
+            currentNoteId={activeTab}
+            onNoteSelect={openFile}
+            onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}
+            labels={{ hint: "Right-click a file or use Ctrl+B to bookmark." }}
+          />
+        )}
         {showLintPanel && currentTab && activeVault && (
           <LintPanel
             content={content}
@@ -2092,7 +2093,8 @@ export default function Home() {
       {/* Quick open (Ctrl+P) */}
       {showQuickOpen && activeVault && (
         <QuickOpen
-          vaultPath={activeVault.path}
+          load={listFiles}
+          labels={{ placeholder: "Type to search files...", empty: "No files found" }}
           onSelect={openFile}
           onClose={() => setShowQuickOpen(false)}
         />

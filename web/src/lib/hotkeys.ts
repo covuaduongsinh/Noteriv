@@ -174,17 +174,7 @@ export function matchesHotkey(e: KeyboardEvent, keys: string): boolean {
 }
 
 /** Format a key combo for display — replaces Ctrl with Cmd on macOS. */
-export function formatHotkey(keys: string, platform: string): string {
-  if (!keys) return "";
-  if (platform === "darwin") {
-    return keys
-      .replace(/Ctrl/g, "⌘")
-      .replace(/Shift/g, "⇧")
-      .replace(/Alt/g, "⌥")
-      .replace(/\+/g, "");
-  }
-  return keys;
-}
+export { formatHotkey } from "@noteriv/ui/panels/format-hotkey";
 
 /** Convert a KeyboardEvent to a key combo string. Used when recording a new binding. */
 export function eventToKeyString(e: KeyboardEvent): string | null {

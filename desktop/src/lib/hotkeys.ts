@@ -220,16 +220,7 @@ export function matchesHotkey(e: KeyboardEvent, keys: string): boolean {
 /**
  * Format a key combo for display — replaces Ctrl with Cmd on macOS.
  */
-export function formatHotkey(keys: string, platform: string): string {
-  if (platform === "darwin") {
-    return keys
-      .replace(/Ctrl/g, "\u2318")
-      .replace(/Shift/g, "\u21E7")
-      .replace(/Alt/g, "\u2325")
-      .replace(/\+/g, "");
-  }
-  return keys;
-}
+export { formatHotkey } from "@noteriv/ui/panels/format-hotkey";
 
 /**
  * Convert a KeyboardEvent to a key combo string.

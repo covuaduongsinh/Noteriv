@@ -1,10 +1,19 @@
 import type { DataviewSource, LocalImageLoader } from "@noteriv/ui/markdown";
+import { refFromAbsolutePath, type NoteRef } from "@noteriv/core/vault-adapter";
 
 /** Local images in a note live as files under the vault folder; the renderer asks for them by relative path. */
 export function createDesktopImageLoader(vaultPath: string): LocalImageLoader {
   return {
     resolve: (src) => `${vaultPath}/${src}`,
     load: async (absolutePath) => (await window.electronAPI?.readBinaryFile?.(absolutePath)) ?? null,
+  };
+}
+
+/** Quick Open on desktop lists every file in the vault (PDFs and images open too), not only markdown notes. */
+export function createDesktopFileLister(vaultPath: string): () => Promise<NoteRef[]> {
+  return async () => {
+    const files = (await window.electronAPI?.listAllFiles(vaultPath)) ?? [];
+    return files.map((f) => refFromAbsolutePath(vaultPath, f.filePath));
   };
 }
 

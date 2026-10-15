@@ -156,7 +156,7 @@ function TagTreeItem({
                 e.stopPropagation();
                 onNoteSelect(note.id);
               }}
-              title={note.name}
+              title={note.path}
             >
               <svg width="12" height="12" viewBox="0 0 16 16" fill="none" className="tag-file-icon">
                 <path d="M4 2h5l4 4v8a1 1 0 01-1 1H4a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.2" fill="none" />

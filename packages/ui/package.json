@@ -12,6 +12,7 @@
     "./editor": "./src/editor/index.ts",
     "./editor/*": "./src/editor/*.ts",
     "./panels": "./src/panels/index.ts",
+    "./panels/*": "./src/panels/*.ts",
     "./styles/*": "./styles/*"
   },
   "scripts": {
