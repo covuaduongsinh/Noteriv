@@ -19,6 +19,8 @@ COPY web/package.json web/
 COPY desktop/package.json desktop/
 COPY packages/core/package.json packages/core/
 COPY packages/ui/package.json packages/ui/
+COPY packages/plugin-api/package.json packages/plugin-api/
+COPY packages/plugins/package.json packages/plugins/
 # -w @noteriv/ui as well: its own dependencies (mermaid, katex) are not web dependencies any more.
 RUN npm install -w web -w @noteriv/ui --include-workspace-root --no-audit --no-fund
 

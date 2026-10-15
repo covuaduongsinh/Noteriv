@@ -15,8 +15,10 @@ import PluginMirror from "@/components/PluginMirror";
 import ClipperSection from "@/components/ClipperSection";
 import type { PluginPanelRef } from "@/lib/plugin-sandbox/types";
 import type { MirrorEvent } from "@/lib/plugin-sandbox/mirror";
+import { CorePluginsSection } from "@noteriv/ui/plugins";
+import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 
-type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "ecosystem" | "clipper";
+type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper";
 /** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
 type Section = BuiltInSection | `plugin:${string}`;
 
@@ -26,6 +28,7 @@ const SECTIONS: { id: BuiltInSection; label: string }[] = [
   { id: "editor", label: "Editor" },
   { id: "shortcuts", label: "Shortcuts" },
   { id: "sync", label: "Sync" },
+  { id: "corePlugins", label: "Core plugins" },
   { id: "ecosystem", label: "Ecosystem" },
   { id: "clipper", label: "Clipper" },
 ];
@@ -61,6 +64,9 @@ interface SettingsModalProps {
   /** Settings tabs registered by plugins (ui.addSettingsTab). */
   pluginTabs?: PluginPanelRef[];
   onPluginEvent?: (tab: PluginPanelRef, e: MirrorEvent) => void;
+  /** Built-in plugins (Plugin API v1 core tier) and their on/off switch. */
+  corePlugins?: CorePluginInfo[];
+  onToggleCorePlugin?: (id: string, enabled: boolean) => void;
 }
 
 export default function SettingsModal({
@@ -79,6 +85,8 @@ export default function SettingsModal({
   initialSection,
   pluginTabs = [],
   onPluginEvent,
+  corePlugins = [],
+  onToggleCorePlugin,
 }: SettingsModalProps) {
   const [active, setActive] = useState<Section>(initialSection ?? "general");
   const [recording, setRecording] = useState<HotkeyAction | null>(null);
@@ -387,6 +395,20 @@ export default function SettingsModal({
     editor: renderEditor,
     shortcuts: renderShortcuts,
     sync: () => <SyncSection vaultId={vaultId} />,
+    corePlugins: () => (
+      <CorePluginsSection
+        plugins={corePlugins}
+        onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)}
+        labels={{
+          intro: "Plugin có sẵn của Noteriv, bật/tắt riêng cho vault này. Plugin tắt thì mã của nó không được tải.",
+          empty: "Chưa có core plugin nào.",
+          loading: "Đang tải…",
+          failed: "Không tải được",
+          enable: "Bật",
+          disable: "Tắt",
+        }}
+      />
+    ),
     ecosystem: renderEcosystem,
     clipper: () => <ClipperSection vaultId={vaultId} vaultName={vaultName ?? "vault này"} />,
   };

@@ -10,5 +10,7 @@ export {
   type HostRibbonIcon,
   type HostPanel,
 } from "./core-plugin-host";
-export { useCorePlugins } from "./use-core-plugins";
+export { useCorePlugins, useCorePluginHotkeys } from "./use-core-plugins";
+export { matchesHotkey, parseHotkey, isMacPlatform } from "./hotkey";
 export { default as CorePluginsSection, type CorePluginsSectionProps, type CorePluginsLabels } from "./CorePluginsSection";
+export { CorePluginRibbonButtons, CorePluginStatusItems } from "./CorePluginButtons";

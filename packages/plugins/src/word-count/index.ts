@@ -49,7 +49,7 @@ const wordCount: CorePlugin = {
     update();
     api.events.on("editor-change", update);
     api.events.on("file-open", () => update());
-    api.ui.addCommand({ id: "show", name: t.command, hotkey: "Mod+Shift+W", callback: show });
+    api.ui.addCommand({ id: "show", name: t.command, hotkey: "Mod+Alt+W", callback: show });
     api.ui.addRibbonIcon({ id: "show", title: t.ribbon, icon: ICON, onClick: show });
   },
 };

@@ -10,6 +10,8 @@ import {
   CorePluginsSection,
   listVaultEntries,
   settingsKeyStateStore,
+  matchesHotkey,
+  useCorePluginHotkeys,
   useCorePlugins,
   type CorePluginHost,
 } from "../src/plugins";
@@ -231,5 +233,37 @@ describe("CorePluginsSection with useCorePlugins", () => {
     expect(el.querySelector("output")!.textContent).toBe("");
     await act(async () => root.unmount());
     el.remove();
+  });
+});
+
+describe("plugin hotkeys", () => {
+  const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
+
+  it("matches Mod per platform and uses the physical key", () => {
+    expect(matchesHotkey(key({ ctrlKey: true, altKey: true, code: "KeyW", key: "w" }), "Mod+Alt+W", false)).toBe(true);
+    expect(matchesHotkey(key({ metaKey: true, altKey: true, code: "KeyW", key: "∑" }), "Mod+Alt+W", true)).toBe(true);
+    expect(matchesHotkey(key({ ctrlKey: true, code: "KeyW", key: "w" }), "Mod+Alt+W", false)).toBe(false);
+    expect(matchesHotkey(key({ ctrlKey: true, shiftKey: true, altKey: true, code: "KeyW", key: "W" }), "Mod+Alt+W", false)).toBe(false);
+  });
+
+  it("runs a command unless the app already handled the key", async () => {
+    const run = vi.fn();
+    const commands = [{ pluginId: "p", key: "p:c", id: "c", name: "C", hotkey: "Ctrl+Alt+W", run }];
+    function Harness() {
+      useCorePluginHotkeys(commands);
+      return null;
+    }
+    const el = document.createElement("div");
+    const root = createRoot(el);
+    await act(async () => root.render(createElement(Harness)));
+    window.dispatchEvent(key({ ctrlKey: true, altKey: true, code: "KeyW", key: "w" }));
+    await new Promise((r) => setTimeout(r, 5));
+    expect(run).toHaveBeenCalledOnce();
+    const handled = key({ ctrlKey: true, altKey: true, code: "KeyW", key: "w" });
+    handled.preventDefault();
+    window.dispatchEvent(handled);
+    await new Promise((r) => setTimeout(r, 5));
+    expect(run).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
   });
 });

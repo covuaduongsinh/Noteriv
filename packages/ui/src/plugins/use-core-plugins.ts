@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useRef, useSyncExternalStore } from "react";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
-import type { CorePluginContributions, CorePluginHost } from "./core-plugin-host";
+import type { CorePluginContributions, CorePluginHost, HostCommand } from "./core-plugin-host";
+import { isMacPlatform, matchesHotkey } from "./hotkey";
 
 const NO_PLUGINS: CorePluginInfo[] = [];
 const NO_CONTRIBUTIONS: CorePluginContributions = {
@@ -32,4 +33,26 @@ export function useCorePlugins(host: CorePluginHost | null) {
     [host]
   );
   return { plugins, contributions, setEnabled };
+}
+
+/**
+ * Runs plugin commands from their `hotkey`. App shortcuts win: the check waits until every keydown listener ran and
+ * skips a key the app handled (`defaultPrevented`), so a plugin cannot take over Ctrl+S and the like whatever order
+ * the listeners were added in.
+ */
+export function useCorePluginHotkeys(commands: HostCommand[]) {
+  const ref = useRef(commands);
+  ref.current = commands;
+  useEffect(() => {
+    const mac = isMacPlatform();
+    const onKey = (e: KeyboardEvent) => {
+      const cmd = ref.current.find((c) => c.hotkey && matchesHotkey(e, c.hotkey, mac));
+      if (!cmd) return;
+      setTimeout(() => {
+        if (!e.defaultPrevented) cmd.run();
+      }, 0);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
 }

@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@noteriv/core": "*",
+    "@noteriv/plugin-api": "*",
+    "@noteriv/plugins": "*",
     "@noteriv/ui": "*",
     "@codemirror/autocomplete": "^6.20.1",
     "@codemirror/commands": "^6.10.2",

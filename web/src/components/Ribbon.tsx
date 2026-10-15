@@ -53,6 +53,8 @@ interface RibbonProps {
   syncAttention?: boolean;
   /** Sidebar panels registered by plugins; one extra button each. */
   pluginPanels?: { key: string; title: string; icon?: string }[];
+  /** Ribbon buttons of core plugins, rendered by @noteriv/ui (CorePluginRibbonButtons). */
+  coreRibbon?: React.ReactNode;
   activePluginPanel?: string | null;
   onPluginPanel?: (key: string) => void;
   outlineActive?: boolean;
@@ -74,7 +76,7 @@ export default function Ribbon(props: RibbonProps) {
   const {
     onQuickOpen, onNewNote, onDailyNote, onCommandPalette, onGraph, onSearch, onCalendar, onSettings,
     onOutline, onTags, onBookmarks, onSync, onPlugins, syncAttention, pluginPanels = [], activePluginPanel = null,
-    onPluginPanel, outlineActive, tagsActive, bookmarksActive,
+    onPluginPanel, outlineActive, tagsActive, bookmarksActive, coreRibbon,
   } = props;
 
   const [moreOpen, setMoreOpen] = useState(false);
@@ -146,6 +148,7 @@ export default function Ribbon(props: RibbonProps) {
         </button>
       </div>
       <div className="ribbon-bottom" style={{ flexShrink: 0 }}>
+        {coreRibbon}
         {pluginPanels.map((p) => (
           <button
             key={p.key}

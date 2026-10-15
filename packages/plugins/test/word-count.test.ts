@@ -41,7 +41,7 @@ describe("word-count plugin", () => {
     expect(status.get("count")?.text).toBe("3 words");
     handlers.get("editor-change")!("just one");
     expect(status.get("count")?.text).toBe("2 words");
-    expect(ui.addCommand).toHaveBeenCalledWith(expect.objectContaining({ id: "show", hotkey: "Mod+Shift+W" }));
+    expect(ui.addCommand).toHaveBeenCalledWith(expect.objectContaining({ id: "show", hotkey: "Mod+Alt+W" }));
     expect(ui.addRibbonIcon).toHaveBeenCalledOnce();
   });
 

@@ -43,6 +43,9 @@ import { createWebDataviewSource } from "@/lib/ui-hooks";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
+import { useWebCorePlugins } from "@/lib/core-plugins";
+import { CorePluginRibbonButtons, CorePluginStatusItems, useCorePluginHotkeys, useCorePlugins } from "@noteriv/ui/plugins";
+import type { EditorApi } from "@noteriv/plugin-api";
 import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
@@ -281,7 +284,7 @@ export default function VaultPage() {
     await webApi.notes.update(vaultId, noteId, { content });
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
     refreshIndex();
-    pluginHost.emitEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
+    emitPluginEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
   }
 
   function scheduleSave(noteId: string, content: string) {
@@ -342,10 +345,7 @@ export default function VaultPage() {
     webApi.vaults.index(vaultId).then(setIndex);
   }, [vaultId]);
 
-  const pluginHost = usePluginHost(
-    vaultId,
-    index,
-    {
+  const editorBridge: EditorApi = {
       getContent: () => draftRef.current,
       setContent: (content) => onDraftChange(content),
       insertAtCursor: (text) => {
@@ -366,9 +366,36 @@ export default function VaultPage() {
         const sel = view.state.selection.main;
         view.dispatch({ changes: { from: sel.from, to: sel.to, insert: text } });
       },
+      getCursorPosition: () => {
+        const view = editorViewRef.current;
+        if (!view) return { line: 0, ch: 0 };
+        const head = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(head);
+        return { line: line.number - 1, ch: head - line.from };
+      },
+  };
+  const pluginHost = usePluginHost(vaultId, index, editorBridge, refreshIndex);
+
+  // Core plugins (Plugin API v1, trusted tier): loaded in-page by dynamic import, state in vault settings.
+  const activePathRef = useRef<string | null>(null);
+  activePathRef.current = activeTab?.path ?? null;
+  const corePluginHost = useWebCorePlugins(vaultAdapter, {
+    editor: editorBridge,
+    getCurrentFile: () => activePathRef.current,
+    openFile: (path) => {
+      const note = index?.notes.find((n) => n.path === path);
+      if (!note) return false;
+      openNote(note.id);
+      return true;
     },
-    refreshIndex
-  );
+  });
+  const corePlugins = useCorePlugins(corePluginHost.host);
+  useCorePluginHotkeys(corePlugins.contributions.commands);
+  /** Both plugin tiers receive the same app events. */
+  const emitPluginEvent = (event: Parameters<typeof pluginHost.emitEvent>[0], ...args: unknown[]) => {
+    pluginHost.emitEvent(event, ...args);
+    corePluginHost.host?.emit(event, ...args);
+  };
 
   // --- Plugin sandbox feeds (sync editor snapshot + desktop-style events) ---
   // The sandbox's api.editor.* are synchronous like desktop's, so we push a
@@ -412,13 +439,13 @@ export default function VaultPage() {
   const prevDraftRef = useRef<{ tabId: string | null; content: string }>({ tabId: null, content: "" });
   useEffect(() => {
     const prev = prevDraftRef.current;
-    if (prev.tabId === activeTabId && prev.content !== draft) pluginHost.emitEvent("editor-change", draft);
+    if (prev.tabId === activeTabId && prev.content !== draft) emitPluginEvent("editor-change", draft);
     prevDraftRef.current = { tabId: activeTabId, content: draft };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, activeTabId]);
 
   useEffect(() => {
-    if (activePath) pluginHost.emitEvent("file-open", activePath);
+    if (activePath) emitPluginEvent("file-open", activePath);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
@@ -432,17 +459,17 @@ export default function VaultPage() {
     let changed = false;
     for (const [id, path] of current) {
       if (!prev.has(id)) {
-        pluginHost.emitEvent("file-create", path);
+        emitPluginEvent("file-create", path);
         changed = true;
       }
     }
     for (const [id, path] of prev) {
       if (!current.has(id)) {
-        pluginHost.emitEvent("file-delete", path);
+        emitPluginEvent("file-delete", path);
         changed = true;
       }
     }
-    if (changed) pluginHost.emitEvent("vault-change");
+    if (changed) emitPluginEvent("vault-change");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
@@ -1327,6 +1354,7 @@ export default function VaultPage() {
             pluginPanels={pluginHost.panels
               .filter((p) => p.kind === "sidebar")
               .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
+            coreRibbon={<CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />}
             activePluginPanel={activePluginPanel}
             onPluginPanel={(key) => {
               setActivePluginPanel((cur) => (cur === key ? null : key));
@@ -1537,6 +1565,7 @@ export default function VaultPage() {
                   onOpenSync={() => openSettings("sync")}
                   pluginItems={pluginHost.statusItems}
                   onPluginItemClick={pluginHost.clickStatusItem}
+                  coreItems={<CorePluginStatusItems items={corePlugins.contributions.statusItems} buttonClassName="hover:text-[var(--text-primary)]" />}
                 />
               )}
             </>
@@ -1615,6 +1644,8 @@ export default function VaultPage() {
           vaultId={vaultId}
           vaultName={vault?.name}
           pluginTabs={pluginHost.panels.filter((p) => p.kind === "settings")}
+          corePlugins={corePlugins.plugins}
+          onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
           onPluginEvent={(tab, e) => pluginHost.sendMirrorEvent(tab.pluginDbId, "settings", tab.id, e)}
           currentThemeId={currentThemeId}
           onThemeSelect={handleThemeSelect}
@@ -1637,16 +1668,27 @@ export default function VaultPage() {
         <CommandPalette<string>
           labels={{ placeholder: "Gõ để tìm lệnh…", recent: "Gần đây", empty: "Không tìm thấy lệnh nào" }}
           hotkeys={hotkeyBindings}
-          extraItems={pluginHost.commands.map((c) => ({
-            action: `plugin:${c.pluginDbId}:${c.id}`,
-            label: c.name,
-            keys: "",
-            category: `Plugin · ${c.pluginId}`,
-          }))}
+          extraItems={[
+            ...corePlugins.contributions.commands.map((c) => ({
+              action: `core:${c.key}`,
+              label: c.name,
+              // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
+              keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
+              category: "Core plugin",
+            })),
+            ...pluginHost.commands.map((c) => ({
+              action: `plugin:${c.pluginDbId}:${c.id}`,
+              label: c.name,
+              keys: "",
+              category: `Plugin · ${c.pluginId}`,
+            })),
+          ]}
           platform={platform}
           recentActions={recentCommands}
           onExecute={(action) => {
-            if (action.startsWith("plugin:")) {
+            if (action.startsWith("core:")) {
+              corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();
+            } else if (action.startsWith("plugin:")) {
               const [, dbId, ...rest] = action.split(":");
               pluginHost.runCommand(dbId, rest.join(":"));
             } else {
@@ -1894,12 +1936,12 @@ export default function VaultPage() {
         </div>
       )}
 
-      {pluginHost.notices.length > 0 && (
+      {pluginHost.notices.length + corePluginHost.notices.length > 0 && (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
-          {pluginHost.notices.map((n) => (
+          {[...pluginHost.notices, ...corePluginHost.notices].map((n) => (
             <div
               key={n.key}
-              onClick={() => pluginHost.dismissNotice(n.key)}
+              onClick={() => (n.key.startsWith("core:") ? corePluginHost.dismissNotice(n.key) : pluginHost.dismissNotice(n.key))}
               className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
             >
               {n.message}
