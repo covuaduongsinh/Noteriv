@@ -53,7 +53,7 @@ tag-utils + frontmatter-utils ──> vault-insights-utils   (loại B)
 ### Phát hiện trong lúc chuyển
 
 1. **Lỗi treo vô hạn** trong `markdownToHTML` với mục danh sách rỗng (`"- "`, `"1. "`), có sẵn ở cả hai app. Đã sửa (`(.*)` thay `(.+)`), có test hồi quy; các job CI có `timeout-minutes`.
-2. **`markdownToHTML` không lọc URL `javascript:`** trong `<a href>` / `<img src>` (khác `slide-utils`). Xem rủi ro cụ thể và cách vá gọn ở file bàn giao, mục 8. Chưa sửa; test ghi lại hành vi hiện tại.
+2. **`markdownToHTML` không lọc URL `javascript:`** trong `<a href>` / `<img src>` (khác `slide-utils`). Xem rủi ro cụ thể và cách vá gọn ở file bàn giao, mục 8. Chưa sửa; test ghi lại hành vi hiện tại. **Đã sửa ở Phiên 1.3** (lọc bằng `isSafeUrl`).
 3. Lockfile gộp làm các gói `@tauri-apps/*` của desktop nhảy phiên bản; đã **ghim đúng số khớp `Cargo.lock`**. Các gói còn lại của desktop nhích lên theo bản web đang chạy ở production (CodeMirror, Tailwind…), không có thay đổi major.
 4. `dompurify` do `core` khai báo; `desktop/package.json` bỏ dòng `dompurify` vì chỉ còn đi qua `core`.
 5. Build image web trên VPS đứt mạng `ECONNRESET` lúc `npm install` (2 lần trong ngày); Dockerfile bật `NPM_CONFIG_FETCH_RETRIES`.

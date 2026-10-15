@@ -6,6 +6,7 @@
  */
 
 import { renderTocHTML } from "./toc-utils";
+import { isSafeUrl } from "./sanitize-html";
 import {
   getCodeBlockProcessor,
   type CodeBlockProcessor,
@@ -215,13 +216,15 @@ function inlineFormat(text: string): string {
   // Images: ![alt](url)
   result = result.replace(
     /!\[([^\]]*)\]\(((?:[^()]|\([^()]*\))+?)\)/g,
-    '<img src="$2" alt="$1">'
+    // A scheme isSafeUrl rejects (javascript:, vbscript:, ...) leaves the alt text, no element.
+    (_m, alt: string, url: string) => (isSafeUrl(url) ? `<img src="${url}" alt="${alt}">` : alt)
   );
 
   // Links: [text](url)
   result = result.replace(
     /\[([^\]]+)\]\(((?:[^()]|\([^()]*\))+?)\)/g,
-    '<a href="$2">$1</a>'
+    // Same rule for links: an unsafe target leaves the link text as plain text.
+    (_m, text: string, url: string) => (isSafeUrl(url) ? `<a href="${url}">${text}</a>` : text)
   );
 
   // Bold + italic: ***text*** or ___text___

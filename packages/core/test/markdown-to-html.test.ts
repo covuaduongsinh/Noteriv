@@ -101,10 +101,19 @@ describe("inline formatting", () => {
     expect(p("[t](https://x.test)").match(/<a /g)).toHaveLength(1);
     expect(p("(https://x.test/Foo_(bar))")).toContain('<a href="https://x.test/Foo_(bar)">');
   });
-  // Known gap, kept visible on purpose: unlike slide-utils this converter does not vet URL schemes, so a
-  // javascript: link is emitted as written. Output that reaches a browser must be sanitised by the caller.
-  it("does NOT filter javascript: URLs (callers must sanitise)", () => {
-    expect(p("[x](javascript:alert(1))")).toContain('href="javascript:alert(1)"');
+  it("drops unsafe URL schemes from links and images, keeping the text", () => {
+    expect(p("[x](javascript:alert(1))")).toBe("<p>x</p>");
+    expect(p("[x](JaVa	ScRiPt:alert(1))")).not.toContain("href");
+    expect(p("[x](vbscript:msgbox(1))")).toBe("<p>x</p>");
+    expect(p("![pic](javascript:alert(1))")).toBe("<p>pic</p>");
+    expect(p("[x](data:text/html;base64,AAAA)")).not.toContain("href");
+  });
+  it("keeps safe links and images unchanged", () => {
+    expect(p("[x](https://a.test/b)")).toContain('<a href="https://a.test/b">x</a>');
+    expect(p("[x](notes/other.md)")).toContain('<a href="notes/other.md">x</a>');
+    expect(p("[x](#heading)")).toContain('<a href="#heading">x</a>');
+    expect(p("![i](https://a.test/i.png)")).toContain('<img src="https://a.test/i.png" alt="i">');
+    expect(p("![i](data:image/png;base64,AAAA)")).toContain("<img ");
   });
 });
 
