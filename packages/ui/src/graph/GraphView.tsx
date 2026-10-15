@@ -1,12 +1,13 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { webApi } from "@/lib/webApi";
+import type { VaultAdapter } from "@noteriv/core/vault-adapter";
+import { buildLinkGraph } from "@noteriv/core/graph-utils";
 
 // ── Types ──
 
-interface GraphViewProps {
-  vaultId: string;
+export interface GraphViewProps {
+  adapter: VaultAdapter;
   currentNoteId: string | null;
   onNoteSelect: (noteId: string) => void;
   onClose: () => void;
@@ -45,7 +46,6 @@ const DAMPING = 0.85;
 const MIN_NODE_RADIUS = 6;
 const MAX_NODE_RADIUS = 22;
 const LABEL_FONT_SIZE = 11;
-const LINK_REGEX = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const HIT_PADDING = 4;
 
 // ── Helpers ──
@@ -84,7 +84,7 @@ function drawArrowHead(
 // ── Component ──
 
 export default function GraphView({
-  vaultId,
+  adapter,
   currentNoteId,
   onNoteSelect,
   onClose,
@@ -130,73 +130,32 @@ export default function GraphView({
   useEffect(() => { currentNoteRef.current = currentNoteId; }, [currentNoteId]);
 
   // ── Build graph data ──
-  // N+1 fetch (one request per note) — acceptable for Phase 2 vault sizes.
-  // A dedicated server-side graph/links endpoint would be a reasonable
-  // optimization once vaults grow large (not required by the Phase 2 plan).
+  // Every note is read to find its links (one request per note on web). A server-side links endpoint would be the
+  // optimisation once vaults grow large.
   useEffect(() => {
     let cancelled = false;
 
     async function buildGraph() {
       try {
-        const index = await webApi.vaults.index(vaultId);
+        const notes = await adapter.listNotes();
 
-        const contents = await Promise.all(
-          index.notes.map(async (n) => {
-            const full = await webApi.notes.get(vaultId, n.id);
-            return { note: n, content: full.content };
+        const contents = new Map<string, string>();
+        await Promise.all(
+          notes.map(async (n) => {
+            contents.set(n.id, (await adapter.readNote(n.id)) ?? "");
           })
         );
 
         if (cancelled) return;
 
-        // Build a lookup: label (lowercase) -> note id
-        const labelToId = new Map<string, string>();
-        for (const n of index.notes) {
-          labelToId.set(labelFromName(n.name).toLowerCase(), n.id);
-        }
-
-        // Preserve link direction first, then collapse reciprocal pairs into
-        // one relationship that can be rendered with arrows at both ends.
-        const directedLinks = new Map<string, { source: string; target: string }>();
-
-        for (const { note, content } of contents) {
-          let match: RegExpExecArray | null;
-          const regex = new RegExp(LINK_REGEX.source, LINK_REGEX.flags);
-          while ((match = regex.exec(content)) !== null) {
-            const linkTarget = match[1].trim().toLowerCase();
-            const targetId = labelToId.get(linkTarget);
-            if (targetId && targetId !== note.id) {
-              const key = `${note.id}\0${targetId}`;
-              directedLinks.set(key, { source: note.id, target: targetId });
-            }
-          }
-        }
-
-        const relationshipSet = new Set<string>();
-        const edgeList: GraphEdge[] = [];
-        for (const link of directedLinks.values()) {
-          const relationshipKey = [link.source, link.target].sort().join("\0");
-          if (relationshipSet.has(relationshipKey)) continue;
-          relationshipSet.add(relationshipKey);
-          edgeList.push({
-            ...link,
-            reciprocal: directedLinks.has(`${link.target}\0${link.source}`),
-          });
-        }
-
-        // Count connections per node
-        const connectionCount = new Map<string, number>();
-        for (const edge of edgeList) {
-          connectionCount.set(edge.source, (connectionCount.get(edge.source) ?? 0) + 1);
-          connectionCount.set(edge.target, (connectionCount.get(edge.target) ?? 0) + 1);
-        }
+        const { edges: edgeList, connections: connectionCount } = buildLinkGraph(notes, contents);
 
         // Create nodes with random initial positions
         const cx = window.innerWidth / 2;
         const cy = window.innerHeight / 2;
         const spread = Math.min(cx, cy) * 0.8;
 
-        const nodeList: GraphNode[] = index.notes.map((n) => ({
+        const nodeList: GraphNode[] = notes.map((n) => ({
           id: n.id,
           label: labelFromName(n.name),
           x: cx + (Math.random() - 0.5) * spread * 2,
@@ -220,7 +179,7 @@ export default function GraphView({
 
     buildGraph();
     return () => { cancelled = true; };
-  }, [vaultId]);
+  }, [adapter]);
 
   // ── Computed values ──
   const stats = useMemo(() => {

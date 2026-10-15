@@ -12,6 +12,8 @@ import SettingsModal from "@/components/SettingsModal";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
 import VaultSearch from "@/components/VaultSearch";
 import TemplatePicker from "@/components/TemplatePicker";
+import "@/styles/graph-view.css";
+import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
 import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
@@ -77,7 +79,7 @@ const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor),
 const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });
 const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
 const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
-const GraphView = dynamic(() => import("@/components/GraphView"), { ssr: false });
+const GraphView = dynamic(() => import("@noteriv/ui/graph").then((m) => m.GraphView), { ssr: false });
 const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
 const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
@@ -2122,11 +2124,11 @@ export default function Home() {
       )}
 
       {/* Graph view */}
-      {showGraphView && activeVault && (
+      {showGraphView && vaultAdapter && (
         <GraphView
-          vaultPath={activeVault.path}
-          currentFile={activeTab}
-          onFileSelect={(f) => { openFile(f); setShowGraphView(false); }}
+          adapter={vaultAdapter}
+          currentNoteId={activeTab}
+          onNoteSelect={(f) => { openFile(f); setShowGraphView(false); }}
           onClose={() => setShowGraphView(false)}
         />
       )}
