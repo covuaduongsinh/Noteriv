@@ -1,6 +1,6 @@
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
 import { RenderedMarkdownWidget } from "../widget";
-import { sanitizeHtml } from "@/lib/sanitize-html";
+import { sanitizeHtml } from "@noteriv/core/sanitize-html";
 import type { BlockRenderer, BlockContext } from "../types";
 
 const tableRowRegex = /^\|(.+)\|\s*$/;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { parseSlides, Slide } from "@/lib/slide-utils";
+import { parseSlides, Slide } from "@noteriv/core/slide-utils";
 // Classes already present in globals.css (byte-identical copy from desktop,
 // see the 2026-10-13 UI-parity pass) — no separate stylesheet file to import.
 

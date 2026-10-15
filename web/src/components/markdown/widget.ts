@@ -1,5 +1,5 @@
 import { WidgetType } from "@codemirror/view";
-import { sanitizeHtml } from "@/lib/sanitize-html";
+import { sanitizeHtml } from "@noteriv/core/sanitize-html";
 
 /**
  * A CodeMirror widget that renders HTML inline.

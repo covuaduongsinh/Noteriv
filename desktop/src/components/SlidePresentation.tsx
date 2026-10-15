@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { parseSlides, Slide } from "@/lib/slide-utils";
+import { parseSlides, Slide } from "@noteriv/core/slide-utils";
 import "@/styles/slides.css";
 
 // ── Types ──

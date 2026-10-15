@@ -8,7 +8,7 @@
  * `lib/sanitize-html`.
  */
 
-import { sanitizeHtml, isSafeUrl } from "@/lib/sanitize-html";
+import { sanitizeHtml, isSafeUrl } from "./sanitize-html";
 
 export interface Slide {
   content: string;   // markdown content
