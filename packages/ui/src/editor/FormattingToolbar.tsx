@@ -10,9 +10,9 @@ import {
   insertTaskList,
   insertTable,
   insertHorizontalRule,
-} from "@/lib/editor-commands";
+} from "./editor-commands";
 
-type FormattingAction =
+export type FormattingAction =
   | "toggleBold"
   | "toggleItalic"
   | "toggleStrikethrough"
@@ -39,43 +39,41 @@ const actions: { action: FormattingAction; label: string; shortcut?: string; con
   { action: "insertHorizontalRule", label: "Horizontal rule", content: "Rule" },
 ];
 
-/**
- * Ported from desktop/src/components/FormattingToolbar.tsx (41 lines).
- * Wired directly against editor-commands.ts instead of desktop's ~60-action
- * HotkeyAction dispatch table (desktop/src/lib/hotkeys.ts) — porting that
- * whole command/hotkey architecture is out of scope for a visual-parity
- * pass; only this toolbar's own 10 actions are wired here.
- */
-export default function FormattingToolbar({ editorView }: { editorView: EditorView | null }) {
-  function handleAction(action: FormattingAction) {
-    const view = editorView;
-    if (!view) return;
-    switch (action) {
-      case "toggleBold":
-        return wrapSelection(view, "**", "**");
-      case "toggleItalic":
-        return wrapSelection(view, "*", "*");
-      case "toggleStrikethrough":
-        return wrapSelection(view, "~~", "~~");
-      case "toggleCode":
-        return wrapSelection(view, "`", "`");
-      case "insertLink":
-        return insertLink(view);
-      case "insertImage":
-        return insertImage(view);
-      case "insertBlockquote":
-        return insertBlockquote(view);
-      case "insertCodeBlock":
-        return insertCodeBlock(view);
-      case "insertTaskList":
-        return insertTaskList(view);
-      case "insertTable":
-        return insertTable(view);
-      case "insertHorizontalRule":
-        return insertHorizontalRule(view);
-    }
+/** Run a toolbar action directly against an editor. A host without its own command dispatcher can use this. */
+export function runFormattingAction(view: EditorView | null, action: FormattingAction): void {
+  if (!view) return;
+  switch (action) {
+    case "toggleBold":
+      return wrapSelection(view, "**", "**");
+    case "toggleItalic":
+      return wrapSelection(view, "*", "*");
+    case "toggleStrikethrough":
+      return wrapSelection(view, "~~", "~~");
+    case "toggleCode":
+      return wrapSelection(view, "`", "`");
+    case "insertLink":
+      return insertLink(view);
+    case "insertImage":
+      return insertImage(view);
+    case "insertBlockquote":
+      return insertBlockquote(view);
+    case "insertCodeBlock":
+      return insertCodeBlock(view);
+    case "insertTaskList":
+      return insertTaskList(view);
+    case "insertTable":
+      return insertTable(view);
+    case "insertHorizontalRule":
+      return insertHorizontalRule(view);
   }
+}
 
+/**
+ * The toolbar only reports which button was pressed. What an action does is the host's call: the web app runs the
+ * editor commands directly (runFormattingAction), the desktop app routes through its hotkey dispatcher, which
+ * knows about more commands than these.
+ */
+export default function FormattingToolbar({ onAction }: { onAction: (action: FormattingAction) => void }) {
   return (
     <div className="formatting-toolbar" aria-label="Formatting toolbar">
       {actions.map(({ action, label, shortcut, content, className }) => (
@@ -86,7 +84,7 @@ export default function FormattingToolbar({ editorView }: { editorView: EditorVi
           title={shortcut ? `${label} (${shortcut})` : label}
           aria-label={label}
           onMouseDown={(event) => event.preventDefault()}
-          onClick={() => handleAction(action)}
+          onClick={() => onAction(action)}
         >
           {content}
         </button>

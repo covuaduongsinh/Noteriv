@@ -5,9 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
-import Editor from "@/components/Editor";
-import SourceEditor from "@/components/SourceEditor";
-import ReadOnlyView from "@/components/ReadOnlyView";
+import { Editor, SourceEditor, ReadOnlyView, FormattingToolbar, runFormattingAction } from "@noteriv/ui/editor";
 import SplitPane from "@/components/SplitPane";
 import QuickOpen from "@/components/QuickOpen";
 import BacklinksPanel from "@/components/BacklinksPanel";
@@ -21,7 +19,6 @@ import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
 import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
-import FormattingToolbar from "@/components/FormattingToolbar";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
 import OutlinePanel from "@/components/OutlinePanel";
@@ -78,7 +75,7 @@ import {
   type HotkeyBinding,
   type HotkeyAction,
 } from "@/lib/hotkeys";
-import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor } from "@/lib/editor-commands";
+import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
@@ -1234,17 +1231,16 @@ export default function VaultPage() {
           />
         )}
         {isMain && mode === "live" && (
-          <FormattingToolbar key={editorViewVersion} editorView={editorViewRef.current} />
+          <FormattingToolbar key={editorViewVersion} onAction={(action) => runFormattingAction(editorViewRef.current, action)} />
         )}
         <div className="flex-1 min-h-0">
           {mode === "source" ? (
             <SourceEditor
               content={content}
               onChange={onChange}
-              vaultId={vaultId}
+              adapter={vaultAdapter}
               onViewReady={onReady}
-              spellCheck={editorSettings.spellCheck}
-              tabSize={editorSettings.tabSize}
+              prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
             />
           ) : mode === "view" ? (
             <ReadOnlyView content={content} onChange={onChange} />
@@ -1252,10 +1248,9 @@ export default function VaultPage() {
             <Editor
               content={content}
               onChange={onChange}
-              vaultId={vaultId}
+              adapter={vaultAdapter}
               vimMode={editorSettings.vimModeEnabled}
-              spellCheck={editorSettings.spellCheck}
-              tabSize={editorSettings.tabSize}
+              prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
               focusMode={focusMode}
               onViewReady={onReady}
               onWikilinkHover={isMain ? handleWikilinkHover : undefined}

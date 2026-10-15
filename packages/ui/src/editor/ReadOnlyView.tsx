@@ -13,9 +13,9 @@ import {
   editorTheme,
   renderAllLines,
   mathExtension,
-} from "@noteriv/ui/markdown";
+} from "../markdown";
 
-interface ReadOnlyViewProps {
+export interface ReadOnlyViewProps {
   content: string;
   onChange?: (content: string) => void;
   className?: string;
@@ -49,8 +49,8 @@ export default function ReadOnlyView({ content, onChange, className = "" }: Read
       }),
     ];
 
-    // Allow dispatches (for checkbox toggling) but forward changes via onChange
-    // Do NOT use EditorState.readOnly so widgets can dispatch changes
+    // Allow dispatches (for checkbox toggling) but forward changes via onChange.
+    // Do NOT use EditorState.readOnly so widgets can still dispatch changes.
     if (onChangeRef.current) {
       extensions.push(
         EditorView.updateListener.of((update) => {
@@ -63,10 +63,7 @@ export default function ReadOnlyView({ content, onChange, className = "" }: Read
       extensions.push(EditorState.readOnly.of(true));
     }
 
-    const state = EditorState.create({
-      doc: content,
-      extensions,
-    });
+    const state = EditorState.create({ doc: content, extensions });
 
     viewRef.current = new EditorView({ state, parent: editorRef.current });
   }, []);
@@ -80,15 +77,9 @@ export default function ReadOnlyView({ content, onChange, className = "" }: Read
     if (!viewRef.current) return;
     const current = viewRef.current.state.doc.toString();
     if (current !== content) {
-      viewRef.current.dispatch({
-        changes: { from: 0, to: current.length, insert: content },
-      });
+      viewRef.current.dispatch({ changes: { from: 0, to: current.length, insert: content } });
     }
   }, [content]);
 
-  // Wiki link click handling is done in page.tsx
-
-  return (
-    <div ref={editorRef} className={`h-full overflow-hidden ${className}`} />
-  );
+  return <div ref={editorRef} className={`h-full overflow-hidden ${className}`} />;
 }

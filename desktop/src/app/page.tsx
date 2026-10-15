@@ -6,7 +6,6 @@ import Sidebar from "@/components/Sidebar";
 import TitleBar from "@/components/TitleBar";
 import SetupWizard from "@/components/SetupWizard";
 import DocumentTitle from "@/components/DocumentTitle";
-import FormattingToolbar from "@/components/FormattingToolbar";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import SettingsModal from "@/components/SettingsModal";
@@ -19,7 +18,7 @@ import TagPane from "@/components/TagPane";
 import TemplatePicker from "@/components/TemplatePicker";
 import BookmarksPanel from "@/components/BookmarksPanel";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
-import { createDesktopImageLoader, createDesktopDataviewSource } from "@/lib/ui-hooks";
+import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop } from "@/lib/ui-hooks";
 import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
 import { refFromAbsolutePath } from "@noteriv/core/vault-adapter";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
@@ -44,7 +43,7 @@ import TimeScrubber from "@/components/TimeScrubber";
 import LintPanel from "@/components/LintPanel";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
-import { insertAtCursor } from "@/lib/editor-commands";
+import { insertAtCursor } from "@noteriv/ui/editor/editor-commands";
 import {
   HotkeyBinding,
   HotkeyAction,
@@ -69,7 +68,7 @@ import {
   insertBlockquote as editorInsertBlockquote,
   insertTaskList as editorInsertTaskList,
   insertTable as editorInsertTable,
-} from "@/lib/editor-commands";
+} from "@noteriv/ui/editor/editor-commands";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { getRandomNote } from "@/lib/random-note";
 import { exportToPDF } from "@/lib/pdf-export";
@@ -79,9 +78,10 @@ import { BUILT_IN_THEMES, applyTheme, loadCustomThemes } from "@/lib/theme-utils
 import { loadSnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import type { EditorView } from "@codemirror/view";
 
-const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
-const SourceEditor = dynamic(() => import("@/components/SourceEditor"), { ssr: false });
-const ReadOnlyView = dynamic(() => import("@/components/ReadOnlyView"), { ssr: false });
+const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor), { ssr: false });
+const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });
+const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
+const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
 const GraphView = dynamic(() => import("@/components/GraphView"), { ssr: false });
 const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
@@ -164,6 +164,10 @@ export default function Home() {
       setDataviewSource(null);
     };
   }, [activeVaultPath]);
+  const onImageDrop = useMemo(
+    () => (activeVaultPath ? createDesktopImageDrop(activeVaultPath) : undefined),
+    [activeVaultPath]
+  );
   const bookmarkedNotes = useMemo(
     () => bookmarks.map((p) => refFromAbsolutePath(activeVaultPath, p)),
     [bookmarks, activeVaultPath]
@@ -1894,9 +1898,9 @@ export default function Home() {
                     ) : viewMode === "view" ? (
                       <ReadOnlyView content={content} onChange={handleContentChange} />
                     ) : viewMode === "source" ? (
-                      <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} vaultPath={activeVault?.path} />
+                      <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" />
                     ) : (
-                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} vaultPath={activeVault?.path} focusMode={focusMode} />
+                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} />
                     )}
                   </div>
                 </div>
@@ -1924,9 +1928,9 @@ export default function Home() {
                       ) : viewMode === "view" ? (
                         <ReadOnlyView content={splitContent} onChange={handleSplitContentChange} />
                       ) : viewMode === "source" ? (
-                        <SourceEditor content={splitContent} onChange={handleSplitContentChange} vaultPath={activeVault?.path} />
+                        <SourceEditor content={splitContent} onChange={handleSplitContentChange} adapter={vaultAdapter} wikilinkLabel="path" />
                       ) : (
-                        <Editor content={splitContent} onChange={handleSplitContentChange} vaultPath={activeVault?.path} focusMode={false} />
+                        <Editor content={splitContent} onChange={handleSplitContentChange} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={false} />
                       )}
                     </div>
                   </div>

@@ -9,47 +9,74 @@ import { defaultKeymap, history, historyKeymap, indentWithTab } from "@codemirro
 import { syntaxHighlighting } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { search, searchKeymap } from "@codemirror/search";
+import type { VaultAdapter } from "@noteriv/core/vault-adapter";
 import {
   liveMarkdownPlugin,
   markdownRenderTheme,
   mdHighlightStyle,
   editorTheme,
   mathExtension,
-} from "@noteriv/ui/markdown";
-import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
-import { setEditorViewForImages } from "@noteriv/ui/markdown";
-import { vimExtension } from "@/lib/vim-mode";
-import { prefsCompartment, prefsExtension } from "@/lib/editor-prefs";
+  setEditorViewForImages,
+} from "../markdown";
+import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completion";
+import { vimExtension } from "./vim-mode";
+import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
 
-interface EditorProps {
+export interface EditorProps {
   content: string;
   onChange: (value: string) => void;
   onViewReady?: (view: EditorView) => void;
-  vaultId?: string;
+  /** Vault whose notes `[[` completes against. Without it completion stays off. */
+  adapter?: VaultAdapter | null;
+  /** How `[[` suggestions are named; see WikilinkLabel. */
+  wikilinkLabel?: WikilinkLabel;
   className?: string;
   focusMode?: boolean;
   /** Fires when the pointer rests over a rendered `.md-wikilink` span — Phase C5 hover preview. */
   onWikilinkHover?: (target: string, x: number, y: number) => void;
   onWikilinkLeave?: () => void;
-  /** Phase D7 — ported from desktop/src/lib/vim-mode.ts. Toggling recreates
-   * the CodeMirror instance (see createEditor's deps below) since the vim
+  /** Toggling recreates the CodeMirror instance (see createEditor's deps below) since the vim
    * keymap has to be present at state-creation time, not added after. */
   vimMode?: boolean;
-  spellCheck?: boolean;
-  tabSize?: number;
+  /** Spell check and tab size, applied live without recreating the editor. Unset keeps CodeMirror's defaults. */
+  prefs?: EditorPrefs;
+  /**
+   * Handles image files dropped on the editor and returns the markdown to insert at the cursor (or null for
+   * nothing). When absent the editor refuses file drops, as the web app does until attachments exist there.
+   */
+  onImageDrop?: (files: File[]) => Promise<string | null>;
 }
 
-export default function Editor({ content, onChange, onViewReady, vaultId, className = "", focusMode = false, onWikilinkHover, onWikilinkLeave, vimMode = false, spellCheck = false, tabSize = 4 }: EditorProps) {
+export default function Editor({
+  content,
+  onChange,
+  onViewReady,
+  adapter = null,
+  wikilinkLabel = "name",
+  className = "",
+  focusMode = false,
+  onWikilinkHover,
+  onWikilinkLeave,
+  vimMode = false,
+  prefs,
+  onImageDrop,
+}: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onWikilinkHoverRef = useRef(onWikilinkHover);
   const onWikilinkLeaveRef = useRef(onWikilinkLeave);
+  const onImageDropRef = useRef(onImageDrop);
+  const adapterRef = useRef(adapter);
+  const prefsRef = useRef(prefs);
   const [isDragOver, setIsDragOver] = useState(false);
 
   useEffect(() => { onChangeRef.current = onChange; });
   useEffect(() => { onWikilinkHoverRef.current = onWikilinkHover; });
   useEffect(() => { onWikilinkLeaveRef.current = onWikilinkLeave; });
+  useEffect(() => { onImageDropRef.current = onImageDrop; });
+  useEffect(() => { adapterRef.current = adapter; });
+  useEffect(() => { prefsRef.current = prefs; });
 
   const createEditor = useCallback(() => {
     if (!editorRef.current) return;
@@ -59,11 +86,11 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
       doc: content,
       extensions: [
         ...vimExtension(vimMode),
-        prefsCompartment.of(prefsExtension(spellCheck, tabSize)),
+        prefsCompartment.of(prefsExtension(prefsRef.current)),
         drawSelection(),
         closeBrackets(),
         history(),
-        ...(vaultId ? [wikilinkAutocompletion(vaultId)] : []),
+        wikilinkAutocompletion(() => adapterRef.current, wikilinkLabel),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(mdHighlightStyle),
         editorTheme,
@@ -124,8 +151,8 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
 
   // Apply spell-check / tab-size changes to the live editor without recreating it.
   useEffect(() => {
-    viewRef.current?.dispatch({ effects: prefsCompartment.reconfigure(prefsExtension(spellCheck, tabSize)) });
-  }, [spellCheck, tabSize]);
+    viewRef.current?.dispatch({ effects: prefsCompartment.reconfigure(prefsExtension(prefs)) });
+  }, [prefs?.spellCheck, prefs?.tabSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Toggle focus mode via CSS class on editor container
   useEffect(() => {
@@ -133,11 +160,9 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
     editorRef.current.classList.toggle("editor-focus-mode", focusMode);
   }, [focusMode]);
 
-  // Image drag & drop visual feedback only — actual attachment upload needs
-  // the S3-backed attachments endpoint from Phase 6
-  // (docs/plans/2026-10-12-noteriv-web-version.md §9), not built yet. The
-  // drop handler resets state without inserting anything so dragging a file
-  // in doesn't silently do nothing with no feedback.
+  // File drag & drop — native DOM on the container div, NOT inside CodeMirror (the container wraps the whole
+  // instance). The drop is captured before CodeMirror sees it. Without an onImageDrop handler the editor shows
+  // the "not allowed" cursor and drops nothing, so a dragged-in file never silently does nothing.
   useEffect(() => {
     const container = editorRef.current;
     if (!container) return;
@@ -154,7 +179,7 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
     const onDragOver = (e: DragEvent) => {
       if (!e.dataTransfer?.types.includes("Files")) return;
       e.preventDefault();
-      e.dataTransfer.dropEffect = "none";
+      e.dataTransfer.dropEffect = onImageDropRef.current ? "copy" : "none";
     };
 
     const onDragLeave = () => {
@@ -170,8 +195,20 @@ export default function Editor({ content, onChange, onViewReady, vaultId, classN
       e.stopPropagation();
       dragCounter = 0;
       setIsDragOver(false);
-      // Phase 6: wire attachment upload here (POST to the attachments endpoint,
-      // then insert `![](...)` pointing at the returned URL).
+
+      const handler = onImageDropRef.current;
+      if (!handler || !viewRef.current || !e.dataTransfer) return;
+
+      const files = Array.from(e.dataTransfer.files);
+      if (files.length === 0) return;
+
+      (async () => {
+        const insertText = await handler(files);
+        if (insertText && viewRef.current) {
+          const pos = viewRef.current.state.selection.main.head;
+          viewRef.current.dispatch({ changes: { from: pos, insert: insertText } });
+        }
+      })();
     };
 
     container.addEventListener("dragenter", onDragEnter);

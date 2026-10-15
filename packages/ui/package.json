@@ -10,6 +10,7 @@
     "./markdown": "./src/markdown/index.ts",
     "./markdown/*": "./src/markdown/*.ts",
     "./editor": "./src/editor/index.ts",
+    "./editor/*": "./src/editor/*.ts",
     "./panels": "./src/panels/index.ts",
     "./styles/*": "./styles/*"
   },

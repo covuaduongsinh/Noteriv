@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useCallback } from "react";
+import type { VaultAdapter } from "@noteriv/core/vault-adapter";
 import { EditorView, keymap, lineNumbers, highlightActiveLine, drawSelection } from "@codemirror/view";
 import { EditorState } from "@codemirror/state";
 import { markdown, markdownLanguage } from "@codemirror/lang-markdown";
@@ -10,7 +11,8 @@ import { syntaxHighlighting, HighlightStyle } from "@codemirror/language";
 import { closeBrackets, closeBracketsKeymap } from "@codemirror/autocomplete";
 import { search, searchKeymap } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
-import { wikilinkAutocompletion } from "@/lib/wikilink-completion";
+import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completion";
+import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
 
 const sourceHighlight = HighlightStyle.define([
   { tag: tags.heading1, color: "var(--accent)", fontWeight: "bold", fontSize: "1.2em" },
@@ -43,19 +45,28 @@ const sourceTheme = EditorView.theme({
   ".cm-activeLineGutter": { background: "transparent !important", color: "var(--text-secondary)" },
 });
 
-interface SourceEditorProps {
+export interface SourceEditorProps {
   content: string;
   onChange: (value: string) => void;
   onViewReady?: (view: EditorView) => void;
-  vaultPath?: string;
+  /** Vault whose notes `[[` completes against. Without it completion stays off. */
+  adapter?: VaultAdapter | null;
+  /** How `[[` suggestions are named; see WikilinkLabel. */
+  wikilinkLabel?: WikilinkLabel;
   className?: string;
+  /** Spell check and tab size, applied live. Unset keeps CodeMirror's defaults. */
+  prefs?: EditorPrefs;
 }
 
-export default function SourceEditor({ content, onChange, onViewReady, vaultPath, className = "" }: SourceEditorProps) {
+export default function SourceEditor({ content, onChange, onViewReady, adapter = null, wikilinkLabel = "name", className = "", prefs }: SourceEditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const adapterRef = useRef(adapter);
+  adapterRef.current = adapter;
+  const prefsRef = useRef(prefs);
+  prefsRef.current = prefs;
 
   const createEditor = useCallback(() => {
     if (!editorRef.current) return;
@@ -64,12 +75,13 @@ export default function SourceEditor({ content, onChange, onViewReady, vaultPath
     const state = EditorState.create({
       doc: content,
       extensions: [
+        prefsCompartment.of(prefsExtension(prefsRef.current)),
         lineNumbers(),
         highlightActiveLine(),
         drawSelection(),
         closeBrackets(),
         history(),
-        ...(vaultPath ? [wikilinkAutocompletion(vaultPath)] : []),
+        wikilinkAutocompletion(() => adapterRef.current, wikilinkLabel),
         markdown({ base: markdownLanguage, codeLanguages: languages }),
         syntaxHighlighting(sourceHighlight),
         sourceTheme,
@@ -90,6 +102,10 @@ export default function SourceEditor({ content, onChange, onViewReady, vaultPath
     createEditor();
     return () => { viewRef.current?.destroy(); };
   }, [createEditor]);
+
+  useEffect(() => {
+    viewRef.current?.dispatch({ effects: prefsCompartment.reconfigure(prefsExtension(prefs)) });
+  }, [prefs?.spellCheck, prefs?.tabSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!viewRef.current) return;

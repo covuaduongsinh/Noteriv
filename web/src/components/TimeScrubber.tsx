@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import dynamic from "next/dynamic";
 import { webApi, type ApiNoteSnapshot } from "@/lib/webApi";
 
-const ReadOnlyView = dynamic(() => import("./ReadOnlyView"), { ssr: false });
+const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
 
 interface TimeScrubberProps {
   vaultId: string;

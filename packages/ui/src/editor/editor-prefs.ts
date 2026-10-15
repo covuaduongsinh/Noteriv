@@ -2,6 +2,11 @@ import { Compartment, EditorState } from "@codemirror/state";
 import { EditorView } from "@codemirror/view";
 import { indentUnit } from "@codemirror/language";
 
+export interface EditorPrefs {
+  spellCheck: boolean;
+  tabSize: number;
+}
+
 /**
  * Per-user editor preferences that can change while a document is open (spell check,
  * tab size). Living in a Compartment lets the Settings modal reconfigure open editors
@@ -9,10 +14,12 @@ import { indentUnit } from "@codemirror/language";
  */
 export const prefsCompartment = new Compartment();
 
-export function prefsExtension(spellCheck: boolean, tabSize: number) {
+/** With no prefs the editor keeps CodeMirror's own defaults (what the desktop app has always run with). */
+export function prefsExtension(prefs?: EditorPrefs) {
+  if (!prefs) return [];
   return [
-    EditorState.tabSize.of(tabSize),
-    indentUnit.of(" ".repeat(tabSize)),
-    EditorView.contentAttributes.of({ spellcheck: spellCheck ? "true" : "false" }),
+    EditorState.tabSize.of(prefs.tabSize),
+    indentUnit.of(" ".repeat(prefs.tabSize)),
+    EditorView.contentAttributes.of({ spellcheck: prefs.spellCheck ? "true" : "false" }),
   ];
 }
