@@ -1,6 +1,6 @@
 # Giai đoạn 0: Nền móng an toàn (trước khi mời người dùng)
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai** (0.1 xong 2026-10-15) · Thuộc lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đã đóng ngày 2026-10-15** (0.1–0.4 xong; còn việc nhỏ của chủ dự án và đĩa VPS, xem bảng Trạng thái cuối file) · Thuộc lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md) (quy tắc, hạ tầng, cách chạy dev, cách kiểm thử).
 
 ## Mục tiêu
