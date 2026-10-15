@@ -16,3 +16,4 @@ export * from "./publish";
 export * from "./vault-adapter";
 export * from "./memory-vault-adapter";
 export * from "./tag-utils";
+export * from "./outline-utils";
