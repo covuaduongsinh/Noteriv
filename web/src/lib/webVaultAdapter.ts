@@ -1,0 +1,81 @@
+import type { NoteBacklink, NoteRef, NoteSearchHit, VaultAdapter } from "@noteriv/core/vault-adapter";
+import { webApi, type ApiBacklink, type ApiNoteSummary } from "./webApi";
+
+const toRef = (n: { id: string; name: string; path: string }): NoteRef => ({ id: n.id, name: n.name, path: n.path });
+
+/** Split `dir/sub/name.md` into its folder path and file name. */
+function splitPath(path: string): { dir: string; name: string } {
+  const i = path.lastIndexOf("/");
+  return i < 0 ? { dir: "", name: path } : { dir: path.slice(0, i), name: path.slice(i + 1) };
+}
+
+/**
+ * VaultAdapter over the REST API. Note ids are server ids. Folders are not part of the adapter yet, so create and
+ * rename only accept a destination folder that already exists.
+ */
+export function createWebVaultAdapter(vaultId: string): VaultAdapter {
+  async function folderIdFor(dir: string): Promise<string | null> {
+    if (!dir) return null;
+    const index = await webApi.vaults.index(vaultId);
+    const folder = index.folders.find((f) => f.path === dir);
+    if (!folder) throw new Error(`Folder does not exist: ${dir}`);
+    return folder.id;
+  }
+
+  return {
+    kind: "web",
+
+    async listNotes() {
+      const index = await webApi.vaults.index(vaultId);
+      return index.notes.map((n: ApiNoteSummary) => toRef(n));
+    },
+
+    async readNote(id) {
+      try {
+        return (await webApi.notes.get(vaultId, id)).content;
+      } catch {
+        return null;
+      }
+    },
+
+    async writeNote(id, content) {
+      await webApi.notes.update(vaultId, id, { content });
+    },
+
+    async createNote(path, content = "") {
+      const { dir, name } = splitPath(path);
+      const folderId = await folderIdFor(dir);
+      return toRef(await webApi.notes.create(vaultId, { name, folderId, content }));
+    },
+
+    async renameNote(id, newPath) {
+      const { dir, name } = splitPath(newPath);
+      const folderId = await folderIdFor(dir);
+      return toRef(await webApi.notes.update(vaultId, id, { name, folderId }));
+    },
+
+    async deleteNote(id) {
+      await webApi.notes.remove(vaultId, id);
+    },
+
+    async search(query): Promise<NoteSearchHit[]> {
+      if (!query.trim()) return [];
+      const hits = await webApi.vaults.search(vaultId, query);
+      return hits.map((h) => ({ ref: toRef(h), snippet: h.snippet }));
+    },
+
+    // The server endpoint knows which notes link here but not where, so line and snippet stay unset.
+    async backlinks(id): Promise<NoteBacklink[]> {
+      const found: ApiBacklink[] = await webApi.notes.backlinks(vaultId, id);
+      return found.map((b) => ({ ref: toRef(b) }));
+    },
+
+    async getSettings() {
+      return (await webApi.vaults.get(vaultId)).settings ?? {};
+    },
+
+    async saveSettings(settings) {
+      await webApi.vaults.update(vaultId, { settings });
+    },
+  };
+}
