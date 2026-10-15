@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
+import { deleteObjectsBestEffort } from "../lib/attachments.js";
 
 const ACCESS_COOKIE = "noteriv_access";
 const REFRESH_COOKIE = "noteriv_refresh";
@@ -91,6 +92,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
   fastify.delete("/me", async (request, reply) => {
     const userId = request.user!.id;
 
+    // Files of every vault in a workspace this user owns; read now, removed after the rows are gone.
+    const keys = (
+      await prisma.attachment.findMany({ where: { vault: { workspace: { ownerId: userId } } }, select: { storageKey: true } })
+    ).map((a) => a.storageKey);
+
     await prisma.$transaction(async (tx) => {
       // Workspace->owner has no onDelete:Cascade (a workspace must always
       // have an explicit owner), so owned workspaces must be deleted before
@@ -109,7 +115,9 @@ export default async function userRoutes(fastify: FastifyInstance) {
       await tx.user.delete({ where: { id: userId } });
     });
 
-    logAudit(prisma, { userId, action: "account_deleted", ip: request.ip });
+    const failed = await deleteObjectsBestEffort(keys);
+    if (failed) request.log.warn({ failed, total: keys.length }, "some attachment files were not removed from storage");
+    logAudit(prisma, { userId, action: "account_deleted", metadata: { attachmentFiles: keys.length, attachmentFilesFailed: failed }, ip: request.ip });
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
     return reply.send({ ok: true });

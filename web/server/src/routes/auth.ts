@@ -11,12 +11,20 @@ import {
 import { hashToken } from "../lib/tokenHash.js";
 import { randomUUID } from "node:crypto";
 import { logAudit } from "../lib/auditLog.js";
+import { Prisma } from "@prisma/client";
+import { isAdminEmail, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
 
 const registerSchema = z.object({
   email: z.string().email(),
   password: z.string().min(8).max(200),
   displayName: z.string().min(1).max(100),
+  inviteCode: z.string().max(64).optional(),
+  // The client must send an explicit `true`: agreeing to the Terms is not something to default.
+  acceptTerms: z.literal(true),
 });
+
+/** Thrown inside the register transaction so a rejected invite rolls the whole signup back. */
+class InviteRejected extends Error {}
 
 const loginSchema = z.object({
   email: z.string().email(),
@@ -64,7 +72,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     if (!parsed.success) {
       return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
     }
-    const { email, password, displayName } = parsed.data;
+    const { email, password, displayName, inviteCode } = parsed.data;
+
+    const mode = registrationMode();
+    if (mode === "closed") {
+      return reply.code(403).send({ error: "registration_closed" });
+    }
 
     const existing = await prisma.user.findUnique({ where: { email } });
     if (existing) {
@@ -73,22 +86,60 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     const passwordHash = await hashPassword(password);
 
-    const user = await prisma.$transaction(async (tx) => {
-      const created = await tx.user.create({
-        data: { email, passwordHash, displayName },
+    let inviteCodeId: string | null = null;
+    let user;
+    try {
+      user = await prisma.$transaction(async (tx) => {
+        if (mode === "invite") {
+          // One atomic UPDATE both checks and consumes the code, so two signups racing for the last
+          // use cannot both win. Any failure below (e.g. email taken) rolls the increment back too.
+          const code = normalizeInviteCode(inviteCode ?? "");
+          const now = new Date();
+          const consumed = code
+            ? await tx.inviteCode.updateMany({
+                where: {
+                  code,
+                  revokedAt: null,
+                  AND: [{ OR: [{ expiresAt: null }, { expiresAt: { gt: now } }] }, { usedCount: { lt: tx.inviteCode.fields.maxUses } }],
+                },
+                data: { usedCount: { increment: 1 } },
+              })
+            : { count: 0 };
+          if (consumed.count !== 1) throw new InviteRejected();
+          inviteCodeId = (await tx.inviteCode.findUniqueOrThrow({ where: { code }, select: { id: true } })).id;
+        }
+        const created = await tx.user.create({
+          data: { email, passwordHash, displayName, inviteCodeId, termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION },
+        });
+        const workspace = await tx.workspace.create({
+          data: { name: `${displayName}'s workspace`, ownerId: created.id },
+        });
+        await tx.workspaceMember.create({
+          data: { workspaceId: workspace.id, userId: created.id, role: "owner" },
+        });
+        return created;
       });
-      const workspace = await tx.workspace.create({
-        data: { name: `${displayName}'s workspace`, ownerId: created.id },
-      });
-      await tx.workspaceMember.create({
-        data: { workspaceId: workspace.id, userId: created.id, role: "owner" },
-      });
-      return created;
-    });
+    } catch (err) {
+      if (err instanceof InviteRejected) {
+        // One generic answer for wrong / used up / expired / revoked, so codes cannot be probed.
+        logAudit(prisma, { action: "register_rejected", metadata: { reason: "invalid_invite" }, ip: request.ip });
+        return reply.code(403).send({ error: "invalid_invite" });
+      }
+      // Two signups with the same email can both pass the check above; the unique index decides.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return reply.code(409).send({ error: "email_taken" });
+      }
+      throw err;
+    }
 
     await issueSession(reply, user.id, user.email);
-    logAudit(prisma, { userId: user.id, action: "register", ip: request.ip });
+    logAudit(prisma, { userId: user.id, action: "register", metadata: { inviteCodeId, termsVersion: TERMS_VERSION }, ip: request.ip });
     return reply.code(201).send({ id: user.id, email: user.email, displayName: user.displayName });
+  });
+
+  // Public: lets the register page decide whether to show the invite-code field.
+  fastify.get("/registration", async (_request, reply) => {
+    return reply.send({ mode: registrationMode() });
   });
 
   fastify.post("/login", bruteForceGuard, async (request, reply) => {
@@ -162,6 +213,12 @@ export default async function authRoutes(fastify: FastifyInstance) {
     if (!user) {
       return reply.code(404).send({ error: "not_found" });
     }
-    return reply.send({ id: user.id, email: user.email, displayName: user.displayName, avatarUrl: user.avatarUrl });
+    return reply.send({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      avatarUrl: user.avatarUrl,
+      isAdmin: isAdminEmail(user.email),
+    });
   });
 }

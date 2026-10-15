@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { webApi, type ApiVault } from "@/lib/webApi";
 
 export default function VaultsPage() {
@@ -11,12 +12,17 @@ export default function VaultsPage() {
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
     webApi.vaults
       .list()
       .then(setVaults)
       .catch(() => router.replace("/login"));
+    webApi.auth
+      .me()
+      .then((u) => setIsAdmin(!!u.isAdmin))
+      .catch(() => undefined);
   }, [router]);
 
   async function createVault(e: React.FormEvent) {
@@ -102,6 +108,14 @@ export default function VaultsPage() {
 
       <div className="w-full max-w-md flex flex-col gap-2 mt-8 pt-6 border-t border-[var(--border)]">
         <h2 className="text-sm font-medium text-[var(--text-secondary)]">Tài khoản</h2>
+        {isAdmin && (
+          <Link
+            href="/admin/invites"
+            className="px-3 py-2 rounded-lg text-sm text-[var(--accent)] hover:bg-[var(--bg-secondary)]"
+          >
+            Quản lý mã mời (quản trị)
+          </Link>
+        )}
         <button
           onClick={exportData}
           className="text-left px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
@@ -116,6 +130,15 @@ export default function VaultsPage() {
         >
           {confirmDelete ? "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu" : "Xoá tài khoản"}
         </button>
+        <p className="px-3 text-xs text-[var(--text-secondary)]">
+          <Link href="/terms" className="hover:text-[var(--text-primary)]">
+            Điều khoản sử dụng
+          </Link>
+          {" · "}
+          <Link href="/privacy" className="hover:text-[var(--text-primary)]">
+            Chính sách quyền riêng tư
+          </Link>
+        </p>
       </div>
     </div>
   );
