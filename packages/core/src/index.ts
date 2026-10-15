@@ -13,3 +13,6 @@ export * from "./bookmark-utils";
 export * from "./markdown-code-block-registry";
 export * from "./markdown-to-html";
 export * from "./publish";
+export * from "./vault-adapter";
+export * from "./memory-vault-adapter";
+export * from "./tag-utils";

@@ -1,0 +1,109 @@
+import {
+  baseName,
+  toPosixPath,
+  type NoteBacklink,
+  type NoteRef,
+  type NoteSearchHit,
+  type VaultAdapter,
+} from "./vault-adapter";
+
+/**
+ * In-memory vault for tests and demos. Note ids are the vault-relative paths, so tests can read them without a
+ * lookup table.
+ */
+export class MemoryVaultAdapter implements VaultAdapter {
+  readonly kind = "memory" as const;
+  private notes = new Map<string, string>();
+  private settings: Record<string, unknown> = {};
+  private watchers = new Set<(id: string) => void>();
+
+  constructor(initial: Record<string, string> = {}) {
+    for (const [path, content] of Object.entries(initial)) this.notes.set(toPosixPath(path), content);
+  }
+
+  private ref(path: string): NoteRef {
+    return { id: path, path, name: baseName(path) };
+  }
+
+  private notify(id: string) {
+    for (const cb of this.watchers) cb(id);
+  }
+
+  async listNotes(): Promise<NoteRef[]> {
+    return Array.from(this.notes.keys(), (p) => this.ref(p));
+  }
+
+  async readNote(id: string): Promise<string | null> {
+    return this.notes.get(id) ?? null;
+  }
+
+  async writeNote(id: string, content: string): Promise<void> {
+    if (!this.notes.has(id)) throw new Error(`No such note: ${id}`);
+    this.notes.set(id, content);
+    this.notify(id);
+  }
+
+  async createNote(path: string, content = ""): Promise<NoteRef> {
+    const p = toPosixPath(path);
+    if (this.notes.has(p)) throw new Error(`Note already exists: ${p}`);
+    this.notes.set(p, content);
+    this.notify(p);
+    return this.ref(p);
+  }
+
+  async renameNote(id: string, newPath: string): Promise<NoteRef> {
+    const content = this.notes.get(id);
+    if (content === undefined) throw new Error(`No such note: ${id}`);
+    const p = toPosixPath(newPath);
+    if (p !== id && this.notes.has(p)) throw new Error(`Note already exists: ${p}`);
+    this.notes.delete(id);
+    this.notes.set(p, content);
+    this.notify(p);
+    return this.ref(p);
+  }
+
+  async deleteNote(id: string): Promise<void> {
+    if (this.notes.delete(id)) this.notify(id);
+  }
+
+  async search(query: string): Promise<NoteSearchHit[]> {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const hits: NoteSearchHit[] = [];
+    for (const [path, content] of this.notes) {
+      const line = content.split("\n").find((l) => l.toLowerCase().includes(q));
+      if (line !== undefined) hits.push({ ref: this.ref(path), snippet: line.trim().slice(0, 120) });
+    }
+    return hits;
+  }
+
+  async backlinks(id: string): Promise<NoteBacklink[]> {
+    const target = baseName(id).replace(/\.md$/i, "").toLowerCase();
+    const out: NoteBacklink[] = [];
+    for (const [path, content] of this.notes) {
+      if (path === id) continue;
+      content.split("\n").forEach((line, i) => {
+        for (const m of line.matchAll(/!?\[\[([^\]|#]+)(?:[#|][^\]]*)?\]\]/g)) {
+          if (m[1].trim().toLowerCase() === target) {
+            out.push({ ref: this.ref(path), line: i + 1, snippet: line.trim().slice(0, 120) });
+            break;
+          }
+        }
+      });
+    }
+    return out.sort((a, b) => a.ref.name.localeCompare(b.ref.name) || (a.line ?? 0) - (b.line ?? 0));
+  }
+
+  async getSettings(): Promise<Record<string, unknown>> {
+    return { ...this.settings };
+  }
+
+  async saveSettings(settings: Record<string, unknown>): Promise<void> {
+    this.settings = { ...settings };
+  }
+
+  watch(onChange: (id: string) => void): () => void {
+    this.watchers.add(onChange);
+    return () => this.watchers.delete(onChange);
+  }
+}
