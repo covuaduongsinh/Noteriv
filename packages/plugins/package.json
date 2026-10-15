@@ -1,0 +1,23 @@
+{
+  "name": "@noteriv/plugins",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Noteriv core plugins (trusted tier of Plugin API v1). Each folder under src/ is one plugin, loaded by the apps with a dynamic import() so a disabled plugin's code is not in the initial bundle.",
+  "license": "MIT",
+  "exports": {
+    "./*": "./src/*/index.ts"
+  },
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p test"
+  },
+  "dependencies": {
+    "@noteriv/plugin-api": "*"
+  },
+  "devDependencies": {
+    "@types/node": "^22",
+    "typescript": "^5",
+    "vitest": "^5.0.4"
+  }
+}
