@@ -335,6 +335,26 @@ async function requestBlob(path: string, body: unknown, _retrying = false): Prom
   return res.blob();
 }
 
+/**
+ * `GET /vaults/:id` is asked for by several parts of the vault page at once (the page itself, CSS snippets, custom
+ * themes, the core plugin host's settings). Requests within VAULT_GET_TTL_MS share one response; any write to the
+ * vault through this client drops it. Each caller gets its own copy, so nobody can change another's object.
+ */
+const VAULT_GET_TTL_MS = 2000;
+const vaultGets = new Map<string, { at: number; vault: Promise<ApiVault> }>();
+function getVaultShared(id: string): Promise<ApiVault> {
+  const hit = vaultGets.get(id);
+  if (!hit || Date.now() - hit.at > VAULT_GET_TTL_MS) {
+    const entry = { at: Date.now(), vault: request<ApiVault>(`/vaults/${id}`) };
+    vaultGets.set(id, entry);
+    entry.vault.catch(() => {
+      if (vaultGets.get(id) === entry) vaultGets.delete(id);
+    });
+    return entry.vault.then((v) => structuredClone(v));
+  }
+  return hit.vault.then((v) => structuredClone(v));
+}
+
 export const webApi = {
   auth: {
     register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true }) =>
@@ -350,10 +370,15 @@ export const webApi = {
     list: () => request<ApiVault[]>("/vaults"),
     create: (data: { name: string; workspaceId?: string }) =>
       request<ApiVault>("/vaults", { method: "POST", body: JSON.stringify(data) }),
-    get: (id: string) => request<ApiVault>(`/vaults/${id}`),
-    update: (id: string, data: Partial<Pick<ApiVault, "name" | "settings">>) =>
-      request<ApiVault>(`/vaults/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
-    remove: (id: string) => request<{ ok: true }>(`/vaults/${id}`, { method: "DELETE" }),
+    get: (id: string) => getVaultShared(id),
+    update: (id: string, data: Partial<Pick<ApiVault, "name" | "settings">>) => {
+      vaultGets.delete(id);
+      return request<ApiVault>(`/vaults/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+    },
+    remove: (id: string) => {
+      vaultGets.delete(id);
+      return request<{ ok: true }>(`/vaults/${id}`, { method: "DELETE" });
+    },
     index: (id: string) => request<VaultIndex>(`/vaults/${id}/index`),
     search: (id: string, query: string) =>
       request<ApiSearchResult[]>(`/vaults/${id}/search?q=${encodeURIComponent(query)}`),

@@ -1,16 +1,13 @@
 "use client";
 
-import { useEffect, useState, useCallback, useMemo, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, type ComponentType } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
-import { Editor, SourceEditor, ReadOnlyView, FormattingToolbar, runFormattingAction } from "@noteriv/ui/editor";
 import SplitPane from "@/components/SplitPane";
 import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel } from "@noteriv/ui/panels";
 import CollabPanel from "@/components/CollabPanel";
-import PluginManager from "@/components/PluginManager";
-import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
@@ -18,18 +15,11 @@ import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
-import SettingsModal from "@/components/SettingsModal";
-import ImportVault from "@/components/ImportVault";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
-import DiagnosticsModal from "@/components/DiagnosticsModal";
 import { createUntitledNote } from "@/lib/note-names";
-import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
-import TrashPanel from "@/components/TrashPanel";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import HoverPreview from "@/components/HoverPreview";
-import AttachmentManager from "@/components/AttachmentManager";
-import FileRecovery from "@/components/FileRecovery";
-import { setImageLightboxHandler } from "@noteriv/ui/markdown";
+import { setImageLightboxHandler } from "@noteriv/ui/markdown/renderers/images";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
@@ -60,8 +50,6 @@ import {
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
-import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
-import PdfPreviewModal from "@/components/PdfPreviewModal";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import {
@@ -73,7 +61,7 @@ import {
   type HotkeyBinding,
   type HotkeyAction,
 } from "@/lib/hotkeys";
-import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor } from "@noteriv/ui/editor/editor-commands";
+import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
@@ -97,6 +85,43 @@ function saveRecentCommand(action: string) {
 }
 
 const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
+
+// The editor (CodeMirror with its language parsers) is the heaviest part of the page: it loads when a note opens, and
+// is prefetched once the vault has loaded and the browser is idle (see the effect below the index load).
+type EditorModule = typeof import("@noteriv/ui/editor");
+/** Set once the editor module has loaded. */
+let editorModule: EditorModule | null = null;
+const loadEditor = () => import("@noteriv/ui/editor").then((m) => (editorModule = m));
+/**
+ * A component of the editor module. Through `dynamic()` it suspends on its first mount even when the module is already
+ * here, and React then holds the reveal back for ~300 ms; so once the module has loaded (prefetched), it is rendered
+ * directly. The choice is made once per mount, so a mounted editor never swaps implementation.
+ */
+function editorPart<P extends object>(pick: (m: EditorModule) => ComponentType<P>) {
+  const Lazy = dynamic(() => loadEditor().then(pick), { ssr: false }) as ComponentType<P>;
+  return function EditorPart(props: P) {
+    const [Part] = useState(() => (editorModule ? pick(editorModule) : Lazy));
+    return <Part {...props} />;
+  };
+}
+const Editor = editorPart((m) => m.Editor);
+const SourceEditor = editorPart((m) => m.SourceEditor);
+const ReadOnlyView = editorPart((m) => m.ReadOnlyView);
+const FormattingToolbar = editorPart((m) => m.FormattingToolbar);
+
+// Dialogs opened on demand.
+const PluginManager = dynamic(() => import("@/components/PluginManager"), { ssr: false });
+const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
+const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
+const ImportVault = dynamic(() => import("@/components/ImportVault"), { ssr: false });
+const DiagnosticsModal = dynamic(() => import("@/components/DiagnosticsModal"), { ssr: false });
+const CreateVaultFromGithub = dynamic(() => import("@/components/sync/CreateVaultFromGithub"), { ssr: false });
+const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
+const AttachmentManager = dynamic(() => import("@/components/AttachmentManager"), { ssr: false });
+const FileRecovery = dynamic(() => import("@/components/FileRecovery"), { ssr: false });
+const PdfPreviewModal = dynamic(() => import("@/components/PdfPreviewModal"), { ssr: false });
+/** PDF export (markdown → HTML, the PDF service): loaded when used. */
+const loadPdfExport = () => import("@/lib/pdf-export");
 
 const SAVE_DEBOUNCE_MS = 800;
 const WORKSPACE_SAVE_DEBOUNCE_MS = 1000;
@@ -133,6 +158,8 @@ export default function VaultPage() {
   const [splitTabId, setSplitTabId] = useState<string | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const workspaceLoadedRef = useRef(false);
+  /** The workspace state as the server has it (loaded, or last sent): an unchanged state is not sent again. */
+  const savedWorkspaceRef = useRef<string | null>(null);
   // State twin of workspaceLoadedRef: the `?note=` effect must wait for the
   // saved-tabs restore to finish, otherwise the restore's setTabs overwrites
   // the tab `?note=` just opened.
@@ -173,6 +200,8 @@ export default function VaultPage() {
   const [platform, setPlatform] = useState("web");
   const [syncConnections, setSyncConnections] = useState<ApiSyncConnection[]>([]);
   const preferencesLoadedRef = useRef(false);
+  /** Preferences as the server has them (loaded, or last sent): unchanged ones are not sent again. */
+  const savedPreferencesRef = useRef<string | null>(null);
   const preferencesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Phase C — Trash/Bookmarks/Vault Insights/Templates/Note Composer/hover preview
@@ -322,6 +351,20 @@ export default function VaultPage() {
   const refreshIndex = useCallback(() => {
     webApi.vaults.index(vaultId).then(setIndex);
   }, [vaultId]);
+
+  // Once the vault is on screen, fetch the editor while the browser is idle, so opening a note does not wait for it.
+  const vaultShown = index !== null;
+  useEffect(() => {
+    if (!vaultShown) return;
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const prefetch = () => void loadEditor().catch(() => {});
+    if (idle) {
+      const id = idle(prefetch, { timeout: 3000 });
+      return () => (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(prefetch, 1500);
+    return () => clearTimeout(t);
+  }, [vaultShown]);
 
   const editorBridge: EditorApi = {
       getContent: () => draftRef.current,
@@ -613,6 +656,8 @@ export default function VaultPage() {
     webApi.workspace
       .getState(vaultId)
       .then(async (state) => {
+        // Tabs to restore will show an editor: fetch its chunk alongside the notes, not after they render.
+        if (state.openTabs.length > 0) void loadEditor().catch(() => {});
         // Only a 404 means the note is really gone and its tab should be
         // dropped. Any other failure (network blip, 5xx) leaves the restore
         // incomplete: those tabs are skipped for this session, but we must not
@@ -635,6 +680,12 @@ export default function VaultPage() {
           restoreIncompleteRef.current = true;
           setPageNotice("Không khôi phục được một số tab do lỗi kết nối; tải lại trang để thử lại.");
         }
+        savedWorkspaceRef.current = JSON.stringify({
+          openTabs: state.openTabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
+          activeTabId: state.activeTabId ?? null,
+          pinnedTabIds: state.pinnedTabIds,
+          fileViewModes: state.fileViewModes,
+        });
         setTabs(restoredTabs);
         // Prune ids of dropped tabs so dead pins/view-modes don't linger server-side.
         const liveIds = new Set(restoredTabs.map((t) => t.noteId));
@@ -666,16 +717,18 @@ export default function VaultPage() {
   // debounced the same way note autosave is.
   useEffect(() => {
     if (!workspaceLoadedRef.current) return;
+    const state = {
+      openTabs: tabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
+      activeTabId: activeTabId ?? null,
+      pinnedTabIds: Array.from(pinnedTabIds),
+      fileViewModes,
+    };
+    const serialized = JSON.stringify(state);
+    if (serialized === savedWorkspaceRef.current) return;
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     workspaceSaveTimer.current = setTimeout(() => {
-      webApi.workspace
-        .updateState(vaultId, {
-          openTabs: tabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
-          activeTabId,
-          pinnedTabIds: Array.from(pinnedTabIds),
-          fileViewModes,
-        })
-        .catch(() => undefined);
+      savedWorkspaceRef.current = serialized;
+      webApi.workspace.updateState(vaultId, state).catch(() => undefined);
     }, WORKSPACE_SAVE_DEBOUNCE_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, tabs, activeTabId, pinnedTabIds, fileViewModes]);
@@ -690,8 +743,11 @@ export default function VaultPage() {
     webApi.preferences
       .get()
       .then((prefs) => {
-        setHotkeyBindings(mergeHotkeys(prefs.hotkeys));
-        setEditorSettingsState({ ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings });
+        const bindings = mergeHotkeys(prefs.hotkeys);
+        const settings = { ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings };
+        savedPreferencesRef.current = JSON.stringify({ hotkeys: hotkeysToOverrideMap(bindings), editorSettings: settings });
+        setHotkeyBindings(bindings);
+        setEditorSettingsState(settings);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -738,11 +794,13 @@ export default function VaultPage() {
   // Persist hotkey/editor-setting changes, debounced like workspace state.
   useEffect(() => {
     if (!preferencesLoadedRef.current) return;
+    const prefs = { hotkeys: hotkeysToOverrideMap(hotkeyBindings), editorSettings };
+    const serialized = JSON.stringify(prefs);
+    if (serialized === savedPreferencesRef.current) return;
     if (preferencesSaveTimer.current) clearTimeout(preferencesSaveTimer.current);
     preferencesSaveTimer.current = setTimeout(() => {
-      webApi.preferences
-        .update({ hotkeys: hotkeysToOverrideMap(hotkeyBindings), editorSettings })
-        .catch(() => undefined);
+      savedPreferencesRef.current = serialized;
+      webApi.preferences.update(prefs).catch(() => undefined);
     }, WORKSPACE_SAVE_DEBOUNCE_MS);
   }, [hotkeyBindings, editorSettings]);
 
@@ -1033,7 +1091,7 @@ export default function VaultPage() {
     if (!activeTab) return;
     setPageNotice("Đang tạo PDF…");
     try {
-      await downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
+      await (await loadPdfExport()).downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
       setPageNotice("Đã tải PDF.");
       setTimeout(() => setPageNotice((n) => (n === "Đã tải PDF." ? null : n)), 3000);
     } catch (err) {
@@ -1047,7 +1105,7 @@ export default function VaultPage() {
     if (!activeTab) return;
     setPageNotice("Đang tạo bản xem trước…");
     try {
-      setPdfPreview(await renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
+      setPdfPreview(await (await loadPdfExport()).renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
       setPageNotice(null);
     } catch (err) {
       const message = (err as { body?: { message?: string } } | null)?.body?.message;
@@ -1057,7 +1115,7 @@ export default function VaultPage() {
 
   async function handlePrint() {
     if (!activeTab) return;
-    await exportToPDF(draft, activeTab.name, pdfOptions());
+    await (await loadPdfExport()).exportToPDF(draft, activeTab.name, pdfOptions());
   }
 
   // Developer > Reload: persist every edited tab first so reloading never drops unsaved text.
@@ -1746,7 +1804,7 @@ export default function VaultPage() {
         <PdfPreviewModal
           blob={pdfPreview.blob}
           filename={pdfPreview.filename}
-          onDownload={() => saveBlob(pdfPreview.blob, pdfPreview.filename)}
+          onDownload={() => void loadPdfExport().then((m) => m.saveBlob(pdfPreview.blob, pdfPreview.filename))}
           onClose={() => setPdfPreview(null)}
         />
       )}

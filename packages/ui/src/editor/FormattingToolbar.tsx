@@ -1,29 +1,10 @@
 "use client";
 
-import type { EditorView } from "@codemirror/view";
-import {
-  wrapSelection,
-  insertLink,
-  insertImage,
-  insertBlockquote,
-  insertCodeBlock,
-  insertTaskList,
-  insertTable,
-  insertHorizontalRule,
-} from "./editor-commands";
+import type { FormattingAction } from "./editor-commands";
 
-export type FormattingAction =
-  | "toggleBold"
-  | "toggleItalic"
-  | "toggleStrikethrough"
-  | "toggleCode"
-  | "insertLink"
-  | "insertImage"
-  | "insertBlockquote"
-  | "insertCodeBlock"
-  | "insertTaskList"
-  | "insertTable"
-  | "insertHorizontalRule";
+// The action type and runFormattingAction live in editor-commands.ts (no CodeMirror at runtime), so a host can run an
+// action without loading the editor; they are re-exported here as before.
+export { runFormattingAction, type FormattingAction } from "./editor-commands";
 
 const actions: { action: FormattingAction; label: string; shortcut?: string; content: string; className?: string }[] = [
   { action: "toggleBold", label: "Bold", content: "B", className: "formatting-toolbar-bold" },
@@ -38,35 +19,6 @@ const actions: { action: FormattingAction; label: string; shortcut?: string; con
   { action: "insertTable", label: "Insert table", content: "Table" },
   { action: "insertHorizontalRule", label: "Horizontal rule", content: "Rule" },
 ];
-
-/** Run a toolbar action directly against an editor. A host without its own command dispatcher can use this. */
-export function runFormattingAction(view: EditorView | null, action: FormattingAction): void {
-  if (!view) return;
-  switch (action) {
-    case "toggleBold":
-      return wrapSelection(view, "**", "**");
-    case "toggleItalic":
-      return wrapSelection(view, "*", "*");
-    case "toggleStrikethrough":
-      return wrapSelection(view, "~~", "~~");
-    case "toggleCode":
-      return wrapSelection(view, "`", "`");
-    case "insertLink":
-      return insertLink(view);
-    case "insertImage":
-      return insertImage(view);
-    case "insertBlockquote":
-      return insertBlockquote(view);
-    case "insertCodeBlock":
-      return insertCodeBlock(view);
-    case "insertTaskList":
-      return insertTaskList(view);
-    case "insertTable":
-      return insertTable(view);
-    case "insertHorizontalRule":
-      return insertHorizontalRule(view);
-  }
-}
 
 /**
  * The toolbar only reports which button was pressed. What an action does is the host's call: the web app runs the

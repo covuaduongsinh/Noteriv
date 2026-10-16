@@ -1,7 +1,7 @@
 export { default as Editor, type EditorProps } from "./Editor";
 export { default as SourceEditor, type SourceEditorProps } from "./SourceEditor";
 export { default as ReadOnlyView, type ReadOnlyViewProps } from "./ReadOnlyView";
-export { default as FormattingToolbar, runFormattingAction, type FormattingAction } from "./FormattingToolbar";
+export { default as FormattingToolbar } from "./FormattingToolbar";
 export { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completion";
 export { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
 export { vimExtension } from "./vim-mode";

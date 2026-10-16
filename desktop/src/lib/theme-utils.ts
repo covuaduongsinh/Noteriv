@@ -401,10 +401,6 @@ export function importTheme(json: string): ThemeDefinition | null {
   }
 }
 
-export function getDefaultTheme(): ThemeDefinition {
-  return BUILT_IN_THEMES[0]; // Catppuccin Mocha
-}
-
 // ── Community themes ──
 
 const COMMUNITY_REPO_BASE =

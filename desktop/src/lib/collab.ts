@@ -123,24 +123,3 @@ export async function startCollab(
   }
 }
 
-/**
- * Apply a local edit to the Yjs document.
- * Call this when the user types in the editor.
- */
-export function applyLocalEdit(
-  doc: unknown,
-  from: number,
-  to: number,
-  insert: string
-): void {
-  try {
-    const Y = (doc as any);
-    const ytext = Y.getText("content");
-    if (from < to) {
-      ytext.delete(from, to - from);
-    }
-    if (insert) {
-      ytext.insert(from, insert);
-    }
-  } catch {}
-}

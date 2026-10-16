@@ -161,3 +161,47 @@ export function insertTable(view: EditorView) {
   });
   view.focus();
 }
+
+// ─── Formatting toolbar actions ───
+
+export type FormattingAction =
+  | "toggleBold"
+  | "toggleItalic"
+  | "toggleStrikethrough"
+  | "toggleCode"
+  | "insertLink"
+  | "insertImage"
+  | "insertBlockquote"
+  | "insertCodeBlock"
+  | "insertTaskList"
+  | "insertTable"
+  | "insertHorizontalRule";
+
+/** Run a toolbar action directly against an editor. A host without its own command dispatcher can use this. */
+export function runFormattingAction(view: EditorView | null, action: FormattingAction): void {
+  if (!view) return;
+  switch (action) {
+    case "toggleBold":
+      return wrapSelection(view, "**", "**");
+    case "toggleItalic":
+      return wrapSelection(view, "*", "*");
+    case "toggleStrikethrough":
+      return wrapSelection(view, "~~", "~~");
+    case "toggleCode":
+      return wrapSelection(view, "`", "`");
+    case "insertLink":
+      return insertLink(view);
+    case "insertImage":
+      return insertImage(view);
+    case "insertBlockquote":
+      return insertBlockquote(view);
+    case "insertCodeBlock":
+      return insertCodeBlock(view);
+    case "insertTaskList":
+      return insertTaskList(view);
+    case "insertTable":
+      return insertTable(view);
+    case "insertHorizontalRule":
+      return insertHorizontalRule(view);
+  }
+}

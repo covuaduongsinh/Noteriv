@@ -4,17 +4,14 @@ import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TitleBar from "@/components/TitleBar";
-import SetupWizard from "@/components/SetupWizard";
 import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
-import SettingsModal from "@/components/SettingsModal";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
-import VaultSearch from "@/components/VaultSearch";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
-import { setLocalImageLoader } from "@noteriv/ui/markdown";
+import { setLocalImageLoader } from "@noteriv/ui/markdown/vault-hooks";
 import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
 import {
   CorePluginRibbonButtons,
@@ -32,14 +29,7 @@ import {
 } from "@noteriv/ui/plugins";
 import { desktopCorePluginConfig } from "@/lib/core-plugins";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
-import FileRecovery from "@/components/FileRecovery";
-import AttachmentManager from "@/components/AttachmentManager";
-import PluginManagerModal from "@/components/PluginManager";
-import CSSSnippets from "@/components/CSSSnippets";
 import { isImageFile } from "@/lib/attachment-utils";
-import PublishPreview from "@/components/PublishPreview";
-import CollabPanel from "@/components/CollabPanel";
-import TrashPanel from "@/components/TrashPanel";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
 import { insertAtCursor } from "@noteriv/ui/editor/editor-commands";
@@ -70,13 +60,27 @@ import {
 } from "@noteriv/ui/editor/editor-commands";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { getRandomNote } from "@/lib/random-note";
-import { exportToPDF } from "@/lib/pdf-export";
 import { saveSnapshot } from "@/lib/file-recovery";
 import { DesktopPluginStore, PLUGIN_APP_VERSION, toSandboxRecord, type DesktopPlugin } from "@/lib/plugin-api";
 import { useSandboxPluginHost, type EditorSnapshot } from "@noteriv/ui/plugins/sandbox";
 import { BUILT_IN_THEMES, applyTheme, loadCustomThemes } from "@/lib/theme-utils";
 import { loadSnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import type { EditorView } from "@codemirror/view";
+
+// Dialogs opened on demand (and the first-run wizard): loaded when first shown.
+const SetupWizard = dynamic(() => import("@/components/SetupWizard"), { ssr: false });
+const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
+const VaultSearch = dynamic(() => import("@/components/VaultSearch"), { ssr: false });
+const FileRecovery = dynamic(() => import("@/components/FileRecovery"), { ssr: false });
+const AttachmentManager = dynamic(() => import("@/components/AttachmentManager"), { ssr: false });
+const PluginManagerModal = dynamic(() => import("@/components/PluginManager"), { ssr: false });
+const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
+const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
+const CollabPanel = dynamic(() => import("@/components/CollabPanel"), { ssr: false });
+const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
+/** PDF export (markdown → HTML, print): loaded when used. */
+const exportToPDF = async (...args: Parameters<typeof import("@/lib/pdf-export").exportToPDF>) =>
+  (await import("@/lib/pdf-export")).exportToPDF(...args);
 
 const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor), { ssr: false });
 const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });

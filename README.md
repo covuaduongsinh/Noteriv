@@ -60,7 +60,7 @@ Logic dùng chung nằm ở `packages/core` (`@noteriv/core`, TypeScript thuần
 > **Đọc trước.** Mọi nội dung từ đây trở xuống là README gốc của dự án **upstream** (`thejacedev/Noteriv`), giữ lại làm tài liệu tính năng cho bản desktop. Các liên kết **website, docs, Google Play, App Store** trong phần này là của **upstream**, không phải kênh phân phối của dự án này. Một số tính năng mô tả có thể khác với bản web hiện tại.
 
 <div align="center">
-  <img src="desktop/public/banner.png" alt="Noteriv" />
+  <img src="docs/assets/banner.png" alt="Noteriv" />
   <h1>Noteriv</h1>
   <p><strong>Fast markdown notes, everywhere.</strong></p>
   <p>
@@ -536,12 +536,10 @@ desktop/
 │   │   ├── toc-utils.ts         Table of contents generation + auto-update
 │   │   ├── publish.ts           HTML export with theme colors
 │   │   ├── flashcard-utils.ts   SM-2 spaced repetition + card extraction
-│   │   ├── collab.ts            Yjs CRDT + WebRTC collaboration
-│   │   ├── focus-mode.ts        Focus/typewriter mode extension
-│   │   └── pdf-annotation.ts   PDF annotation types + sidecar I/O + markdown export
+│   │   └── collab.ts            Yjs CRDT + WebRTC collaboration
 │   └── types/
 │       └── electron.d.ts  IPC type definitions (50+ methods)
-└── public/               App icons (macOS, Windows, Linux)
+└── public/               pdf.js and the plugin sandbox page (app icons: src-tauri/icons)
 ```
 
 ---
@@ -789,7 +787,7 @@ Noteriv/
 │   ├── src-tauri/        Rust backend (IPC, file I/O, Git, sync, clipper server, vault watcher)
 │   ├── src/components/   41 React components + markdown rendering engine
 │   ├── src/lib/          33 utility modules
-│   └── public/           Platform icons + pdf.js worker
+│   └── public/           pdf.js + worker, plugin sandbox page
 ├── mcp/                  MCP server for AI assistant integration (22 tools, auto-discovers vaults)
 ├── extension/            Web Clipper browser extension (Manifest V3)
 ├── phone/                Expo + React Native mobile application
