@@ -21,6 +21,32 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/flashcards"),
   },
+  {
+    id: "calendar",
+    name: "Lịch và daily notes",
+    description: "Lịch tháng với daily note và việc đến hạn; mở daily note hôm nay bằng Ctrl+D hoặc nút ribbon.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/calendar"),
+  },
+  {
+    id: "templates",
+    name: "Templates",
+    description: "Tạo note mới từ template hoặc chèn template vào note đang mở (Ctrl+Alt+T). Template là các note trong thư mục Templates.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/templates"),
+  },
+  {
+    id: "note-composer",
+    name: "Note composer",
+    description: "Gộp nhiều note vào note đang mở, hoặc tách note đang mở thành nhiều note theo heading.",
+    load: () => import("@noteriv/plugins/note-composer"),
+  },
+  {
+    id: "vault-insights",
+    name: "Vault insights",
+    description: "Thống kê vault: biểu đồ hoạt động, note kết nối nhiều và note mồ côi, tag phổ biến, tăng trưởng, sức khoẻ vault.",
+    load: () => import("@noteriv/plugins/vault-insights"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

@@ -33,7 +33,6 @@ export type HotkeyAction =
   | "toggleCollab"
   | "exportPDF"
   | "previewPDF"
-  | "calendarView"
   | "pluginManager"
   | "cssSnippets"
   | "gitSync"
@@ -57,9 +56,6 @@ export type HotkeyAction =
   | "insertHorizontalRule"
   | "toggleBookmark"
   | "openTrash"
-  | "insertTemplate"
-  | "noteComposer"
-  | "vaultInsights"
   // Phase 1 discoverability (parity plan v2): entries that already existed as
   // ribbon/settings paths but had no palette/menu action.
   | "syncSettings"
@@ -68,7 +64,6 @@ export type HotkeyAction =
   | "exportVault"
   | "importNewVault"
   | "newVaultFromGithub"
-  | "dailyNote"
   | "randomNote"
   | "toggleLint"
   | "zenMode"
@@ -111,7 +106,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "previewPDF", label: "Xem trước PDF", keys: "", category: "File" },
   { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
   { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
-  { action: "calendarView", label: "Calendar View", keys: "", category: "Navigation" },
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
@@ -120,7 +114,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
-  { action: "dailyNote", label: "Open Today's Daily Note", keys: "Ctrl+D", category: "Navigation" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
   { action: "toggleLint", label: "Toggle Lint Panel", keys: "", category: "View" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },
@@ -144,9 +137,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
 
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
-  { action: "insertTemplate", label: "New from Template", keys: "Ctrl+T", category: "File" },
-  { action: "noteComposer", label: "Note Composer", keys: "", category: "Edit" },
-  { action: "vaultInsights", label: "Vault Insights", keys: "", category: "View" },
 ];
 
 /** Parse a key combo string like "Ctrl+Shift+F" and check if a KeyboardEvent matches it. */

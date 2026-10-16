@@ -27,6 +27,8 @@ export interface CorePluginPorts {
   editor: EditorApi;
   getCurrentFile: () => string | null;
   openFile: (path: string) => boolean | Promise<boolean>;
+  /** A plugin created, changed or deleted notes: refresh the file tree / index. */
+  onVaultChanged?: () => void;
 }
 
 export interface CorePluginNotice {
@@ -77,6 +79,7 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
         return true;
       },
       closeView: (types) => setActiveView((v) => (v && types.includes(v.type) ? null : v)),
+      onVaultChanged: () => portsRef.current.onVaultChanged?.(),
       notify: (message, durationMs = 4000) => {
         const key = `core:${Date.now()}:${Math.random().toString(36).slice(2)}`;
         setNotices((prev) => [...prev, { key, message }]);

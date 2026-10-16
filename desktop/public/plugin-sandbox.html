@@ -131,6 +131,7 @@ function buildApi(boot) {
       list: function (dir) { return rpcCall("vault.list", [dir]); },
       exists: function (path) { return rpcCall("vault.exists", [path]); },
       delete: function (path) { return rpcCall("vault.delete", [path]); },
+      stats: coreOnly("vault.stats"),
     },
     ui: {
       addCommand: function (cmd) {

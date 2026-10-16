@@ -77,6 +77,16 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
       return backlinksFromWikiScan(vaultPath, found);
     },
 
+    async noteDates() {
+      // One call for the whole vault; ids are the same absolute paths listAllFiles reports.
+      const files = await api().getFileStats(vaultPath);
+      return Object.fromEntries(
+        files
+          .filter((f) => isMarkdownPath(f.filePath))
+          .map((f) => [f.filePath, { createdAt: f.birthtimeMs || f.mtimeMs, modifiedAt: f.mtimeMs }])
+      );
+    },
+
     async getSettings() {
       return (await api().loadSettings()) ?? {};
     },

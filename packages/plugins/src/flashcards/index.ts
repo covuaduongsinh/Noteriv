@@ -1,9 +1,10 @@
-import type { CorePlugin, PluginApi, VaultApi } from "@noteriv/plugin-api";
-import type { ScannedNote } from "./storage";
+import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import { scanVault } from "../shared/vault";
 import { mountReview, type ReviewLabels } from "./view";
 
 export { extractCards, getDueCards, gradeCard, hashCard, type Flashcard, type CardReview, type Reviews } from "./cards";
-export { migrateLegacyReviews, loadReviews, saveReviews, type ScannedNote } from "./storage";
+export { migrateLegacyReviews, loadReviews, saveReviews } from "./storage";
+export { scanVault, type ScannedNote } from "../shared/vault";
 
 export const VIEW_TYPE = "flashcards-review";
 
@@ -43,30 +44,6 @@ const TEXT: Record<"web" | "desktop", ReviewLabels & { command: string; ribbon: 
 
 const ICON =
   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="4" width="10" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2"/><rect x="4.5" y="6" width="10" height="7" rx="1.2" stroke="currentColor" stroke-width="1.2" fill="var(--bg-secondary)"/><path d="M7 9.5h5" stroke="currentColor" stroke-width="1.1" stroke-linecap="round"/></svg>';
-
-async function listMarkdown(vault: VaultApi, dir?: string): Promise<string[]> {
-  const out: string[] = [];
-  for (const entry of await vault.list(dir)) {
-    if (entry.isDir) out.push(...(await listMarkdown(vault, entry.path)));
-    else if (/\.(md|markdown)$/i.test(entry.path)) out.push(entry.path);
-  }
-  return out;
-}
-
-/** Every markdown note in the vault with its content, read a few at a time (one request per note on web). */
-export async function scanVault(vault: VaultApi, concurrency = 8): Promise<ScannedNote[]> {
-  const paths = await listMarkdown(vault);
-  const out: ScannedNote[] = [];
-  for (let i = 0; i < paths.length; i += concurrency) {
-    const batch = paths.slice(i, i + concurrency);
-    const contents = await Promise.all(batch.map((p) => vault.read(p)));
-    batch.forEach((path, k) => {
-      const content = contents[k];
-      if (content !== null) out.push({ path, content });
-    });
-  }
-  return out;
-}
 
 /** Flashcards: spaced repetition (SM-2) over Q:/A: pairs and {{cloze}} deletions found in the vault's notes. */
 const flashcards: CorePlugin = {

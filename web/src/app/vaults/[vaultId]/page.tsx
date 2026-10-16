@@ -10,7 +10,6 @@ import SplitPane from "@/components/SplitPane";
 import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel } from "@noteriv/ui/panels";
 import CollabPanel from "@/components/CollabPanel";
 import PluginManager from "@/components/PluginManager";
-import CalendarView from "@/components/CalendarView";
 import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -28,9 +27,6 @@ import { createUntitledNote } from "@/lib/note-names";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
 import TrashPanel from "@/components/TrashPanel";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
-import VaultInsights from "@/components/VaultInsights";
-import TemplatePicker from "@/components/TemplatePicker";
-import NoteComposer from "@/components/NoteComposer";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
 import AudioRecorder from "@/components/AudioRecorder";
@@ -166,7 +162,6 @@ export default function VaultPage() {
   const [collabConnected, setCollabConnected] = useState(false);
   const [collabPeers, setCollabPeers] = useState<CollabPeer[]>([]);
   const [displayName, setDisplayName] = useState<string | undefined>(undefined);
-  const [showCalendarView, setShowCalendarView] = useState(false);
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
@@ -208,9 +203,6 @@ export default function VaultPage() {
         .map((n) => ({ id: n.id, name: n.name, path: n.path })),
     [bookmarks, index]
   );
-  const [showInsights, setShowInsights] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
@@ -379,9 +371,12 @@ export default function VaultPage() {
         return { line: line.number - 1, ch: head - line.from };
       },
   };
-  /** `workspace.openFile` for both plugin tiers. */
-  const openPluginPath = (path: string) => {
-    const note = index?.notes.find((n) => n.path === path);
+  /**
+   * `workspace.openFile` for both plugin tiers. A note the plugin has just created is not in `index` yet (the refresh
+   * is still in flight), so a miss asks the adapter before giving up.
+   */
+  const openPluginPath = async (path: string) => {
+    const note = index?.notes.find((n) => n.path === path) ?? (await vaultAdapter.listNotes()).find((n) => n.path === path);
     if (!note) return false;
     openNote(note.id);
     return true;
@@ -396,6 +391,7 @@ export default function VaultPage() {
     editor: editorBridge,
     getCurrentFile: () => activePathRef.current,
     openFile: openPluginPath,
+    onVaultChanged: refreshIndex,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
@@ -873,9 +869,6 @@ export default function VaultPage() {
       case "printNote":
         handlePrint();
         break;
-      case "calendarView":
-        setShowCalendarView(true);
-        break;
       case "pluginManager":
         setPluginManagerOpen(true);
         break;
@@ -930,15 +923,6 @@ export default function VaultPage() {
       case "openTrash":
         setShowTrash(true);
         break;
-      case "insertTemplate":
-        setShowTemplatePicker(true);
-        break;
-      case "noteComposer":
-        setShowNoteComposer(true);
-        break;
-      case "vaultInsights":
-        setShowInsights(true);
-        break;
       case "syncSettings":
         openSettings("sync");
         break;
@@ -950,9 +934,6 @@ export default function VaultPage() {
         break;
       case "newVaultFromGithub":
         setShowNewFromGithub(true);
-        break;
-      case "dailyNote":
-        handleDailyNote();
         break;
       case "randomNote":
         handleRandomNote();
@@ -1044,12 +1025,6 @@ export default function VaultPage() {
     setWikilinkHover(null);
   }
 
-  async function handleCreateFromTemplate(content: string, templateName: string) {
-    const note = await webApi.notes.create(vaultId, { name: `${templateName}.md`, folderId: null, content });
-    refreshIndex();
-    openNote(note.id);
-  }
-
   function openNoteByPath(path: string) {
     const note = index?.notes.find((n) => n.path === path);
     if (note) openNote(note.id);
@@ -1092,33 +1067,12 @@ export default function VaultPage() {
     await exportToPDF(draft, activeTab.name, pdfOptions());
   }
 
-  // Same convention as desktop: Daily/YYYY-MM-DD.md, created on first use.
-  async function handleCreateDailyNote(date: string) {
-    const idx = await webApi.vaults.index(vaultId);
-    const path = `Daily/${date}.md`;
-    const existing = idx.notes.find((n) => n.path === path);
-    if (existing) {
-      openNote(existing.id);
-      return;
-    }
-    let folder = idx.folders.find((f) => f.path === "Daily");
-    if (!folder) folder = await webApi.folders.create(vaultId, { name: "Daily", parentId: null });
-    const note = await webApi.notes.create(vaultId, { name: `${date}.md`, folderId: folder.id, content: `# ${date}\n\n` });
-    refreshIndex();
-    openNote(note.id);
-  }
-
   // Developer > Reload: persist every edited tab first so reloading never drops unsaved text.
   async function handleReloadApp() {
     await Promise.all(tabs.filter((t) => t.content !== t.savedContent).map((t) => persistNote(t.noteId, t.content).catch(() => undefined)));
     window.location.reload();
   }
 
-  function handleDailyNote() {
-    const now = new Date();
-    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    handleCreateDailyNote(date);
-  }
 
   function handleRandomNote() {
     const candidates = (index?.notes ?? []).filter((n) => n.id !== activeTabId);
@@ -1305,6 +1259,7 @@ export default function VaultPage() {
           hotkeys={hotkeyBindings}
           platform={platform}
           onMenuAction={executeCommand}
+          pluginCommands={corePlugins.contributions.commands}
           onImportNewVault={() => setImportMode("new")}
           onNewFromGithub={() => setShowNewFromGithub(true)}
           onVaultsChanged={() => {
@@ -1336,19 +1291,14 @@ export default function VaultPage() {
           <Ribbon
             onQuickOpen={() => setQuickOpenVisible(true)}
             onNewNote={handleQuickNewNote}
-            onDailyNote={handleDailyNote}
             onCommandPalette={() => setCommandPaletteOpen(true)}
             onGraph={handleGraphView}
             onSearch={() => setSearchVisible(true)}
-            onCalendar={() => setShowCalendarView(true)}
             onSettings={() => openSettings("general")}
             onOutline={() => setOutlineVisible((v) => !v)}
             onTags={() => setTagPaneVisible((v) => !v)}
             onTrash={() => setShowTrash(true)}
             onBookmarks={() => setBookmarksVisible((v) => !v)}
-            onInsights={() => setShowInsights(true)}
-            onTemplates={() => setShowTemplatePicker(true)}
-            onNoteComposer={() => setShowNoteComposer(true)}
             onAttachments={() => setShowAttachments(true)}
             onAudioRecorder={() => setShowAudioRecorder(true)}
             onSync={() => openSettings("sync")}
@@ -1626,14 +1576,6 @@ export default function VaultPage() {
         />
       )}
 
-      {showCalendarView && (
-        <CalendarView
-          vaultId={vaultId}
-          onFileSelect={openNoteByPath}
-          onCreateDailyNote={handleCreateDailyNote}
-          onClose={() => setShowCalendarView(false)}
-        />
-      )}
 
       <CorePluginViewOverlay host={corePluginHost.host} view={corePluginHost.activeView} onClose={corePluginHost.closeView} />
 
@@ -1724,27 +1666,6 @@ export default function VaultPage() {
         <TrashPanel vaultId={vaultId} onClose={() => setShowTrash(false)} onRestored={refreshIndex} />
       )}
 
-      {showInsights && (
-        <VaultInsights
-          vaultId={vaultId}
-          index={index}
-          onFileSelect={(noteId) => {
-            openNote(noteId);
-            setShowInsights(false);
-          }}
-          onClose={() => setShowInsights(false)}
-        />
-      )}
-
-      {showTemplatePicker && (
-        <TemplatePicker
-          vaultId={vaultId}
-          index={index}
-          onInsert={(content, name) => handleCreateFromTemplate(content, name)}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
-
       {showAttachments && (
         <AttachmentManager
           vaultId={vaultId}
@@ -1770,20 +1691,6 @@ export default function VaultPage() {
         />
       )}
 
-      {showNoteComposer && (
-        <NoteComposer
-          vaultId={vaultId}
-          index={index}
-          currentNoteId={activeTabId}
-          currentNoteName={activeTab?.name ?? null}
-          currentFolderId={index?.notes.find((n) => n.id === activeTabId)?.folderId ?? null}
-          currentContent={draft}
-          onClose={() => setShowNoteComposer(false)}
-          onNoteSelect={openNote}
-          onContentChange={onDraftChange}
-          onRefresh={refreshIndex}
-        />
-      )}
 
       {showSlidePresentation && activeTab && (
         <SlidePresentation content={draft} onClose={() => setShowSlidePresentation(false)} />

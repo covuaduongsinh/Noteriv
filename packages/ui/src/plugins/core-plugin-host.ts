@@ -42,6 +42,8 @@ export interface CorePluginHostServices {
   openView?(type: string, state: ViewState): Promise<boolean>;
   /** Closes the shown view if it is of one of these types. */
   closeView?(types: string[]): void;
+  /** A plugin created, changed or deleted notes: the app refreshes its file tree / index. */
+  onVaultChanged?(): void;
   notify(message: string, durationMs?: number): void;
   loadPluginSettings(pluginId: string): Promise<Record<string, unknown>>;
   savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void>;
@@ -228,6 +230,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           if (ref) await adapter.writeNote(ref.id, content);
           else await adapter.createNote(path, content);
           noteList = null;
+          services.onVaultChanged?.();
           return true;
         },
         async list(dir) {
@@ -241,7 +244,15 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           if (!ref) return false;
           await adapter.deleteNote(ref.id);
           noteList = null;
+          services.onVaultChanged?.();
           return true;
+        },
+        async stats() {
+          if (!adapter.noteDates) return {};
+          const [notes, dates] = await Promise.all([listNotes(), adapter.noteDates()]);
+          const out: Record<string, { createdAt: number; modifiedAt: number }> = {};
+          for (const n of notes) if (dates[n.id]) out[n.path] = dates[n.id];
+          return out;
         },
       },
 

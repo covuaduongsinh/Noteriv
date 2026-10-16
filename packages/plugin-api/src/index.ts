@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.2";
+export const PLUGIN_API_VERSION = "1.0.0-draft.3";
 
 // ─── Permissions (community tier) ───
 
@@ -34,12 +34,21 @@ export interface VaultEntry {
   isDir: boolean;
 }
 
+export interface NoteStats {
+  /** Milliseconds since epoch. */
+  createdAt: number;
+  modifiedAt: number;
+}
+
 export interface VaultApi {
   read(path: string): Promise<string | null>;
+  /** Creates the note (and any missing folders) when it does not exist. */
   write(path: string, content: string): Promise<boolean>;
   list(dir?: string): Promise<VaultEntry[]>;
   exists(path: string): Promise<boolean>;
   delete(path: string): Promise<boolean>;
+  /** Core tier only. Creation / last-change time of every note, keyed by vault-relative path (absent: unknown). */
+  stats(): Promise<Record<string, NoteStats>>;
 }
 
 // ─── Editor ───

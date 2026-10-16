@@ -22,8 +22,13 @@ export function CorePluginViewOverlay({
   const factory = view && host ? host.getView(view.type) : undefined;
 
   useEffect(() => {
-    const el = slot.current;
-    if (!view || !factory || !el) return;
+    const slotEl = slot.current;
+    if (!view || !factory || !slotEl) return;
+    // Each mount gets its own element, detached afterwards without touching what is inside: a plugin's React root may
+    // finish unmounting a tick later (closeView called from its own click handler), and must find its nodes intact.
+    const el = document.createElement("div");
+    el.style.display = "contents";
+    slotEl.appendChild(el);
     let cleanup: void | (() => void);
     try {
       cleanup = factory().mount(el, view.state);
@@ -36,7 +41,7 @@ export function CorePluginViewOverlay({
       } catch (e) {
         console.error(`[core-plugin view ${view.type}] cleanup failed:`, e);
       }
-      el.replaceChildren();
+      el.remove();
     };
   }, [view, factory]);
 

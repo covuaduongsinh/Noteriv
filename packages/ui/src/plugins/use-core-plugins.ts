@@ -36,23 +36,31 @@ export function useCorePlugins(host: CorePluginHost | null) {
 }
 
 /**
- * Runs plugin commands from their `hotkey`. App shortcuts win: the check waits until every keydown listener ran and
- * skips a key the app handled (`defaultPrevented`), so a plugin cannot take over Ctrl+S and the like whatever order
- * the listeners were added in.
+ * Runs plugin commands from their `hotkey`. App shortcuts win: a key the app handled (`defaultPrevented`) is left
+ * alone, so a plugin cannot take over Ctrl+S and the like whatever order the listeners were added in. The check runs
+ * after every app listener yet still inside the event, so a plugin key can also stop the browser's own action
+ * (Ctrl+D would otherwise open the bookmark dialog): the capture listener, which runs first, appends a one-shot
+ * bubble listener to `window`, the last stop of the bubble phase, after the app's own listeners there.
  */
 export function useCorePluginHotkeys(commands: HostCommand[]) {
   const ref = useRef(commands);
   ref.current = commands;
   useEffect(() => {
     const mac = isMacPlatform();
-    const onKey = (e: KeyboardEvent) => {
+    const onCapture = (e: KeyboardEvent) => {
       const cmd = ref.current.find((c) => c.hotkey && matchesHotkey(e, c.hotkey, mac));
       if (!cmd) return;
-      setTimeout(() => {
-        if (!e.defaultPrevented) cmd.run();
-      }, 0);
+      const afterApp = (ev: KeyboardEvent) => {
+        window.removeEventListener("keydown", afterApp);
+        if (ev !== e || e.defaultPrevented) return;
+        e.preventDefault();
+        cmd.run();
+      };
+      window.addEventListener("keydown", afterApp);
+      // If the app stopped propagation the listener never ran: drop it before the next key.
+      setTimeout(() => window.removeEventListener("keydown", afterApp), 0);
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    window.addEventListener("keydown", onCapture, true);
+    return () => window.removeEventListener("keydown", onCapture, true);
   }, []);
 }

@@ -44,19 +44,6 @@ export function GraphIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function CalendarIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M2 7h12" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <circle cx="5.5" cy="10" r="1" fill="currentColor" />
-      <circle cx="8" cy="10" r="1" fill="currentColor" />
-      <circle cx="10.5" cy="10" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function SearchIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -222,34 +209,6 @@ export function BookmarkIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function InsightsIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <path d="M2.5 13.5h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M4.5 13.5v-4M8 13.5v-7M11.5 13.5v-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function TemplateIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2.5" y="2.5" width="11" height="11" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M2.5 6h11M6 6v7.5" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function ComposerIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <path d="M3 3v4a3 3 0 003 3h4M3 3l2.5 2.5M3 3L5.5 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 13V9a3 3 0 00-3-3H6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 13l-2.5-2.5M13 13l-2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function AttachmentIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -338,16 +297,6 @@ export function CommandIcon({ size = 16, className }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 4.5l3.5 3.5L3 11.5" />
       <path d="M8.5 12h4.5" />
-    </svg>
-  );
-}
-
-export function DailyIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
-      <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
-      <circle cx="8" cy="10" r="1.2" fill="currentColor" stroke="none" />
     </svg>
   );
 }

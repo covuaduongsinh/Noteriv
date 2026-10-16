@@ -14,7 +14,7 @@ export function usePluginHost(
   adapter: VaultAdapter,
   editorBridge: EditorBridge,
   onVaultMutated: () => void,
-  openFile?: (path: string) => boolean
+  openFile?: (path: string) => boolean | Promise<boolean>
 ) {
   const [installed, setInstalled] = useState<ApiPlugin[]>([]);
 

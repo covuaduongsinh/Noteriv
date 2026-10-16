@@ -18,6 +18,11 @@ export interface NoteRef {
   name: string;
 }
 
+export interface NoteDates {
+  createdAt: number;
+  modifiedAt: number;
+}
+
 export interface NoteBacklink {
   ref: NoteRef;
   /** 1-based line of the link. Absent when the backend cannot say (web). */
@@ -46,6 +51,11 @@ export interface VaultAdapter {
   backlinks(id: string): Promise<NoteBacklink[]>;
   getSettings(): Promise<Record<string, unknown>>;
   saveSettings(settings: Record<string, unknown>): Promise<void>;
+  /**
+   * Creation and last-change time of every note (ms since epoch), keyed by note id. Optional: callers treat a
+   * missing method or a missing entry as "unknown".
+   */
+  noteDates?(): Promise<Record<string, NoteDates>>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

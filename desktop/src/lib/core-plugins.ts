@@ -21,6 +21,32 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/flashcards"),
   },
+  {
+    id: "calendar",
+    name: "Calendar and daily notes",
+    description: "Month view of daily notes and due tasks; open today's daily note with Ctrl+D or the ribbon.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/calendar"),
+  },
+  {
+    id: "templates",
+    name: "Templates",
+    description: "Insert a template at the cursor (Ctrl+T) or start a new note from one. Templates are the notes in the Templates folder.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/templates"),
+  },
+  {
+    id: "note-composer",
+    name: "Note composer",
+    description: "Merge notes into the open note, or split the open note into several notes by heading.",
+    load: () => import("@noteriv/plugins/note-composer"),
+  },
+  {
+    id: "vault-insights",
+    name: "Vault insights",
+    description: "Vault statistics: activity heatmap, most connected and orphan notes, top tags, growth and vault health.",
+    load: () => import("@noteriv/plugins/vault-insights"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

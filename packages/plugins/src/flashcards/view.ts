@@ -1,6 +1,7 @@
 import type { PluginApi } from "@noteriv/plugin-api";
 import { extractCards, getDueCards, gradeCard, type Flashcard, type Reviews } from "./cards";
-import { loadReviews, saveReviews, type ScannedNote } from "./storage";
+import type { ScannedNote } from "../shared/vault";
+import { loadReviews, saveReviews } from "./storage";
 
 export interface ReviewLabels {
   title: string;

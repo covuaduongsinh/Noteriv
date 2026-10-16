@@ -11,7 +11,6 @@ import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import SettingsModal from "@/components/SettingsModal";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
 import VaultSearch from "@/components/VaultSearch";
-import TemplatePicker from "@/components/TemplatePicker";
 import "@/styles/graph-view.css";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
@@ -28,13 +27,11 @@ import {
 } from "@noteriv/ui/plugins";
 import { desktopCorePluginConfig } from "@/lib/core-plugins";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
-import NoteComposer from "@/components/NoteComposer";
 import FileRecovery from "@/components/FileRecovery";
 import AudioRecorder from "@/components/AudioRecorder";
 import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
-import CalendarView from "@/components/CalendarView";
 import DataviewBlock from "@/components/DataviewBlock";
 import { isBoardContent, isBoardFile, createBoardContent } from "@noteriv/core/board-utils";
 import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
@@ -95,7 +92,6 @@ const SlidePresentation = dynamic(() => import("@/components/SlidePresentation")
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const DrawingEditor = dynamic(() => import("@/components/DrawingEditor"), { ssr: false });
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
-const VaultInsights = dynamic(() => import("@/components/VaultInsights"), { ssr: false });
 
 type ViewMode = "live" | "source" | "view";
 type AppState = "loading" | "setup" | "app";
@@ -148,8 +144,6 @@ export default function Home() {
   const [showGraphView, setShowGraphView] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -189,7 +183,6 @@ export default function Home() {
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
 
   // New features
-  const [showCalendarView, setShowCalendarView] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
@@ -198,7 +191,6 @@ export default function Home() {
   const [showNoteHistory, setShowNoteHistory] = useState(false);
   const [showTimeScrubber, setShowTimeScrubber] = useState(false);
   const [showLintPanel, setShowLintPanel] = useState(false);
-  const [showVaultInsights, setShowVaultInsights] = useState(false);
   const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
   const [communityPlugins, setCommunityPlugins] = useState<DesktopPlugin[]>([]);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
@@ -1207,42 +1199,6 @@ export default function Home() {
     return () => document.removeEventListener("click", handleLinkClick, true);
   }, []);
 
-  const handleDailyNote = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const dailyDir = `${activeVault.path}/Daily`;
-    const filePath = `${dailyDir}/${dateStr}.md`;
-
-    // Create directory if needed
-    await window.electronAPI.createDir(dailyDir);
-
-    // Check if file exists
-    const existing = await window.electronAPI.readFile(filePath);
-    if (existing === null) {
-      // Create with template
-      const template = `# ${dateStr}\n\n`;
-      await window.electronAPI.writeFile(filePath, template);
-    }
-
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
-  // Create daily note for a specific date (from calendar)
-  const handleCreateDailyNote = useCallback(async (dateStr: string) => {
-    if (!window.electronAPI || !activeVault) return;
-    const dailyDir = `${activeVault.path}/Daily`;
-    const filePath = `${dailyDir}/${dateStr}.md`;
-    await window.electronAPI.createDir(dailyDir);
-    const existing = await window.electronAPI.readFile(filePath);
-    if (existing === null) {
-      await window.electronAPI.writeFile(filePath, `# ${dateStr}\n\n`);
-    }
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
   // Create new task board
   const handleNewBoard = useCallback(async () => {
     if (!window.electronAPI || !activeVault) return;
@@ -1380,15 +1336,12 @@ export default function Home() {
       insertTaskList: () => { if (view) editorInsertTaskList(view); },
       insertTable: () => { if (view) editorInsertTable(view); },
       gitSync: handleGitSync,
-      dailyNote: handleDailyNote,
       toggleOutline: () => setShowOutline((o) => !o),
       graphView: () => setShowGraphView(true),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
       toggleTags: () => setShowTagPane((t) => !t),
-      insertTemplate: () => setShowTemplatePicker(true),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
-      noteComposer: () => setShowNoteComposer(true),
       fileRecovery: () => setShowFileRecovery(true),
       exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
       audioRecorder: () => setShowAudioRecorder(true),
@@ -1396,8 +1349,6 @@ export default function Home() {
       slidePresentation: () => setShowSlidePresentation(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
-      calendarView: () => setShowCalendarView(true),
-      vaultInsights: () => setShowVaultInsights(true),
       newBoard: handleNewBoard,
       newCanvas: handleNewCanvas,
       insertDrawing: handleNewDrawing,
@@ -1422,7 +1373,7 @@ export default function Home() {
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, handleDailyNote, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1573,17 +1524,14 @@ export default function Home() {
         // Sync
         gitSync: handleGitSync,
         // Daily notes
-        dailyNote: handleDailyNote,
         // Outline
         toggleOutline: () => setShowOutline((o) => !o),
         // New features
         graphView: () => setShowGraphView(true),
         toggleBacklinks: () => setShowBacklinks((b) => !b),
         toggleTags: () => setShowTagPane((t) => !t),
-        insertTemplate: () => setShowTemplatePicker(true),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
-        noteComposer: () => setShowNoteComposer(true),
         fileRecovery: () => setShowFileRecovery(true),
         exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
         audioRecorder: () => setShowAudioRecorder(true),
@@ -1591,8 +1539,6 @@ export default function Home() {
         slidePresentation: () => setShowSlidePresentation(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
-        calendarView: () => setShowCalendarView(true),
-        vaultInsights: () => setShowVaultInsights(true),
         newBoard: handleNewBoard,
         newCanvas: handleNewCanvas,
         insertDrawing: handleNewDrawing,
@@ -1629,7 +1575,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, handleDailyNote, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {
@@ -1695,6 +1641,7 @@ export default function Home() {
       await openFile(ref.id);
       return true;
     },
+    onVaultChanged: () => setSidebarRefresh((k) => k + 1),
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
@@ -1889,13 +1836,6 @@ export default function Home() {
                   <path d="M8 6v4M6 8h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Daily note" onClick={handleDailyNote}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M2 6.5h12" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
               <button className="ribbon-btn" title="Graph view" onClick={() => setShowGraphView(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
@@ -1917,32 +1857,16 @@ export default function Home() {
                   <path d="M14 13l1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Calendar view" onClick={() => setShowCalendarView(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M2 7h12" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  <circle cx="5.5" cy="10" r="1" fill="currentColor" />
-                  <circle cx="8" cy="10" r="1" fill="currentColor" />
-                  <circle cx="10.5" cy="10" r="1" fill="currentColor" />
-                </svg>
-              </button>
-              <button className="ribbon-btn" title="Vault insights" onClick={() => setShowVaultInsights(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="9" width="3" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                  <rect x="6.5" y="5" width="3" height="9" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                  <rect x="11" y="2" width="3" height="12" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
               <button className="ribbon-btn" title="Presentation" onClick={() => setShowSlidePresentation(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <rect x="2" y="3" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M8 11v3M5 14h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
+              {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
+              <CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />
             </div>
             <div className="ribbon-bottom">
-              <CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />
               <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -2254,35 +2178,6 @@ export default function Home() {
         />
       )}
 
-      {/* Template picker */}
-      {showTemplatePicker && activeVault && (
-        <TemplatePicker
-          vaultPath={activeVault.path}
-          noteTitle={currentTab?.filePath.split("/").pop()?.replace(/\.md$/i, "") || "Untitled"}
-          onInsert={(tpl) => {
-            if (editorViewRef.current) {
-              const view = editorViewRef.current;
-              const pos = view.state.selection.main.head;
-              view.dispatch({ changes: { from: pos, insert: tpl } });
-            }
-            setShowTemplatePicker(false);
-          }}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
-
-      {/* Note composer */}
-      {showNoteComposer && activeVault && (
-        <NoteComposer
-          vaultPath={activeVault.path}
-          currentFile={activeTab}
-          currentContent={content}
-          onClose={() => setShowNoteComposer(false)}
-          onFileSelect={openFile}
-          onContentChange={handleContentChange}
-        />
-      )}
-
       {/* File recovery */}
       {showFileRecovery && activeVault && currentTab && (
         <FileRecovery
@@ -2382,15 +2277,6 @@ export default function Home() {
         />
       )}
 
-      {/* Calendar View */}
-      {showCalendarView && activeVault && (
-        <CalendarView
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowCalendarView(false); }}
-          onCreateDailyNote={(date) => { handleCreateDailyNote(date); setShowCalendarView(false); }}
-          onClose={() => setShowCalendarView(false)}
-        />
-      )}
 
       {/* Drawing Editor */}
       {drawingFile && activeVault && (
@@ -2456,14 +2342,6 @@ export default function Home() {
         />
       )}
 
-      {/* Vault Insights */}
-      {showVaultInsights && activeVault && (
-        <VaultInsights
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowVaultInsights(false); }}
-          onClose={() => setShowVaultInsights(false)}
-        />
-      )}
 
       {/* Hidden sandboxed <iframe> per enabled community plugin (see @noteriv/ui/plugins/sandbox) */}
       <div ref={sandboxHost.containerRef} style={{ display: "none" }} />

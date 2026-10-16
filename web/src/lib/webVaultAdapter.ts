@@ -10,16 +10,26 @@ function splitPath(path: string): { dir: string; name: string } {
 }
 
 /**
- * VaultAdapter over the REST API. Note ids are server ids. Folders are not part of the adapter yet, so create and
- * rename only accept a destination folder that already exists.
+ * VaultAdapter over the REST API. Note ids are server ids. Creating a note creates any missing folders on its path,
+ * like the filesystem does on desktop (a daily note in `Daily/` works in a vault that has no `Daily` folder yet);
+ * rename only accepts a destination folder that already exists.
  */
 export function createWebVaultAdapter(vaultId: string): VaultAdapter {
-  async function folderIdFor(dir: string): Promise<string | null> {
+  async function folderIdFor(dir: string, create = false): Promise<string | null> {
     if (!dir) return null;
     const index = await webApi.vaults.index(vaultId);
-    const folder = index.folders.find((f) => f.path === dir);
-    if (!folder) throw new Error(`Folder does not exist: ${dir}`);
-    return folder.id;
+    const existing = index.folders.find((f) => f.path === dir);
+    if (existing) return existing.id;
+    if (!create) throw new Error(`Folder does not exist: ${dir}`);
+    // Create the chain from the top, reusing the parts that exist.
+    let parentId: string | null = null;
+    let path = "";
+    for (const name of dir.split("/")) {
+      path = path ? `${path}/${name}` : name;
+      const found = index.folders.find((f) => f.path === path);
+      parentId = found ? found.id : (await webApi.folders.create(vaultId, { name, parentId })).id;
+    }
+    return parentId;
   }
 
   return {
@@ -44,7 +54,7 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
 
     async createNote(path, content = "") {
       const { dir, name } = splitPath(path);
-      const folderId = await folderIdFor(dir);
+      const folderId = await folderIdFor(dir, true);
       return toRef(await webApi.notes.create(vaultId, { name, folderId, content }));
     },
 
@@ -68,6 +78,13 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
     async backlinks(id): Promise<NoteBacklink[]> {
       const found: ApiBacklink[] = await webApi.notes.backlinks(vaultId, id);
       return found.map((b) => ({ ref: toRef(b) }));
+    },
+
+    async noteDates() {
+      const index = await webApi.vaults.index(vaultId);
+      return Object.fromEntries(
+        index.notes.map((n) => [n.id, { createdAt: Date.parse(n.createdAt), modifiedAt: Date.parse(n.updatedAt) }])
+      );
     },
 
     async getSettings() {

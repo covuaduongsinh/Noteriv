@@ -2,6 +2,7 @@ import {
   baseName,
   toPosixPath,
   type NoteBacklink,
+  type NoteDates,
   type NoteRef,
   type NoteSearchHit,
   type VaultAdapter,
@@ -14,6 +15,7 @@ import {
 export class MemoryVaultAdapter implements VaultAdapter {
   readonly kind = "memory" as const;
   private notes = new Map<string, string>();
+  private dates = new Map<string, NoteDates>();
   private settings: Record<string, unknown> = {};
   private watchers = new Set<(id: string) => void>();
 
@@ -26,7 +28,18 @@ export class MemoryVaultAdapter implements VaultAdapter {
   }
 
   private notify(id: string) {
+    const now = Date.now();
+    this.dates.set(id, { createdAt: this.dates.get(id)?.createdAt ?? now, modifiedAt: now });
     for (const cb of this.watchers) cb(id);
+  }
+
+  /** Tests: give a note fixed dates. */
+  setDates(id: string, dates: NoteDates) {
+    this.dates.set(id, dates);
+  }
+
+  async noteDates(): Promise<Record<string, NoteDates>> {
+    return Object.fromEntries(Array.from(this.dates).filter(([id]) => this.notes.has(id)));
   }
 
   async listNotes(): Promise<NoteRef[]> {

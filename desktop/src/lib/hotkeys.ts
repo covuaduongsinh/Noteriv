@@ -42,17 +42,14 @@ export type HotkeyAction =
   // Sync
   | "gitSync"
   // Daily notes
-  | "dailyNote"
   // Outline
   | "toggleOutline"
   // New features
   | "graphView"
   | "toggleBacklinks"
   | "toggleTags"
-  | "insertTemplate"
   | "toggleBookmark"
   | "randomNote"
-  | "noteComposer"
   | "fileRecovery"
   | "exportPDF"
   | "audioRecorder"
@@ -61,7 +58,6 @@ export type HotkeyAction =
   | "pluginManager"
   | "cssSnippets"
   // New features
-  | "calendarView"
   | "newBoard"
   | "insertDrawing"
   | "insertToc"
@@ -79,8 +75,7 @@ export type HotkeyAction =
   | "timeScrubber"
   | "toggleLint"
   | "splitEditor"
-  | "closeSplit"
-  | "vaultInsights";
+  | "closeSplit";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -140,7 +135,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
 
   // Daily notes
-  { action: "dailyNote", label: "Open Daily Note", keys: "Ctrl+D", category: "Navigation" },
 
   // Outline
   { action: "toggleOutline", label: "Toggle Outline", keys: "Ctrl+Shift+O", category: "View" },
@@ -149,10 +143,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "graphView", label: "Graph View", keys: "Ctrl+G", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
-  { action: "insertTemplate", label: "Insert Template", keys: "Ctrl+T", category: "Edit" },
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "Ctrl+Shift+R", category: "Navigation" },
-  { action: "noteComposer", label: "Note Composer", keys: "", category: "Edit" },
   { action: "fileRecovery", label: "File Recovery", keys: "", category: "File" },
   { action: "exportPDF", label: "Export as PDF", keys: "", category: "File" },
   { action: "audioRecorder", label: "Audio Recorder", keys: "", category: "Edit" },
@@ -162,7 +154,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "View" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "View" },
   // New features
-  { action: "calendarView", label: "Calendar View", keys: "", category: "View" },
   { action: "newBoard", label: "New Board", keys: "", category: "File" },
   { action: "insertDrawing", label: "New Drawing", keys: "", category: "Edit" },
   { action: "insertToc", label: "Insert Table of Contents", keys: "", category: "Edit" },
@@ -185,7 +176,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "toggleLint", label: "Toggle Lint Warnings", keys: "Ctrl+Shift+L", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
-  { action: "vaultInsights", label: "Vault Insights", keys: "", category: "View" },
 ];
 
 /**

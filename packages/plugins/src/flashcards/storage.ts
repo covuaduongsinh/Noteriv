@@ -1,16 +1,11 @@
 import type { PluginApi } from "@noteriv/plugin-api";
+import type { ScannedNote } from "../shared/vault";
 import { extractCards, type Reviews } from "./cards";
 
 /** What the plugin keeps through `api.settings` (per vault). */
 export interface StoredFlashcards {
   version: 1;
   reviews: Reviews;
-}
-
-export interface ScannedNote {
-  /** Vault-relative, `/` separated. */
-  path: string;
-  content: string;
 }
 
 /**

@@ -155,6 +155,32 @@ describe("core plugin host", () => {
     expect(listNotes.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it("gives note dates by path and tells the app after a plugin changes the vault", async () => {
+    const adapter = new MemoryVaultAdapter({ "a.md": "A", "b.md": "B" });
+    adapter.setDates("a.md", { createdAt: 1, modifiedAt: 2 });
+    const onVaultChanged = vi.fn();
+    let api!: PluginApi;
+    const host = createCorePluginHost({
+      adapter,
+      platform: "web",
+      vaultPath: null,
+      editor,
+      getCurrentFile: () => null,
+      openFile: async () => true,
+      notify: vi.fn(),
+      loadPluginSettings: async () => ({}),
+      savePluginSettings: async () => undefined,
+      stateStore: memoryStore(),
+      plugins: [def("v", { onload: (a) => void (api = a) })],
+      onVaultChanged,
+    });
+    await host.registry.setEnabled("v", true);
+    expect(await api.vault.stats()).toEqual({ "a.md": { createdAt: 1, modifiedAt: 2 } });
+    await api.vault.write("Daily/2026-10-16.md", "# day");
+    await api.vault.delete("b.md");
+    expect(onVaultChanged).toHaveBeenCalledTimes(2);
+  });
+
   it("passes editor, settings, notices and app info through", async () => {
     let api!: PluginApi;
     const { host, notify, settings } = makeHost([def("x", { onload: (a) => void (api = a) })]);
@@ -337,5 +363,30 @@ describe("plugin hotkeys", () => {
     await new Promise((r) => setTimeout(r, 5));
     expect(run).toHaveBeenCalledOnce();
     await act(async () => root.unmount());
+  });
+
+  it("takes the key from the browser (Ctrl+D bookmark) when it runs, after the app's own listeners", () => {
+    const run = vi.fn();
+    const commands = [{ pluginId: "p", key: "p:d", id: "d", name: "Today", hotkey: "Ctrl+D", run }];
+    function Harness() {
+      useCorePluginHotkeys(commands);
+      return null;
+    }
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const root = createRoot(el);
+    act(() => root.render(createElement(Harness)));
+    // An app listener on window added after the plugin hook: it must still run first.
+    const order: string[] = [];
+    const appListener = () => order.push("app");
+    window.addEventListener("keydown", appListener);
+    run.mockImplementation(() => order.push("plugin"));
+    const ev = key({ ctrlKey: true, code: "KeyD", key: "d" });
+    el.dispatchEvent(ev);
+    expect(order).toEqual(["app", "plugin"]);
+    expect(ev.defaultPrevented).toBe(true);
+    window.removeEventListener("keydown", appListener);
+    act(() => root.unmount());
+    el.remove();
   });
 });

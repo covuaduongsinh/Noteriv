@@ -1,7 +1,4 @@
-/**
- * Note Composer utilities — ported byte-for-byte from
- * desktop/src/lib/note-composer-utils.ts (100% pure, no electronAPI calls here).
- */
+/** Note composer: merge notes into one, split one by headings. Moved unchanged from `lib/note-composer-utils.ts`. */
 
 export function sanitizeFileName(heading: string): string {
   return (
@@ -20,8 +17,7 @@ export function mergeNotes(contents: { name: string; content: string }[], addHea
   const parts: string[] = [];
   for (const { name, content } of contents) {
     if (addHeadings) {
-      const displayName = name.replace(/\.(md|markdown)$/i, "");
-      parts.push(`## ${displayName}`);
+      parts.push(`## ${name.replace(/\.(md|markdown)$/i, "")}`);
       parts.push("");
     }
     parts.push(content.trim());
@@ -61,4 +57,10 @@ export function splitByHeadings(content: string, level: number): { title: string
   }
 
   return sections;
+}
+
+/** Path of a split section, next to the note it came from. */
+export function sectionPath(folder: string, title: string): string {
+  const name = `${sanitizeFileName(title)}.md`;
+  return folder ? `${folder}/${name}` : name;
 }

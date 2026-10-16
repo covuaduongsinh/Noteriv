@@ -2,7 +2,7 @@
 
 import { SidebarToggleIcon } from "@/components/icons";
 import VaultSwitcher from "@/components/VaultSwitcher";
-import AppMenu from "@/components/AppMenu";
+import AppMenu, { type PluginMenuCommand } from "@/components/AppMenu";
 import type { HotkeyAction, HotkeyBinding } from "@/lib/hotkeys";
 import type { ApiVault, ViewMode } from "@/lib/webApi";
 
@@ -18,6 +18,8 @@ interface VaultHeaderProps {
   hotkeys?: HotkeyBinding[];
   platform?: string;
   onMenuAction?: (action: HotkeyAction) => void;
+  /** Core plugin commands for the menu's "Plugin" section. */
+  pluginCommands?: PluginMenuCommand[];
   onVaultsChanged?: () => void;
   onImportNewVault?: () => void;
   onNewFromGithub?: () => void;
@@ -46,6 +48,7 @@ export default function VaultHeader({
   hotkeys,
   platform = "web",
   onMenuAction,
+  pluginCommands,
   onVaultsChanged,
   onImportNewVault,
   onNewFromGithub,
@@ -64,7 +67,7 @@ export default function VaultHeader({
           {hotkeys && onMenuAction && (
             <>
               <div className="titlebar-divider" />
-              <AppMenu hotkeys={hotkeys} platform={platform} onExecute={onMenuAction} />
+              <AppMenu hotkeys={hotkeys} platform={platform} onExecute={onMenuAction} pluginCommands={pluginCommands} />
             </>
           )}
         </div>
