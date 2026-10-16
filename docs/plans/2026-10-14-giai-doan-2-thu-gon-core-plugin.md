@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -38,14 +38,18 @@
 | Web clipper (cài đặt) | `ClipperSection.tsx` | Tắt | |
 | Mermaid, Math (KaTeX) | `components/markdown/mermaid.ts`, `math.ts` | Bật | Tải thư viện khi gặp khối tương ứng |
 
-> Danh sách này là đề xuất. Phiên 2.1 sẽ đo kích thước và hỏi chủ dự án trước khi chốt mặc định.
+> **Đã chốt ở Phiên 2.1 (2026-10-16):** giữ nguyên danh sách và mặc định trên. Số đo từng tính năng: [docs/perf/2026-10-16-baseline.md](../perf/2026-10-16-baseline.md) mục 4. Mã ứng dụng của mỗi tính năng chỉ 5–35 KB; nặng là thư viện (Mermaid 2,4 MB đã tải lười; KaTeX 255 KB đang tải ngay).
+>
+> **Ngân sách (kiểm ở 2.6):** JS tải đầu giảm ≥ 30% với cấu hình mặc định (web ≤ 374 KB gzip, desktop ≤ 312 KB gzip); cây file với vault 500 note không chậm hơn 10%. Tách plugin đơn thuần chỉ gỡ được tối đa ~19%, nên cần thêm tải lười KaTeX (2.2) và nhiều khả năng cả bộ đọc cú pháp ngôn ngữ code (chưa quyết, xem mục 6 của báo cáo).
+>
+> **Mỗi lần chuyển tính năng vào `packages/plugins`:** thêm đường dẫn mới vào `scripts/perf/feature-map.json` và chạy `npm run perf:web` để xem phần tải đầu giảm bao nhiêu.
 
 ---
 
 ## Phiên 2.1: Đo đạc và chốt danh sách
 
 ### Việc cụ thể
-1. **Đo hiện trạng** (ghi vào `docs/perf/2026-xx-baseline.md`):
+1. **Đo hiện trạng** (ghi vào `docs/perf/2026-10-16-baseline.md`):
    - Web: dung lượng JS tải lần đầu trang vault (Next build output + `@next/bundle-analyzer`), thời gian mở vault 500 note trên staging (Lighthouse, Performance tab).
    - Desktop: kích thước bộ cài, RAM khi mở vault, thời gian khởi động.
 2. Xếp hạng tính năng theo dung lượng mã đóng góp; chốt danh sách và mặc định bật hay tắt với chủ dự án.
@@ -63,9 +67,11 @@
 2. Chuyển `FlashcardReview` và `flashcard-utils` sang plugin. Đăng ký lệnh, ribbon icon, view "Ôn tập". Lưu trạng thái ôn tập qua `VaultAdapter` (file `.noteriv/flashcards.json` hoặc frontmatter, **giữ nguyên định dạng dữ liệu cũ** để không mất tiến độ).
 3. Gỡ mã flashcard khỏi `web/src` và `desktop/src` (trang chính, ribbon, hotkeys, menu chỉ còn đi qua plugin).
 4. Ghi lại các **thiếu sót của API** phát hiện được và cập nhật `docs/plugin-api/v1.md`.
+5. **Tải lười KaTeX** (chốt ở 2.1): `packages/ui/src/markdown/math.ts` và `renderers/math.ts` đang `import katex` tĩnh (255 KB vào phần tải đầu). Đổi sang `import("katex")` khi gặp khối công thức đầu tiên, theo cách `mermaid.ts` đang làm. Đo lại bằng `npm run perf:web`.
 
 ### Xong khi
 - Flashcard chạy như cũ trên web và desktop; tắt plugin thì mục menu, ribbon, mã đều biến mất; bật lại thì dữ liệu ôn tập còn nguyên.
+- KaTeX không còn trong JS tải đầu; công thức vẫn hiển thị đúng ở live preview, chế độ đọc và xuất PDF.
 
 ---
 
@@ -87,7 +93,7 @@ Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production
 ## Phiên 2.6: Dọn dẹp và đo lại
 
 1. Xoá mã chết, file trùng lặp còn sót; đơn giản hoá `app/vaults/[vaultId]/page.tsx` (hiện 1898 dòng) vì lệnh và view nay do plugin đăng ký.
-2. Đo lại như phiên 2.1; so sánh với ngân sách; ghi `docs/perf/2026-xx-after-phase2.md`.
+2. Đo lại như phiên 2.1 (cách đo: mục 7 của `docs/perf/2026-10-16-baseline.md`); so sánh với ngân sách; ghi `docs/perf/2026-xx-after-phase2.md`.
 3. Cập nhật đặc tả Plugin API v1 (vẫn là `0.x`) theo những gì đã học được.
 4. Trang Cài đặt → Core plugins: mô tả ngắn từng plugin bằng tiếng Việt.
 
@@ -109,7 +115,7 @@ Khoảng 6–8 buổi.
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 2.1 Đo đạc | Chưa làm | | |
+| 2.1 Đo đạc | Xong | 2026-10-16 | Baseline `docs/perf/2026-10-16-baseline.md`; ghi nhận `docs/plans/2026-10-16-phien-2-1-do-dac.md`; danh sách giữ nguyên, ngân sách −30%, KaTeX tải lười đưa vào 2.2 |
 | 2.2 Thí điểm Flashcards | Chưa làm | | |
 | 2.3 Lô A | Chưa làm | | |
 | 2.4 Lô B | Chưa làm | | |

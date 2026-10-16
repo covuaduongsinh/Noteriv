@@ -23,7 +23,9 @@ Các tài liệu định hướng (theo thứ tự thực hiện):
 
 Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và các file `docs/plans/2026-10-1x-*.md`.
 
-**Giai đoạn 1 đã xong phần chính (1.1–1.5, ngày 2026-10-16).** 1.5 đã lên staging và thử đạt (chessboard + Core plugins trên web). Trước khi gộp `next` vào `main` (chủ dự án quyết định mốc): thử nốt phần chưa kiểm của 1.4 và 1.5 (danh sách trong `docs/plans/2026-10-16-phien-1-5-plugin-api.md`, mục "Chưa kiểm"). **Phiên kế tiếp: 2.1.** Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-2-thu-gon-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 2.1**." Đọc thêm `docs/plugin-api/v1.md` (API core plugin dựng ở 1.5). Trạng thái nhánh: `covuaduongsinh/phase1-core` có 1.1–1.5; `next` có 1.1–1.5 (trừ commit tài liệu cuối); chưa gộp vào `main`; worktree Orca `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup`. Việc chủ dự án còn nợ: dọn đĩa VPS (~90%), thử nốt 1.4 trên staging (1.5 đã thử đạt), quyết định sửa lỗi đổi tên note ở web (xem file 1.4).
+**Giai đoạn 1 đã xong phần chính (1.1–1.5, ngày 2026-10-16).** 1.5 đã lên staging và thử đạt (chessboard + Core plugins trên web). Trước khi gộp `next` vào `main` (chủ dự án quyết định mốc): thử nốt phần chưa kiểm của 1.4 và 1.5 (danh sách trong `docs/plans/2026-10-16-phien-1-5-plugin-api.md`, mục "Chưa kiểm").
+
+**Phiên 2.1 (đo đạc) xong ngày 2026-10-16:** baseline và ngân sách ở `docs/perf/2026-10-16-baseline.md`, ghi nhận ở `docs/plans/2026-10-16-phien-2-1-do-dac.md`. Danh sách core plugin giữ nguyên đề xuất; ngân sách −30% JS tải đầu; tải lười KaTeX đưa vào 2.2. **Phiên kế tiếp: 2.2.** Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-2-thu-gon-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 2.2**." Đọc thêm `docs/plugin-api/v1.md`. Trạng thái nhánh: `covuaduongsinh/phase1-core` có 1.1–1.5 và 2.1 (chưa push 2.1); `next` có 1.1–1.5 (trừ commit tài liệu cuối); chưa gộp vào `main`; worktree Orca `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup` (đã có `web/server/.env` và `node_modules` của `web/server`). Việc chủ dự án còn nợ: dọn đĩa VPS (~90%), thử nốt 1.4 trên staging (1.5 đã thử đạt), quyết định sửa lỗi đổi tên note ở web (xem file 1.4), chọn các việc giảm tải ngoài plugin (mục 6 báo cáo baseline).
 
 **Trước khi làm một phiên:** kiểm bảng "Trạng thái" cuối file giai đoạn (phiên trước đã xong chưa) và mục "Điều kiện bắt đầu" ở đầu file.
 
@@ -101,6 +103,7 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - Sync: `web/server/scripts/test-sync-scenarios.ts` (và `test-s3-down.ts`).
 - Giao diện: claude-in-chrome. Nếu click hoặc gõ không tác dụng, dùng `javascript_tool` để bắn sự kiện DOM (`.click()`, setter `value` + sự kiện `input`). Menu tự đóng giữa hai lệnh, nên mở menu và bấm mục trong **cùng một** lệnh JS.
 - PDF: kiểm bằng PyMuPDF (`python -c "import fitz"` có sẵn) để dựng ảnh trang và xem font (`page.get_fonts()`).
+- Hiệu năng (từ 2.1): `npm run perf:web` / `npm run perf:desktop` cho dung lượng JS theo tính năng (cần `next analyze --output` trước); vault thử 500 note: `scripts/perf/seed-vault.mjs`. Quy trình đo đầy đủ và số baseline: `docs/perf/2026-10-16-baseline.md`. Desktop đo ở chế độ portable (`portable.txt` cạnh exe) để không đụng cấu hình thật của chủ dự án. Máy có Rust 1.95, `tauri build` lần đầu mất ~14 phút.
 
 ## 8. Bài học đã trả giá (đừng lặp lại)
 
