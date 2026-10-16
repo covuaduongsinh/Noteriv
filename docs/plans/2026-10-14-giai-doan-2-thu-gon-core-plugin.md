@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1, 2.2, 2.3 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.3b xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -103,6 +103,12 @@ Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production
 ### Xong khi
 - Đạt ngân sách hiệu năng (hoặc có giải thích và hướng xử lý); `page.tsx` gọn hơn đáng kể; tài liệu API cập nhật.
 
+## Việc treo (ghi nhận trong giai đoạn)
+
+- **Phát audio trong note** (từ 2.3b, chủ dự án chọn để sau): `![Audio](…)` đang vẽ thành ảnh hỏng ở cả hai app. Cần renderer audio trong `packages/ui` (web: URL tải về; desktop: file trong vault, cần loader biết kiểu MIME audio).
+- **Desktop tự lưu mỗi 30 giây**: nội dung do plugin chèn ở trạng thái "unsaved" tới lần lưu kế tiếp. Cân nhắc lưu ngay sau khi plugin sửa nội dung.
+- **Tab cài đặt của core plugin** chưa được app hiển thị (chưa plugin nào cần).
+
 ## Rủi ro
 
 | Rủi ro | Cách giảm |
@@ -121,7 +127,7 @@ Khoảng 6–8 buổi.
 | 2.1 Đo đạc | Xong | 2026-10-16 | Baseline `docs/perf/2026-10-16-baseline.md`; ghi nhận `docs/plans/2026-10-16-phien-2-1-do-dac.md`; danh sách giữ nguyên, ngân sách −30%, KaTeX tải lười đưa vào 2.2 |
 | 2.2 Thí điểm Flashcards | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-2-flashcards.md`; KaTeX tải lười; JS tải đầu web 533,9 → 457,8 KB gzip (−14,3%); API thêm `closeView`, view dạng lớp phủ |
 | 2.3 Lô A (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3-lo-a.md`; Calendar/Daily, Templates, Note composer, Vault insights thành plugin; API thêm `vault.stats`, plugin dùng React; JS tải đầu web 449,4 KB gzip |
-| 2.3b Lô A (phần 2) | Chưa làm | | Lint, Audio recorder |
+| 2.3b Lô A (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3b-lo-a.md`; Lint (panel phải), Audio recorder thành plugin; API thêm panel bên, `setCursor`, `saveAttachment`; sửa lỗi desktop lưu ghi âm thành chữ; JS tải đầu web 446,8 KB gzip |
 | 2.4 Lô B | Chưa làm | | |
 | 2.5 Lô C | Chưa làm | | |
 | 2.6 Dọn dẹp, đo lại | Chưa làm | | |
