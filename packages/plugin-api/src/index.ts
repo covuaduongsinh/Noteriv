@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.1";
+export const PLUGIN_API_VERSION = "1.0.0-draft.2";
 
 // ─── Permissions (community tier) ───
 
@@ -184,6 +184,8 @@ export interface WorkspaceApi {
   openFile(path: string): Promise<boolean>;
   /** Core tier only. Open a view registered with `ui.registerView`. */
   openView(type: string, state?: ViewState): Promise<boolean>;
+  /** Core tier only. Close the view this plugin has open, if any (e.g. after jumping to a note from it). */
+  closeView(): void;
 }
 
 export interface SettingsApi {

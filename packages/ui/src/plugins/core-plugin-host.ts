@@ -38,8 +38,10 @@ export interface CorePluginHostServices {
   /** Vault-relative path of the note in the active tab. */
   getCurrentFile(): string | null;
   openFile(path: string): Promise<boolean>;
-  /** Absent until the app can show plugin views in tabs; `workspace.openView` then resolves false. */
+  /** Shows a registered view (`useCorePluginHost` does: an overlay). Absent: `workspace.openView` resolves false. */
   openView?(type: string, state: ViewState): Promise<boolean>;
+  /** Closes the shown view if it is of one of these types. */
+  closeView?(types: string[]): void;
   notify(message: string, durationMs?: number): void;
   loadPluginSettings(pluginId: string): Promise<Record<string, unknown>>;
   savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void>;
@@ -169,8 +171,26 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
     return Array.from(views.keys());
   }
 
+  // `vault.read`/`exists`/`list` each need the note list. A plugin scanning the vault calls them hundreds of times
+  // in a row, and on web every listNotes() is a request for the whole index, so one list serves calls made within
+  // NOTE_LIST_TTL_MS. Writes through the API drop it; changes made elsewhere show up once it expires.
+  const NOTE_LIST_TTL_MS = 2000;
+  let noteList: { at: number; notes: Promise<NoteRef[]> } | null = null;
+
+  function listNotes(): Promise<NoteRef[]> {
+    if (!noteList || Date.now() - noteList.at > NOTE_LIST_TTL_MS) {
+      const notes = adapter.listNotes();
+      const entry = { at: Date.now(), notes };
+      noteList = entry;
+      notes.catch(() => {
+        if (noteList === entry) noteList = null;
+      });
+    }
+    return noteList.notes;
+  }
+
   async function findNote(path: string): Promise<NoteRef | undefined> {
-    const notes = await adapter.listNotes();
+    const notes = await listNotes();
     return notes.find((n) => n.path === path);
   }
 
@@ -207,10 +227,11 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           const ref = await findNote(path);
           if (ref) await adapter.writeNote(ref.id, content);
           else await adapter.createNote(path, content);
+          noteList = null;
           return true;
         },
         async list(dir) {
-          return listVaultEntries(await adapter.listNotes(), dir);
+          return listVaultEntries(await listNotes(), dir);
         },
         async exists(path) {
           return (await findNote(path)) !== undefined;
@@ -219,6 +240,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           const ref = await findNote(path);
           if (!ref) return false;
           await adapter.deleteNote(ref.id);
+          noteList = null;
           return true;
         },
       },
@@ -295,6 +317,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
       workspace: {
         openFile: (path) => services.openFile(path),
         openView: (type, state) => (services.openView && views.has(type) ? services.openView(type, state ?? { path: null }) : Promise.resolve(false)),
+        closeView: () => services.closeView?.(Array.from(views).filter(([, v]) => v.pluginId === pluginId).map(([type]) => type)),
       },
 
       settings: {
@@ -317,7 +340,9 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
 
   function disposePlugin(pluginId: string) {
     const keep = <T extends Owned>(list: T[]) => list.filter((x) => x.pluginId !== pluginId);
-    for (const [type, v] of Array.from(views)) if (v.pluginId === pluginId) views.delete(type);
+    const ownViews = Array.from(views).filter(([, v]) => v.pluginId === pluginId).map(([type]) => type);
+    if (ownViews.length) services.closeView?.(ownViews);
+    for (const type of ownViews) views.delete(type);
     for (let i = postProcessors.length - 1; i >= 0; i--) if (postProcessors[i].pluginId === pluginId) postProcessors.splice(i, 1);
     for (const set of handlers.values()) for (const h of Array.from(set)) if (h.pluginId === pluginId) set.delete(h);
     unregisterAllCodeBlockProcessorsForPlugin(pluginId);

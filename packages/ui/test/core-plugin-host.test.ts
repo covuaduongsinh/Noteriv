@@ -8,12 +8,15 @@ import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registr
 import {
   createCorePluginHost,
   CorePluginsSection,
+  CorePluginViewOverlay,
   listVaultEntries,
   settingsKeyStateStore,
   matchesHotkey,
+  useCorePluginHost,
   useCorePluginHotkeys,
   useCorePlugins,
   type CorePluginHost,
+  type CorePluginHostConfig,
 } from "../src/plugins";
 
 beforeAll(() => {
@@ -138,6 +141,20 @@ describe("core plugin host", () => {
     expect(await api.vault.delete("root.md")).toBe(false);
   });
 
+  it("serves a vault scan from one note list, and drops it after a write", async () => {
+    const adapter = new MemoryVaultAdapter({ "a.md": "A", "b.md": "B", "c/d.md": "D" });
+    const listNotes = vi.spyOn(adapter, "listNotes");
+    let api!: PluginApi;
+    const { host } = makeHost([def("v", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("v", true);
+    await api.vault.list();
+    await Promise.all(["a.md", "b.md", "c/d.md"].map((p) => api.vault.read(p)));
+    expect(listNotes).toHaveBeenCalledTimes(1);
+    await api.vault.write("e.md", "E");
+    expect(await api.vault.exists("e.md")).toBe(true);
+    expect(listNotes.mock.calls.length).toBeGreaterThan(1);
+  });
+
   it("passes editor, settings, notices and app info through", async () => {
     let api!: PluginApi;
     const { host, notify, settings } = makeHost([def("x", { onload: (a) => void (api = a) })]);
@@ -231,6 +248,61 @@ describe("CorePluginsSection with useCorePlugins", () => {
       await host.registry.setEnabled("wc", false);
     });
     expect(el.querySelector("output")!.textContent).toBe("");
+    await act(async () => root.unmount());
+    el.remove();
+  });
+});
+
+describe("plugin views (useCorePluginHost + CorePluginViewOverlay)", () => {
+  it("opens a plugin view over the page, closes it on request, on Escape, and when the plugin is turned off", async () => {
+    let api!: PluginApi;
+    const cleanup = vi.fn();
+    const plugin: CorePlugin = {
+      onload(a) {
+        api = a;
+        a.ui.registerView("demo-view", () => ({
+          mount(container, state) {
+            const p = document.createElement("p");
+            p.textContent = `view for ${state.path}`;
+            container.appendChild(p);
+            return cleanup;
+          },
+        }));
+      },
+    };
+    const config: CorePluginHostConfig = {
+      adapter: new MemoryVaultAdapter(),
+      platform: "web",
+      vaultPath: null,
+      plugins: [{ ...def("demo", plugin), defaultEnabled: true }],
+      storage: { stateStore: memoryStore(), loadPluginSettings: async () => ({}), savePluginSettings: async () => undefined },
+    };
+    let hostRef: CorePluginHost | null = null;
+    function Harness() {
+      const h = useCorePluginHost(config, { editor, getCurrentFile: () => null, openFile: () => true });
+      hostRef = h.host;
+      return createElement(CorePluginViewOverlay, { host: h.host, view: h.activeView, onClose: h.closeView });
+    }
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const root = createRoot(el);
+    await act(async () => root.render(createElement(Harness)));
+    await act(async () => void (await hostRef!.registry.setEnabled("demo", true)));
+
+    await act(async () => void (await api.workspace.openView("demo-view", { path: "a.md" })));
+    expect(el.querySelector('[data-core-view="demo-view"] p')?.textContent).toBe("view for a.md");
+    await act(async () => api.workspace.closeView());
+    expect(el.querySelector("[data-core-view]")).toBeNull();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+
+    await act(async () => void (await api.workspace.openView("demo-view")));
+    await act(async () => void window.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" })));
+    expect(el.querySelector("[data-core-view]")).toBeNull();
+
+    await act(async () => void (await api.workspace.openView("demo-view")));
+    await act(async () => void (await hostRef!.registry.setEnabled("demo", false)));
+    expect(el.querySelector("[data-core-view]")).toBeNull();
+    expect(cleanup).toHaveBeenCalledTimes(3);
     await act(async () => root.unmount());
     el.remove();
   });

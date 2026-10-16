@@ -220,6 +220,7 @@ function buildApi(boot) {
     workspace: {
       openFile: function (path) { return rpcCall("workspace.openFile", [path]); },
       openView: coreOnly("workspace.openView"),
+      closeView: coreOnly("workspace.closeView"),
     },
     settings: {
       load: function () { return rpcCall("app.loadSettings", []); },

@@ -11,7 +11,6 @@ import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, Bookm
 import CollabPanel from "@/components/CollabPanel";
 import PluginManager from "@/components/PluginManager";
 import CalendarView from "@/components/CalendarView";
-import FlashcardReview from "@/components/FlashcardReview";
 import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -47,6 +46,7 @@ import { webCorePluginConfig } from "@/lib/core-plugins";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
+  CorePluginViewOverlay,
   useCorePluginHost,
   useCorePluginHotkeys,
   useCorePlugins,
@@ -167,7 +167,6 @@ export default function VaultPage() {
   const [collabPeers, setCollabPeers] = useState<CollabPeer[]>([]);
   const [displayName, setDisplayName] = useState<string | undefined>(undefined);
   const [showCalendarView, setShowCalendarView] = useState(false);
-  const [showFlashcards, setShowFlashcards] = useState(false);
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
@@ -877,9 +876,6 @@ export default function VaultPage() {
       case "calendarView":
         setShowCalendarView(true);
         break;
-      case "flashcardReview":
-        setShowFlashcards(true);
-        break;
       case "pluginManager":
         setPluginManagerOpen(true);
         break;
@@ -1345,7 +1341,6 @@ export default function VaultPage() {
             onGraph={handleGraphView}
             onSearch={() => setSearchVisible(true)}
             onCalendar={() => setShowCalendarView(true)}
-            onFlashcards={() => setShowFlashcards(true)}
             onSettings={() => openSettings("general")}
             onOutline={() => setOutlineVisible((v) => !v)}
             onTags={() => setTagPaneVisible((v) => !v)}
@@ -1640,13 +1635,7 @@ export default function VaultPage() {
         />
       )}
 
-      {showFlashcards && (
-        <FlashcardReview
-          vaultId={vaultId}
-          onFileSelect={openNoteByPath}
-          onClose={() => setShowFlashcards(false)}
-        />
-      )}
+      <CorePluginViewOverlay host={corePluginHost.host} view={corePluginHost.activeView} onClose={corePluginHost.closeView} />
 
       {settingsOpen && (
         <SettingsModal

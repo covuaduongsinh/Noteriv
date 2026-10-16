@@ -5,7 +5,7 @@
  * rewritten against webApi instead of `window.electronAPI.readDir/readFile/
  * writeFile/deleteFile` on a `.noteriv/themes/` directory — web has no such
  * directory, so custom themes live in the vault's `settings` JSON column under
- * a `customThemes` array, same pattern as flashcard review state.
+ * a `customThemes` array.
  */
 
 import { webApi } from "@/lib/webApi";

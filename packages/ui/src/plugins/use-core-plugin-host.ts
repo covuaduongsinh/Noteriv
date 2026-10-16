@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { EditorApi, PluginApi, PluginPlatform } from "@noteriv/plugin-api";
+import type { EditorApi, PluginApi, PluginPlatform, ViewState } from "@noteriv/plugin-api";
 import type { CorePluginDef, PluginStateStore } from "@noteriv/core/plugin-registry";
 import type { VaultAdapter } from "@noteriv/core/vault-adapter";
 import { createCorePluginHost, type CorePluginHost } from "./core-plugin-host";
@@ -34,17 +34,26 @@ export interface CorePluginNotice {
   message: string;
 }
 
+/** The plugin view on screen (one at a time), shown by `CorePluginViewOverlay`. */
+export interface ActiveCorePluginView {
+  type: string;
+  state: ViewState;
+}
+
 /**
  * One core-plugin host for the open vault (null while no vault is open). Starts enabled plugins on mount and stops
- * them all when the vault changes or the page unmounts. Notices from `ui.showNotice` are collected for the app to show.
+ * them all when the vault changes or the page unmounts. Notices from `ui.showNotice` are collected for the app to show,
+ * and the view a plugin opened with `workspace.openView` is returned as `activeView`.
  */
 export function useCorePluginHost(config: CorePluginHostConfig | null, ports: CorePluginPorts) {
   const portsRef = useRef(ports);
   portsRef.current = ports;
   const [host, setHost] = useState<CorePluginHost | null>(null);
   const [notices, setNotices] = useState<CorePluginNotice[]>([]);
+  const [activeView, setActiveView] = useState<ActiveCorePluginView | null>(null);
 
   const dismissNotice = useCallback((key: string) => setNotices((prev) => prev.filter((n) => n.key !== key)), []);
+  const closeView = useCallback(() => setActiveView(null), []);
 
   useEffect(() => {
     if (!config) return;
@@ -63,6 +72,11 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
       editor,
       getCurrentFile: () => portsRef.current.getCurrentFile(),
       openFile: async (path) => portsRef.current.openFile(path),
+      openView: async (type, state) => {
+        setActiveView({ type, state });
+        return true;
+      },
+      closeView: (types) => setActiveView((v) => (v && types.includes(v.type) ? null : v)),
       notify: (message, durationMs = 4000) => {
         const key = `core:${Date.now()}:${Math.random().toString(36).slice(2)}`;
         setNotices((prev) => [...prev, { key, message }]);
@@ -77,9 +91,10 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
     void h.init();
     return () => {
       setHost(null);
+      setActiveView(null);
       void h.dispose();
     };
   }, [config]);
 
-  return { host, notices, dismissNotice };
+  return { host, notices, dismissNotice, activeView, closeView };
 }

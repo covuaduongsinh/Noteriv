@@ -126,16 +126,6 @@ export function VaultChevronIcon({ size = 10, className }: IconProps) {
 
 // ── New — web-only features, no desktop equivalent, same stroke style ──
 
-export function FlashcardIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2" y="4" width="10" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
-      <rect x="4.5" y="6" width="10" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" fill="var(--bg-secondary)" />
-      <path d="M7 9.5h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function SnippetsIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>

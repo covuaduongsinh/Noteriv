@@ -14,6 +14,13 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Hiện số từ của ghi chú đang mở trên thanh trạng thái; lệnh và nút ribbon xem thống kê (Ctrl+Alt+W).",
     load: () => import("@noteriv/plugins/word-count"),
   },
+  {
+    id: "flashcards",
+    name: "Flashcards",
+    description: "Ôn tập ngắt quãng (SM-2) từ các cặp dòng Q:/A: và {{cloze}} trong ghi chú; mở bằng nút ribbon hoặc bảng lệnh.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/flashcards"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */
@@ -34,8 +41,12 @@ export function webCorePluginConfig(adapter: VaultAdapter): CorePluginHostConfig
         (s) => adapter.saveSettings(s)
       ),
       async loadPluginSettings(id) {
-        const all = (await adapter.getSettings())[SETTINGS_KEY] as SettingsBlobs | undefined;
-        return all?.[id] ?? {};
+        const settings = await adapter.getSettings();
+        const own = (settings[SETTINGS_KEY] as SettingsBlobs | undefined)?.[id];
+        // Bridge for data from before flashcards became a plugin (phase 2.2): until the plugin has saved once, hand
+        // it the old `flashcardReviews` key to import. The old key is never written again and stays as a backup.
+        if (!own && id === "flashcards" && settings.flashcardReviews) return { legacyReviews: settings.flashcardReviews };
+        return own ?? {};
       },
       async savePluginSettings(id, data) {
         const current = await adapter.getSettings();

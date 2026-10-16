@@ -14,6 +14,13 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Word count of the open note in the status bar, plus a command and ribbon button with statistics (Ctrl+Alt+W).",
     load: () => import("@noteriv/plugins/word-count"),
   },
+  {
+    id: "flashcards",
+    name: "Flashcards",
+    description: "Spaced repetition (SM-2) over Q:/A: pairs and {{cloze}} deletions in your notes; open it from the ribbon or the command palette.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/flashcards"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";
@@ -47,6 +54,17 @@ async function updateConfig(vaultPath: string, change: (c: PluginConfigFile) => 
   if (ok === false) throw new Error("could not write plugin-config.json");
 }
 
+/** Review data the app kept before 2.2, or null. */
+async function readLegacyFlashcardReviews(vaultPath: string): Promise<Record<string, unknown> | null> {
+  try {
+    const raw = await window.electronAPI.readFile(`${vaultPath}/${CONFIG_DIR}/flashcard-reviews.json`);
+    const parsed = raw ? JSON.parse(raw) : null;
+    return parsed && typeof parsed === "object" ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export function desktopCorePluginConfig(vaultPath: string, adapter: VaultAdapter): CorePluginHostConfig {
   return {
     adapter,
@@ -58,7 +76,16 @@ export function desktopCorePluginConfig(vaultPath: string, adapter: VaultAdapter
         load: async () => (await readConfig(vaultPath)).core ?? {},
         save: (state) => updateConfig(vaultPath, (c) => ({ ...c, core: state })),
       },
-      loadPluginSettings: async (id) => (await readConfig(vaultPath)).coreSettings?.[id] ?? {},
+      loadPluginSettings: async (id) => {
+        const own = (await readConfig(vaultPath)).coreSettings?.[id];
+        // Bridge for data from before flashcards became a plugin (phase 2.2): until the plugin has saved once, hand
+        // it the old review file to import. The file is never written again and stays as a backup.
+        if (!own && id === "flashcards") {
+          const legacy = await readLegacyFlashcardReviews(vaultPath);
+          if (legacy) return { legacyReviews: legacy };
+        }
+        return own ?? {};
+      },
       savePluginSettings: (id, data) =>
         updateConfig(vaultPath, (c) => ({ ...c, coreSettings: { ...(c.coreSettings ?? {}), [id]: data } })),
     },

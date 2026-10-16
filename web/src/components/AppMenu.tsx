@@ -68,7 +68,6 @@ const SECTIONS: MenuSection[] = [
       { action: "randomNote", label: "Random Note" },
       { action: "commandPalette", label: "Command Palette" },
       { action: "calendarView", label: "Calendar" },
-      { action: "flashcardReview", label: "Flashcards" },
       { action: "vaultInsights", label: "Vault Insights" },
     ],
   },

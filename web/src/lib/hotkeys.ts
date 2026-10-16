@@ -34,7 +34,6 @@ export type HotkeyAction =
   | "exportPDF"
   | "previewPDF"
   | "calendarView"
-  | "flashcardReview"
   | "pluginManager"
   | "cssSnippets"
   | "gitSync"
@@ -113,7 +112,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
   { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
   { action: "calendarView", label: "Calendar View", keys: "", category: "Navigation" },
-  { action: "flashcardReview", label: "Flashcard Review", keys: "", category: "Navigation" },
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },

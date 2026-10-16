@@ -1,7 +1,7 @@
 {
   "$comment": "Feature -> source path patterns (regex, matched against the module path without the [project]/ prefix). List the feature's own modules only; libraries it alone uses are found through the module graph. A feature's 'exclusive' size is what disappears from the bundle when its modules are removed. Used by bundle-report.mjs; keep in sync as features move into packages/plugins (phase 2).",
   "features": {
-    "flashcards": { "label": "Flashcards", "patterns": ["/src/components/FlashcardReview\\.", "/src/lib/flashcard-utils\\."] },
+    "flashcards": { "label": "Flashcards", "patterns": ["plugins/src/flashcards/", "/src/components/FlashcardReview\\.", "/src/lib/flashcard-utils\\."] },
     "calendar": { "label": "Calendar / Daily notes", "patterns": ["/src/components/CalendarView\\.", "core/src/calendar-utils\\."] },
     "templates": { "label": "Templates", "patterns": ["/src/components/TemplatePicker\\.", "/src/lib/template-utils\\."] },
     "graph": { "label": "Graph view", "patterns": ["ui/src/graph/", "core/src/graph-utils\\.", "app/vaults/\\[vaultId\\]/graph/"] },
@@ -19,6 +19,6 @@
     "publish": { "label": "Publish preview", "patterns": ["/src/components/PublishPreview\\.", "core/src/publish\\.", "desktop/src/lib/publish\\."] },
     "clipper": { "label": "Web clipper (cài đặt)", "patterns": ["/src/components/ClipperSection\\."] },
     "mermaid": { "label": "Mermaid", "patterns": ["ui/src/markdown/mermaid\\.", "node_modules/mermaid/"] },
-    "math": { "label": "Math (KaTeX)", "patterns": ["ui/src/markdown/math\\.", "ui/src/markdown/renderers/math\\."] }
+    "math": { "label": "Math (KaTeX)", "patterns": ["ui/src/markdown/math\\.", "ui/src/markdown/renderers/math\\.", "ui/src/markdown/katex-loader\\."] }
   }
 }

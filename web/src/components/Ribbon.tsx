@@ -6,7 +6,6 @@ import {
   NewNoteIcon,
   GraphIcon,
   CalendarIcon,
-  FlashcardIcon,
   SettingsIcon,
   SearchIcon,
   OutlineIcon,
@@ -35,7 +34,6 @@ interface RibbonProps {
   onGraph: () => void;
   onSearch: () => void;
   onCalendar: () => void;
-  onFlashcards: () => void;
   onSettings: () => void;
   onOutline: () => void;
   onTags: () => void;
@@ -103,7 +101,6 @@ export default function Ribbon(props: RibbonProps) {
 
   const moreItems: { label: string; icon: React.ReactNode; run: () => void }[] = [
     { label: "Tạo từ template", icon: <TemplateIcon />, run: props.onTemplates },
-    { label: "Flashcards", icon: <FlashcardIcon />, run: props.onFlashcards },
     { label: "Note Composer (gộp/tách)", icon: <ComposerIcon />, run: props.onNoteComposer },
     { label: "File đính kèm", icon: <AttachmentIcon />, run: props.onAttachments },
     { label: "Ghi âm", icon: <MicIcon />, run: props.onAudioRecorder },

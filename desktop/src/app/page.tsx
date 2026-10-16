@@ -21,6 +21,7 @@ import { refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adap
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
+  CorePluginViewOverlay,
   useCorePluginHost,
   useCorePluginHotkeys,
   useCorePlugins,
@@ -40,7 +41,6 @@ import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawin
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
 import PublishPreview from "@/components/PublishPreview";
-import FlashcardReview from "@/components/FlashcardReview";
 import CollabPanel from "@/components/CollabPanel";
 import TrashPanel from "@/components/TrashPanel";
 import NoteHistory from "@/components/NoteHistory";
@@ -191,7 +191,6 @@ export default function Home() {
   // New features
   const [showCalendarView, setShowCalendarView] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [showFlashcards, setShowFlashcards] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
@@ -1407,7 +1406,6 @@ export default function Home() {
       insertDataview: handleInsertDataview,
       focusMode: handleFocusMode,
       publishNote: handlePublish,
-      flashcardReview: () => setShowFlashcards(true),
       startCollab: () => setShowCollab(true),
       openPdfViewer: () => {
         if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
@@ -1603,7 +1601,6 @@ export default function Home() {
         insertDataview: handleInsertDataview,
         focusMode: handleFocusMode,
         publishNote: handlePublish,
-        flashcardReview: () => setShowFlashcards(true),
         startCollab: () => setShowCollab(true),
         openPdfViewer: () => {
           if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
@@ -2416,14 +2413,8 @@ export default function Home() {
         />
       )}
 
-      {/* Flashcard Review */}
-      {showFlashcards && activeVault && (
-        <FlashcardReview
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowFlashcards(false); }}
-          onClose={() => setShowFlashcards(false)}
-        />
-      )}
+      {/* Views opened by core plugins (Flashcards review, …) */}
+      <CorePluginViewOverlay host={corePluginHost.host} view={corePluginHost.activeView} onClose={corePluginHost.closeView} />
 
       {/* Live Collaboration */}
       {showCollab && (
