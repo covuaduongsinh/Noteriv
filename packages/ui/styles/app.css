@@ -4947,6 +4947,17 @@ body {
   color: var(--text-primary);
 }
 
+/* LaTeX source shown for the moment KaTeX takes to load (see markdown/katex-loader.ts) */
+.math-pending {
+  font-family: var(--font-mono, monospace);
+  color: var(--text-secondary);
+  opacity: 0.8;
+}
+.math-pending-block {
+  display: block;
+  white-space: pre-wrap;
+}
+
 /* Error state for invalid LaTeX */
 .math-error {
   display: inline-block;

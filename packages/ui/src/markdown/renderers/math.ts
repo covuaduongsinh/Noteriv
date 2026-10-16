@@ -1,5 +1,5 @@
 import { Decoration } from "@codemirror/view";
-import katex from "katex";
+import { getKatex, loadKatex, pendingMathHtml } from "../katex-loader";
 import type { BlockContext, InlineRenderer, InlineReplacement } from "../types";
 
 // Block math: $$ ... $$
@@ -62,19 +62,21 @@ export const inlineMathRenderer: InlineRenderer = {
     const results: InlineReplacement[] = [];
     // Match $...$ but not $$
     const regex = /(?<!\$)\$(?!\$)([^\$\n]+?)\$(?!\$)/g;
+    const katex = getKatex();
     let match;
 
     while ((match = regex.exec(text)) !== null) {
       results.push({
         from: offset + match.index,
         to: offset + match.index + match[0].length,
-        html: katex.renderToString(match[1], {
-          throwOnError: false,
-          displayMode: false,
-        }),
+        html: katex
+          ? katex.renderToString(match[1], { throwOnError: false, displayMode: false })
+          : pendingMathHtml(match[1], false),
         className: "math-inline-widget",
       });
     }
+    // Editors rebuild once it arrives (see katex-loader).
+    if (!katex && results.length) void loadKatex().catch(() => {});
 
     return results;
   },

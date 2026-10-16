@@ -8,6 +8,7 @@ import {
 } from "../src/markdown";
 import { getBlockRenderers, getInlineRenderers } from "../src/markdown/registry";
 import { getDataviewSource, getLocalImageLoader } from "../src/markdown/vault-hooks";
+import { getKatex, loadKatex } from "../src/markdown/katex-loader";
 
 // Characterisation of the live-preview renderers: the built-in set registers on import and each inline renderer
 // maps a line of text to HTML replacements with absolute positions. These run the real renderers (jsdom), so a
@@ -75,7 +76,13 @@ describe("inline renderers", () => {
     expect(r[0].html).toContain("mark");
   });
 
-  it("inline math: renders through katex and skips $$", () => {
+  it("inline math: shows the source until katex loads, then renders through it, and skips $$", async () => {
+    // KaTeX is not in the first load any more (katex-loader): the first render starts loading it.
+    expect(getKatex()).toBeNull();
+    const before = find("inline-math", "x $a<2$ y");
+    expect(before).toHaveLength(1);
+    expect(before[0].html).toBe('<code class="math-pending">a&lt;2</code>');
+    await loadKatex();
     const r = find("inline-math", "x $a^2$ y");
     expect(r).toHaveLength(1);
     expect(r[0].html).toContain("katex");

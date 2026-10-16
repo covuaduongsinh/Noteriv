@@ -11,6 +11,7 @@ import { RenderedMarkdownWidget } from "./widget";
 import { getBlockRenderers, getInlineRenderers } from "./registry";
 import { CodeBlockTracker } from "./renderers/code-blocks";
 import { MathBlockTracker } from "./renderers/math";
+import { onKatexLoaded } from "./katex-loader";
 import { HtmlBlockTracker } from "./renderers/html";
 import { processTocLine } from "./renderers/toc";
 import { extractHeadings } from "@noteriv/core/toc-utils";
@@ -202,20 +203,27 @@ function buildDecorations(
   return builder.finish();
 }
 
-/** Dispatched to force a decoration rebuild without a doc/selection change (e.g. a plugin registered a code-block processor). */
+/**
+ * Dispatched to force a decoration rebuild without a doc/selection change (a plugin registered a code-block
+ * processor, KaTeX finished loading).
+ */
 export const refreshMarkdownEffect = StateEffect.define<null>();
 
 const liveViews = new Set<EditorView>();
-if (typeof window !== "undefined") {
-  subscribeCodeBlockRegistry(() => {
-    liveViews.forEach((view) => {
-      try {
-        view.dispatch({ effects: refreshMarkdownEffect.of(null) });
-      } catch {
-        // view mid-update or destroyed — it will pick the change up on its next rebuild
-      }
-    });
+
+function refreshLiveViews() {
+  liveViews.forEach((view) => {
+    try {
+      view.dispatch({ effects: refreshMarkdownEffect.of(null) });
+    } catch {
+      // view mid-update or destroyed — it will pick the change up on its next rebuild
+    }
   });
+}
+
+if (typeof window !== "undefined") {
+  subscribeCodeBlockRegistry(refreshLiveViews);
+  onKatexLoaded(refreshLiveViews);
 }
 
 /** CodeMirror ViewPlugin that applies live markdown rendering. */

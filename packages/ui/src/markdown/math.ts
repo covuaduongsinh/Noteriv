@@ -5,20 +5,37 @@ import {
   WidgetType,
 } from "@codemirror/view";
 import { EditorState, RangeSetBuilder, StateField } from "@codemirror/state";
-import katex from "katex";
+import { getKatex, loadKatex, pendingMathHtml } from "./katex-loader";
 import { renderAllLines } from "./plugin";
 
 // ─── Widgets ───────────────────────────────────────────────────────────
 
-/** Widget that renders block math ($$...$$) via KaTeX. */
+/** Widget that renders block math ($$...$$) via KaTeX, loading it on first use. */
 class BlockMathWidget extends WidgetType {
   constructor(readonly latex: string) {
     super();
   }
 
-  toDOM() {
+  toDOM(view: EditorView) {
     const div = document.createElement("div");
     div.className = "math-block-widget";
+    const katex = getKatex();
+    if (katex) {
+      this.render(div, katex);
+    } else {
+      div.innerHTML = pendingMathHtml(this.latex, true);
+      loadKatex()
+        .then((k) => {
+          if (!div.isConnected) return;
+          this.render(div, k);
+          view.requestMeasure();
+        })
+        .catch(() => {});
+    }
+    return div;
+  }
+
+  private render(div: HTMLElement, katex: NonNullable<ReturnType<typeof getKatex>>) {
     try {
       div.innerHTML = katex.renderToString(this.latex, {
         throwOnError: false,
@@ -27,7 +44,6 @@ class BlockMathWidget extends WidgetType {
     } catch {
       div.innerHTML = `<span class="math-error"><span class="math-error-indicator">!</span>${escapeHtml(this.latex)}</span>`;
     }
-    return div;
   }
 
   eq(other: BlockMathWidget) {
