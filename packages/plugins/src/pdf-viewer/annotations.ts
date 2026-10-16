@@ -1,14 +1,9 @@
 /**
- * PDF Annotation utilities — types + markdown export. Ported from
- * desktop/src/lib/pdf-annotation.ts. Desktop persists annotations as a JSON
- * sidecar file next to the PDF on disk (`loadAnnotations`/`saveAnnotations`
- * via electronAPI); web has no filesystem, so the attachment's own
- * `metadata` column is the sidecar instead (see web/server/prisma/schema.prisma's
- * Attachment.metadata comment) — loading/saving goes through
- * webApi.attachments.list()/updateMetadata() in PDFViewer.tsx directly,
- * these two functions are no longer needed and are dropped. The pure
- * data shape + annotationsToMarkdown()/generateAnnotationId()/isPdfFile()
- * are unchanged.
+ * PDF annotations: the data shape, reading the forms they were stored in, and the markdown export. Pure.
+ *
+ * Storage (through `vault.get/setAttachmentData`): web keeps a bare `PDFAnnotation[]` on the attachment; desktop keeps
+ * `{ pdfPath, annotations }` in `.<name>-annotations.json` beside the PDF (the sidecar from before 2.5c). Both forms are
+ * read; each platform keeps writing its own.
  */
 
 export interface PDFAnnotation {
@@ -83,4 +78,21 @@ export function generateAnnotationId(): string {
 /** Check if a filename is a PDF */
 export function isPdfFile(filename: string): boolean {
   return /\.pdf$/i.test(filename);
+}
+
+/** Annotations from whatever was stored: a bare array (web) or `{ annotations }` (desktop sidecar). */
+export function readStoredAnnotations(stored: unknown): PDFAnnotation[] {
+  const list = Array.isArray(stored)
+    ? stored
+    : stored && typeof stored === "object" && Array.isArray((stored as { annotations?: unknown }).annotations)
+      ? (stored as { annotations: unknown[] }).annotations
+      : [];
+  return list.filter(
+    (a): a is PDFAnnotation => !!a && typeof a === "object" && typeof (a as PDFAnnotation).id === "string" && typeof (a as PDFAnnotation).page === "number"
+  );
+}
+
+/** What to store for a platform: desktop keeps its sidecar shape, web the bare array. */
+export function toStoredAnnotations(platform: "web" | "desktop", target: string, anns: PDFAnnotation[]): unknown {
+  return platform === "desktop" ? { pdfPath: target, annotations: anns } : anns;
 }

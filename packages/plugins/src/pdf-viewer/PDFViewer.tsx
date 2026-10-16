@@ -1,27 +1,19 @@
-"use client";
-
-// Web port of desktop/src/components/PDFViewer.tsx (Phase D4). Desktop reads
-// the PDF via `window.electronAPI.readBinaryFile` + a filesystem sidecar
-// JSON for annotations; this version fetches the PDF bytes over HTTP from
-// the Attachment manager's download endpoint (Phase C3, Garage-backed) and
-// stores annotations directly on the Attachment row's `metadata` column
-// (webApi.attachments.updateMetadata) instead of a sidecar file. Export
-// creates a real note via webApi.notes.create instead of writeFile.
-//
-// pdf.js loading keeps desktop's exact workaround: webpack's ESM-interop
-// wrapper throws on pdf.mjs (a known pdf.js 5.x regression), so the module
-// is imported *natively* from a static /public copy via `new Function`
-// (hides the import from webpack entirely) rather than `import "pdfjs-dist"`.
-// web/public/pdf.min.mjs + pdf.worker.min.mjs are byte-copies of desktop's.
+// PDF reader with annotations (highlight, underline, note), shared by web and desktop since 2.5c. Ported from the web
+// app's PDFViewer, itself a line-by-line port of desktop's. It fills its container: a desktop tab, or the overlay the web
+// app shows over the page. All I/O goes through `PdfServices` (services.ts): pdf.js, the PDF bytes, the annotations kept
+// with the attachment, and exporting them to a note.
 
 import { useState, useRef, useEffect, useCallback } from "react";
-import { webApi, type ApiAttachment } from "@/lib/webApi";
-import { type PDFAnnotation, annotationsToMarkdown, generateAnnotationId } from "@/lib/pdf-annotation";
+import { type PDFAnnotation, generateAnnotationId } from "./annotations";
+import type { PdfLabels, PdfServices } from "./services";
 
 interface PDFViewerProps {
-  vaultId: string;
-  attachment: ApiAttachment;
-  onExportedNote?: (noteId: string) => void;
+  /** The attachment, as the services take it. */
+  target: string;
+  /** File name, shown in the toolbar and used for the export. */
+  name: string;
+  services: PdfServices;
+  labels: PdfLabels;
   onClose: () => void;
 }
 
@@ -59,7 +51,7 @@ interface PageRenderState {
   viewport: { width: number; height: number; scale: number };
 }
 
-export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose }: PDFViewerProps) {
+export function PDFViewer({ target, name, services, labels, onClose }: PDFViewerProps) {
   const [C, setC] = useState(DEFAULT_C);
   useEffect(() => {
     const readColors = () => {
@@ -90,9 +82,7 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
   const [error, setError] = useState<string | null>(null);
   const [activePages, setActivePages] = useState<Set<number>>(new Set());
 
-  const [annotations, setAnnotations] = useState<PDFAnnotation[]>(
-    Array.isArray(attachment.metadata) ? (attachment.metadata as PDFAnnotation[]) : []
-  );
+  const [annotations, setAnnotations] = useState<PDFAnnotation[]>([]);
   const [tool, setTool] = useState<AnnotationTool>("select");
   const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
   const [showSidebar, setShowSidebar] = useState(true);
@@ -113,7 +103,19 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Load PDF bytes over HTTP (Garage-backed download endpoint) and hand them to pdf.js.
+  // Annotations kept with the attachment, read fresh when the viewer opens.
+  useEffect(() => {
+    let cancelled = false;
+    void services
+      .loadAnnotations(target)
+      .catch(() => [])
+      .then((anns) => !cancelled && setAnnotations(anns));
+    return () => {
+      cancelled = true;
+    };
+  }, [services, target]);
+
+  // Load the PDF bytes and hand them to pdf.js.
   useEffect(() => {
     let cancelled = false;
     async function loadPdf() {
@@ -121,15 +123,11 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
         setLoading(true);
         setError(null);
 
-        let pdfjsLib: typeof import("pdfjs-dist");
-        // eslint-disable-next-line @typescript-eslint/no-implied-eval, no-new-func
-        const nativeImport = new Function("u", "return import(u)") as (u: string) => Promise<unknown>;
-        pdfjsLib = (await nativeImport("/pdf.min.mjs")) as unknown as typeof import("pdfjs-dist");
-        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-
-        const res = await fetch(webApi.attachments.downloadUrl(vaultId, attachment.id));
-        if (!res.ok) { setError(`Không tải được PDF (${res.status})`); setLoading(false); return; }
-        const bytes = new Uint8Array(await res.arrayBuffer());
+        const pdfjsLib = await services.loadPdfjs();
+        const data = await services.readPdf(target);
+        if (cancelled) return;
+        if (!data) { setError(labels.loadFailed); setLoading(false); return; }
+        const bytes = new Uint8Array(data);
 
         const loadingTask = pdfjsLib.getDocument({ data: bytes });
         const doc = await loadingTask.promise;
@@ -146,19 +144,31 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
         setLoading(false);
       } catch (err: unknown) {
         const e = err as Error;
-        if (!cancelled) { setError(e?.message || "Không mở được tệp PDF"); setLoading(false); }
+        if (!cancelled) { setError(e?.message || labels.openFailed); setLoading(false); }
       }
     }
     loadPdf();
     return () => { cancelled = true; };
-  }, [vaultId, attachment.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [services, target]);
+
+  // Annotation edits are saved after a short pause, and on close if one is still waiting.
+  const pendingRef = useRef<PDFAnnotation[] | null>(null);
+  const flushSave = useCallback(() => {
+    if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
+    saveTimeoutRef.current = null;
+    const anns = pendingRef.current;
+    if (!anns) return;
+    pendingRef.current = null;
+    void services.saveAnnotations(target, anns).catch(() => {});
+  }, [services, target]);
+  useEffect(() => flushSave, [flushSave]);
 
   const debounceSave = useCallback((anns: PDFAnnotation[]) => {
+    pendingRef.current = anns;
     if (saveTimeoutRef.current) clearTimeout(saveTimeoutRef.current);
-    saveTimeoutRef.current = setTimeout(() => {
-      webApi.attachments.updateMetadata(vaultId, attachment.id, anns).catch(() => {});
-    }, 500);
-  }, [vaultId, attachment.id]);
+    saveTimeoutRef.current = setTimeout(flushSave, 500);
+  }, [flushSave]);
 
   const updateAnnotations = useCallback((anns: PDFAnnotation[]) => {
     setAnnotations(anns);
@@ -430,11 +440,9 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
   }, [annotations, updateAnnotations]);
 
   const handleExport = useCallback(async () => {
-    const baseName = attachment.filename.replace(/\.pdf$/i, "");
-    const md = annotationsToMarkdown(attachment.filename, annotations);
-    const note = await webApi.notes.create(vaultId, { name: `${baseName} - Annotations`, content: md });
-    if (onExportedNote) onExportedNote(note.id);
-  }, [vaultId, attachment.filename, annotations, onExportedNote]);
+    flushSave();
+    await services.exportAnnotations(target, name, annotations);
+  }, [services, target, name, annotations, flushSave]);
 
   const handleAnnotationClick = useCallback((ann: PDFAnnotation, e: React.MouseEvent) => {
     e.stopPropagation();
@@ -484,48 +492,43 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
   const sortedAnnotations = [...annotations].sort((a, b) => a.page - b.page || a.created - b.created);
 
   return (
-    // zIndex must beat .am-overlay's 8500 (web/src/styles/attachments.css) —
-    // the AttachmentManager modal that opens this viewer stays mounted
-    // underneath it (see the comment on this component's sibling-Fragment
-    // fix in AttachmentManager.tsx), so without this the opaque `am-overlay`
-    // would paint on top and the viewer would be invisible even though it's
-    // still interactive underneath (found via real browser testing).
-    <div style={{ position: "fixed", inset: 0, zIndex: 9000, display: "flex", flexDirection: "column", background: C.base, color: C.text, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
+    // Fills its container (a desktop tab, or the web app's overlay above the Attachments dialog).
+    <div data-pdf-viewer style={{ position: "relative", width: "100%", height: "100%", display: "flex", flexDirection: "column", background: C.base, color: C.text, fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 12px", background: C.mantle, borderBottom: `1px solid ${C.surface0}`, flexShrink: 0, minHeight: 42 }}>
-        <span style={{ fontSize: 13, color: C.subtext, marginRight: 8, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{attachment.filename}</span>
+        <span style={{ fontSize: 13, color: C.subtext, marginRight: 8, maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{name}</span>
         <div style={{ width: 1, height: 20, background: C.surface1, marginRight: 4 }} />
-        <ToolbarButton onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} title="Trang trước">
+        <ToolbarButton onClick={() => goToPage(currentPage - 1)} disabled={currentPage <= 1} title={labels.previousPage}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 3L5 7l4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </ToolbarButton>
         <span style={{ fontSize: 12, color: C.subtext, minWidth: 60, textAlign: "center" }}>{currentPage} / {numPages}</span>
-        <ToolbarButton onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} title="Trang sau">
+        <ToolbarButton onClick={() => goToPage(currentPage + 1)} disabled={currentPage >= numPages} title={labels.nextPage}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </ToolbarButton>
         <div style={{ width: 1, height: 20, background: C.surface1, margin: "0 4px" }} />
-        <ToolbarButton onClick={zoomOut} title="Thu nhỏ">
+        <ToolbarButton onClick={zoomOut} title={labels.zoomOut}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 7h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </ToolbarButton>
         <span style={{ fontSize: 12, color: C.subtext, minWidth: 40, textAlign: "center" }}>{Math.round(zoom * 100)}%</span>
-        <ToolbarButton onClick={zoomIn} title="Phóng to">
+        <ToolbarButton onClick={zoomIn} title={labels.zoomIn}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 3v8M3 7h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </ToolbarButton>
-        <ToolbarButton onClick={fitWidth} title="Vừa chiều rộng">
+        <ToolbarButton onClick={fitWidth} title={labels.fitWidth}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="3" width="10" height="8" rx="1" stroke="currentColor" strokeWidth="1.3" /><path d="M4 7h6" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </ToolbarButton>
-        <ToolbarButton onClick={fitPage} title="Vừa trang">
+        <ToolbarButton onClick={fitPage} title={labels.fitPage}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="3" y="2" width="8" height="10" rx="1" stroke="currentColor" strokeWidth="1.3" /></svg>
         </ToolbarButton>
         <div style={{ width: 1, height: 20, background: C.surface1, margin: "0 4px" }} />
-        <ToolbarButton active={tool === "select"} onClick={() => setTool("select")} title="Công cụ chọn">
+        <ToolbarButton active={tool === "select"} onClick={() => setTool("select")} title={labels.select}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 2l2 10 2.5-4L12 6 3 2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
         </ToolbarButton>
-        <ToolbarButton active={tool === "highlight"} onClick={() => setTool("highlight")} title="Tô sáng">
+        <ToolbarButton active={tool === "highlight"} onClick={() => setTool("highlight")} title={labels.highlight}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="6" rx="1" fill={tool === "highlight" ? HIGHLIGHT_COLORS[highlightColor] + "66" : "none"} stroke="currentColor" strokeWidth="1.3" /></svg>
         </ToolbarButton>
-        <ToolbarButton active={tool === "note"} onClick={() => setTool("note")} title="Ghi chú">
+        <ToolbarButton active={tool === "note"} onClick={() => setTool("note")} title={labels.note}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3h8v8H6l-3 3V3z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M5 6h4M5 8h2" stroke="currentColor" strokeWidth="1" strokeLinecap="round" /></svg>
         </ToolbarButton>
-        <ToolbarButton active={tool === "underline"} onClick={() => setTool("underline")} title="Gạch chân">
+        <ToolbarButton active={tool === "underline"} onClick={() => setTool("underline")} title={labels.underline}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 11h8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /><path d="M4 3v4a3 3 0 006 0V3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </ToolbarButton>
         {tool !== "select" && (
@@ -537,13 +540,13 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
           </>
         )}
         <div style={{ flex: 1 }} />
-        <ToolbarButton active={showSidebar} onClick={() => setShowSidebar((s) => !s)} title="Hiện/ẩn danh sách annotation">
+        <ToolbarButton active={showSidebar} onClick={() => setShowSidebar((s) => !s)} title={labels.toggleSidebar}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><rect x="1" y="2" width="12" height="10" rx="1.5" stroke="currentColor" strokeWidth="1.3" /><path d="M9 2v10" stroke="currentColor" strokeWidth="1.3" /></svg>
         </ToolbarButton>
-        <ToolbarButton onClick={handleExport} disabled={annotations.length === 0} title="Xuất annotation ra note">
+        <ToolbarButton onClick={handleExport} disabled={annotations.length === 0} title={labels.export}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M7 2v7M4 6l3 3 3-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /><path d="M2 10v2h10v-2" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </ToolbarButton>
-        <ToolbarButton onClick={onClose} title="Đóng">
+        <ToolbarButton onClick={onClose} title={labels.close}>
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </ToolbarButton>
       </div>
@@ -553,13 +556,13 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
           {loading && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12 }}>
               <div style={{ width: 32, height: 32, borderWidth: 2, borderStyle: "solid", borderColor: `transparent ${C.blue} ${C.blue} ${C.blue}`, borderRadius: "50%", animation: "pdfspin 1s linear infinite" }} />
-              <span style={{ fontSize: 13, color: C.subtext }}>Đang tải PDF...</span>
+              <span style={{ fontSize: 13, color: C.subtext }}>{labels.loading}</span>
             </div>
           )}
           {error && (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", gap: 12 }}>
               <span style={{ fontSize: 13, color: C.red }}>{error}</span>
-              <button onClick={onClose} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>Đóng</button>
+              <button onClick={onClose} style={{ fontSize: 12, color: C.blue, background: "none", border: "none", cursor: "pointer", textDecoration: "underline" }}>{labels.close}</button>
             </div>
           )}
           {!loading && !error && Array.from({ length: numPages }, (_, i) => i + 1).map((pageNum) => {
@@ -582,7 +585,7 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
                       <textarea
                         value={noteText}
                         onChange={(e) => setNoteText(e.target.value)}
-                        placeholder="Nhập ghi chú..."
+                        placeholder={labels.notePlaceholder}
                         autoFocus
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleCreateNote();
@@ -591,8 +594,8 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
                         style={{ width: "100%", height: 60, background: C.base, color: C.text, border: `1px solid ${C.surface1}`, borderRadius: 4, padding: 6, fontSize: 12, resize: "none", outline: "none", fontFamily: "inherit" }}
                       />
                       <div style={{ display: "flex", gap: 6, marginTop: 6, justifyContent: "flex-end" }}>
-                        <button onClick={() => setNotePopover(null)} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, background: C.surface1, color: C.subtext, border: "none", cursor: "pointer" }}>Huỷ</button>
-                        <button onClick={handleCreateNote} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, background: C.blue, color: C.base, border: "none", cursor: "pointer", fontWeight: 600 }}>Thêm ghi chú</button>
+                        <button onClick={() => setNotePopover(null)} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, background: C.surface1, color: C.subtext, border: "none", cursor: "pointer" }}>{labels.cancel}</button>
+                        <button onClick={handleCreateNote} style={{ fontSize: 11, padding: "3px 10px", borderRadius: 4, background: C.blue, color: C.base, border: "none", cursor: "pointer", fontWeight: 600 }}>{labels.addNote}</button>
                       </div>
                     </div>
                   )}
@@ -605,17 +608,17 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
 
         {showSidebar && (
           <div style={{ width: 280, background: C.base, borderLeft: `1px solid ${C.surface0}`, display: "flex", flexDirection: "column", overflow: "hidden", flexShrink: 0 }}>
-            <div style={{ padding: "10px 12px", borderBottom: `1px solid ${C.surface0}`, fontSize: 13, fontWeight: 600, color: C.text }}>Annotations ({annotations.length})</div>
+            <div style={{ padding: "10px 12px", borderBottom: `1px solid ${C.surface0}`, fontSize: 13, fontWeight: 600, color: C.text }}>{labels.annotations} ({annotations.length})</div>
             <div style={{ flex: 1, overflow: "auto", padding: 8 }}>
               {sortedAnnotations.length === 0 && (
-                <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: C.overlay0 }}>Chưa có annotation. Dùng công cụ tô sáng, ghi chú, hoặc gạch chân.</div>
+                <div style={{ padding: 16, textAlign: "center", fontSize: 12, color: C.overlay0 }}>{labels.empty}</div>
               )}
               {sortedAnnotations.map((ann) => (
                 <div key={ann.id} style={{ padding: 8, marginBottom: 6, borderRadius: 6, background: editingAnnotation === ann.id ? C.surface1 : C.surface0, cursor: "pointer", transition: "background 0.15s" }} onClick={() => scrollToAnnotation(ann)}>
                   <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
                     <div style={{ width: 10, height: 10, borderRadius: 2, background: ann.color, flexShrink: 0 }} />
                     <span style={{ fontSize: 11, color: C.overlay0, textTransform: "capitalize" }}>{ann.type}</span>
-                    <span style={{ fontSize: 10, color: C.overlay0, marginLeft: "auto" }}>tr.{ann.page}</span>
+                    <span style={{ fontSize: 10, color: C.overlay0, marginLeft: "auto" }}>{labels.pageShort}{ann.page}</span>
                   </div>
                   {ann.text && (
                     <div style={{ fontSize: 12, color: C.subtext, marginBottom: 4, lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical" as const }}>{ann.text}</div>
@@ -626,7 +629,7 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
                         value={editComment}
                         onChange={(e) => setEditComment(e.target.value)}
                         autoFocus
-                        placeholder="Thêm nhận xét..."
+                        placeholder={labels.commentPlaceholder}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) saveAnnotationComment(ann.id, editComment);
                           if (e.key === "Escape") setEditingAnnotation(null);
@@ -634,9 +637,9 @@ export default function PDFViewer({ vaultId, attachment, onExportedNote, onClose
                         style={{ width: "100%", height: 48, background: C.base, color: C.text, border: `1px solid ${C.surface1}`, borderRadius: 4, padding: 6, fontSize: 11, resize: "none", outline: "none", fontFamily: "inherit" }}
                       />
                       <div style={{ display: "flex", gap: 4, marginTop: 4 }}>
-                        <button onClick={() => saveAnnotationComment(ann.id, editComment)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: C.blue, color: C.base, border: "none", cursor: "pointer", fontWeight: 600 }}>Lưu</button>
-                        <button onClick={() => setEditingAnnotation(null)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: C.surface1, color: C.subtext, border: "none", cursor: "pointer" }}>Huỷ</button>
-                        <button onClick={() => deleteAnnotation(ann.id)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: "transparent", color: C.red, border: `1px solid ${C.red}44`, cursor: "pointer", marginLeft: "auto" }}>Xoá</button>
+                        <button onClick={() => saveAnnotationComment(ann.id, editComment)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: C.blue, color: C.base, border: "none", cursor: "pointer", fontWeight: 600 }}>{labels.save}</button>
+                        <button onClick={() => setEditingAnnotation(null)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: C.surface1, color: C.subtext, border: "none", cursor: "pointer" }}>{labels.cancel}</button>
+                        <button onClick={() => deleteAnnotation(ann.id)} style={{ fontSize: 10, padding: "2px 8px", borderRadius: 3, background: "transparent", color: C.red, border: `1px solid ${C.red}44`, cursor: "pointer", marginLeft: "auto" }}>{labels.delete}</button>
                       </div>
                     </div>
                   ) : ann.comment ? (

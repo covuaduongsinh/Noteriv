@@ -40,6 +40,8 @@ import {
   CorePluginNoteToolbarButtons,
   CorePluginFileView,
   matchFileView,
+  CorePluginAttachmentViewer,
+  matchAttachmentViewer,
   CorePluginSidePanels,
   CorePluginViewOverlay,
   useCorePluginHost,
@@ -195,6 +197,8 @@ export default function VaultPage() {
     [bookmarks, index]
   );
   const [showAttachments, setShowAttachments] = useState(false);
+  /** An attachment shown by a core plugin's viewer (the PDF viewer), over the page. */
+  const [attachmentView, setAttachmentView] = useState<{ target: string; name: string } | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
   // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
@@ -374,7 +378,15 @@ export default function VaultPage() {
   const corePluginHost = useCorePluginHost(corePluginConfig, {
     editor: editorBridge,
     getCurrentFile: () => activePathRef.current,
-    openFile: openPluginPath,
+    // A core plugin opening a note (the PDF viewer's export…) brings the editor forward.
+    openFile: async (path) => {
+      const ok = await openPluginPath(path);
+      if (ok) {
+        setShowAttachments(false);
+        setAttachmentView(null);
+      }
+      return ok;
+    },
     onVaultChanged: refreshIndex,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
@@ -1642,13 +1654,26 @@ export default function VaultPage() {
             if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
           }}
           onClose={() => setShowAttachments(false)}
-          onOpenNote={(noteId) => {
-            setShowAttachments(false);
-            refreshIndex();
-            openNote(noteId);
+          viewerOpen={attachmentView !== null}
+          onView={(a) => {
+            const file = { target: webApi.attachments.downloadUrl(vaultId, a.id), name: a.filename };
+            if (!matchAttachmentViewer(corePlugins.contributions.attachmentViewers, file)) return false;
+            setAttachmentView(file);
+            return true;
           }}
         />
       )}
+
+      {attachmentView &&
+        (() => {
+          const viewer = matchAttachmentViewer(corePlugins.contributions.attachmentViewers, attachmentView);
+          // Above the Attachments dialog (.am-overlay is 8500).
+          return viewer ? (
+            <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: "var(--bg-primary)" }}>
+              <CorePluginAttachmentViewer viewer={viewer} target={attachmentView.target} name={attachmentView.name} onClose={() => setAttachmentView(null)} />
+            </div>
+          ) : null;
+        })()}
 
 
       {showPublishPreview && activeTab && (

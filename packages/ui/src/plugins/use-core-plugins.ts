@@ -12,6 +12,7 @@ const NO_CONTRIBUTIONS: CorePluginContributions = {
   ribbonIcons: [],
   noteToolbarButtons: [],
   fileViews: [],
+  attachmentViewers: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],

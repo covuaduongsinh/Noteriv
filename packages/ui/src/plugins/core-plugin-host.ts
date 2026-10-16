@@ -18,6 +18,7 @@ import {
   type SidebarPanel,
   type SettingsTab,
   type VaultEntry,
+  type AttachmentViewerContext,
   type FileViewContext,
   type FileViewInstance,
   type ViewFactory,
@@ -96,6 +97,12 @@ export interface HostFileView extends Owned {
   mount(container: HTMLElement, ctx: FileViewContext): FileViewInstance | void;
 }
 
+export interface HostAttachmentViewer extends Owned {
+  /** Guarded: a plugin's match that throws counts as "no". */
+  match(file: { target: string; name: string }): boolean;
+  mount(container: HTMLElement, ctx: AttachmentViewerContext): void | (() => void);
+}
+
 export interface HostPanel extends Owned {
   title: string;
   icon?: string;
@@ -109,13 +116,23 @@ export interface CorePluginContributions {
   noteToolbarButtons: HostNoteToolbarButton[];
   /** In registration order; the first that matches a file wins. */
   fileViews: HostFileView[];
+  /** In registration order; the first that matches an attachment wins. */
+  attachmentViewers: HostAttachmentViewer[];
   sidebarPanels: HostPanel[];
   settingsTabs: HostPanel[];
   /** View types plugins registered, in registration order. */
   viewTypes: string[];
 }
 
-type Kind = "commands" | "statusItems" | "ribbonIcons" | "noteToolbarButtons" | "fileViews" | "sidebarPanels" | "settingsTabs";
+type Kind =
+  | "commands"
+  | "statusItems"
+  | "ribbonIcons"
+  | "noteToolbarButtons"
+  | "fileViews"
+  | "attachmentViewers"
+  | "sidebarPanels"
+  | "settingsTabs";
 
 const EMPTY: CorePluginContributions = {
   commands: [],
@@ -123,6 +140,7 @@ const EMPTY: CorePluginContributions = {
   ribbonIcons: [],
   noteToolbarButtons: [],
   fileViews: [],
+  attachmentViewers: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],
@@ -318,6 +336,16 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         async attachmentUrl(target) {
           return target && adapter.attachmentUrl ? adapter.attachmentUrl(target) : null;
         },
+        async readAttachment(target) {
+          return target && adapter.readAttachment ? adapter.readAttachment(target) : null;
+        },
+        async getAttachmentData(target) {
+          return target && adapter.getAttachmentData ? adapter.getAttachmentData(target) : null;
+        },
+        async setAttachmentData(target, data) {
+          if (!adapter.setAttachmentData) throw new Error("This vault cannot store attachment data");
+          await adapter.setAttachmentData(target, data);
+        },
       },
 
       editor: services.editor,
@@ -409,6 +437,22 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
             mount: (container, ctx) => v.mount(container, ctx),
           }),
         unregisterFileView: (id) => remove("fileViews", key(id)),
+        registerAttachmentViewer: (v) =>
+          upsert("attachmentViewers", {
+            pluginId,
+            key: key(v.id),
+            id: v.id,
+            match: (file) => {
+              try {
+                return v.match(file) === true;
+              } catch (e) {
+                report(pluginId, `attachment viewer ${v.id} match`, e);
+                return false;
+              }
+            },
+            mount: (container, ctx) => v.mount(container, ctx),
+          }),
+        unregisterAttachmentViewer: (id) => remove("attachmentViewers", key(id)),
       },
 
       events: {
@@ -462,6 +506,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
       ribbonIcons: keep(contributions.ribbonIcons),
       noteToolbarButtons: keep(contributions.noteToolbarButtons),
       fileViews: keep(contributions.fileViews),
+      attachmentViewers: keep(contributions.attachmentViewers),
       sidebarPanels: keep(contributions.sidebarPanels),
       settingsTabs: keep(contributions.settingsTabs),
       viewTypes: viewTypes(),

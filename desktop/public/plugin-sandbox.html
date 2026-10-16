@@ -141,6 +141,9 @@ function buildApi(boot) {
       resolve: coreOnly("vault.resolve"),
       listAttachments: coreOnly("vault.listAttachments"),
       attachmentUrl: coreOnly("vault.attachmentUrl"),
+      readAttachment: coreOnly("vault.readAttachment"),
+      getAttachmentData: coreOnly("vault.getAttachmentData"),
+      setAttachmentData: coreOnly("vault.setAttachmentData"),
     },
     ui: {
       addCommand: function (cmd) {
@@ -192,6 +195,8 @@ function buildApi(boot) {
       removeNoteToolbarButton: coreOnly("ui.removeNoteToolbarButton"),
       registerFileView: coreOnly("ui.registerFileView"),
       unregisterFileView: coreOnly("ui.unregisterFileView"),
+      registerAttachmentViewer: coreOnly("ui.registerAttachmentViewer"),
+      unregisterAttachmentViewer: coreOnly("ui.unregisterAttachmentViewer"),
     },
     events: {
       on: function (event, handler) {

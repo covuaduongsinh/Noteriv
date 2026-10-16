@@ -110,6 +110,13 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Vẽ tay, hình, chữ và tẩy; mở note có frontmatter drawing: true. Lệnh tạo bản vẽ mới.",
     load: () => import("@noteriv/plugins/drawing"),
   },
+  {
+    id: "pdf-viewer",
+    name: "Đọc PDF",
+    description: "Đọc PDF đính kèm (bấm PDF trong hộp Attachments) và chú thích: tô sáng, gạch chân, ghi chú; xuất chú thích ra note.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/pdf-viewer"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

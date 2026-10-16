@@ -15,6 +15,11 @@ function splitPath(path: string): { dir: string; name: string } {
  * rename only accepts a destination folder that already exists.
  */
 export function createWebVaultAdapter(vaultId: string): VaultAdapter {
+  /** An attachment target is its download URL (`/api/v1/vaults/<v>/attachments/<id>/download`) or, in older documents, its id. */
+  const attachmentIdOf = (target: string) => target.match(/\/attachments\/([^/?#]+)\/download/)?.[1] ?? target;
+  const attachmentDownloadUrl = (target: string) =>
+    /^(https?:|\/|data:|blob:)/.test(target) ? target : webApi.attachments.downloadUrl(vaultId, target);
+
   async function folderIdFor(dir: string, create = false): Promise<string | null> {
     if (!dir) return null;
     const index = await webApi.vaults.index(vaultId);
@@ -142,6 +147,26 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
     // form canvases kept before 2.5b.
     async attachmentUrl(target) {
       return /^(https?:|\/|data:|blob:)/.test(target) ? target : webApi.attachments.downloadUrl(vaultId, target);
+    },
+
+    async readAttachment(target) {
+      try {
+        const res = await fetch(attachmentDownloadUrl(target));
+        return res.ok ? await res.arrayBuffer() : null;
+      } catch {
+        return null;
+      }
+    },
+
+    // Data kept with an attachment (PDF annotations) is the attachment row's `metadata`, read fresh each time.
+    async getAttachmentData(target) {
+      const id = attachmentIdOf(target);
+      const { attachments } = await webApi.attachments.list(vaultId);
+      return attachments.find((a) => a.id === id)?.metadata ?? null;
+    },
+
+    async setAttachmentData(target, data) {
+      await webApi.attachments.updateMetadata(vaultId, attachmentIdOf(target), data);
     },
 
     async getSettings() {

@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.8";
+export const PLUGIN_API_VERSION = "1.0.0-draft.9";
 
 // ─── Permissions (community tier) ───
 
@@ -101,6 +101,14 @@ export interface VaultApi {
   listAttachments(): Promise<AttachmentInfo[]>;
   /** Core tier only. A URL an `<img>` can show for an attachment target (a `data:` URL on desktop). */
   attachmentUrl(target: string): Promise<string | null>;
+  /** Core tier only. The bytes of an attachment (a PDF…), from any target `attachmentUrl` accepts. Null if unreadable. */
+  readAttachment(target: string): Promise<ArrayBuffer | null>;
+  /**
+   * Core tier only. JSON a plugin keeps with one attachment (PDF annotations): web stores it on the attachment, desktop
+   * in a hidden file next to it (`.<name>-annotations.json`). Null when there is none.
+   */
+  getAttachmentData(target: string): Promise<unknown>;
+  setAttachmentData(target: string, data: unknown): Promise<void>;
 }
 
 // ─── Editor ───
@@ -234,6 +242,27 @@ export interface FileViewInstance {
   destroy?(): void;
 }
 
+/** What an attachment viewer is given: the attachment, and a way to close the viewer (a tab, or an overlay). */
+export interface AttachmentViewerContext {
+  /** The attachment's target, as `vault.attachmentUrl`/`readAttachment` take it (web: download URL; desktop: vault path). */
+  target: string;
+  /** File name, for titles and exports. */
+  name: string;
+  close(): void;
+}
+
+/**
+ * Shows attachments it recognises (a PDF reader…). Core tier only. Desktop shows it in the file's tab; web over the page
+ * when the attachment is opened from the Attachments dialog. Not text: the viewer reads through `vault.readAttachment`.
+ */
+export interface AttachmentViewer {
+  /** Unique within the plugin. */
+  id: string;
+  match(file: { target: string; name: string }): boolean;
+  /** Returns the cleanup. */
+  mount(container: HTMLElement, ctx: AttachmentViewerContext): void | (() => void);
+}
+
 /**
  * A view that replaces the editor for files it recognises (a Kanban board, later Canvas, Drawing…). Core tier only.
  * It shows inside the tab, in the main and the split pane alike, one instance per pane. Source mode always shows the
@@ -274,6 +303,9 @@ export interface UiApi {
   /** Core tier only. Shows files this view `match`es with it instead of the editor (see `FileView`). */
   registerFileView(view: FileView): void;
   unregisterFileView(id: string): void;
+  /** Core tier only. Shows attachments this viewer `match`es (see `AttachmentViewer`). */
+  registerAttachmentViewer(viewer: AttachmentViewer): void;
+  unregisterAttachmentViewer(id: string): void;
 }
 
 // ─── Events ───

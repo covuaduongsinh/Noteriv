@@ -1,23 +1,21 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import dynamic from "next/dynamic";
 import { webApi, type ApiAttachment } from "@/lib/webApi";
 import { getAttachmentType, formatFileSize, markdownLinkForAttachment, type AttachmentType } from "@/lib/attachment-utils";
 import "@/styles/attachments.css";
-
-// pdf.js needs the DOM at import time — never let it into the SSR bundle
-// (see PDFViewer.tsx's own comment on the webpack/pdf.js workaround).
-const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
 
 interface AttachmentManagerProps {
   vaultId: string;
   onInsert: (markdownLink: string) => void;
   onClose: () => void;
-  // Phase D4: lets a PDF's "export annotations" action open the resulting
-  // note in the main editor (same openNote already wired for other panels
-  // in vaults/[vaultId]/page.tsx).
-  onOpenNote?: (noteId: string) => void;
+  /**
+   * Opens an attachment in a core plugin's viewer (the PDF viewer…) when one handles it; returns false otherwise, and
+   * the click inserts a link as for any other file. The host shows the viewer above this dialog.
+   */
+  onView?: (attachment: ApiAttachment) => boolean;
+  /** A viewer opened from here is on screen: Escape is its own, not this dialog's. */
+  viewerOpen?: boolean;
 }
 
 type FilterType = "all" | AttachmentType;
@@ -31,9 +29,8 @@ type SortField = "name" | "date";
  * comment for why it isn't MinIO) — metadata + a hard per-vault quota come
  * back together from GET /vaults/:id/attachments.
  */
-export default function AttachmentManager({ vaultId, onInsert, onClose, onOpenNote }: AttachmentManagerProps) {
+export default function AttachmentManager({ vaultId, onInsert, onClose, onView, viewerOpen = false }: AttachmentManagerProps) {
   const [attachments, setAttachments] = useState<ApiAttachment[]>([]);
-  const [viewingPdf, setViewingPdf] = useState<ApiAttachment | null>(null);
   const [usedBytes, setUsedBytes] = useState(0);
   const [quotaBytes, setQuotaBytes] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -155,25 +152,16 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onOpenNo
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // When the PDF viewer overlay is open, its own Escape handler closes
-      // just the viewer — this handler must not also close the whole
-      // manager underneath it on the same keypress.
-      if (e.key === "Escape" && !viewingPdf) onClose();
+      // While a viewer opened from here is on screen, its own Escape handler closes just the viewer: this one must
+      // not also close the whole dialog on the same keypress.
+      if (e.key === "Escape" && !viewerOpen) onClose();
     };
     document.addEventListener("keydown", handleKeyDown);
     return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [onClose, viewingPdf]);
+  }, [onClose, viewerOpen]);
 
   const usedPct = quotaBytes > 0 ? Math.min(100, (usedBytes / quotaBytes) * 100) : 0;
 
-  // PDFViewer is a full-screen `position: fixed` overlay rendered on TOP of
-  // this modal, but it must be a sibling of .am-overlay in the JSX tree, not
-  // nested inside it — React's synthetic click bubbling follows DOM nesting
-  // regardless of visual z-index, so if it were nested, every click inside
-  // the viewer (tool buttons, page nav, zoom) would bubble up to
-  // .am-overlay's onClick={onClose} and close the whole manager underneath
-  // it. Found by actually clicking the highlight tool in a real browser —
-  // it closed both the viewer and the manager instantly, not a dev-artifact.
   return (
     <>
     <div className="am-overlay" onClick={onClose}>
@@ -299,12 +287,14 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onOpenNo
                     <div className="am-list">
                       {nonImageItems.map((a) => {
                         const type = getAttachmentType(a.filename);
-                        const isPdf = type === "pdf";
+                        const isPdf = type === "pdf" && !!onView;
                         return (
                           <div
                             key={a.id}
                             className="am-list-item"
-                            onClick={() => (isPdf ? setViewingPdf(a) : handleInsert(a))}
+                            onClick={() => {
+                              if (!onView?.(a)) handleInsert(a);
+                            }}
                             title={isPdf ? `Bấm để xem: ${a.filename}` : `Bấm để chèn: ${a.filename}`}
                           >
                             <div className="am-list-info">
@@ -342,18 +332,6 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onOpenNo
       </div>
     </div>
 
-    {viewingPdf && (
-      <PDFViewer
-        vaultId={vaultId}
-        attachment={viewingPdf}
-        onClose={() => setViewingPdf(null)}
-        onExportedNote={(noteId) => {
-          setViewingPdf(null);
-          onOpenNote?.(noteId);
-          onClose();
-        }}
-      />
-    )}
     </>
   );
 }

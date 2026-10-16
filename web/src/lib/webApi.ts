@@ -186,7 +186,7 @@ export interface ApiAttachment {
   storageKey: string;
   createdAt: string;
   // PDF annotations (Phase D4) — only ever populated for mimeType
-  // "application/pdf". See web/src/lib/pdf-annotation.ts for the shape.
+  // "application/pdf". Shape: packages/plugins/src/pdf-viewer/annotations.ts.
   metadata?: unknown;
 }
 

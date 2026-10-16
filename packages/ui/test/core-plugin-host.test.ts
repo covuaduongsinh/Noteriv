@@ -8,8 +8,10 @@ import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registr
 import {
   createCorePluginHost,
   CorePluginsSection,
+  CorePluginAttachmentViewer,
   CorePluginFileView,
   CorePluginNoteToolbarButtons,
+  matchAttachmentViewer,
   CorePluginSidePanels,
   matchFileView,
   CorePluginViewOverlay,
@@ -405,6 +407,59 @@ describe("plugin sidebar panels (CorePluginSidePanels)", () => {
     // Separators and reserved characters become "_", leading dots go: the name can never leave attachments/.
     expect(target).toBe("attachments/_evil_rec_1.webm");
     expect(adapter.attachments.has(target)).toBe(true);
+  });
+});
+
+describe("attachment viewers and attachment data (2.5c)", () => {
+  it("finds the first matching viewer, a throwing match counts as no, off means gone; mounts and closes", async () => {
+    const close = vi.fn();
+    const cleanup = vi.fn();
+    const plugin: CorePlugin = {
+      onload: (api) => {
+        api.ui.registerAttachmentViewer({ id: "bad", match: () => { throw new Error("boom"); }, mount: () => {} });
+        api.ui.registerAttachmentViewer({
+          id: "pdf",
+          match: (f) => f.name.endsWith(".pdf"),
+          mount: (el, ctx) => {
+            el.textContent = `viewing ${ctx.name}`;
+            el.onclick = () => ctx.close();
+            return cleanup;
+          },
+        });
+      },
+    };
+    const { host } = makeHost([def("p", plugin)]);
+    await host.registry.setEnabled("p", true);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    const viewer = matchAttachmentViewer(host.getContributions().attachmentViewers, { target: "t", name: "a.pdf" })!;
+    errSpy.mockRestore();
+    expect(viewer.key).toBe("p:pdf");
+    expect(matchAttachmentViewer(host.getContributions().attachmentViewers, { target: "t", name: "a.png" })).toBeUndefined();
+
+    const el = document.createElement("div");
+    const root = createRoot(el);
+    await act(async () => root.render(createElement(CorePluginAttachmentViewer, { viewer, target: "t", name: "a.pdf", onClose: close })));
+    expect(el.textContent).toBe("viewing a.pdf");
+    (el.querySelector('[data-core-attachment-viewer] > div') as HTMLElement).click();
+    expect(close).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+    expect(cleanup).toHaveBeenCalledOnce();
+
+    await host.registry.setEnabled("p", false);
+    expect(host.getContributions().attachmentViewers).toEqual([]);
+  });
+
+  it("reads attachment bytes and keeps data with an attachment through the adapter", async () => {
+    const adapter = new MemoryVaultAdapter();
+    const target = await adapter.saveAttachment("doc.pdf", new Blob(["%PDF"]));
+    let api!: PluginApi;
+    const { host } = makeHost([def("p", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("p", true);
+    expect(new TextDecoder().decode((await api.vault.readAttachment(target))!)).toBe("%PDF");
+    expect(await api.vault.readAttachment("nope")).toBeNull();
+    expect(await api.vault.getAttachmentData(target)).toBeNull();
+    await api.vault.setAttachmentData(target, [{ id: "a" }]);
+    expect(await api.vault.getAttachmentData(target)).toEqual([{ id: "a" }]);
   });
 });
 

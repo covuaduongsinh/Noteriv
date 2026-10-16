@@ -9,7 +9,7 @@
     "board": { "label": "Board (Kanban)", "patterns": ["plugins/src/board/", "/src/components/BoardView\\.","core/src/board-utils\\."] },
     "drawing": { "label": "Drawing", "patterns": ["plugins/src/drawing/", "/src/components/DrawingView\\.","/src/components/DrawingEditor\\.", "core/src/drawing-utils\\."] },
     "slides": { "label": "Slides", "patterns": ["plugins/src/slides/", "/src/components/SlidePresentation\\.","core/src/slide-utils\\."] },
-    "pdf-viewer": { "label": "PDF viewer + chú thích", "patterns": ["/src/components/PDFViewer\\.", "/src/lib/pdf-annotation\\.", "node_modules/pdfjs-dist/"] },
+    "pdf-viewer": { "label": "PDF viewer + chú thích", "patterns": ["plugins/src/pdf-viewer/", "/src/components/PDFViewer\\.","/src/lib/pdf-annotation\\.", "node_modules/pdfjs-dist/"] },
     "dataview": { "label": "Dataview", "patterns": ["plugins/src/dataview/", "core/src/dataview\\.","/src/components/DataviewBlock\\."] },
     "vault-insights": { "label": "Vault insights", "patterns": ["plugins/src/vault-insights/", "/src/components/VaultInsights\\.", "/src/lib/vault-insights-utils\\."] },
     "audio-recorder": { "label": "Audio recorder", "patterns": ["plugins/src/audio-recorder/", "/src/components/AudioRecorder\\.", "/src/lib/audio-utils\\."] },

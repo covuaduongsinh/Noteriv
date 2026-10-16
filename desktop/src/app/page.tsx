@@ -15,7 +15,7 @@ import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
 import { setLocalImageLoader } from "@noteriv/ui/markdown";
-import { refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
+import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
@@ -23,6 +23,8 @@ import {
   CorePluginViewOverlay,
   CorePluginFileView,
   matchFileView,
+  CorePluginAttachmentViewer,
+  matchAttachmentViewer,
   type HostFileView,
   useCorePluginHost,
   useCorePluginHotkeys,
@@ -34,7 +36,6 @@ import FileRecovery from "@/components/FileRecovery";
 import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
-import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
 import PublishPreview from "@/components/PublishPreview";
 import CollabPanel from "@/components/CollabPanel";
@@ -82,7 +83,8 @@ const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.So
 const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
 const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
-const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
+/** PDFs open in a tab of their own, shown by a core plugin's attachment viewer (the PDF viewer, since 2.5c). */
+const isPdfFile = (path: string) => /\.pdf$/i.test(path);
 
 type ViewMode = "live" | "source" | "view";
 type AppState = "loading" | "setup" | "app";
@@ -220,7 +222,6 @@ export default function Home() {
   const currentTab = tabs.find((t) => t.filePath === activeTab) || null;
   // Dedicated views are driven by the active tab's kind, so they live in the
   // tab strip and own the title bar / export the same way notes do.
-  const pdfFile = currentTab?.kind === "pdf" ? currentTab.filePath : null;
   const content = currentTab?.content || "";
   const isDirty = currentTab ? currentTab.content !== currentTab.savedContent : false;
 
@@ -1288,19 +1289,13 @@ export default function Home() {
       focusMode: handleFocusMode,
       publishNote: handlePublish,
       startCollab: () => setShowCollab(true),
-      openPdfViewer: () => {
-        if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
-      },
-      exportPdfAnnotations: () => {
-        if (pdfFile) { /* export handled inside PDFViewer */ }
-      },
       openTrash: () => setShowTrash(true),
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1468,10 +1463,6 @@ export default function Home() {
         focusMode: handleFocusMode,
         publishNote: handlePublish,
         startCollab: () => setShowCollab(true),
-        openPdfViewer: () => {
-          if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
-        },
-        exportPdfAnnotations: () => {},
         openTrash: () => setShowTrash(true),
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
@@ -1492,7 +1483,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {
@@ -1918,12 +1909,17 @@ export default function Home() {
           ) : currentTab.kind === "image" ? (
             <ImageViewer filePath={currentTab.filePath} />
           ) : currentTab.kind === "pdf" && activeVault ? (
-            <PDFViewer
-              filePath={currentTab.filePath}
-              vaultPath={activeVault.path}
-              onExportedNote={(mdPath) => { openFile(mdPath); setSidebarRefresh((k) => k + 1); }}
-              onClose={() => closeTab(currentTab.filePath)}
-            />
+            (() => {
+              const file = { target: relativeVaultPath(activeVault.path, currentTab.filePath), name: baseName(currentTab.filePath) };
+              const viewer = matchAttachmentViewer(corePlugins.contributions.attachmentViewers, file);
+              return viewer ? (
+                <CorePluginAttachmentViewer viewer={viewer} target={file.target} name={file.name} onClose={() => closeTab(currentTab.filePath)} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-[var(--text-muted)]">
+                  Turn on the PDF viewer core plugin (Settings → Core plugins) to read this file.
+                </div>
+              );
+            })()
           ) : null}
         </div>
 

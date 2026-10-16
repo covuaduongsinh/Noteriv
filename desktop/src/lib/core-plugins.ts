@@ -110,6 +110,13 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Freehand sketches, shapes, text and eraser; opens .drawing files. New drawing command.",
     load: () => import("@noteriv/plugins/drawing"),
   },
+  {
+    id: "pdf-viewer",
+    name: "PDF viewer",
+    description: "Read PDFs in a tab and annotate them: highlight, underline, notes; export the annotations to a note.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/pdf-viewer"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

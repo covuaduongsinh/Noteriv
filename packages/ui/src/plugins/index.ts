@@ -11,6 +11,7 @@ export {
   type HostPanel,
   type HostNoteToolbarButton,
   type HostFileView,
+  type HostAttachmentViewer,
 } from "./core-plugin-host";
 export { useCorePlugins, useCorePluginHotkeys } from "./use-core-plugins";
 export { matchesHotkey, parseHotkey, isMacPlatform } from "./hotkey";
@@ -19,6 +20,7 @@ export { CorePluginRibbonButtons, CorePluginStatusItems, CorePluginNoteToolbarBu
 export { CorePluginViewOverlay } from "./CorePluginViewOverlay";
 export { CorePluginSidePanels } from "./CorePluginSidePanels";
 export { CorePluginFileView, matchFileView } from "./CorePluginFileView";
+export { CorePluginAttachmentViewer, matchAttachmentViewer } from "./CorePluginAttachmentViewer";
 export {
   useCorePluginHost,
   type ActiveCorePluginView,

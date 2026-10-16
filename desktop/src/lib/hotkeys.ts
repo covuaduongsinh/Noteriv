@@ -60,8 +60,6 @@ export type HotkeyAction =
   | "focusMode"
   | "publishNote"
   | "startCollab"
-  | "openPdfViewer"
-  | "exportPdfAnnotations"
   | "openTrash"
   | "togglePinTab"
   | "splitEditor"
@@ -147,8 +145,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "publishNote", label: "Publish Note as HTML", keys: "", category: "File" },
   { action: "startCollab", label: "Live Collaboration", keys: "", category: "Edit" },
   // PDF
-  { action: "openPdfViewer", label: "Open PDF", keys: "", category: "File" },
-  { action: "exportPdfAnnotations", label: "Export PDF Annotations", keys: "", category: "File" },
   // Trash
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
   // Tab pinning

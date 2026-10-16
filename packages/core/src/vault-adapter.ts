@@ -94,6 +94,11 @@ export interface VaultAdapter {
    * (web: attachment id; desktop: absolute path). Optional.
    */
   attachmentUrl?(target: string): Promise<string | null>;
+  /** Bytes of an attachment, from any target `attachmentUrl` accepts. Optional. */
+  readAttachment?(target: string): Promise<ArrayBuffer | null>;
+  /** JSON kept with one attachment (web: on the attachment row; desktop: `.<name>-annotations.json` beside it). */
+  getAttachmentData?(target: string): Promise<unknown>;
+  setAttachmentData?(target: string, data: unknown): Promise<void>;
   /** Whether any file (not only a note) exists at this vault path: a `.canvas` on desktop. Optional. */
   fileExists?(path: string): Promise<boolean>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */

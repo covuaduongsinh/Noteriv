@@ -51,6 +51,22 @@ export class MemoryVaultAdapter implements VaultAdapter {
     return this.attachments.has(target) ? `memory://${target}` : null;
   }
 
+  /** Tests: data kept with attachments, by target. */
+  readonly attachmentData = new Map<string, unknown>();
+
+  async readAttachment(target: string): Promise<ArrayBuffer | null> {
+    const blob = this.attachments.get(target);
+    return blob ? blob.arrayBuffer() : null;
+  }
+
+  async getAttachmentData(target: string): Promise<unknown> {
+    return this.attachmentData.get(target) ?? null;
+  }
+
+  async setAttachmentData(target: string, data: unknown): Promise<void> {
+    this.attachmentData.set(target, data);
+  }
+
   /** Tests: files that are not notes (a `.canvas`), by vault path. */
   readonly files = new Set<string>();
 

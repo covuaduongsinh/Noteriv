@@ -34,6 +34,13 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
   const abs = (relative: string) =>
     `${vaultPath.replace(/[\\/]+$/, "")}${sep}${toPosixPath(relative).split("/").join(sep)}`;
   const dirOf = (p: string) => p.slice(0, Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\")));
+  /** An attachment target: a vault path, or an absolute path (older documents). */
+  const fileOf = (target: string) => (/^([a-zA-Z]:[\\/]|\/)/.test(target) ? target : abs(target));
+  /** `<dir>/.<name>-annotations.json`, with the file's own separator. */
+  const sidecarOf = (file: string) => {
+    const cut = Math.max(file.lastIndexOf("/"), file.lastIndexOf("\\"));
+    return `${file.slice(0, cut + 1)}.${file.slice(cut + 1)}-annotations.json`;
+  };
 
   async function listNotes(): Promise<NoteRef[]> {
     const files = await api().listAllFiles(vaultPath);
@@ -160,11 +167,37 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
     // A vault path, or an absolute path (what canvases kept before 2.5b, possibly outside the vault): read as a data: URL.
     async attachmentUrl(target) {
       if (/^(https?:|data:|blob:)/.test(target)) return target;
-      const file = /^([a-zA-Z]:[\\/]|\/)/.test(target) ? target : abs(target);
-      const base64 = await api().readBinaryFile(file).catch(() => null);
+      const base64 = await api().readBinaryFile(fileOf(target)).catch(() => null);
       if (!base64) return null;
       const ext = (target.split(".").pop() ?? "").toLowerCase();
       return `data:${IMAGE_MIME[ext] ?? "application/octet-stream"};base64,${base64}`;
+    },
+
+    async readAttachment(target) {
+      const base64 = await api().readBinaryFile(fileOf(target)).catch(() => null);
+      if (!base64) return null;
+      const binary = atob(base64);
+      const bytes = new Uint8Array(binary.length);
+      for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+      return bytes.buffer;
+    },
+
+    // Data kept with an attachment lives in a hidden file beside it: `.<name>-annotations.json` (the PDF viewer's
+    // sidecar since before 2.5c, so existing annotations are found).
+    async getAttachmentData(target) {
+      const raw = await api().readFile(sidecarOf(fileOf(target))).catch(() => null);
+      if (!raw) return null;
+      try {
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    },
+
+    async setAttachmentData(target, data) {
+      if (!(await api().writeFile(sidecarOf(fileOf(target)), JSON.stringify(data, null, 2)))) {
+        throw new Error(`Could not write the data of ${target}`);
+      }
     },
 
     async fileExists(path) {
