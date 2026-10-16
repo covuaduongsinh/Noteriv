@@ -1,0 +1,24 @@
+{
+  "$comment": "Feature -> source path patterns (regex, matched against the module path without the [project]/ prefix). List the feature's own modules only; libraries it alone uses are found through the module graph. A feature's 'exclusive' size is what disappears from the bundle when its modules are removed. Used by bundle-report.mjs; keep in sync as features move into packages/plugins (phase 2).",
+  "features": {
+    "flashcards": { "label": "Flashcards", "patterns": ["/src/components/FlashcardReview\\.", "/src/lib/flashcard-utils\\."] },
+    "calendar": { "label": "Calendar / Daily notes", "patterns": ["/src/components/CalendarView\\.", "core/src/calendar-utils\\."] },
+    "templates": { "label": "Templates", "patterns": ["/src/components/TemplatePicker\\.", "/src/lib/template-utils\\."] },
+    "graph": { "label": "Graph view", "patterns": ["ui/src/graph/", "core/src/graph-utils\\.", "app/vaults/\\[vaultId\\]/graph/"] },
+    "canvas": { "label": "Canvas", "patterns": ["/src/components/CanvasView\\.", "/src/components/Canvas\\.", "core/src/canvas-utils\\."] },
+    "board": { "label": "Board (Kanban)", "patterns": ["/src/components/BoardView\\.", "core/src/board-utils\\."] },
+    "drawing": { "label": "Drawing", "patterns": ["/src/components/DrawingView\\.", "/src/components/DrawingEditor\\.", "core/src/drawing-utils\\."] },
+    "slides": { "label": "Slides", "patterns": ["/src/components/SlidePresentation\\.", "core/src/slide-utils\\."] },
+    "pdf-viewer": { "label": "PDF viewer + chú thích", "patterns": ["/src/components/PDFViewer\\.", "/src/lib/pdf-annotation\\.", "node_modules/pdfjs-dist/"] },
+    "dataview": { "label": "Dataview", "patterns": ["core/src/dataview\\.", "/src/components/DataviewBlock\\."] },
+    "vault-insights": { "label": "Vault insights", "patterns": ["/src/components/VaultInsights\\.", "/src/lib/vault-insights-utils\\."] },
+    "audio-recorder": { "label": "Audio recorder", "patterns": ["/src/components/AudioRecorder\\.", "/src/lib/audio-utils\\."] },
+    "note-composer": { "label": "Note composer", "patterns": ["/src/components/NoteComposer\\.", "/src/lib/note-composer-utils\\."] },
+    "note-history": { "label": "Note history / Time scrubber", "patterns": ["/src/components/NoteHistory\\.", "/src/components/TimeScrubber\\.", "/src/lib/note-history\\."] },
+    "markdown-lint": { "label": "Markdown lint", "patterns": ["/src/components/LintPanel\\.", "core/src/markdown-lint\\."] },
+    "publish": { "label": "Publish preview", "patterns": ["/src/components/PublishPreview\\.", "core/src/publish\\.", "desktop/src/lib/publish\\."] },
+    "clipper": { "label": "Web clipper (cài đặt)", "patterns": ["/src/components/ClipperSection\\."] },
+    "mermaid": { "label": "Mermaid", "patterns": ["ui/src/markdown/mermaid\\.", "node_modules/mermaid/"] },
+    "math": { "label": "Math (KaTeX)", "patterns": ["ui/src/markdown/math\\.", "ui/src/markdown/renderers/math\\."] }
+  }
+}
