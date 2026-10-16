@@ -130,6 +130,20 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
       }
     },
 
+    // Images for documents that embed them (Canvas): the target is the download URL, as saveAttachment returns.
+    async listAttachments() {
+      const { attachments } = await webApi.attachments.list(vaultId);
+      return attachments
+        .filter((a) => a.mimeType.startsWith("image/"))
+        .map((a) => ({ target: webApi.attachments.downloadUrl(vaultId, a.id), name: a.filename }));
+    },
+
+    // A URL is shown as it is (same origin, the session cookie rides along); anything else is an attachment id, the
+    // form canvases kept before 2.5b.
+    async attachmentUrl(target) {
+      return /^(https?:|\/|data:|blob:)/.test(target) ? target : webApi.attachments.downloadUrl(vaultId, target);
+    },
+
     async getSettings() {
       return (await webApi.vaults.get(vaultId)).settings ?? {};
     },

@@ -58,8 +58,6 @@ import {
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
-import { isCanvasContent } from "@noteriv/core/canvas-utils";
-import { isDrawingContent } from "@noteriv/core/drawing-utils";
 import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
 import PdfPreviewModal from "@/components/PdfPreviewModal";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
@@ -96,8 +94,6 @@ function saveRecentCommand(action: string) {
   }
 }
 
-const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
-const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
 const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -1172,21 +1168,6 @@ export default function VaultPage() {
           <CorePluginFileView view={fileView} path={tab.path} content={content} onChange={onChange} />
         </div>
       );
-    }
-    if (isCanvasContent(content)) {
-      return (
-        <CanvasView
-          key={tab.noteId}
-          content={content}
-          onChange={onChange}
-          vaultId={vaultId}
-          index={index}
-          onNoteSelect={openNote}
-        />
-      );
-    }
-    if (isDrawingContent(content)) {
-      return <DrawingView key={tab.noteId} content={content} onChange={onChange} />;
     }
 
     return (

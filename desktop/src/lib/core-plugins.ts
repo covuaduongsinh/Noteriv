@@ -98,6 +98,18 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Query your notes with ```dataview blocks (TABLE / LIST / TASK, by folder, tag or frontmatter); Insert Dataview query command.",
     load: () => import("@noteriv/plugins/dataview"),
   },
+  {
+    id: "canvas",
+    name: "Canvas",
+    description: "Free-form boards of text, note, sticky, image and group nodes joined by edges; opens .canvas files. New canvas command.",
+    load: () => import("@noteriv/plugins/canvas"),
+  },
+  {
+    id: "drawing",
+    name: "Drawing",
+    description: "Freehand sketches, shapes, text and eraser; opens .drawing files. New drawing command.",
+    load: () => import("@noteriv/plugins/drawing"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

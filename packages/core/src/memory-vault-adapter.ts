@@ -43,6 +43,21 @@ export class MemoryVaultAdapter implements VaultAdapter {
   /** Tests: attachments saved through `saveAttachment`, by link target. */
   readonly attachments = new Map<string, Blob>();
 
+  async listAttachments() {
+    return Array.from(this.attachments.keys(), (target) => ({ target, name: baseName(target) }));
+  }
+
+  async attachmentUrl(target: string): Promise<string | null> {
+    return this.attachments.has(target) ? `memory://${target}` : null;
+  }
+
+  /** Tests: files that are not notes (a `.canvas`), by vault path. */
+  readonly files = new Set<string>();
+
+  async fileExists(path: string): Promise<boolean> {
+    return this.notes.has(path) || this.files.has(path);
+  }
+
   async saveAttachment(name: string, data: Blob): Promise<string> {
     const target = `attachments/${name}`;
     this.attachments.set(target, data);

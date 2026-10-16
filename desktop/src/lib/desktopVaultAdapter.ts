@@ -5,6 +5,7 @@ import {
   baseName,
   isMarkdownPath,
   refFromAbsolutePath,
+  relativeVaultPath,
   toPosixPath,
   type NoteRef,
   type VaultAdapter,
@@ -14,6 +15,18 @@ import {
  * VaultAdapter over the Electron/Tauri bridge. Note ids are absolute file paths. Backlinks and search are computed
  * here, from the file list and file contents, because the filesystem has no index to ask.
  */
+const IMAGE_EXT = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
+const IMAGE_MIME: Record<string, string> = {
+  png: "image/png",
+  jpg: "image/jpeg",
+  jpeg: "image/jpeg",
+  gif: "image/gif",
+  webp: "image/webp",
+  svg: "image/svg+xml",
+  bmp: "image/bmp",
+  avif: "image/avif",
+};
+
 export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
   const api = () => window.electronAPI;
   // Ids must match what listAllFiles reports, so build paths with the separator the vault path itself uses.
@@ -121,6 +134,41 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
       } catch {
         return null;
       }
+    },
+
+    // Images anywhere in the vault folder (dot folders such as .noteriv and .git skipped); targets are vault paths.
+    async listAttachments() {
+      const out: { target: string; name: string }[] = [];
+      const walk = async (dir: string, depth: number): Promise<void> => {
+        if (depth > 12) return;
+        let entries: { name: string; path: string; isDirectory: boolean }[];
+        try {
+          entries = await api().readDir(dir);
+        } catch {
+          return;
+        }
+        for (const e of entries) {
+          if (e.name.startsWith(".")) continue;
+          if (e.isDirectory) await walk(e.path, depth + 1);
+          else if (IMAGE_EXT.test(e.name)) out.push({ target: relativeVaultPath(vaultPath, e.path), name: e.name });
+        }
+      };
+      await walk(vaultPath, 0);
+      return out.sort((a, b) => a.target.localeCompare(b.target));
+    },
+
+    // A vault path, or an absolute path (what canvases kept before 2.5b, possibly outside the vault): read as a data: URL.
+    async attachmentUrl(target) {
+      if (/^(https?:|data:|blob:)/.test(target)) return target;
+      const file = /^([a-zA-Z]:[\\/]|\/)/.test(target) ? target : abs(target);
+      const base64 = await api().readBinaryFile(file).catch(() => null);
+      if (!base64) return null;
+      const ext = (target.split(".").pop() ?? "").toLowerCase();
+      return `data:${IMAGE_MIME[ext] ?? "application/octet-stream"};base64,${base64}`;
+    },
+
+    async fileExists(path) {
+      return (await api().readFile(abs(path)).catch(() => null)) !== null;
     },
 
     async saveAttachment(name, data) {

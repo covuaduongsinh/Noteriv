@@ -1,17 +1,7 @@
-"use client";
-
-// Ported from desktop/src/components/DrawingEditor.tsx. Desktop renders this
-// as a fullscreen `position: fixed` overlay opened as a dedicated tab kind;
-// web instead embeds it inline in the note pane, same as BoardView/CanvasView
-// (detected via isDrawingContent(content), see vaults/[vaultId]/page.tsx),
-// since a web note is never a separate "kind" of tab. Two electronAPI calls
-// (load/save) are replaced with a content/onChange prop pair + a debounced
-// autosave hooked into the existing RAF render loop (desktop's manual
-// Ctrl+S/"Save" button model doesn't fit this app's established
-// autosave-on-edit convention — see Phase A's scheduleSave in the vault
-// page). `prompt()`/`confirm()` are replaced with inline UI per this
-// project's no-window-dialogs rule (see docs/plans/2026-10-13-noteriv-web-
-// full-parity.md's porting conventions).
+// Freehand drawing editor (pencil, shapes, text, eraser), shared by web and desktop since 2.5b. Ported from the web
+// app's DrawingView, itself a port of desktop's DrawingEditor (no prompt()/confirm(): text and "clear" use inline UI).
+// The document is the tab's content: drawing JSON, after a frontmatter block when the file has one (web notes carry
+// `drawing: true`; desktop `.drawing` files are plain JSON). Edits are written back after a short pause.
 
 import { useState, useRef, useEffect, useCallback } from "react";
 import {
@@ -21,6 +11,7 @@ import {
   type DrawingFile,
   type DrawingElement as DrawingElementType,
 } from "@noteriv/core/drawing-utils";
+import { splitFrontmatter } from "@noteriv/core/frontmatter-utils";
 
 interface DrawingViewProps {
   content: string;
@@ -64,7 +55,7 @@ function uid() { return `el-${Date.now()}-${_uid++}`; }
 const AUTOSAVE_DEBOUNCE_MS = 600;
 const ERASER_RADIUS = 12;
 
-export default function DrawingView({ content, onChange }: DrawingViewProps) {
+export function DrawingView({ content, onChange }: DrawingViewProps) {
   // React state for toolbar re-renders only
   const [, forceRender] = useState(0);
   const rerender = () => forceRender((n) => n + 1);
@@ -98,26 +89,16 @@ export default function DrawingView({ content, onChange }: DrawingViewProps) {
     drawingFile: null,
   }).current;
 
-  // Load once from the content prop (lazy, like BoardView/CanvasView — the
-  // parent doesn't remount this component on every keystroke since onChange
-  // flows back through the same prop reference).
-  //
-  // isDrawingContent() (drawing-utils.ts) detects this note by a
-  // `drawing: true` frontmatter block, but serializeDrawing() only ever
-  // produces plain JSON (ported verbatim from desktop, which identifies
-  // .drawing files by extension, not frontmatter). The frontmatter is
-  // captured once here and re-prepended on every save — same bug class
-  // found and fixed in CanvasView via actual browser testing (first
-  // autosave was wiping the frontmatter marker, flipping the note to render
-  // as raw-JSON plain text on the next load).
+  // The frontmatter block (web notes: `drawing: true`, the marker isDrawingContent looks for) is kept as it was and
+  // put back on every save; serializeDrawing only produces the JSON. Desktop `.drawing` files have none and get none.
   const frontmatterRef = useRef<string>("");
-  const loadedRef = useRef(false);
-  useEffect(() => {
-    if (loadedRef.current) return;
-    loadedRef.current = true;
-    const fmMatch = content.match(/^(---\n[\s\S]*?\n---\n?)/);
-    frontmatterRef.current = fmMatch ? fmMatch[1] : "---\ndrawing: true\n---\n";
-    const body = fmMatch ? content.slice(fmMatch[1].length) : content;
+  /** The document as last written (or loaded): an incoming `content` equal to it is our own echo. */
+  const writtenRef = useRef<string | null>(null);
+
+  function load(doc: string) {
+    writtenRef.current = doc;
+    const { frontmatter, body } = splitFrontmatter(doc);
+    frontmatterRef.current = frontmatter;
     const parsed = parseDrawing(body);
     if (parsed) {
       s.drawingFile = parsed;
@@ -126,23 +107,52 @@ export default function DrawingView({ content, onChange }: DrawingViewProps) {
       s.drawingFile = createEmptyDrawing();
       s.elements = [];
     }
+    s.selectedId = null;
+    s.dirty = false;
     rerender();
+  }
+
+  // First load, and later changes made elsewhere (source mode, the file on disk).
+  useEffect(() => {
+    if (content === writtenRef.current) return;
+    if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
+    autosaveTimer.current = null;
+    load(content);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [content]);
 
   // Auto-focus
   useEffect(() => { containerRef.current?.focus(); }, []);
 
+  function save() {
+    autosaveTimer.current = null;
+    if (!s.drawingFile) return;
+    const updated: DrawingFile = { ...s.drawingFile, elements: s.elements as DrawingElementType[] };
+    const doc = frontmatterRef.current + serializeDrawing(updated);
+    writtenRef.current = doc;
+    onChangeRef.current(doc);
+    s.dirty = false;
+  }
+
   function scheduleAutosave() {
     if (autosaveTimer.current) clearTimeout(autosaveTimer.current);
     autosaveTimer.current = setTimeout(() => {
-      if (!s.drawingFile) return;
-      const updated: DrawingFile = { ...s.drawingFile, elements: s.elements as DrawingElementType[] };
-      onChangeRef.current(frontmatterRef.current + serializeDrawing(updated));
-      s.dirty = false;
+      save();
       rerender();
     }, AUTOSAVE_DEBOUNCE_MS);
   }
+
+  // Closing the tab must not lose the last strokes made within the debounce.
+  useEffect(
+    () => () => {
+      if (autosaveTimer.current) {
+        clearTimeout(autosaveTimer.current);
+        save();
+      }
+    },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    []
+  );
 
   // --- Coordinate transforms ---
   function screenToWorld(sx: number, sy: number) {

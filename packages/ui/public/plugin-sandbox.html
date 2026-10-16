@@ -138,6 +138,9 @@ function buildApi(boot) {
       readSnapshot: coreOnly("vault.readSnapshot"),
       gitLog: coreOnly("vault.gitLog"),
       readAtCommit: coreOnly("vault.readAtCommit"),
+      resolve: coreOnly("vault.resolve"),
+      listAttachments: coreOnly("vault.listAttachments"),
+      attachmentUrl: coreOnly("vault.attachmentUrl"),
     },
     ui: {
       addCommand: function (cmd) {

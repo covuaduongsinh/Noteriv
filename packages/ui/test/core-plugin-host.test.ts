@@ -408,6 +408,45 @@ describe("plugin sidebar panels (CorePluginSidePanels)", () => {
   });
 });
 
+describe("references, attachments and non-note files (2.5b)", () => {
+  it("resolves a vault path, an adapter id and a Windows-style id to the note's vault path", async () => {
+    const adapter = new MemoryVaultAdapter({ "Notes/a.md": "A" });
+    // Desktop-like ids: absolute paths. The memory adapter's ids are vault paths, so wrap listNotes.
+    const listNotes = adapter.listNotes.bind(adapter);
+    adapter.listNotes = async () => (await listNotes()).map((n) => ({ ...n, id: `C:\\vault\\${n.path.replace(/\//g, "\\")}` }));
+    adapter.readNote = async () => "A";
+    let api!: PluginApi;
+    const { host } = makeHost([def("c", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("c", true);
+    expect(await api.vault.resolve("Notes/a.md")).toBe("Notes/a.md");
+    expect(await api.vault.resolve("C:\\vault\\Notes\\a.md")).toBe("Notes/a.md");
+    expect(await api.vault.resolve("C:/vault/Notes/a.md")).toBe("Notes/a.md");
+    expect(await api.vault.resolve("missing")).toBeNull();
+  });
+
+  it("lists attachments and gives display URLs through the adapter", async () => {
+    const adapter = new MemoryVaultAdapter();
+    await adapter.saveAttachment("pic.png", new Blob(["x"]));
+    let api!: PluginApi;
+    const { host } = makeHost([def("c", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("c", true);
+    expect(await api.vault.listAttachments()).toEqual([{ target: "attachments/pic.png", name: "pic.png" }]);
+    expect(await api.vault.attachmentUrl("attachments/pic.png")).toBe("memory://attachments/pic.png");
+    expect(await api.vault.attachmentUrl("")).toBeNull();
+  });
+
+  it("exists also sees files that are not notes (a .canvas) when the adapter can tell", async () => {
+    const adapter = new MemoryVaultAdapter({ "a.md": "A" });
+    adapter.files.add("Board.canvas");
+    let api!: PluginApi;
+    const { host } = makeHost([def("c", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("c", true);
+    expect(await api.vault.exists("a.md")).toBe(true);
+    expect(await api.vault.exists("Board.canvas")).toBe(true);
+    expect(await api.vault.exists("Other.canvas")).toBe(false);
+  });
+});
+
 describe("note toolbar buttons, history and read-only rendering", () => {
   it("collects note toolbar buttons, renders them and drops them when the plugin is turned off", async () => {
     const onClick = vi.fn();

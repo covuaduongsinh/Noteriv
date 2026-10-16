@@ -55,13 +55,11 @@ export type HotkeyAction =
   | "pluginManager"
   | "cssSnippets"
   // New features
-  | "insertDrawing"
   | "insertToc"
   | "updateToc"
   | "focusMode"
   | "publishNote"
   | "startCollab"
-  | "newCanvas"
   | "openPdfViewer"
   | "exportPdfAnnotations"
   | "openTrash"
@@ -143,13 +141,11 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "View" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "View" },
   // New features
-  { action: "insertDrawing", label: "New Drawing", keys: "", category: "Edit" },
   { action: "insertToc", label: "Insert Table of Contents", keys: "", category: "Edit" },
   { action: "updateToc", label: "Update Table of Contents", keys: "", category: "Edit" },
   { action: "focusMode", label: "Toggle Focus Mode", keys: "Ctrl+Shift+D", category: "View" },
   { action: "publishNote", label: "Publish Note as HTML", keys: "", category: "File" },
   { action: "startCollab", label: "Live Collaboration", keys: "", category: "Edit" },
-  { action: "newCanvas", label: "New Canvas / Whiteboard", keys: "", category: "File" },
   // PDF
   { action: "openPdfViewer", label: "Open PDF", keys: "", category: "File" },
   { action: "exportPdfAnnotations", label: "Export PDF Annotations", keys: "", category: "File" },

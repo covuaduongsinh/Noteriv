@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.7";
+export const PLUGIN_API_VERSION = "1.0.0-draft.8";
 
 // ─── Permissions (community tier) ───
 
@@ -64,6 +64,12 @@ export interface VersionSources {
   git: boolean;
 }
 
+export interface AttachmentInfo {
+  /** What to store in a document and pass to `attachmentUrl`: a URL on web, a vault path on desktop. */
+  target: string;
+  name: string;
+}
+
 export interface VaultApi {
   read(path: string): Promise<string | null>;
   /** Creates the note (and any missing folders) when it does not exist. */
@@ -86,6 +92,15 @@ export interface VaultApi {
   /** Core tier only. Commits that touched a note, newest first (empty without git history). */
   gitLog(path: string): Promise<NoteCommit[]>;
   readAtCommit(path: string, hash: string): Promise<string | null>;
+  /**
+   * Core tier only. The vault path of the note a stored reference points at: a vault path, or what older documents
+   * kept (a web note id, a desktop absolute path). Null when no such note exists.
+   */
+  resolve(ref: string): Promise<string | null>;
+  /** Core tier only. Images stored in the vault, each with the target to keep in a document (as `saveAttachment`). */
+  listAttachments(): Promise<AttachmentInfo[]>;
+  /** Core tier only. A URL an `<img>` can show for an attachment target (a `data:` URL on desktop). */
+  attachmentUrl(target: string): Promise<string | null>;
 }
 
 // ─── Editor ───

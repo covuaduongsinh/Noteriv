@@ -98,6 +98,18 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Truy vấn note bằng khối ```dataview (TABLE / LIST / TASK, lọc theo thư mục, tag, frontmatter); lệnh chèn truy vấn mẫu.",
     load: () => import("@noteriv/plugins/dataview"),
   },
+  {
+    id: "canvas",
+    name: "Canvas",
+    description: "Bảng tự do gồm khối chữ, note, giấy nhớ, ảnh và nhóm nối bằng mũi tên; mở note có frontmatter canvas: true. Lệnh tạo canvas mới.",
+    load: () => import("@noteriv/plugins/canvas"),
+  },
+  {
+    id: "drawing",
+    name: "Drawing",
+    description: "Vẽ tay, hình, chữ và tẩy; mở note có frontmatter drawing: true. Lệnh tạo bản vẽ mới.",
+    load: () => import("@noteriv/plugins/drawing"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

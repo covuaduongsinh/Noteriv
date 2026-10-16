@@ -1,19 +1,7 @@
-"use client";
-
-// Ported from desktop/src/components/Canvas.tsx. Embedded inline in the note
-// pane like BoardView/DrawingView (detected via isCanvasContent(content) in
-// vaults/[vaultId]/page.tsx), not opened as a separate dedicated-tab kind the
-// way desktop does. Three electronAPI touch points were replaced:
-//   1. File load (was `electronAPI.readFile`) -> parsed once from `content` prop.
-//   2. File-node preview + the file picker (was `electronAPI.readFile`/
-//      `listAllFiles`) -> `webApi.notes.get`/the already-loaded `index` prop.
-//   3. Image nodes (was `electronAPI.readBinaryFile`/`showOpenDialog`,
-//      base64 data URLs) -> web serves attachments over HTTP, so an image
-//      node just stores an attachment id and renders
-//      `webApi.attachments.downloadUrl(...)` directly as `<img src>` (cookie
-//      auth rides along, same-origin) — no dialog, no base64 round-trip.
-// Everything else (node/edge model, drag/resize/zoom/pan, freehand drawing,
-// minimap, context menu) is unchanged from desktop.
+// Canvas board (nodes, edges, freehand strokes), shared by web and desktop since 2.5b. Ported from the web app's
+// CanvasView, itself a port of desktop's Canvas.tsx. All I/O goes through `CanvasServices` (see services.ts): note
+// previews and the note picker, opening a note, images. The document is the tab's content: JSON, after a frontmatter
+// block when the file has one (web notes carry `canvas: true`; desktop `.canvas` files are plain JSON).
 
 import React, {
   useState,
@@ -40,17 +28,30 @@ import {
   recalcEdgeSides,
   STICKY_COLORS,
 } from "@noteriv/core/canvas-utils";
-import { webApi, type VaultIndex } from "@/lib/webApi";
-import "@/styles/canvas.css";
+import { splitFrontmatter } from "@noteriv/core/frontmatter-utils";
+import type { CanvasLabels, CanvasServices } from "./services";
 
 // ─── Props ───
 
 interface CanvasViewProps {
   content: string;
   onChange: (content: string) => void;
-  vaultId: string;
-  index: VaultIndex | null;
-  onNoteSelect: (noteId: string) => void;
+  services: CanvasServices;
+  labels: CanvasLabels;
+}
+
+/** Display URL of an image node's target (resolved asynchronously: a data: URL on desktop). */
+function useImageUrl(services: CanvasServices, target: string | undefined): string | null {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    setUrl(null);
+    if (target) void services.imageUrl(target).then((u) => !cancelled && setUrl(u));
+    return () => {
+      cancelled = true;
+    };
+  }, [services, target]);
+  return url;
 }
 
 // ─── Constants ───
@@ -268,16 +269,16 @@ function StickyNoteView({ node, selected, editing, onPointerDown, onDoubleClick,
   );
 }
 
-function ImageNodeView({ node, vaultId, selected, onPointerDown, onDoubleClick, onAnchorPointerDown, onResizePointerDown, onContextMenu }: {
-  node: CanvasNode; vaultId: string; selected: boolean;
+function ImageNodeView({ node, services, selected, onPointerDown, onDoubleClick, onAnchorPointerDown, onResizePointerDown, onContextMenu }: {
+  node: CanvasNode; services: CanvasServices; selected: boolean;
   onPointerDown: (id: string, e: React.PointerEvent) => void; onDoubleClick: (id: string) => void;
   onAnchorPointerDown: (nodeId: string, side: string, e: React.PointerEvent) => void;
   onResizePointerDown: (nodeId: string, corner: string, e: React.PointerEvent) => void;
   onContextMenu: (id: string, e: React.MouseEvent) => void;
 }) {
-  // node.imagePath holds an Attachment id (web) rather than a filesystem path
-  // (desktop) — the browser fetches it directly, cookie auth rides along.
-  const src = node.imagePath ? webApi.attachments.downloadUrl(vaultId, node.imagePath) : null;
+  // node.imagePath: a link target from `vault.saveAttachment`/`listAttachments`, or an older form (web attachment id,
+  // desktop absolute path) the host still resolves.
+  const src = useImageUrl(services, node.imagePath);
 
   return (
     <div className={`canvas-node canvas-node-image${selected ? " selected" : ""}`} data-color={node.color || undefined}
@@ -331,8 +332,9 @@ function DrawingNodeView({ node, selected, onPointerDown, onContextMenu }: {
 }
 
 /** File picker overlay — sourced from the already-loaded vault index, not a filesystem scan. */
-function FilePicker({ notes, onSelect, onClose }: {
-  notes: { noteId: string; name: string; path: string }[];
+function FilePicker({ notes, onSelect, onClose, labels }: {
+  notes: { noteId: string; name: string; path: string }[] | null;
+  labels: CanvasLabels;
   onSelect: (noteId: string) => void;
   onClose: () => void;
 }) {
@@ -343,6 +345,7 @@ function FilePicker({ notes, onSelect, onClose }: {
   useEffect(() => { inputRef.current?.focus(); }, []);
 
   const filtered = useMemo(() => {
+    if (!notes) return [];
     if (!query) return notes;
     const q = query.toLowerCase();
     return notes.filter((f) => f.name.toLowerCase().includes(q) || f.path.toLowerCase().includes(q));
@@ -365,7 +368,7 @@ function FilePicker({ notes, onSelect, onClose }: {
             <circle cx="7" cy="7" r="5" stroke="var(--text-muted)" strokeWidth="1.3" />
             <path d="M11 11l3 3" stroke="var(--text-muted)" strokeWidth="1.3" strokeLinecap="round" />
           </svg>
-          <input ref={inputRef} type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} placeholder="Search notes..." />
+          <input ref={inputRef} type="text" value={query} onChange={(e) => setQuery(e.target.value)} onKeyDown={handleKeyDown} placeholder={labels.searchNotes} />
         </div>
         <div className="canvas-file-picker-list">
           {filtered.slice(0, 50).map((f, i) => (
@@ -374,40 +377,59 @@ function FilePicker({ notes, onSelect, onClose }: {
               <span className="file-path">{f.path}</span>
             </button>
           ))}
-          {filtered.length === 0 && <div style={{ padding: "16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>No matching notes</div>}
+          {filtered.length === 0 && <div style={{ padding: "16px", textAlign: "center", color: "var(--text-muted)", fontSize: 13 }}>{notes === null ? labels.loading : labels.noMatchingNotes}</div>}
         </div>
       </div>
     </div>
   );
 }
 
-/** Attachment picker overlay for image nodes — replaces desktop's native file dialog. */
-function ImagePicker({ vaultId, onSelect, onClose }: { vaultId: string; onSelect: (attachmentId: string) => void; onClose: () => void }) {
-  const [images, setImages] = useState<{ id: string; filename: string }[] | null>(null);
+/** Image picker: images already in the vault (attachments), or a new one uploaded from the computer. */
+function ImagePicker({ services, labels, onSelect, onClose }: { services: CanvasServices; labels: CanvasLabels; onSelect: (target: string) => void; onClose: () => void }) {
+  const [images, setImages] = useState<{ target: string; name: string; url: string | null }[] | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const fileInput = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    webApi.attachments
-      .list(vaultId)
-      .then((res) => setImages(res.attachments.filter((a) => a.mimeType.startsWith("image/")).map((a) => ({ id: a.id, filename: a.filename }))))
-      .catch(() => setImages([]));
-  }, [vaultId]);
+    let cancelled = false;
+    void (async () => {
+      const list = await services.images().catch(() => []);
+      const withUrls = await Promise.all(list.map(async (img) => ({ ...img, url: await services.imageUrl(img.target).catch(() => null) })));
+      if (!cancelled) setImages(withUrls);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [services]);
+
+  const upload = async (file: File | undefined) => {
+    if (!file) return;
+    setUploading(true);
+    try {
+      onSelect(await services.uploadImage(file));
+    } catch {
+      setUploading(false);
+    }
+  };
 
   return (
     <div className="canvas-file-picker" onClick={onClose}>
       <div className="canvas-file-picker-inner" onClick={(e) => e.stopPropagation()}>
-        <div className="canvas-file-picker-header">
-          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>Chọn ảnh từ Attachments</span>
+        <div className="canvas-file-picker-header" style={{ justifyContent: "space-between" }}>
+          <span style={{ fontSize: 13, color: "var(--text-secondary)" }}>{labels.pickImage}</span>
+          <button className="canvas-toolbar-btn" style={{ width: "auto", padding: "0 8px", fontSize: 12 }} disabled={uploading} onClick={() => fileInput.current?.click()}>
+            {uploading ? labels.uploading : labels.upload}
+          </button>
+          <input ref={fileInput} type="file" accept="image/*" style={{ display: "none" }} onChange={(e) => void upload(e.target.files?.[0])} />
         </div>
         <div className="canvas-file-picker-list" style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 8, padding: 8 }}>
-          {images === null && <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>Đang tải…</div>}
+          {images === null && <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13 }}>{labels.loading}</div>}
           {images !== null && images.length === 0 && (
-            <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13, gridColumn: "1 / -1" }}>
-              Chưa có ảnh nào — tải lên qua Attachments ở Ribbon trước.
-            </div>
+            <div style={{ padding: 16, color: "var(--text-muted)", fontSize: 13, gridColumn: "1 / -1" }}>{labels.noImages}</div>
           )}
           {images?.map((img) => (
-            <button key={img.id} onClick={() => onSelect(img.id)} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 0, overflow: "hidden", background: "var(--bg-tertiary)", cursor: "pointer", aspectRatio: "1" }} title={img.filename}>
-              <img src={webApi.attachments.downloadUrl(vaultId, img.id)} alt={img.filename} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            <button key={img.target} onClick={() => onSelect(img.target)} style={{ border: "1px solid var(--border)", borderRadius: 6, padding: 0, overflow: "hidden", background: "var(--bg-tertiary)", cursor: "pointer", aspectRatio: "1" }} title={img.name}>
+              {img.url && <img src={img.url} alt={img.name} style={{ width: "100%", height: "100%", objectFit: "cover" }} />}
             </button>
           ))}
         </div>
@@ -505,22 +527,14 @@ function Minimap({ nodes, panX, panY, zoom, viewportWidth, viewportHeight }: {
 
 // ─── Main Canvas Component ───
 
-export default function CanvasView({ content, onChange, vaultId, index, onNoteSelect }: CanvasViewProps) {
-  // isCanvasContent() (canvas-utils.ts) detects this note by a `canvas: true`
-  // frontmatter block, but serializeCanvas() itself only ever produces plain
-  // JSON (ported verbatim from desktop, which identifies .canvas files by
-  // extension, not frontmatter). Without this, the very first autosave would
-  // overwrite the note with bare JSON, the frontmatter marker would be gone,
-  // and the next render would fail isCanvasContent and fall through to the
-  // plain text Editor showing raw JSON. The frontmatter block is captured
-  // once here and re-prepended on every save — bug found and fixed via
-  // actual browser testing (typed into a text node, watched the note flip
-  // to showing raw JSON on the very next save).
+export function CanvasView({ content, onChange, services, labels }: CanvasViewProps) {
+  // The frontmatter block (web notes: `canvas: true`, the marker isCanvasContent looks for) is kept as it was and put
+  // back on every save; serializeCanvas only produces the JSON. Desktop `.canvas` files have none and get none.
   const frontmatterRef = useRef<string>("");
   const [canvasData, setCanvasData] = useState<CanvasData>(() => {
-    const fmMatch = content.match(/^(---\n[\s\S]*?\n---\n?)/);
-    frontmatterRef.current = fmMatch ? fmMatch[1] : "---\ncanvas: true\n---\n";
-    return parseCanvas(fmMatch ? content.slice(fmMatch[1].length) : content);
+    const { frontmatter, body } = splitFrontmatter(content);
+    frontmatterRef.current = frontmatter;
+    return parseCanvas(body);
   });
   const [zoom, setZoom] = useState(1);
   const [panX, setPanX] = useState(0);
@@ -556,35 +570,39 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
   const didFitRef = useRef(false);
   const measuredRef = useRef(false);
 
-  const noteNameById = useMemo(() => {
-    const map: Record<string, string> = {};
-    for (const n of index?.notes ?? []) map[n.id] = n.name;
-    return map;
-  }, [index]);
+  // File nodes keep whatever reference they were made with: a vault path (since 2.5b), a web note id or a desktop
+  // absolute path (older canvases). `services.note` resolves all three to a name and the start of the note.
+  const [noteNames, setNoteNames] = useState<Record<string, string>>({});
+  const [filePickerNotes, setFilePickerNotes] = useState<{ noteId: string; name: string; path: string }[] | null>(null);
 
-  const filePickerNotes = useMemo(
-    () => (index?.notes ?? []).map((n) => ({ noteId: n.id, name: n.name, path: n.path })),
-    [index]
-  );
+  useEffect(() => {
+    if (!showFilePicker) return;
+    let cancelled = false;
+    setFilePickerNotes(null);
+    void services
+      .notes()
+      .catch(() => [])
+      .then((notes) => !cancelled && setFilePickerNotes(notes.map((n) => ({ noteId: n.path, name: n.name, path: n.path }))));
+    return () => {
+      cancelled = true;
+    };
+  }, [showFilePicker, services]);
 
-  // ─── Load file-node previews via webApi (replaces electronAPI.readFile) ───
+  // ─── Load file-node previews ───
   useEffect(() => {
     async function loadPreviews() {
       const fileNodes = canvasData.nodes.filter((n) => n.type === "file" && n.filePath);
       for (const node of fileNodes) {
-        if (node.filePath && filePreviews[node.filePath] === undefined) {
-          try {
-            const note = await webApi.notes.get(vaultId, node.filePath);
-            setFilePreviews((prev) => ({ ...prev, [node.filePath!]: note.content.slice(0, 300) }));
-          } catch {
-            setFilePreviews((prev) => ({ ...prev, [node.filePath!]: "(note not found)" }));
-          }
-        }
+        const ref = node.filePath!;
+        if (filePreviews[ref] !== undefined) continue;
+        const note = await services.note(ref).catch(() => null);
+        setFilePreviews((prev) => ({ ...prev, [ref]: note ? note.content.slice(0, 300) : labels.noteNotFound }));
+        if (note) setNoteNames((prev) => ({ ...prev, [ref]: note.name }));
       }
     }
     loadPreviews();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canvasData.nodes, vaultId]);
+  }, [canvasData.nodes, services]);
 
   // ─── Observe viewport size ───
   useEffect(() => {
@@ -602,10 +620,40 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
   }, []);
 
   // ─── Debounced save ───
-  const scheduleSave = useCallback((data: CanvasData) => {
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  /** The document as last written (or loaded): an incoming `content` equal to it is our own echo. */
+  const writtenRef = useRef(content);
+  const pendingRef = useRef<CanvasData | null>(null);
+  const flush = useCallback(() => {
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-    saveTimerRef.current = setTimeout(() => { onChange(frontmatterRef.current + serializeCanvas(data)); }, 500);
-  }, [onChange]);
+    saveTimerRef.current = null;
+    const data = pendingRef.current;
+    if (!data) return;
+    pendingRef.current = null;
+    const doc = frontmatterRef.current + serializeCanvas(data);
+    writtenRef.current = doc;
+    onChangeRef.current(doc);
+  }, []);
+  const scheduleSave = useCallback((data: CanvasData) => {
+    pendingRef.current = data;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(flush, 500);
+  }, [flush]);
+
+  // Closing the tab must not lose the last edit made within the debounce.
+  useEffect(() => flush, [flush]);
+
+  // The tab's content changed elsewhere (source mode, the file on disk, a collaborator): show that document.
+  useEffect(() => {
+    if (content === writtenRef.current) return;
+    writtenRef.current = content;
+    pendingRef.current = null;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    const { frontmatter, body } = splitFrontmatter(content);
+    frontmatterRef.current = frontmatter;
+    setCanvasData(parseCanvas(body));
+  }, [content]);
 
   const updateCanvas = useCallback((updater: (prev: CanvasData) => CanvasData) => {
     setCanvasData((prev) => {
@@ -810,13 +858,14 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
     if (node.type === "text" || node.type === "group" || node.type === "sticky") {
       setEditingNodeId(nodeId);
     } else if (node.type === "file" && node.filePath) {
-      onNoteSelect(node.filePath);
+      flush();
+      services.openNote(node.filePath);
     } else if (node.type === "image") {
       const cx = (-panX + viewportSize.w / 2) / zoom;
       const cy = (-panY + viewportSize.h / 2) / zoom;
       setImagePicker({ atX: cx, atY: cy, replacingNodeId: nodeId });
     }
-  }, [canvasData.nodes, onNoteSelect, panX, panY, zoom, viewportSize]);
+  }, [canvasData.nodes, services, flush, panX, panY, zoom, viewportSize]);
 
   const handleTextChange = useCallback((nodeId: string, text: string) => {
     updateCanvas((prev) => ({ ...prev, nodes: prev.nodes.map((n) => (n.id === nodeId ? { ...n, text } : n)) }));
@@ -972,12 +1021,12 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
     setActiveTool("select");
   }, [panX, panY, zoom, viewportSize]);
 
-  const handleImagePickerSelect = useCallback((attachmentId: string) => {
+  const handleImagePickerSelect = useCallback((target: string) => {
     if (!imagePicker) return;
     if (imagePicker.replacingNodeId) {
-      updateCanvas((prev) => ({ ...prev, nodes: prev.nodes.map((n) => (n.id === imagePicker.replacingNodeId ? { ...n, imagePath: attachmentId } : n)) }));
+      updateCanvas((prev) => ({ ...prev, nodes: prev.nodes.map((n) => (n.id === imagePicker.replacingNodeId ? { ...n, imagePath: target } : n)) }));
     } else {
-      const node = createImageNode(imagePicker.atX - 150, imagePicker.atY - 120, attachmentId);
+      const node = createImageNode(imagePicker.atX - 150, imagePicker.atY - 120, target);
       updateCanvas((prev) => ({ ...prev, nodes: [...prev.nodes, node] }));
       setSelectedNodeIds(new Set([node.id]));
     }
@@ -1114,7 +1163,7 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
             }
             if (node.type === "file") {
               return <FileNodeView key={node.id} node={node} selected={isSelected} preview={node.filePath ? filePreviews[node.filePath] || "" : ""}
-                noteName={node.filePath ? noteNameById[node.filePath] || "" : ""}
+                noteName={node.filePath ? noteNames[node.filePath] || "" : ""}
                 onPointerDown={handleNodePointerDown} onDoubleClick={handleNodeDoubleClick}
                 onAnchorPointerDown={handleAnchorPointerDown} onResizePointerDown={handleResizePointerDown} onContextMenu={handleNodeContextMenu} />;
             }
@@ -1129,7 +1178,7 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
                 onTextBlur={handleEditBlur} onAnchorPointerDown={handleAnchorPointerDown} onResizePointerDown={handleResizePointerDown} onContextMenu={handleNodeContextMenu} />;
             }
             if (node.type === "image") {
-              return <ImageNodeView key={node.id} node={node} vaultId={vaultId} selected={isSelected}
+              return <ImageNodeView key={node.id} node={node} services={services} selected={isSelected}
                 onPointerDown={handleNodePointerDown} onDoubleClick={handleNodeDoubleClick}
                 onAnchorPointerDown={handleAnchorPointerDown} onResizePointerDown={handleResizePointerDown} onContextMenu={handleNodeContextMenu} />;
             }
@@ -1210,8 +1259,8 @@ export default function CanvasView({ content, onChange, vaultId, index, onNoteSe
           onClose={() => setContextMenu(null)} />
       )}
 
-      {showFilePicker && <FilePicker notes={filePickerNotes} onSelect={handleFilePickerSelect} onClose={() => setShowFilePicker(false)} />}
-      {imagePicker && <ImagePicker vaultId={vaultId} onSelect={handleImagePickerSelect} onClose={() => setImagePicker(null)} />}
+      {showFilePicker && <FilePicker notes={filePickerNotes} labels={labels} onSelect={handleFilePickerSelect} onClose={() => setShowFilePicker(false)} />}
+      {imagePicker && <ImagePicker services={services} labels={labels} onSelect={handleImagePickerSelect} onClose={() => setImagePicker(null)} />}
     </div>
   );
 }

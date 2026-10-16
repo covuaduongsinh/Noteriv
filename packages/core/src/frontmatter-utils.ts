@@ -12,6 +12,16 @@ export interface FrontmatterResult {
 }
 
 /**
+ * Splits a leading frontmatter block off, exactly as written (with its line break), from the rest. For documents that
+ * are data after a marker block (web canvas / drawing notes: `canvas: true`, then JSON): `frontmatter + body` gives
+ * the content back unchanged. No block: `frontmatter` is "".
+ */
+export function splitFrontmatter(content: string): { frontmatter: string; body: string } {
+  const m = content.match(/^(---\r?\n[\s\S]*?\r?\n---(?:\r?\n)?)/);
+  return m ? { frontmatter: m[1], body: content.slice(m[1].length) } : { frontmatter: "", body: content };
+}
+
+/**
  * Check whether the content string starts with a YAML frontmatter block.
  */
 export function hasFrontmatter(content: string): boolean {

@@ -87,6 +87,15 @@ export interface VaultAdapter {
   readNoteSnapshot?(id: string, snapshotId: string): Promise<string | null>;
   noteGitLog?(id: string): Promise<NoteCommitInfo[]>;
   readNoteAtCommit?(id: string, hash: string): Promise<string | null>;
+  /** Images stored in the vault (web: attachments; desktop: image files under the vault folder). Optional. */
+  listAttachments?(): Promise<{ target: string; name: string }[]>;
+  /**
+   * A displayable URL for an attachment target: what `saveAttachment`/`listAttachments` return, or an older form
+   * (web: attachment id; desktop: absolute path). Optional.
+   */
+  attachmentUrl?(target: string): Promise<string | null>;
+  /** Whether any file (not only a note) exists at this vault path: a `.canvas` on desktop. Optional. */
+  fileExists?(path: string): Promise<boolean>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

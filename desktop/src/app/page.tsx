@@ -34,7 +34,6 @@ import FileRecovery from "@/components/FileRecovery";
 import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
-import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
 import PublishPreview from "@/components/PublishPreview";
@@ -82,9 +81,7 @@ const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor),
 const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });
 const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
 const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
-const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
-const DrawingEditor = dynamic(() => import("@/components/DrawingEditor"), { ssr: false });
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
 
 type ViewMode = "live" | "source" | "view";
@@ -96,7 +93,7 @@ interface TabState {
   savedContent: string;
   // Non-markdown tabs render a dedicated view instead of the text editor.
   // Absent = a normal markdown note.
-  kind?: "canvas" | "drawing" | "pdf" | "image";
+  kind?: "pdf" | "image";
 }
 
 export default function Home() {
@@ -223,7 +220,6 @@ export default function Home() {
   const currentTab = tabs.find((t) => t.filePath === activeTab) || null;
   // Dedicated views are driven by the active tab's kind, so they live in the
   // tab strip and own the title bar / export the same way notes do.
-  const drawingFile = currentTab?.kind === "drawing" ? currentTab.filePath : null;
   const pdfFile = currentTab?.kind === "pdf" ? currentTab.filePath : null;
   const content = currentTab?.content || "";
   const isDirty = currentTab ? currentTab.content !== currentTab.savedContent : false;
@@ -347,12 +343,10 @@ export default function Home() {
     // Restore tabs
     const restoredTabs: TabState[] = [];
     for (const filePath of ws.openTabs || []) {
-      // Dedicated-view tabs (canvas/drawing/pdf) carry no text content; they
-      // load their own files. Restore them by kind, not by reading as markdown.
+      // Dedicated-view tabs (pdf, image) carry no text content; they load their own files. Restore them by kind, not
+      // by reading as text. Canvas and drawing files are text tabs (core plugin file views, since 2.5b).
       let kind: TabState["kind"];
-      if (isDrawingFile(filePath)) kind = "drawing";
-      else if (filePath.endsWith(".canvas")) kind = "canvas";
-      else if (isPdfFile(filePath)) kind = "pdf";
+      if (isPdfFile(filePath)) kind = "pdf";
       else if (isImageFile(filePath)) kind = "image";
       if (kind) {
         restoredTabs.push({ filePath, content: "", savedContent: "", kind });
@@ -734,13 +728,11 @@ export default function Home() {
   const openingFilesRef = useRef(new Set<string>());
 
   const openFile = useCallback(async (filePath: string) => {
-    // Canvas / drawing / PDF open as dedicated-view tabs (no text content;
-    // each view manages its own file I/O). This makes them first-class tabs:
-    // they show in the tab strip, own the title bar, and gate the export action.
+    // PDF and images open as dedicated-view tabs (no text content; each view manages its own file I/O). Canvas and
+    // drawing files are text tabs shown by core plugin file views (since 2.5b): they load, save and auto-save like
+    // notes, and open as plain text when their plugin is off.
     let kind: TabState["kind"];
-    if (isDrawingFile(filePath)) kind = "drawing";
-    else if (filePath.endsWith(".canvas")) kind = "canvas";
-    else if (isPdfFile(filePath)) kind = "pdf";
+    if (isPdfFile(filePath)) kind = "pdf";
     else if (isImageFile(filePath)) kind = "image";
 
     if (kind) {
@@ -1188,31 +1180,7 @@ export default function Home() {
     return () => document.removeEventListener("click", handleLinkClick, true);
   }, []);
 
-  // Create new canvas/whiteboard
-  const handleNewCanvas = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    let name = "Canvas.canvas";
-    let counter = 1;
-    while (names.includes(name)) { counter++; name = `Canvas ${counter}.canvas`; }
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, JSON.stringify({ nodes: [], edges: [] }, null, 2));
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
 
-  // Create new excalidraw drawing
-  const handleNewDrawing = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    const name = generateDrawingName(names);
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, serializeDrawing(createEmptyDrawing()));
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
 
   // Insert TOC placeholder
   const handleInsertToc = useCallback(() => {
@@ -1315,8 +1283,6 @@ export default function Home() {
       attachments: () => setShowAttachments(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
-      newCanvas: handleNewCanvas,
-      insertDrawing: handleNewDrawing,
       insertToc: handleInsertToc,
       updateToc: handleUpdateToc,
       focusMode: handleFocusMode,
@@ -1334,7 +1300,7 @@ export default function Home() {
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1497,8 +1463,6 @@ export default function Home() {
         attachments: () => setShowAttachments(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
-        newCanvas: handleNewCanvas,
-        insertDrawing: handleNewDrawing,
         insertToc: handleInsertToc,
         updateToc: handleUpdateToc,
         focusMode: handleFocusMode,
@@ -1528,7 +1492,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {
@@ -1597,8 +1561,15 @@ export default function Home() {
     getCurrentFile: () => (activeTabRef.current && activeVaultPath ? relativeVaultPath(activeVaultPath, activeTabRef.current) : null),
     openFile: async (path) => {
       const ref = (await vaultAdapter?.listNotes())?.find((n) => n.path === path);
-      if (!ref) return false;
-      await openFile(ref.id);
+      if (ref) {
+        await openFile(ref.id);
+        return true;
+      }
+      // Not a note: a file a plugin shows itself (a .canvas or .drawing it just created).
+      if (!activeVaultPath || !(await vaultAdapter?.fileExists?.(path))) return false;
+      const sep = activeVaultPath.includes("\\") ? "\\" : "/";
+      await openFile(`${activeVaultPath.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+      setSidebarRefresh((k) => k + 1);
       return true;
     },
     onVaultChanged: () => setSidebarRefresh((k) => k + 1),
@@ -1944,14 +1915,6 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          ) : currentTab.kind === "canvas" && activeVault ? (
-            <Canvas
-              filePath={currentTab.filePath}
-              vaultPath={activeVault.path}
-              onSave={async (c) => { if (window.electronAPI) await window.electronAPI.writeFile(currentTab.filePath, c); }}
-              onFileSelect={(f) => openFile(f)}
-              onClose={() => closeTab(currentTab.filePath)}
-            />
           ) : currentTab.kind === "image" ? (
             <ImageViewer filePath={currentTab.filePath} />
           ) : currentTab.kind === "pdf" && activeVault ? (
@@ -2213,14 +2176,6 @@ export default function Home() {
 
 
       {/* Drawing Editor */}
-      {drawingFile && activeVault && (
-        <DrawingEditor
-          filePath={drawingFile}
-          vaultPath={activeVault.path}
-          onSave={() => setSidebarRefresh((k) => k + 1)}
-          onClose={() => closeTab(drawingFile)}
-        />
-      )}
 
 
       {/* Publish Preview */}

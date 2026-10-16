@@ -1,5 +1,20 @@
 import { describe, expect, it } from "vitest";
-import { hasFrontmatter, parseFrontmatter, serializeFrontmatter, updateFrontmatter } from "../src/frontmatter-utils";
+import { hasFrontmatter, parseFrontmatter, serializeFrontmatter, splitFrontmatter, updateFrontmatter } from "../src/frontmatter-utils";
+
+describe("splitFrontmatter", () => {
+  it("splits the block off exactly as written, so the two parts give the content back", () => {
+    const doc = '---\ncanvas: true\n---\n{"nodes":[]}';
+    expect(splitFrontmatter(doc)).toEqual({ frontmatter: "---\ncanvas: true\n---\n", body: '{"nodes":[]}' });
+    const crlf = "---\r\ndrawing: true\r\n---\r\n{}";
+    const parts = splitFrontmatter(crlf);
+    expect(parts.body).toBe("{}");
+    expect(parts.frontmatter + parts.body).toBe(crlf);
+  });
+  it("returns everything as body when there is no block", () => {
+    expect(splitFrontmatter('{"nodes":[]}')).toEqual({ frontmatter: "", body: '{"nodes":[]}' });
+    expect(splitFrontmatter("")).toEqual({ frontmatter: "", body: "" });
+  });
+});
 
 // These tests pin down the behaviour both apps relied on before the module moved to core.
 

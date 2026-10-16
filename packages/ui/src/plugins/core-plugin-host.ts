@@ -24,7 +24,7 @@ import {
   type ViewState,
 } from "@noteriv/plugin-api";
 import { PluginRegistry, type CorePluginDef, type PluginStateStore } from "@noteriv/core/plugin-registry";
-import type { NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
+import { toPosixPath, type NoteRef, type VaultAdapter } from "@noteriv/core/vault-adapter";
 import {
   registerCodeBlockProcessor,
   unregisterAllCodeBlockProcessorsForPlugin,
@@ -262,7 +262,8 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           return listVaultEntries(await listNotes(), dir);
         },
         async exists(path) {
-          return (await findNote(path)) !== undefined;
+          if ((await findNote(path)) !== undefined) return true;
+          return adapter.fileExists ? adapter.fileExists(path) : false;
         },
         async delete(path) {
           const ref = await findNote(path);
@@ -303,6 +304,19 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         async readAtCommit(path, hash) {
           const ref = await findNote(path);
           return ref && adapter.readNoteAtCommit ? adapter.readNoteAtCommit(ref.id, hash) : null;
+        },
+        async resolve(ref) {
+          if (!ref) return null;
+          const posix = toPosixPath(ref);
+          const notes = await listNotes();
+          const hit = notes.find((n) => n.path === ref || n.id === ref || toPosixPath(n.id) === posix);
+          return hit ? hit.path : null;
+        },
+        async listAttachments() {
+          return adapter.listAttachments ? adapter.listAttachments() : [];
+        },
+        async attachmentUrl(target) {
+          return target && adapter.attachmentUrl ? adapter.attachmentUrl(target) : null;
         },
       },
 
