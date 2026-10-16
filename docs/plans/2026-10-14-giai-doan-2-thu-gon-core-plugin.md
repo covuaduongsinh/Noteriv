@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1, 2.2 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -116,7 +116,7 @@ Khoảng 6–8 buổi.
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
 | 2.1 Đo đạc | Xong | 2026-10-16 | Baseline `docs/perf/2026-10-16-baseline.md`; ghi nhận `docs/plans/2026-10-16-phien-2-1-do-dac.md`; danh sách giữ nguyên, ngân sách −30%, KaTeX tải lười đưa vào 2.2 |
-| 2.2 Thí điểm Flashcards | Chưa làm | | |
+| 2.2 Thí điểm Flashcards | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-2-flashcards.md`; KaTeX tải lười; JS tải đầu web 533,9 → 457,8 KB gzip (−14,3%); API thêm `closeView`, view dạng lớp phủ |
 | 2.3 Lô A | Chưa làm | | |
 | 2.4 Lô B | Chưa làm | | |
 | 2.5 Lô C | Chưa làm | | |
