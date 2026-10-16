@@ -11,7 +11,6 @@ import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import SettingsModal from "@/components/SettingsModal";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
 import VaultSearch from "@/components/VaultSearch";
-import "@/styles/graph-view.css";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
@@ -40,8 +39,6 @@ import { isImageFile } from "@/lib/attachment-utils";
 import PublishPreview from "@/components/PublishPreview";
 import CollabPanel from "@/components/CollabPanel";
 import TrashPanel from "@/components/TrashPanel";
-import NoteHistory from "@/components/NoteHistory";
-import TimeScrubber from "@/components/TimeScrubber";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
 import { insertAtCursor } from "@noteriv/ui/editor/editor-commands";
@@ -84,10 +81,8 @@ const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor),
 const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });
 const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
 const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
-const GraphView = dynamic(() => import("@noteriv/ui/graph").then((m) => m.GraphView), { ssr: false });
 const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
-const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const DrawingEditor = dynamic(() => import("@/components/DrawingEditor"), { ssr: false });
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
@@ -140,12 +135,10 @@ export default function Home() {
   const [showVaultSearch, setShowVaultSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
-  const [showGraphView, setShowGraphView] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
-  const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const activeVaultPath = activeVault?.path ?? "";
   const vaultAdapter = useMemo(
@@ -186,8 +179,6 @@ export default function Home() {
   const [showPublish, setShowPublish] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [pinnedTabs, setPinnedTabs] = useState<Set<string>>(new Set());
-  const [showNoteHistory, setShowNoteHistory] = useState(false);
-  const [showTimeScrubber, setShowTimeScrubber] = useState(false);
   const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
   const [communityPlugins, setCommunityPlugins] = useState<DesktopPlugin[]>([]);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
@@ -1334,7 +1325,6 @@ export default function Home() {
       insertTable: () => { if (view) editorInsertTable(view); },
       gitSync: handleGitSync,
       toggleOutline: () => setShowOutline((o) => !o),
-      graphView: () => setShowGraphView(true),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
       toggleTags: () => setShowTagPane((t) => !t),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
@@ -1342,7 +1332,6 @@ export default function Home() {
       fileRecovery: () => setShowFileRecovery(true),
       exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
       attachments: () => setShowAttachments(true),
-      slidePresentation: () => setShowSlidePresentation(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
       newBoard: handleNewBoard,
@@ -1362,8 +1351,6 @@ export default function Home() {
       },
       openTrash: () => setShowTrash(true),
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
-      noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
-      timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
     };
@@ -1522,7 +1509,6 @@ export default function Home() {
         // Outline
         toggleOutline: () => setShowOutline((o) => !o),
         // New features
-        graphView: () => setShowGraphView(true),
         toggleBacklinks: () => setShowBacklinks((b) => !b),
         toggleTags: () => setShowTagPane((t) => !t),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
@@ -1530,7 +1516,6 @@ export default function Home() {
         fileRecovery: () => setShowFileRecovery(true),
         exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
         attachments: () => setShowAttachments(true),
-        slidePresentation: () => setShowSlidePresentation(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
         newBoard: handleNewBoard,
@@ -1548,8 +1533,6 @@ export default function Home() {
         exportPdfAnnotations: () => {},
         openTrash: () => setShowTrash(true),
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
-        noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
-        timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
         closeSplit: handleCloseSplit,
       };
@@ -1836,14 +1819,6 @@ export default function Home() {
                   <path d="M8 6v4M6 8h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Graph view" onClick={() => setShowGraphView(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M6 7.2l4-2.4M6 8.8l4 2.4" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
               <button className="ribbon-btn" title="Command palette" onClick={() => setShowCommandPalette(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M4 5l4 3-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1855,12 +1830,6 @@ export default function Home() {
                   <path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   <circle cx="12" cy="11" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M14 13l1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button className="ribbon-btn" title="Presentation" onClick={() => setShowSlidePresentation(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M8 11v3M5 14h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
               {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
@@ -2171,16 +2140,6 @@ export default function Home() {
         />
       )}
 
-      {/* Graph view */}
-      {showGraphView && vaultAdapter && (
-        <GraphView
-          adapter={vaultAdapter}
-          currentNoteId={activeTab}
-          onNoteSelect={(f) => { openFile(f); setShowGraphView(false); }}
-          onClose={() => setShowGraphView(false)}
-        />
-      )}
-
       {/* File recovery */}
       {showFileRecovery && activeVault && currentTab && (
         <FileRecovery
@@ -2206,14 +2165,6 @@ export default function Home() {
             setShowAttachments(false);
           }}
           onClose={() => setShowAttachments(false)}
-        />
-      )}
-
-      {/* Slide presentation */}
-      {showSlidePresentation && (
-        <SlidePresentation
-          content={content}
-          onClose={() => setShowSlidePresentation(false)}
         />
       )}
 
@@ -2305,28 +2256,6 @@ export default function Home() {
           vaultPath={activeVault.path}
           onClose={() => setShowTrash(false)}
           onRestored={() => setSidebarRefresh((k) => k + 1)}
-        />
-      )}
-
-      {/* Note History */}
-      {showNoteHistory && activeVault && currentTab && (
-        <NoteHistory
-          filePath={currentTab.filePath}
-          vaultPath={activeVault.path}
-          currentContent={content}
-          onRestore={(restored) => { handleContentChange(restored); setShowNoteHistory(false); }}
-          onClose={() => setShowNoteHistory(false)}
-        />
-      )}
-
-      {/* Time Scrubber */}
-      {showTimeScrubber && activeVault && currentTab && (
-        <TimeScrubber
-          filePath={currentTab.filePath}
-          vaultPath={activeVault.path}
-          currentContent={content}
-          onRestore={(restored) => { handleContentChange(restored); setShowTimeScrubber(false); }}
-          onClose={() => setShowTimeScrubber(false)}
         />
       )}
 

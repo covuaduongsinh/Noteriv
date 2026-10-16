@@ -1,4 +1,5 @@
 import { findBacklinks } from "@noteriv/core/wiki-link-utils";
+import { getSnapshots, loadSnapshot } from "./file-recovery";
 import {
   backlinksFromWikiScan,
   baseName,
@@ -89,6 +90,39 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
 
     // Binary write (raw base64, no `data:` prefix): the old recorder wrote the data-URL text and produced files that
     // would not play.
+    // Snapshots: `.noteriv/snapshots/<prefix>-<timestamp>.md`, written on every save (file-recovery.ts); the id is the
+    // file name. Git: the vault folder's own repository, when there is one (an empty log otherwise).
+    async historySources() {
+      return { snapshots: true, git: true };
+    },
+
+    async noteSnapshots(id) {
+      const snaps = await getSnapshots(vaultPath, id);
+      return snaps.map((s) => ({ id: baseName(s.path), timestamp: s.timestamp, size: s.size }));
+    },
+
+    async readNoteSnapshot(id, snapshotId) {
+      // Only a snapshot of this note, by file name: nothing else in the vault can be read this way.
+      const snap = (await getSnapshots(vaultPath, id)).find((s) => baseName(s.path) === snapshotId);
+      return snap ? loadSnapshot(snap.path) : null;
+    },
+
+    async noteGitLog(id) {
+      try {
+        return (await api().gitFileLog?.(vaultPath, id)) ?? [];
+      } catch {
+        return [];
+      }
+    },
+
+    async readNoteAtCommit(id, hash) {
+      try {
+        return (await api().gitShowFile?.(vaultPath, id, hash)) ?? null;
+      } catch {
+        return null;
+      }
+    },
+
     async saveAttachment(name, data) {
       const target = abs(`attachments/${name}`);
       await api().createDir(dirOf(target));

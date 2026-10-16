@@ -46,6 +46,8 @@ export interface CorePluginHostServices {
   onVaultChanged?(): void;
   /** Shows or hides a core plugin's sidebar panel (namespaced key). Absent: `ui.toggleSidebarPanel` does nothing. */
   toggleSidebarPanel?(key: string): void;
+  /** Draws markdown read-only into `el` (the editor's live preview); returns the cleanup. Absent: plain text. */
+  renderReadOnly?(source: string, el: HTMLElement): () => void;
   notify(message: string, durationMs?: number): void;
   loadPluginSettings(pluginId: string): Promise<Record<string, unknown>>;
   savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void>;
@@ -80,6 +82,12 @@ export interface HostRibbonIcon extends Owned {
   onClick(): void;
 }
 
+export interface HostNoteToolbarButton extends Owned {
+  title: string;
+  icon: string;
+  onClick(): void;
+}
+
 export interface HostPanel extends Owned {
   title: string;
   icon?: string;
@@ -90,18 +98,20 @@ export interface CorePluginContributions {
   commands: HostCommand[];
   statusItems: HostStatusItem[];
   ribbonIcons: HostRibbonIcon[];
+  noteToolbarButtons: HostNoteToolbarButton[];
   sidebarPanels: HostPanel[];
   settingsTabs: HostPanel[];
   /** View types plugins registered, in registration order. */
   viewTypes: string[];
 }
 
-type Kind = "commands" | "statusItems" | "ribbonIcons" | "sidebarPanels" | "settingsTabs";
+type Kind = "commands" | "statusItems" | "ribbonIcons" | "noteToolbarButtons" | "sidebarPanels" | "settingsTabs";
 
 const EMPTY: CorePluginContributions = {
   commands: [],
   statusItems: [],
   ribbonIcons: [],
+  noteToolbarButtons: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],
@@ -262,6 +272,25 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           const safe = name.replace(/[\\/:*?"<>|]/g, "_").replace(/^\.+/, "") || "attachment";
           return adapter.saveAttachment(safe, data);
         },
+        async versionSources() {
+          return (await adapter.historySources?.()) ?? { snapshots: false, git: false };
+        },
+        async snapshots(path) {
+          const ref = await findNote(path);
+          return ref && adapter.noteSnapshots ? adapter.noteSnapshots(ref.id) : [];
+        },
+        async readSnapshot(path, id) {
+          const ref = await findNote(path);
+          return ref && adapter.readNoteSnapshot ? adapter.readNoteSnapshot(ref.id, id) : null;
+        },
+        async gitLog(path) {
+          const ref = await findNote(path);
+          return ref && adapter.noteGitLog ? adapter.noteGitLog(ref.id) : [];
+        },
+        async readAtCommit(path, hash) {
+          const ref = await findNote(path);
+          return ref && adapter.readNoteAtCommit ? adapter.readNoteAtCommit(ref.id, hash) : null;
+        },
       },
 
       editor: services.editor,
@@ -270,6 +299,14 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         registerCodeBlockProcessor: (language, processor) => registerCodeBlockProcessor(pluginId, language, processor),
         unregisterCodeBlockProcessor: (language) => unregisterCodeBlockProcessor(pluginId, language),
         registerPostProcessor: (fn) => void postProcessors.push({ pluginId, fn }),
+        renderReadOnly: (source, el) => {
+          if (services.renderReadOnly) return services.renderReadOnly(source, el);
+          const pre = document.createElement("pre");
+          pre.style.whiteSpace = "pre-wrap";
+          pre.textContent = source;
+          el.appendChild(pre);
+          return () => pre.remove();
+        },
       },
 
       ui: {
@@ -319,6 +356,16 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
             onClick: guard(pluginId, `ribbon ${icon.id}`, () => icon.onClick()),
           }),
         removeRibbonIcon: (id) => remove("ribbonIcons", key(id)),
+        addNoteToolbarButton: (b) =>
+          upsert("noteToolbarButtons", {
+            pluginId,
+            key: key(b.id),
+            id: b.id,
+            title: b.title,
+            icon: b.icon,
+            onClick: guard(pluginId, `note toolbar ${b.id}`, () => b.onClick()),
+          }),
+        removeNoteToolbarButton: (id) => remove("noteToolbarButtons", key(id)),
       },
 
       events: {
@@ -370,6 +417,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
       commands: keep(contributions.commands),
       statusItems: keep(contributions.statusItems),
       ribbonIcons: keep(contributions.ribbonIcons),
+      noteToolbarButtons: keep(contributions.noteToolbarButtons),
       sidebarPanels: keep(contributions.sidebarPanels),
       settingsTabs: keep(contributions.settingsTabs),
       viewTypes: viewTypes(),

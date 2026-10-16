@@ -2,9 +2,11 @@ import {
   baseName,
   toPosixPath,
   type NoteBacklink,
+  type NoteCommitInfo,
   type NoteDates,
   type NoteRef,
   type NoteSearchHit,
+  type NoteSnapshotInfo,
   type VaultAdapter,
 } from "./vault-adapter";
 
@@ -45,6 +47,30 @@ export class MemoryVaultAdapter implements VaultAdapter {
     const target = `attachments/${name}`;
     this.attachments.set(target, data);
     return target;
+  }
+
+  /** Tests: past versions, keyed by note id, newest first. Git counts as available once any commit is set. */
+  readonly snapshots = new Map<string, (NoteSnapshotInfo & { content: string })[]>();
+  readonly commits = new Map<string, (NoteCommitInfo & { content: string })[]>();
+
+  async historySources() {
+    return { snapshots: true, git: this.commits.size > 0 };
+  }
+
+  async noteSnapshots(id: string): Promise<NoteSnapshotInfo[]> {
+    return (this.snapshots.get(id) ?? []).map(({ content: _content, ...info }) => info);
+  }
+
+  async readNoteSnapshot(id: string, snapshotId: string): Promise<string | null> {
+    return this.snapshots.get(id)?.find((s) => s.id === snapshotId)?.content ?? null;
+  }
+
+  async noteGitLog(id: string): Promise<NoteCommitInfo[]> {
+    return (this.commits.get(id) ?? []).map(({ content: _content, ...info }) => info);
+  }
+
+  async readNoteAtCommit(id: string, hash: string): Promise<string | null> {
+    return this.commits.get(id)?.find((c) => c.hash === hash)?.content ?? null;
   }
 
   async noteDates(): Promise<Record<string, NoteDates>> {

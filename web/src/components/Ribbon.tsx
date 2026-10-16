@@ -4,7 +4,6 @@ import { useEffect, useRef, useState } from "react";
 import {
   QuickOpenIcon,
   NewNoteIcon,
-  GraphIcon,
   SettingsIcon,
   SearchIcon,
   OutlineIcon,
@@ -24,7 +23,6 @@ interface RibbonProps {
   onQuickOpen: () => void;
   onNewNote: () => void;
   onCommandPalette: () => void;
-  onGraph: () => void;
   onSearch: () => void;
   onSettings: () => void;
   onOutline: () => void;
@@ -60,7 +58,7 @@ const ACTIVE_STYLE = { color: "var(--accent)", background: "rgba(137,180,250,0.1
  */
 export default function Ribbon(props: RibbonProps) {
   const {
-    onQuickOpen, onNewNote, onCommandPalette, onGraph, onSearch, onSettings,
+    onQuickOpen, onNewNote, onCommandPalette, onSearch, onSettings,
     onOutline, onTags, onBookmarks, onSync, onPlugins, syncAttention, pluginPanels = [], activePluginPanel = null,
     onPluginPanel, outlineActive, tagsActive, bookmarksActive, coreRibbon,
   } = props;
@@ -102,9 +100,6 @@ export default function Ribbon(props: RibbonProps) {
         </button>
         <button className="ribbon-btn" title="Note mới" onClick={onNewNote}>
           <NewNoteIcon />
-        </button>
-        <button className="ribbon-btn" title="Graph view" onClick={onGraph}>
-          <GraphIcon />
         </button>
         <button className="ribbon-btn" title="Command palette (Ctrl+Shift+P hoặc F1)" onClick={onCommandPalette}>
           <CommandIcon />

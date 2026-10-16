@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.4";
+export const PLUGIN_API_VERSION = "1.0.0-draft.5";
 
 // ─── Permissions (community tier) ───
 
@@ -40,6 +40,30 @@ export interface NoteStats {
   modifiedAt: number;
 }
 
+/** One saved past version of a note (Time scrubber): an automatic snapshot. */
+export interface NoteSnapshot {
+  id: string;
+  /** Milliseconds since epoch. */
+  timestamp: number;
+  /** Bytes. */
+  size: number;
+}
+
+/** One git commit that touched a note. */
+export interface NoteCommit {
+  hash: string;
+  author: string;
+  /** As git reports it (ISO 8601). */
+  date: string;
+  message: string;
+}
+
+/** Which kinds of past versions this vault keeps. */
+export interface VersionSources {
+  snapshots: boolean;
+  git: boolean;
+}
+
 export interface VaultApi {
   read(path: string): Promise<string | null>;
   /** Creates the note (and any missing folders) when it does not exist. */
@@ -54,6 +78,14 @@ export interface VaultApi {
    * put in markdown (`![Audio](target)`): an attachment URL on web, `attachments/<name>` inside the vault on desktop.
    */
   saveAttachment(name: string, data: Blob): Promise<string>;
+  /** Core tier only. Which history sources exist (web: git only with a git sync connection that has run). */
+  versionSources(): Promise<VersionSources>;
+  /** Core tier only. Snapshots of a note, newest first (empty when there are none). */
+  snapshots(path: string): Promise<NoteSnapshot[]>;
+  readSnapshot(path: string, id: string): Promise<string | null>;
+  /** Core tier only. Commits that touched a note, newest first (empty without git history). */
+  gitLog(path: string): Promise<NoteCommit[]>;
+  readAtCommit(path: string, hash: string): Promise<string | null>;
 }
 
 // ─── Editor ───
@@ -101,6 +133,11 @@ export interface MarkdownApi {
   unregisterCodeBlockProcessor(language: string): void;
   /** Core tier only. */
   registerPostProcessor(processor: MarkdownPostProcessor): void;
+  /**
+   * Core tier only. Shows `source` read-only in `el` the way the editor draws it (live preview); returns the cleanup.
+   * The host may render asynchronously.
+   */
+  renderReadOnly(source: string, el: HTMLElement): () => void;
 }
 
 // ─── UI ───
@@ -127,6 +164,15 @@ export interface RibbonIcon {
   title: string;
   /** Icon name from the host's icon set, or an inline `<svg>` string. */
   icon?: string;
+  onClick(): void;
+}
+
+/** A button on the open note's toolbar (web). Hosts without a note toolbar (desktop) do not show it. */
+export interface NoteToolbarButton {
+  id: string;
+  title: string;
+  /** Inline `<svg>` string or a short text label. */
+  icon: string;
   onClick(): void;
 }
 
@@ -174,6 +220,12 @@ export interface UiApi {
   /** Core tier only. */
   addRibbonIcon(icon: RibbonIcon): void;
   removeRibbonIcon(id: string): void;
+  /**
+   * Core tier only. Adds a button to the open note's toolbar. Not every host has one (desktop does not), so a plugin
+   * also offers the action as a command.
+   */
+  addNoteToolbarButton(button: NoteToolbarButton): void;
+  removeNoteToolbarButton(id: string): void;
 }
 
 // ─── Events ───

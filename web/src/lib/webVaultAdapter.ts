@@ -94,6 +94,42 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
       return webApi.attachments.downloadUrl(vaultId, attachment.id);
     },
 
+    // Snapshots come from a server job (~every 10 minutes while a note changes). Git history needs a git sync
+    // connection that has synced at least once; the /history endpoint checks again and answers empty otherwise.
+    async historySources() {
+      const connections = await webApi.sync.list(vaultId).catch(() => []);
+      return { snapshots: true, git: connections.some((c) => c.providerType !== "webdav" && !!c.lastSyncedAt) };
+    },
+
+    async noteSnapshots(id) {
+      const snaps = await webApi.notes.snapshots(vaultId, id).catch(() => []);
+      return snaps.map((s) => ({ id: s.id, timestamp: Date.parse(s.createdAt), size: s.size }));
+    },
+
+    async readNoteSnapshot(id, snapshotId) {
+      try {
+        return (await webApi.notes.snapshotContent(vaultId, id, snapshotId)).content;
+      } catch {
+        return null;
+      }
+    },
+
+    async noteGitLog(id) {
+      try {
+        return (await webApi.notes.history(vaultId, id)).entries;
+      } catch {
+        return [];
+      }
+    },
+
+    async readNoteAtCommit(id, hash) {
+      try {
+        return (await webApi.notes.historyAt(vaultId, id, hash)).content;
+      } catch {
+        return null;
+      }
+    },
+
     async getSettings() {
       return (await webApi.vaults.get(vaultId)).settings ?? {};
     },

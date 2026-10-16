@@ -29,8 +29,6 @@ import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
 import FileRecovery from "@/components/FileRecovery";
-import TimeScrubber from "@/components/TimeScrubber";
-import NoteHistory from "@/components/NoteHistory";
 import { setImageLightboxHandler, setDataviewSource } from "@noteriv/ui/markdown";
 import { createWebDataviewSource } from "@/lib/ui-hooks";
 import { CloseIcon } from "@/components/icons";
@@ -40,6 +38,7 @@ import { webCorePluginConfig } from "@/lib/core-plugins";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
+  CorePluginNoteToolbarButtons,
   CorePluginSidePanels,
   CorePluginViewOverlay,
   useCorePluginHost,
@@ -100,7 +99,6 @@ function saveRecentCommand(action: string) {
 const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
 const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
-const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
 const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
 
 const SAVE_DEBOUNCE_MS = 800;
@@ -202,17 +200,10 @@ export default function VaultPage() {
     [bookmarks, index]
   );
   const [showAttachments, setShowAttachments] = useState(false);
-  const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
   // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
   const [showFileRecovery, setShowFileRecovery] = useState(false);
-  const [showTimeScrubber, setShowTimeScrubber] = useState(false);
-  const [showGitHistory, setShowGitHistory] = useState(false);
-  // Cheap client-side gate (no extra request): only offer Note History once a
-  // non-WebDAV sync connection has synced at least once. The /history endpoint
-  // itself still double-checks server-side and degrades gracefully either way.
-  const gitHistoryAvailable = syncConnections.some((c) => c.providerType !== "webdav" && c.lastSyncedAt);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -399,6 +390,8 @@ export default function VaultPage() {
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
+  // File Recovery (core) links to the Time scrubber while the Note history plugin is on.
+  const scrubberCommand = corePlugins.contributions.commands.find((c) => c.key === "note-history:scrubber");
   /** Both plugin tiers receive the same app events. */
   const emitPluginEvent = (event: Parameters<typeof pluginHost.emitEvent>[0], ...args: unknown[]) => {
     pluginHost.emitEvent(event, ...args);
@@ -855,8 +848,6 @@ export default function VaultPage() {
       case "toggleTags":
         setTagPaneVisible((v) => !v);
         break;
-      case "graphView":
-        handleGraphView();
         break;
       case "toggleBacklinks":
         setBacklinksVisible((v) => !v);
@@ -1110,10 +1101,6 @@ export default function VaultPage() {
     }
   }
 
-  function handleGraphView() {
-    router.push(`/vaults/${vaultId}/graph`);
-  }
-
   function handleHeadingClick(line: number) {
     const view = editorViewRef.current;
     if (!view) return;
@@ -1122,7 +1109,7 @@ export default function VaultPage() {
     view.focus();
   }
 
-  // Open the note requested via ?note=<id> (used by the Graph view's note click)
+  // Open the note requested via ?note=<id> (a link into a note of this vault)
   // Waits for the saved-tabs restore (workspaceReady) so the note is merged
   // into the restored tab list instead of being overwritten by it.
   useEffect(() => {
@@ -1293,7 +1280,6 @@ export default function VaultPage() {
             onQuickOpen={() => setQuickOpenVisible(true)}
             onNewNote={handleQuickNewNote}
             onCommandPalette={() => setCommandPaletteOpen(true)}
-            onGraph={handleGraphView}
             onSearch={() => setSearchVisible(true)}
             onSettings={() => openSettings("general")}
             onOutline={() => setOutlineVisible((v) => !v)}
@@ -1414,15 +1400,13 @@ export default function VaultPage() {
                 collabVisible={collabVisible}
                 collabPeerCount={collabPeers.length}
                 bookmarked={isBookmarked(bookmarks, activeTab.noteId)}
-                gitHistoryAvailable={gitHistoryAvailable}
                 onToggleBacklinks={() => setBacklinksVisible((v) => !v)}
                 onToggleCollab={() => setCollabVisible((v) => !v)}
                 onExportPDF={handleExportPDF}
                 onToggleBookmark={() => handleToggleBookmark(activeTab.noteId)}
-                onPresent={() => setShowSlidePresentation(true)}
                 onPublish={() => setShowPublishPreview(true)}
                 onFileRecovery={() => setShowFileRecovery(true)}
-                onGitHistory={() => setShowGitHistory(true)}
+                pluginButtons={<CorePluginNoteToolbarButtons buttons={corePlugins.contributions.noteToolbarButtons} />}
               />
               {pluginHost.commands.length > 0 && (
                 <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
@@ -1687,10 +1671,6 @@ export default function VaultPage() {
       )}
 
 
-      {showSlidePresentation && activeTab && (
-        <SlidePresentation content={draft} onClose={() => setShowSlidePresentation(false)} />
-      )}
-
       {showPublishPreview && activeTab && (
         <PublishPreview
           vaultId={vaultId}
@@ -1709,32 +1689,14 @@ export default function VaultPage() {
           notePath={activeTab.path}
           onRestore={onDraftChange}
           onClose={() => setShowFileRecovery(false)}
-          onOpenScrubber={() => {
-            setShowFileRecovery(false);
-            setShowTimeScrubber(true);
-          }}
-        />
-      )}
-
-      {showTimeScrubber && activeTab && activeTabId && (
-        <TimeScrubber
-          vaultId={vaultId}
-          noteId={activeTabId}
-          notePath={activeTab.path}
-          currentContent={draft}
-          onRestore={onDraftChange}
-          onClose={() => setShowTimeScrubber(false)}
-        />
-      )}
-
-      {showGitHistory && activeTab && activeTabId && (
-        <NoteHistory
-          vaultId={vaultId}
-          noteId={activeTabId}
-          notePath={activeTab.path}
-          currentContent={draft}
-          onRestore={onDraftChange}
-          onClose={() => setShowGitHistory(false)}
+          onOpenScrubber={
+            scrubberCommand
+              ? () => {
+                  setShowFileRecovery(false);
+                  scrubberCommand.run();
+                }
+              : undefined
+          }
         />
       )}
 

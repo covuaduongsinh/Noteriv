@@ -1,6 +1,6 @@
 "use client";
 
-import type { HostPanel, HostRibbonIcon, HostStatusItem } from "./core-plugin-host";
+import type { HostNoteToolbarButton, HostPanel, HostRibbonIcon, HostStatusItem } from "./core-plugin-host";
 
 function RibbonGlyph({ icon, title }: { icon?: string; title: string }) {
   return icon?.trim().startsWith("<svg") ? (
@@ -50,6 +50,25 @@ export function CorePluginRibbonButtons({
             <RibbonGlyph icon={p.icon} title={p.title} />
           </button>
         ))}
+    </>
+  );
+}
+
+/** Buttons core plugins add to the open note's toolbar (`ui.addNoteToolbarButton`). */
+export function CorePluginNoteToolbarButtons({
+  buttons,
+  className = "titlebar-btn",
+}: {
+  buttons: HostNoteToolbarButton[];
+  className?: string;
+}) {
+  return (
+    <>
+      {buttons.map((b) => (
+        <button key={b.key} className={className} title={b.title} aria-label={b.title} onClick={() => b.onClick()} data-core-note-button={b.key}>
+          <RibbonGlyph icon={b.icon} title={b.title} />
+        </button>
+      ))}
     </>
   );
 }

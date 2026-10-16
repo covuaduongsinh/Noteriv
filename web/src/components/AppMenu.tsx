@@ -59,7 +59,6 @@ const SECTIONS: MenuSection[] = [
       { action: "toggleOutline", label: "Outline" },
       { action: "toggleTags", label: "Tags" },
       { action: "toggleBacklinks", label: "Backlinks" },
-      { action: "graphView", label: "Graph View" },
       "sep",
       { action: "randomNote", label: "Random Note" },
       { action: "commandPalette", label: "Command Palette" },

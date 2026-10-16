@@ -8,6 +8,7 @@ import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registr
 import {
   createCorePluginHost,
   CorePluginsSection,
+  CorePluginNoteToolbarButtons,
   CorePluginSidePanels,
   CorePluginViewOverlay,
   listVaultEntries,
@@ -405,6 +406,75 @@ describe("plugin sidebar panels (CorePluginSidePanels)", () => {
   });
 });
 
+describe("note toolbar buttons, history and read-only rendering", () => {
+  it("collects note toolbar buttons, renders them and drops them when the plugin is turned off", async () => {
+    const onClick = vi.fn();
+    const plugin: CorePlugin = {
+      onload: (api) => {
+        api.ui.addNoteToolbarButton({ id: "present", title: "Present", icon: "P", onClick });
+        api.ui.addNoteToolbarButton({ id: "tmp", title: "Tmp", icon: "T", onClick });
+        api.ui.removeNoteToolbarButton("tmp");
+      },
+    };
+    const { host } = makeHost([def("s", plugin)]);
+    await host.registry.setEnabled("s", true);
+    expect(host.getContributions().noteToolbarButtons.map((b) => b.key)).toEqual(["s:present"]);
+
+    const el = document.createElement("div");
+    const root = createRoot(el);
+    await act(async () => root.render(createElement(CorePluginNoteToolbarButtons, { buttons: host.getContributions().noteToolbarButtons })));
+    await act(async () => el.querySelector<HTMLButtonElement>('[data-core-note-button="s:present"]')!.click());
+    expect(onClick).toHaveBeenCalledOnce();
+    await act(async () => root.unmount());
+
+    await host.registry.setEnabled("s", false);
+    expect(host.getContributions().noteToolbarButtons).toEqual([]);
+  });
+
+  it("reads snapshots and commits of a note by path through the adapter", async () => {
+    const adapter = new MemoryVaultAdapter({ "n.md": "now" });
+    adapter.snapshots.set("n.md", [{ id: "s1", timestamp: 5, size: 3, content: "then" }]);
+    let api!: PluginApi;
+    const { host } = makeHost([def("h", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("h", true);
+    expect(await api.vault.versionSources()).toEqual({ snapshots: true, git: false });
+    expect(await api.vault.snapshots("n.md")).toEqual([{ id: "s1", timestamp: 5, size: 3 }]);
+    expect(await api.vault.readSnapshot("n.md", "s1")).toBe("then");
+    expect(await api.vault.snapshots("missing.md")).toEqual([]);
+
+    adapter.commits.set("n.md", [{ hash: "abc", author: "a", date: "2026-10-16", message: "m", content: "old" }]);
+    expect((await api.vault.versionSources()).git).toBe(true);
+    expect(await api.vault.gitLog("n.md")).toEqual([{ hash: "abc", author: "a", date: "2026-10-16", message: "m" }]);
+    expect(await api.vault.readAtCommit("n.md", "abc")).toBe("old");
+  });
+
+  it("without history methods in the adapter there is simply no history", async () => {
+    const adapter = new MemoryVaultAdapter({ "n.md": "now" });
+    const bare = Object.assign(Object.create(Object.getPrototypeOf(adapter)), adapter, {
+      historySources: undefined,
+      noteSnapshots: undefined,
+      noteGitLog: undefined,
+    });
+    let api!: PluginApi;
+    const { host } = makeHost([def("h", { onload: (a) => void (api = a) })], { adapter: bare });
+    await host.registry.setEnabled("h", true);
+    expect(await api.vault.versionSources()).toEqual({ snapshots: false, git: false });
+    expect(await api.vault.snapshots("n.md")).toEqual([]);
+    expect(await api.vault.gitLog("n.md")).toEqual([]);
+  });
+
+  it("renders markdown read-only as plain text when the app gives no renderer", async () => {
+    let api!: PluginApi;
+    const { host } = makeHost([def("r", { onload: (a) => void (api = a) })]);
+    await host.registry.setEnabled("r", true);
+    const el = document.createElement("div");
+    const cleanup = api.markdown.renderReadOnly("# Title", el);
+    expect(el.textContent).toBe("# Title");
+    cleanup();
+    expect(el.textContent).toBe("");
+  });
+});
+
 describe("plugin hotkeys", () => {
   const key = (init: KeyboardEventInit) => new KeyboardEvent("keydown", { bubbles: true, cancelable: true, ...init });
 
@@ -459,5 +529,40 @@ describe("plugin hotkeys", () => {
     window.removeEventListener("keydown", appListener);
     act(() => root.unmount());
     el.remove();
+  });
+
+  it("wins over the editor's own keymap (CodeMirror skips prevented keys) but not over an app listener that claims it", () => {
+    const run = vi.fn();
+    const commands = [{ pluginId: "p", key: "p:g", id: "g", name: "Graph", hotkey: "Ctrl+G", run }];
+    function Harness() {
+      useCorePluginHotkeys(commands);
+      return null;
+    }
+    const host = document.createElement("div");
+    document.body.appendChild(host);
+    const root = createRoot(host);
+    act(() => root.render(createElement(Harness)));
+    // Stand-in for CodeMirror's content element: handles Mod-g (find next) unless the event is already prevented.
+    const editorEl = document.createElement("div");
+    document.body.appendChild(editorEl);
+    const editorFindNext = vi.fn();
+    editorEl.addEventListener("keydown", (e) => {
+      if (e.defaultPrevented) return;
+      editorFindNext();
+      e.preventDefault();
+    });
+    editorEl.dispatchEvent(key({ ctrlKey: true, code: "KeyG", key: "g" }));
+    expect(editorFindNext).not.toHaveBeenCalled();
+    expect(run).toHaveBeenCalledOnce();
+
+    const claim = (e: KeyboardEvent) => e.preventDefault();
+    window.addEventListener("keydown", claim);
+    editorEl.dispatchEvent(key({ ctrlKey: true, code: "KeyG", key: "g" }));
+    expect(run).toHaveBeenCalledOnce();
+    window.removeEventListener("keydown", claim);
+
+    act(() => root.unmount());
+    host.remove();
+    editorEl.remove();
   });
 });

@@ -133,6 +133,11 @@ function buildApi(boot) {
       delete: function (path) { return rpcCall("vault.delete", [path]); },
       stats: coreOnly("vault.stats"),
       saveAttachment: coreOnly("vault.saveAttachment"),
+      versionSources: coreOnly("vault.versionSources"),
+      snapshots: coreOnly("vault.snapshots"),
+      readSnapshot: coreOnly("vault.readSnapshot"),
+      gitLog: coreOnly("vault.gitLog"),
+      readAtCommit: coreOnly("vault.readAtCommit"),
     },
     ui: {
       addCommand: function (cmd) {
@@ -180,6 +185,8 @@ function buildApi(boot) {
       unregisterView: coreOnly("ui.unregisterView"),
       addRibbonIcon: coreOnly("ui.addRibbonIcon"),
       removeRibbonIcon: coreOnly("ui.removeRibbonIcon"),
+      addNoteToolbarButton: coreOnly("ui.addNoteToolbarButton"),
+      removeNoteToolbarButton: coreOnly("ui.removeNoteToolbarButton"),
     },
     events: {
       on: function (event, handler) {
@@ -220,6 +227,7 @@ function buildApi(boot) {
         return rpcCall("markdown.unregisterCodeBlockProcessor", [lang]);
       },
       registerPostProcessor: coreOnly("markdown.registerPostProcessor"),
+      renderReadOnly: coreOnly("markdown.renderReadOnly"),
     },
     workspace: {
       openFile: function (path) { return rpcCall("workspace.openFile", [path]); },

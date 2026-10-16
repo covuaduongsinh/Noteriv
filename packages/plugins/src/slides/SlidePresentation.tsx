@@ -1,22 +1,29 @@
-"use client";
-
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import { parseSlides, Slide } from "@noteriv/core/slide-utils";
-import "@/styles/slides.css";
+import { parseSlides, type Slide } from "@noteriv/core/slide-utils";
+// Styles: `.slide-*` in packages/ui/styles/app.css.
 
 // ── Types ──
+
+export interface SlideLabels {
+  exit: string;
+  notes: string;
+  overview: string;
+  print: string;
+  speakerNotes: string;
+  overviewTitle: (n: number) => string;
+  closeOverview: string;
+  separatorHint: string;
+}
 
 interface SlidePresentationProps {
   content: string;
   onClose: () => void;
+  labels: SlideLabels;
 }
 
 // ── Component ──
 
-export default function SlidePresentation({
-  content,
-  onClose,
-}: SlidePresentationProps) {
+export function SlidePresentation({ content, onClose, labels }: SlidePresentationProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showNotes, setShowNotes] = useState(false);
   const [showOverview, setShowOverview] = useState(false);
@@ -54,7 +61,8 @@ export default function SlidePresentation({
     goToSlide(totalSlides - 1);
   }, [goToSlide, totalSlides]);
 
-  // Keyboard navigation
+  // Keyboard navigation. Capture phase on window, and every key handled here stops there: the host closes plugin views
+  // on Escape (and the app has its own shortcuts), but Escape with the overview open must only close the overview.
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Don't handle if user is in an input
@@ -65,6 +73,7 @@ export default function SlidePresentation({
         return;
       }
 
+      let handled = true;
       switch (e.key) {
         case "Escape":
           if (showOverview) {
@@ -116,11 +125,14 @@ export default function SlidePresentation({
           setShowOverview((v) => !v);
           e.preventDefault();
           break;
+        default:
+          handled = false;
       }
+      if (handled) e.stopPropagation();
     };
 
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
   }, [goNext, goPrev, goFirst, goLast, onClose, showOverview]);
 
   // Print handler
@@ -141,7 +153,7 @@ export default function SlidePresentation({
       <div className="slide-toolbar">
         <div className="slide-toolbar-group">
           <button className="slide-toolbar-btn" onClick={onClose}>
-            Exit
+            {labels.exit}
             <span className="slide-toolbar-shortcut">Esc</span>
           </button>
         </div>
@@ -150,18 +162,18 @@ export default function SlidePresentation({
             className={`slide-toolbar-btn ${showNotes ? "active" : ""}`}
             onClick={() => setShowNotes((v) => !v)}
           >
-            Notes
+            {labels.notes}
             <span className="slide-toolbar-shortcut">N</span>
           </button>
           <button
             className={`slide-toolbar-btn ${showOverview ? "active" : ""}`}
             onClick={() => setShowOverview((v) => !v)}
           >
-            Overview
+            {labels.overview}
             <span className="slide-toolbar-shortcut">O</span>
           </button>
           <button className="slide-toolbar-btn" onClick={handlePrint}>
-            Print
+            {labels.print}
           </button>
         </div>
       </div>
@@ -189,7 +201,7 @@ export default function SlidePresentation({
       {/* ── Slide Counter ───────────────────────────────────────────── */}
       <div className="slide-counter">
         {currentIndex + 1} / {totalSlides}
-        {totalSlides <= 1 && " — Use --- on its own line to separate slides"}
+        {totalSlides <= 1 && ` — ${labels.separatorHint}`}
       </div>
 
       {/* ── Progress Bar ────────────────────────────────────────────── */}
@@ -201,7 +213,7 @@ export default function SlidePresentation({
       {/* ── Speaker Notes Panel ─────────────────────────────────────── */}
       {showNotes && currentSlide.notes && (
         <div className="slide-notes-panel">
-          <div className="slide-notes-label">Speaker Notes</div>
+          <div className="slide-notes-label">{labels.speakerNotes}</div>
           <div className="slide-notes-content">{currentSlide.notes}</div>
         </div>
       )}
@@ -210,14 +222,12 @@ export default function SlidePresentation({
       {showOverview && (
         <div className="slide-overview-overlay">
           <div className="slide-overview-header">
-            <div className="slide-overview-title">
-              Slide Overview ({totalSlides} slides)
-            </div>
+            <div className="slide-overview-title">{labels.overviewTitle(totalSlides)}</div>
             <button
               className="slide-overview-close"
               onClick={() => setShowOverview(false)}
             >
-              Close Overview
+              {labels.closeOverview}
               <span className="slide-toolbar-shortcut" style={{ marginLeft: 6 }}>
                 O
               </span>

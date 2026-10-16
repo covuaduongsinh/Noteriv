@@ -20,3 +20,4 @@ export * from "./outline-utils";
 export * from "./graph-utils";
 export * from "./plugin-registry";
 export * from "./permissions";
+export * from "./note-diff";

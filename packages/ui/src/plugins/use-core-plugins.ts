@@ -10,6 +10,7 @@ const NO_CONTRIBUTIONS: CorePluginContributions = {
   commands: [],
   statusItems: [],
   ribbonIcons: [],
+  noteToolbarButtons: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],
@@ -36,11 +37,15 @@ export function useCorePlugins(host: CorePluginHost | null) {
 }
 
 /**
- * Runs plugin commands from their `hotkey`. App shortcuts win: a key the app handled (`defaultPrevented`) is left
- * alone, so a plugin cannot take over Ctrl+S and the like whatever order the listeners were added in. The check runs
- * after every app listener yet still inside the event, so a plugin key can also stop the browser's own action
- * (Ctrl+D would otherwise open the bookmark dialog): the capture listener, which runs first, appends a one-shot
- * bubble listener to `window`, the last stop of the bubble phase, after the app's own listeners there.
+ * Runs plugin commands from their `hotkey`. App shortcuts win: a key an app listener handled (called
+ * `preventDefault` or stopped the event) is left alone, so a plugin cannot take over Ctrl+S and the like whatever order
+ * the listeners were added in. The editor's own keymap does not count as the app: CodeMirror binds Mod-g (find next)
+ * and Mod-d (select next occurrence), which the app's Ctrl+G / Ctrl+D always overrode before these became plugins.
+ *
+ * How: the capture listener on `window` runs first. On a match it prevents the default right away (the browser's action,
+ * e.g. Ctrl+D's bookmark dialog, and CodeMirror, which ignores prevented events) and watches whether anything calls
+ * `preventDefault` again; then it appends a one-shot bubble listener to `window`, the last stop of the bubble phase,
+ * after the app's own listeners, which runs the command unless an app listener claimed the key.
  */
 export function useCorePluginHotkeys(commands: HostCommand[]) {
   const ref = useRef(commands);
@@ -48,12 +53,19 @@ export function useCorePluginHotkeys(commands: HostCommand[]) {
   useEffect(() => {
     const mac = isMacPlatform();
     const onCapture = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
       const cmd = ref.current.find((c) => c.hotkey && matchesHotkey(e, c.hotkey, mac));
       if (!cmd) return;
+      e.preventDefault();
+      let appHandled = false;
+      const prevent = e.preventDefault.bind(e);
+      e.preventDefault = () => {
+        appHandled = true;
+        prevent();
+      };
       const afterApp = (ev: KeyboardEvent) => {
         window.removeEventListener("keydown", afterApp);
-        if (ev !== e || e.defaultPrevented) return;
-        e.preventDefault();
+        if (ev !== e || appHandled) return;
         cmd.run();
       };
       window.addEventListener("keydown", afterApp);

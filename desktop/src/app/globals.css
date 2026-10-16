@@ -1,7 +1,8 @@
 @import "tailwindcss";
 @import "@noteriv/ui/styles/app.css";
-/* Tailwind v4 scans only the project tree; classes used by the shared UI package must be sourced explicitly. */
+/* Tailwind v4 scans only the project tree; classes used by the shared UI and plugin packages must be sourced explicitly. */
 @source "../../../packages/ui";
+@source "../../../packages/plugins/src";
 
 /* Unlayered on purpose: the desktop UI was written against this reset beating Tailwind spacing utilities. */
 * {

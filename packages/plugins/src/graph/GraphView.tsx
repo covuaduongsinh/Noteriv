@@ -1,16 +1,39 @@
-"use client";
-
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
-import type { VaultAdapter } from "@noteriv/core/vault-adapter";
+import type { VaultApi } from "@noteriv/plugin-api";
 import { buildLinkGraph } from "@noteriv/core/graph-utils";
+import { scanVault } from "../shared/vault";
 
 // ── Types ──
 
+export interface GraphLabels {
+  filter: string;
+  close: string;
+  zoomIn: string;
+  zoomOut: string;
+  building: string;
+  notes: string;
+  connections: string;
+  connectionCount: (n: number) => string;
+  oneWay: string;
+  reciprocal: string;
+  legend: string;
+}
+
 export interface GraphViewProps {
-  adapter: VaultAdapter;
-  currentNoteId: string | null;
-  onNoteSelect: (noteId: string) => void;
+  vault: VaultApi;
+  /** Vault-relative path of the open note (highlighted), if any. */
+  currentPath: string | null;
+  onNoteSelect: (path: string) => void;
   onClose: () => void;
+  labels: GraphLabels;
+}
+
+/** Notes and link edges of a vault; node ids are vault-relative paths. */
+export async function loadLinkGraph(vault: VaultApi) {
+  const scanned = await scanVault(vault);
+  const notes = scanned.map((n) => ({ id: n.path, path: n.path, name: n.path.split("/").pop() ?? n.path }));
+  const contents = new Map(scanned.map((n) => [n.path, n.content]));
+  return { notes, ...buildLinkGraph(notes, contents) };
 }
 
 interface GraphNode {
@@ -51,7 +74,7 @@ const HIT_PADDING = 4;
 // ── Helpers ──
 
 function labelFromName(name: string): string {
-  return name.replace(/\.md$/i, "");
+  return name.replace(/\.(md|markdown)$/i, "");
 }
 
 function nodeRadius(connections: number, maxConnections: number): number {
@@ -83,12 +106,7 @@ function drawArrowHead(
 
 // ── Component ──
 
-export default function GraphView({
-  adapter,
-  currentNoteId,
-  onNoteSelect,
-  onClose,
-}: GraphViewProps) {
+export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onClose, labels }: GraphViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -137,18 +155,8 @@ export default function GraphView({
 
     async function buildGraph() {
       try {
-        const notes = await adapter.listNotes();
-
-        const contents = new Map<string, string>();
-        await Promise.all(
-          notes.map(async (n) => {
-            contents.set(n.id, (await adapter.readNote(n.id)) ?? "");
-          })
-        );
-
+        const { notes, edges: edgeList, connections: connectionCount } = await loadLinkGraph(vault);
         if (cancelled) return;
-
-        const { edges: edgeList, connections: connectionCount } = buildLinkGraph(notes, contents);
 
         // Create nodes with random initial positions
         const cx = window.innerWidth / 2;
@@ -179,7 +187,7 @@ export default function GraphView({
 
     buildGraph();
     return () => { cancelled = true; };
-  }, [adapter]);
+  }, [vault]);
 
   // ── Computed values ──
   const stats = useMemo(() => {
@@ -592,14 +600,6 @@ export default function GraphView({
     cam.zoom = Math.max(0.1, cam.zoom * 0.8);
   }, []);
 
-  useEffect(() => {
-    const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", handleKey);
-    return () => window.removeEventListener("keydown", handleKey);
-  }, [onClose]);
-
   const handleBackdropClick = useCallback(
     (e: React.MouseEvent) => {
       if (e.target === overlayRef.current) onClose();
@@ -617,14 +617,14 @@ export default function GraphView({
           </svg>
           <input
             type="text"
-            placeholder="Filter nodes..."
+            placeholder={labels.filter}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
           />
         </div>
 
-        <button className="graph-close-btn" onClick={onClose}>
+        <button className="graph-close-btn" onClick={onClose} title={labels.close} aria-label={labels.close}>
           <svg width="14" height="14" viewBox="0 0 14 14">
             <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
           </svg>
@@ -650,36 +650,34 @@ export default function GraphView({
         {tooltip && (
           <div className="graph-tooltip" style={{ left: tooltip.x, top: tooltip.y }}>
             <div>{tooltip.label}</div>
-            <div className="graph-tooltip-connections">
-              {tooltip.connections} connection{tooltip.connections !== 1 ? "s" : ""}
-            </div>
+            <div className="graph-tooltip-connections">{labels.connectionCount(tooltip.connections)}</div>
           </div>
         )}
 
         <div className="graph-stats">
           <div className="graph-stat-item">
             <span className="graph-stat-value">{stats.noteCount}</span>
-            <span>notes</span>
+            <span>{labels.notes}</span>
           </div>
           <div className="graph-stat-item">
             <span className="graph-stat-value">{stats.edgeCount}</span>
-            <span>connections</span>
+            <span>{labels.connections}</span>
           </div>
         </div>
 
-        <div className="graph-edge-legend" aria-label="Link direction legend">
-          <span><span className="graph-legend-arrow">→</span> one-way</span>
-          <span><span className="graph-legend-arrow">↔</span> reciprocal</span>
+        <div className="graph-edge-legend" aria-label={labels.legend}>
+          <span><span className="graph-legend-arrow">→</span> {labels.oneWay}</span>
+          <span><span className="graph-legend-arrow">↔</span> {labels.reciprocal}</span>
         </div>
 
         <div className="graph-zoom-controls">
-          <button className="graph-zoom-btn" onClick={handleZoomIn} title="Zoom in">+</button>
-          <button className="graph-zoom-btn" onClick={handleZoomOut} title="Zoom out">&minus;</button>
+          <button className="graph-zoom-btn" onClick={handleZoomIn} title={labels.zoomIn}>+</button>
+          <button className="graph-zoom-btn" onClick={handleZoomOut} title={labels.zoomOut}>&minus;</button>
         </div>
 
         {loading && (
           <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", color: "var(--text-muted)", fontSize: 14 }}>
-            Building graph...
+            {labels.building}
           </div>
         )}
       </div>

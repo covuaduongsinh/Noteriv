@@ -33,17 +33,6 @@ export function NewNoteIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function GraphIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M6 7.2l4-2.4M6 8.8l4 2.4" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
 export function SearchIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -223,16 +212,6 @@ export function AttachmentIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function PresentIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="1.5" y="2.5" width="13" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M6.5 13.5h3M8 10.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M6 7l2.3-1.5L6 4v3z" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function PublishIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -243,9 +222,7 @@ export function PublishIcon({ size = 14, className }: IconProps) {
   );
 }
 
-/** Used for both File Recovery/Time Scrubber (D5) and Note History (D6) —
- * same clock glyph desktop uses in both NoteHistory.tsx's and
- * FileRecovery.tsx's own headers. */
+/** File Recovery button (D5): the clock glyph of FileRecovery.tsx's header. */
 export function HistoryIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>

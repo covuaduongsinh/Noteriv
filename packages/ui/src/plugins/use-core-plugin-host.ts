@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { createElement, useCallback, useEffect, useRef, useState } from "react";
 import type { EditorApi, PluginApi, PluginPlatform, ViewState } from "@noteriv/plugin-api";
 import type { CorePluginDef, PluginStateStore } from "@noteriv/core/plugin-registry";
 import type { VaultAdapter } from "@noteriv/core/vault-adapter";
@@ -40,6 +40,27 @@ export interface CorePluginNotice {
 export interface ActiveCorePluginView {
   type: string;
   state: ViewState;
+}
+
+/**
+ * `markdown.renderReadOnly`: the editor's read-only live preview, in a React root of its own. CodeMirror is already
+ * part of the page; the component itself is loaded on first use.
+ */
+function renderReadOnly(source: string, el: HTMLElement): () => void {
+  let disposed = false;
+  let unmount: (() => void) | null = null;
+  void Promise.all([import("react-dom/client"), import("../editor/ReadOnlyView")]).then(([{ createRoot }, mod]) => {
+    if (disposed) return;
+    const root = createRoot(el);
+    root.render(createElement(mod.default, { content: source }));
+    unmount = () => root.unmount();
+  });
+  return () => {
+    disposed = true;
+    // Same reason as the plugin views: cleanup may run while React is dispatching an event of the plugin's.
+    const u = unmount;
+    if (u) setTimeout(u, 0);
+  };
 }
 
 /**
@@ -89,6 +110,7 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
       closeView: (types) => setActiveView((v) => (v && types.includes(v.type) ? null : v)),
       onVaultChanged: () => portsRef.current.onVaultChanged?.(),
       toggleSidebarPanel: togglePanel,
+      renderReadOnly,
       notify: (message, durationMs = 4000) => {
         const key = `core:${Date.now()}:${Math.random().toString(36).slice(2)}`;
         setNotices((prev) => [...prev, { key, message }]);

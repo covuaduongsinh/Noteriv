@@ -11,7 +11,6 @@
     "./markdown/*": "./src/markdown/*.ts",
     "./editor": "./src/editor/index.ts",
     "./editor/*": "./src/editor/*.ts",
-    "./graph": "./src/graph/index.ts",
     "./panels": "./src/panels/index.ts",
     "./panels/*": "./src/panels/*.ts",
     "./styles/*": "./styles/*",

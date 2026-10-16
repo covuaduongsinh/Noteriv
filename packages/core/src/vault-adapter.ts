@@ -23,6 +23,22 @@ export interface NoteDates {
   modifiedAt: number;
 }
 
+/** A saved past version of a note. */
+export interface NoteSnapshotInfo {
+  id: string;
+  /** Milliseconds since epoch. */
+  timestamp: number;
+  size: number;
+}
+
+/** A git commit that touched a note. */
+export interface NoteCommitInfo {
+  hash: string;
+  author: string;
+  date: string;
+  message: string;
+}
+
 export interface NoteBacklink {
   ref: NoteRef;
   /** 1-based line of the link. Absent when the backend cannot say (web). */
@@ -61,6 +77,16 @@ export interface VaultAdapter {
    * `attachments/<name>` in the vault). Optional: plugins get an error where it is missing.
    */
   saveAttachment?(name: string, data: Blob): Promise<string>;
+  /**
+   * Past versions of a note (all optional; callers treat a missing method as "no history of that kind"). Snapshots
+   * are automatic copies (web: server job every ~10 minutes; desktop: `.noteriv/snapshots` on every save); git history
+   * needs a git repository (desktop) or a git sync connection that has run (web). Lists are newest first.
+   */
+  historySources?(): Promise<{ snapshots: boolean; git: boolean }>;
+  noteSnapshots?(id: string): Promise<NoteSnapshotInfo[]>;
+  readNoteSnapshot?(id: string, snapshotId: string): Promise<string | null>;
+  noteGitLog?(id: string): Promise<NoteCommitInfo[]>;
+  readNoteAtCommit?(id: string, hash: string): Promise<string | null>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

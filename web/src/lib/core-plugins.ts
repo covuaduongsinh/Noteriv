@@ -59,6 +59,26 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Ghi âm từ microphone, lưu thành file đính kèm và chèn link vào note đang mở.",
     load: () => import("@noteriv/plugins/audio-recorder"),
   },
+  {
+    id: "graph",
+    name: "Graph view",
+    description: "Sơ đồ mọi note và wiki-link giữa chúng; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/graph"),
+  },
+  {
+    id: "slides",
+    name: "Trình chiếu",
+    description: "Trình chiếu note đang mở toàn màn hình, mỗi đoạn ngăn bởi --- là một trang; có ghi chú người trình bày và tổng quan.",
+    load: () => import("@noteriv/plugins/slides"),
+  },
+  {
+    id: "note-history",
+    name: "Lịch sử note",
+    description: "Time scrubber xem lại các bản lưu tự động của note (Ctrl+Shift+H) và lịch sử git khi vault có đồng bộ git; khôi phục phiên bản cũ.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/note-history"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

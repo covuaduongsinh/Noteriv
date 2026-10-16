@@ -45,7 +45,6 @@ export type HotkeyAction =
   // Outline
   | "toggleOutline"
   // New features
-  | "graphView"
   | "toggleBacklinks"
   | "toggleTags"
   | "toggleBookmark"
@@ -53,7 +52,6 @@ export type HotkeyAction =
   | "fileRecovery"
   | "exportPDF"
   | "attachments"
-  | "slidePresentation"
   | "pluginManager"
   | "cssSnippets"
   // New features
@@ -70,8 +68,6 @@ export type HotkeyAction =
   | "exportPdfAnnotations"
   | "openTrash"
   | "togglePinTab"
-  | "noteHistory"
-  | "timeScrubber"
   | "splitEditor"
   | "closeSplit";
 
@@ -138,7 +134,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "toggleOutline", label: "Toggle Outline", keys: "Ctrl+Shift+O", category: "View" },
 
   // New features
-  { action: "graphView", label: "Graph View", keys: "Ctrl+G", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
@@ -146,7 +141,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "fileRecovery", label: "File Recovery", keys: "", category: "File" },
   { action: "exportPDF", label: "Export as PDF", keys: "", category: "File" },
   { action: "attachments", label: "Attachment Manager", keys: "", category: "Edit" },
-  { action: "slidePresentation", label: "Start Presentation", keys: "", category: "View" },
   // Ecosystem
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "View" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "View" },
@@ -168,8 +162,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   // Tab pinning
   { action: "togglePinTab", label: "Pin/Unpin Tab", keys: "Ctrl+Shift+T", category: "File" },
   // Note history & lint
-  { action: "noteHistory", label: "Note History", keys: "", category: "View" },
-  { action: "timeScrubber", label: "Time Scrubber", keys: "Ctrl+Shift+H", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
 ];

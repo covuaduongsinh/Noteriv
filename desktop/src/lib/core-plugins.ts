@@ -59,6 +59,26 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Record from the microphone, save it as an attachment and insert the link into the open note.",
     load: () => import("@noteriv/plugins/audio-recorder"),
   },
+  {
+    id: "graph",
+    name: "Graph view",
+    description: "Every note and the wiki-links between them; click a note to open it. Ctrl+G or the ribbon button.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/graph"),
+  },
+  {
+    id: "slides",
+    name: "Slides",
+    description: "Present the open note full screen, one slide per --- section, with speaker notes and an overview.",
+    load: () => import("@noteriv/plugins/slides"),
+  },
+  {
+    id: "note-history",
+    name: "Note history",
+    description: "Time scrubber over the note's saved snapshots (Ctrl+Shift+H) and its git history; restore an earlier version.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/note-history"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";
