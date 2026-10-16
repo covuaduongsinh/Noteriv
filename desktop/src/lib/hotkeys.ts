@@ -55,7 +55,6 @@ export type HotkeyAction =
   | "pluginManager"
   | "cssSnippets"
   // New features
-  | "newBoard"
   | "insertDrawing"
   | "insertToc"
   | "updateToc"
@@ -145,7 +144,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "View" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "View" },
   // New features
-  { action: "newBoard", label: "New Board", keys: "", category: "File" },
   { action: "insertDrawing", label: "New Drawing", keys: "", category: "Edit" },
   { action: "insertToc", label: "Insert Table of Contents", keys: "", category: "Edit" },
   { action: "updateToc", label: "Update Table of Contents", keys: "", category: "Edit" },

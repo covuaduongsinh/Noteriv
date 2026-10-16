@@ -1,5 +1,3 @@
-"use client";
-
 import { useState, useCallback, useRef, useEffect } from "react";
 import {
   parseBoard,
@@ -14,7 +12,7 @@ import {
   type BoardCard,
 } from "@noteriv/core/board-utils";
 
-interface BoardViewProps {
+export interface BoardViewProps {
   content: string;
   onChange: (newContent: string) => void;
 }
@@ -52,7 +50,8 @@ interface DragState {
   drop: { colId: string; index: number } | null;
 }
 
-export default function BoardView({ content, onChange }: BoardViewProps) {
+/** Kanban board over a board note: columns are `## headings`, cards are `- [ ]` items (see core board-utils). */
+export function BoardView({ content, onChange }: BoardViewProps) {
   const [board, setBoard] = useState<BoardData>(() => parseBoard(content));
   const [dragCard, setDragCard] = useState<{ cardId: string; colId: string } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ colId: string; index: number } | null>(null);

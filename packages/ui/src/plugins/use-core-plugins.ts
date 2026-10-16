@@ -11,6 +11,7 @@ const NO_CONTRIBUTIONS: CorePluginContributions = {
   statusItems: [],
   ribbonIcons: [],
   noteToolbarButtons: [],
+  fileViews: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],

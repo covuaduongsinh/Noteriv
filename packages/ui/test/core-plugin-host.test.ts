@@ -1,15 +1,17 @@
 import { act, createElement } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, describe, expect, it, vi } from "vitest";
-import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import type { CorePlugin, FileViewContext, PluginApi } from "@noteriv/plugin-api";
 import { MemoryVaultAdapter } from "@noteriv/core/memory-vault-adapter";
 import type { CorePluginDef, PluginStateStore } from "@noteriv/core/plugin-registry";
 import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registry";
 import {
   createCorePluginHost,
   CorePluginsSection,
+  CorePluginFileView,
   CorePluginNoteToolbarButtons,
   CorePluginSidePanels,
+  matchFileView,
   CorePluginViewOverlay,
   listVaultEntries,
   settingsKeyStateStore,
@@ -472,6 +474,73 @@ describe("note toolbar buttons, history and read-only rendering", () => {
     expect(el.textContent).toBe("# Title");
     cleanup();
     expect(el.textContent).toBe("");
+  });
+});
+
+describe("file views (registerFileView + CorePluginFileView)", () => {
+  it("finds the first matching view in registration order; a throwing match counts as no; off means gone", async () => {
+    const plugin: CorePlugin = {
+      onload: (api) => {
+        api.ui.registerFileView({ id: "broken", match: () => { throw new Error("boom"); }, mount: () => {} });
+        api.ui.registerFileView({ id: "board", match: (f) => f.path.endsWith(".board.md"), mount: () => {} });
+        api.ui.registerFileView({ id: "any", match: () => true, mount: () => {} });
+      },
+    };
+    const { host } = makeHost([def("b", plugin)]);
+    await host.registry.setEnabled("b", true);
+    const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+    expect(host.findFileView("x.board.md", "")?.key).toBe("b:board");
+    expect(matchFileView(host.getContributions().fileViews, "note.md", "")?.key).toBe("b:any");
+    errSpy.mockRestore();
+    await host.registry.setEnabled("b", false);
+    expect(host.findFileView("x.board.md", "")).toBeUndefined();
+  });
+
+  it("mounts once per file, sends outside changes through update but not its own writes, and cleans up", async () => {
+    const update = vi.fn();
+    const destroy = vi.fn();
+    let ctx!: FileViewContext;
+    const plugin: CorePlugin = {
+      onload: (api) =>
+        api.ui.registerFileView({
+          id: "v",
+          match: () => true,
+          mount: (el, c) => {
+            ctx = c;
+            el.textContent = `view of ${c.path}`;
+            return { update, destroy };
+          },
+        }),
+    };
+    const { host } = makeHost([def("f", plugin)]);
+    await host.registry.setEnabled("f", true);
+    const view = host.findFileView("a.md", "one")!;
+
+    const onChange = vi.fn();
+    const el = document.createElement("div");
+    const root = createRoot(el);
+    const render = (path: string, content: string) =>
+      act(async () => root.render(createElement(CorePluginFileView, { key: path, view, path, content, onChange })));
+    await render("a.md", "one");
+    expect(el.textContent).toBe("view of a.md");
+    expect(ctx.content).toBe("one");
+
+    // The view's own write reaches the app, and coming back as the new content is not echoed to it.
+    act(() => ctx.setContent("two"));
+    expect(onChange).toHaveBeenCalledWith("two");
+    await render("a.md", "two");
+    expect(update).not.toHaveBeenCalled();
+
+    // A change from elsewhere is.
+    await render("a.md", "three");
+    expect(update).toHaveBeenCalledWith("three");
+
+    // Another file: the old instance is destroyed, a new one mounted.
+    await render("b.md", "x");
+    expect(destroy).toHaveBeenCalledOnce();
+    expect(el.textContent).toBe("view of b.md");
+    await act(async () => root.unmount());
+    expect(destroy).toHaveBeenCalledTimes(2);
   });
 });
 

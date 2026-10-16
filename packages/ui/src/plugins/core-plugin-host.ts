@@ -18,6 +18,8 @@ import {
   type SidebarPanel,
   type SettingsTab,
   type VaultEntry,
+  type FileViewContext,
+  type FileViewInstance,
   type ViewFactory,
   type ViewState,
 } from "@noteriv/plugin-api";
@@ -88,6 +90,12 @@ export interface HostNoteToolbarButton extends Owned {
   onClick(): void;
 }
 
+export interface HostFileView extends Owned {
+  /** Guarded: a plugin's match that throws counts as "no". */
+  match(file: { path: string; content: string }): boolean;
+  mount(container: HTMLElement, ctx: FileViewContext): FileViewInstance | void;
+}
+
 export interface HostPanel extends Owned {
   title: string;
   icon?: string;
@@ -99,19 +107,22 @@ export interface CorePluginContributions {
   statusItems: HostStatusItem[];
   ribbonIcons: HostRibbonIcon[];
   noteToolbarButtons: HostNoteToolbarButton[];
+  /** In registration order; the first that matches a file wins. */
+  fileViews: HostFileView[];
   sidebarPanels: HostPanel[];
   settingsTabs: HostPanel[];
   /** View types plugins registered, in registration order. */
   viewTypes: string[];
 }
 
-type Kind = "commands" | "statusItems" | "ribbonIcons" | "noteToolbarButtons" | "sidebarPanels" | "settingsTabs";
+type Kind = "commands" | "statusItems" | "ribbonIcons" | "noteToolbarButtons" | "fileViews" | "sidebarPanels" | "settingsTabs";
 
 const EMPTY: CorePluginContributions = {
   commands: [],
   statusItems: [],
   ribbonIcons: [],
   noteToolbarButtons: [],
+  fileViews: [],
   sidebarPanels: [],
   settingsTabs: [],
   viewTypes: [],
@@ -125,6 +136,8 @@ export interface CorePluginHost {
   /** App-side events (`file-open`, `editor-change`, …) delivered to every plugin's `events.on` handlers. */
   emit(event: PluginEvent, ...args: unknown[]): void;
   getView(type: string): ViewFactory | undefined;
+  /** The file view (`ui.registerFileView`) that shows this file instead of the editor, if any. */
+  findFileView(path: string, content: string): HostFileView | undefined;
   /** For renderers: run every registered post-processor over a rendered note. */
   runPostProcessors(el: HTMLElement, ctx: PostProcessorContext): void;
   init(): Promise<void>;
@@ -366,6 +379,22 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
             onClick: guard(pluginId, `note toolbar ${b.id}`, () => b.onClick()),
           }),
         removeNoteToolbarButton: (id) => remove("noteToolbarButtons", key(id)),
+        registerFileView: (v) =>
+          upsert("fileViews", {
+            pluginId,
+            key: key(v.id),
+            id: v.id,
+            match: (file) => {
+              try {
+                return v.match(file) === true;
+              } catch (e) {
+                report(pluginId, `file view ${v.id} match`, e);
+                return false;
+              }
+            },
+            mount: (container, ctx) => v.mount(container, ctx),
+          }),
+        unregisterFileView: (id) => remove("fileViews", key(id)),
       },
 
       events: {
@@ -418,6 +447,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
       statusItems: keep(contributions.statusItems),
       ribbonIcons: keep(contributions.ribbonIcons),
       noteToolbarButtons: keep(contributions.noteToolbarButtons),
+      fileViews: keep(contributions.fileViews),
       sidebarPanels: keep(contributions.sidebarPanels),
       settingsTabs: keep(contributions.settingsTabs),
       viewTypes: viewTypes(),
@@ -457,6 +487,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
       }
     },
     getView: (type) => views.get(type)?.factory,
+    findFileView: (path, content) => contributions.fileViews.find((v) => v.match({ path, content })),
     runPostProcessors(el, ctx) {
       for (const p of postProcessors.slice()) {
         try {

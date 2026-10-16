@@ -79,6 +79,12 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/note-history"),
   },
+  {
+    id: "board",
+    name: "Board (Kanban)",
+    description: "Show .board.md files and notes with board: true in their frontmatter as a Kanban board (## headings are columns, - [ ] items are cards); New board command.",
+    load: () => import("@noteriv/plugins/board"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

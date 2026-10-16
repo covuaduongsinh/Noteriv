@@ -21,6 +21,9 @@ import {
   CorePluginStatusItems,
   CorePluginSidePanels,
   CorePluginViewOverlay,
+  CorePluginFileView,
+  matchFileView,
+  type HostFileView,
   useCorePluginHost,
   useCorePluginHotkeys,
   useCorePlugins,
@@ -32,7 +35,6 @@ import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
 import DataviewBlock from "@/components/DataviewBlock";
-import { isBoardContent, isBoardFile, createBoardContent } from "@noteriv/core/board-utils";
 import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
@@ -83,7 +85,6 @@ const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Re
 const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
 const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
-const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const DrawingEditor = dynamic(() => import("@/components/DrawingEditor"), { ssr: false });
 const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
 
@@ -515,15 +516,18 @@ export default function Home() {
   }, [appState, tabs, settings.autoSaveInterval]);
 
   // ============================================================
-  // Board auto-save (every 5s for .board.md files)
+  // Quick auto-save (every 5s) for files shown by a core plugin's file view (Board…): their edits are discrete
+  // actions (move a card), not typing, so they should not wait for the 30 s editor auto-save.
   // ============================================================
 
+  /** Set further down, once the core plugins are known; read here inside the interval. */
+  const fileViewForTabRef = useRef<(filePath: string, content: string) => HostFileView | undefined>(() => undefined);
   useEffect(() => {
     if (appState !== "app") return;
     const interval = setInterval(async () => {
       if (!window.electronAPI) return;
       for (const tab of tabs) {
-        if (tab.content !== tab.savedContent && (isBoardFile(tab.filePath) || isBoardContent(tab.content))) {
+        if (tab.content !== tab.savedContent && !tab.kind && fileViewForTabRef.current(tab.filePath, tab.content)) {
           const success = await window.electronAPI.writeFile(tab.filePath, tab.content);
           if (success) {
             setTabs((prev) =>
@@ -1187,20 +1191,6 @@ export default function Home() {
     return () => document.removeEventListener("click", handleLinkClick, true);
   }, []);
 
-  // Create new task board
-  const handleNewBoard = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    let name = "Board.board.md";
-    let counter = 1;
-    while (names.includes(name)) { counter++; name = `Board ${counter}.board.md`; }
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, createBoardContent());
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
   // Create new canvas/whiteboard
   const handleNewCanvas = useCallback(async () => {
     if (!window.electronAPI || !activeVault) return;
@@ -1334,7 +1324,6 @@ export default function Home() {
       attachments: () => setShowAttachments(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
-      newBoard: handleNewBoard,
       newCanvas: handleNewCanvas,
       insertDrawing: handleNewDrawing,
       insertToc: handleInsertToc,
@@ -1355,7 +1344,7 @@ export default function Home() {
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1518,7 +1507,6 @@ export default function Home() {
         attachments: () => setShowAttachments(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
-        newBoard: handleNewBoard,
         newCanvas: handleNewCanvas,
         insertDrawing: handleNewDrawing,
         insertToc: handleInsertToc,
@@ -1551,7 +1539,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {
@@ -1628,6 +1616,13 @@ export default function Home() {
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
+
+  // Core plugin file views (Board…) replace the editor of the tabs they match, except in source mode.
+  const fileViewFor = (filePath: string, text: string) =>
+    matchFileView(corePlugins.contributions.fileViews, relativeVaultPath(activeVaultPath, filePath), text);
+  fileViewForTabRef.current = fileViewFor;
+  const mainFileView = currentTab && !currentTab.kind && viewMode !== "source" ? fileViewFor(currentTab.filePath, content) : undefined;
+  const splitFileView = splitTabState && viewMode !== "source" ? fileViewFor(splitTabState.filePath, splitContent) : undefined;
 
   // App events for core plugins. Text tabs only: canvas/drawing/PDF tabs have no editor content.
   const coreEventTab = currentTab && !currentTab.kind ? currentTab.filePath : null;
@@ -1884,14 +1879,19 @@ export default function Home() {
                     onRename={handleRenameCurrentFile}
                   />
                   {!zenMode &&
-                    !isBoardFile(currentTab.filePath) &&
-                    !isBoardContent(content) &&
+                    !mainFileView &&
                     viewMode !== "view" && (
                       <FormattingToolbar onAction={handleCommandExecute} />
                     )}
                   <div className="flex-1 overflow-hidden">
-                    {(isBoardFile(currentTab.filePath) || isBoardContent(content)) && viewMode !== "source" ? (
-                      <BoardView content={content} onChange={handleContentChange} />
+                    {mainFileView ? (
+                      <CorePluginFileView
+                        key={`${mainFileView.key}:${currentTab.filePath}`}
+                        view={mainFileView}
+                        path={relativeVaultPath(activeVaultPath, currentTab.filePath)}
+                        content={content}
+                        onChange={handleContentChange}
+                      />
                     ) : viewMode === "view" ? (
                       <ReadOnlyView content={content} onChange={handleContentChange} />
                     ) : viewMode === "source" ? (
@@ -1920,8 +1920,14 @@ export default function Home() {
                       </button>
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      {(isBoardFile(splitTabState.filePath) || isBoardContent(splitContent)) && viewMode !== "source" ? (
-                        <BoardView content={splitContent} onChange={handleSplitContentChange} />
+                      {splitFileView ? (
+                        <CorePluginFileView
+                          key={`${splitFileView.key}:${splitTabState.filePath}`}
+                          view={splitFileView}
+                          path={relativeVaultPath(activeVaultPath, splitTabState.filePath)}
+                          content={splitContent}
+                          onChange={handleSplitContentChange}
+                        />
                       ) : viewMode === "view" ? (
                         <ReadOnlyView content={splitContent} onChange={handleSplitContentChange} />
                       ) : viewMode === "source" ? (

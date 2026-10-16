@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.5";
+export const PLUGIN_API_VERSION = "1.0.0-draft.6";
 
 // ─── Permissions (community tier) ───
 
@@ -202,6 +202,36 @@ export interface ViewState {
 
 export type ViewFactory = () => ViewHandle;
 
+/** What a file view is given for one tab (one pane) showing one file. */
+export interface FileViewContext {
+  /** Vault-relative path of the file. */
+  path: string;
+  /** The tab's content when the view was mounted. */
+  content: string;
+  /** Writes into the tab's buffer, exactly like typing in the editor: dirty marker, save, auto-save, collaboration. */
+  setContent(content: string): void;
+}
+
+export interface FileViewInstance {
+  /** The tab's content changed elsewhere (edited in source mode, changed on disk, a collaborator). Never called with
+   * the content this view itself just passed to `setContent`. */
+  update?(content: string): void;
+  destroy?(): void;
+}
+
+/**
+ * A view that replaces the editor for files it recognises (a Kanban board, later Canvas, Drawing…). Core tier only.
+ * It shows inside the tab, in the main and the split pane alike, one instance per pane. Source mode always shows the
+ * plain editor, so the file can still be edited as text.
+ */
+export interface FileView {
+  /** Unique within the plugin. */
+  id: string;
+  /** Whether this view shows the file. Called often (every render of a tab): keep it cheap. */
+  match(file: { path: string; content: string }): boolean;
+  mount(container: HTMLElement, ctx: FileViewContext): FileViewInstance | void;
+}
+
 export interface UiApi {
   addCommand(cmd: PluginCommand): void;
   removeCommand(id: string): void;
@@ -226,6 +256,9 @@ export interface UiApi {
    */
   addNoteToolbarButton(button: NoteToolbarButton): void;
   removeNoteToolbarButton(id: string): void;
+  /** Core tier only. Shows files this view `match`es with it instead of the editor (see `FileView`). */
+  registerFileView(view: FileView): void;
+  unregisterFileView(id: string): void;
 }
 
 // ─── Events ───

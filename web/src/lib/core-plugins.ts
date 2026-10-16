@@ -79,6 +79,12 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/note-history"),
   },
+  {
+    id: "board",
+    name: "Board (Kanban)",
+    description: "Hiện file .board.md hoặc note có frontmatter board: true thành bảng Kanban (cột là heading ##, thẻ là - [ ]); lệnh tạo board mới.",
+    load: () => import("@noteriv/plugins/board"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

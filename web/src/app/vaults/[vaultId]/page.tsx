@@ -39,6 +39,8 @@ import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
   CorePluginNoteToolbarButtons,
+  CorePluginFileView,
+  matchFileView,
   CorePluginSidePanels,
   CorePluginViewOverlay,
   useCorePluginHost,
@@ -57,7 +59,6 @@ import {
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
-import { isBoardContent } from "@noteriv/core/board-utils";
 import { isCanvasContent } from "@noteriv/core/canvas-utils";
 import { isDrawingContent } from "@noteriv/core/drawing-utils";
 import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
@@ -96,7 +97,6 @@ function saveRecentCommand(action: string) {
   }
 }
 
-const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
 const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
 const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
 const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
@@ -1171,8 +1171,14 @@ export default function VaultPage() {
         }
       : undefined;
 
-    if (isBoardContent(content)) {
-      return <BoardView key={tab.noteId} content={content} onChange={onChange} />;
+    // A core plugin's file view (Board…) replaces the editor, except in source mode where the file stays editable as text.
+    const fileView = mode !== "source" ? matchFileView(corePlugins.contributions.fileViews, tab.path, content) : undefined;
+    if (fileView) {
+      return (
+        <div className="flex-1 min-h-0" key={`${fileView.key}:${tab.noteId}`}>
+          <CorePluginFileView view={fileView} path={tab.path} content={content} onChange={onChange} />
+        </div>
+      );
     }
     if (isCanvasContent(content)) {
       return (
