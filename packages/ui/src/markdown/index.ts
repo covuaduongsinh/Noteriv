@@ -9,10 +9,7 @@ export { markdownRenderTheme, mdHighlightStyle, editorTheme } from "./theme";
 export { RenderedMarkdownWidget } from "./widget";
 export {
   setLocalImageLoader,
-  setDataviewSource,
   type LocalImageLoader,
-  type DataviewSource,
-  type DataviewSourceNote,
 } from "./vault-hooks";
 export { setEditorViewForImages, setImageLightboxHandler } from "./renderers/images";
 export {

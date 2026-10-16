@@ -85,6 +85,19 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Show .board.md files and notes with board: true in their frontmatter as a Kanban board (## headings are columns, - [ ] items are cards); New board command.",
     load: () => import("@noteriv/plugins/board"),
   },
+  {
+    id: "mermaid",
+    name: "Mermaid",
+    description: "Diagrams from ```mermaid code blocks in the editor, reading view and PDF export. The library loads on the first diagram.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/mermaid"),
+  },
+  {
+    id: "dataview",
+    name: "Dataview",
+    description: "Query your notes with ```dataview blocks (TABLE / LIST / TASK, by folder, tag or frontmatter); Insert Dataview query command.",
+    load: () => import("@noteriv/plugins/dataview"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

@@ -7,7 +7,6 @@ import {
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
 } from "@noteriv/core/markdown-code-block-registry";
-import { getDataviewSource } from "../vault-hooks";
 
 // Simple token-based syntax highlighting
 // Each language defines regex patterns with associated CSS classes
@@ -207,163 +206,6 @@ interface CodeBlockInfo {
   closeLine: number;
 }
 
-class DataviewWidget extends WidgetType {
-  constructor(readonly query: string) {
-    super();
-  }
-
-  toDOM() {
-    const container = document.createElement("div");
-    container.className = "md-dataview";
-    container.style.cssText = "background:var(--bg-tertiary);border:1px solid var(--border);border-radius:8px;padding:12px;margin:4px 0;font-size:12px;color:var(--text-primary)";
-
-    const header = document.createElement("div");
-    header.style.cssText = "font-size:10px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px";
-    header.textContent = "DATAVIEW";
-    container.appendChild(header);
-
-    const loading = document.createElement("div");
-    loading.style.cssText = "color:var(--text-secondary);font-size:12px";
-    loading.textContent = "Running query...";
-    container.appendChild(loading);
-
-    this.runQuery(container, loading);
-
-    return container;
-  }
-
-  private async runQuery(container: HTMLElement, loading: HTMLElement) {
-    try {
-      const { parseQuery, executeQuery, parseNoteData } = await import("@noteriv/core/dataview");
-
-      const parsed = parseQuery(this.query);
-      if ("error" in parsed) {
-        loading.textContent = `Error: ${parsed.error}`;
-        loading.style.color = "var(--red)";
-        return;
-      }
-
-      // The host app decides which notes a query runs over (see vault-hooks.ts).
-      const source = getDataviewSource();
-      if (!source) {
-        loading.textContent = "No vault found";
-        loading.style.color = "var(--red)";
-        return;
-      }
-
-      const notes = (await source()).map((n) =>
-        parseNoteData(n.path, n.content, { created: n.created, modified: n.modified, size: n.size })
-      );
-
-      const result = executeQuery(parsed, notes);
-
-      container.removeChild(loading);
-
-      if (result.type === "TABLE") {
-        const table = document.createElement("table");
-        table.style.cssText = "width:100%;border-collapse:collapse;font-size:12px";
-
-        const thead = document.createElement("thead");
-        const headerRow = document.createElement("tr");
-        for (const f of result.fields) {
-          const th = document.createElement("th");
-          th.style.cssText = "text-align:left;padding:4px 8px;color:var(--text-secondary);font-size:11px;font-weight:600;border-bottom:1px solid var(--border)";
-          th.textContent = f;
-          headerRow.appendChild(th);
-        }
-        thead.appendChild(headerRow);
-        table.appendChild(thead);
-
-        const tbody = document.createElement("tbody");
-        for (const row of result.rows) {
-          const tr = document.createElement("tr");
-          tr.style.borderTop = "1px solid var(--bg-tertiary)";
-          for (const f of result.fields) {
-            const td = document.createElement("td");
-            td.style.cssText = "padding:4px 8px;color:var(--text-primary)";
-            if (f === "file.name") {
-              const link = document.createElement("span");
-              link.className = "md-wikilink";
-              link.style.cssText = "color:var(--accent);cursor:pointer";
-              link.textContent = row[f] || "";
-              link.setAttribute("data-target", row["file.path"] || "");
-              td.appendChild(link);
-            } else {
-              td.textContent = row[f] || "";
-            }
-            tr.appendChild(td);
-          }
-          tbody.appendChild(tr);
-        }
-        table.appendChild(tbody);
-        container.appendChild(table);
-
-        const footer = document.createElement("div");
-        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
-        footer.textContent = `${result.rows.length} results`;
-        container.appendChild(footer);
-      } else if (result.type === "LIST") {
-        const ul = document.createElement("ul");
-        ul.style.cssText = "list-style:none;padding:0;margin:0";
-        for (const row of result.rows) {
-          const li = document.createElement("li");
-          li.style.padding = "3px 0";
-          const link = document.createElement("span");
-          link.className = "md-wikilink";
-          link.style.cssText = "color:var(--accent);cursor:pointer";
-          link.textContent = row["file.name"] || "";
-          link.setAttribute("data-target", row["file.path"] || "");
-          li.appendChild(link);
-          ul.appendChild(li);
-        }
-        container.appendChild(ul);
-
-        const footer = document.createElement("div");
-        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
-        footer.textContent = `${result.rows.length} results`;
-        container.appendChild(footer);
-      } else if (result.type === "TASK" && result.tasks) {
-        const ul = document.createElement("ul");
-        ul.style.cssText = "list-style:none;padding:0;margin:0";
-        for (const task of result.tasks) {
-          const li = document.createElement("li");
-          li.style.cssText = `display:flex;align-items:flex-start;gap:6px;padding:3px 0;color:${task.completed ? "var(--text-muted)" : "var(--text-primary)"};font-size:12px`;
-          const check = document.createElement("span");
-          check.style.cssText = `width:14px;height:14px;border-radius:3px;flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;font-size:9px;${task.completed ? "background:var(--green);color:var(--bg-primary)" : "border:1.5px solid var(--text-muted)"}`;
-          check.textContent = task.completed ? "✓" : "";
-          li.appendChild(check);
-          const text = document.createElement("span");
-          text.style.textDecoration = task.completed ? "line-through" : "none";
-          text.textContent = task.text;
-          li.appendChild(text);
-          const file = document.createElement("span");
-          file.className = "md-wikilink";
-          file.style.cssText = "color:var(--accent);cursor:pointer;font-size:10px;opacity:0.6;margin-left:auto";
-          file.textContent = task.fileName;
-          file.setAttribute("data-target", task.filePath);
-          li.appendChild(file);
-          ul.appendChild(li);
-        }
-        container.appendChild(ul);
-
-        const footer = document.createElement("div");
-        footer.style.cssText = "font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right";
-        footer.textContent = `${result.tasks.length} tasks`;
-        container.appendChild(footer);
-      }
-    } catch (err) {
-      loading.textContent = `Error: ${err}`;
-      loading.style.color = "var(--red)";
-    }
-  }
-
-  ignoreEvent() { return false; }
-
-  eq(other: DataviewWidget) {
-    return this.query === other.query;
-  }
-}
-
 class CodeBlockWidget extends WidgetType {
   private cleanupFns: Array<() => void> = [];
 
@@ -375,17 +217,7 @@ class CodeBlockWidget extends WidgetType {
   }
 
   toDOM() {
-    // Dataview blocks get a special widget
-    if (this.lang === "dataview") {
-      return new DataviewWidget(this.code).toDOM();
-    }
-
-    // Mermaid blocks get rendered as diagrams
-    if (this.lang === "mermaid") {
-      return this.renderMermaid();
-    }
-
-    // Plugin-registered code block processors (e.g. ```chessboard). Only the
+    // Plugin-registered code block processors (```mermaid, ```dataview, ```chessboard…). Only the
     // first whitespace-delimited token of the fence language is used for the
     // lookup, so `this.lang` can carry trailing args without breaking the match.
     const langKey = this.lang.trim().split(/\s+/)[0]?.toLowerCase() ?? "";
@@ -447,82 +279,6 @@ class CodeBlockWidget extends WidgetType {
 
     pre.appendChild(codeEl);
     container.appendChild(pre);
-
-    return container;
-  }
-
-  private renderMermaid(): HTMLElement {
-    const container = document.createElement("div");
-    container.className = "mermaid-widget";
-
-    const header = document.createElement("div");
-    header.className = "mermaid-header";
-    header.innerHTML = '<span class="mermaid-label"><span class="mermaid-label-icon">&#9670;</span> Mermaid</span>';
-    container.appendChild(header);
-
-    const inner = document.createElement("div");
-    inner.className = "mermaid-widget-inner";
-    inner.innerHTML = '<div class="mermaid-loading"><div class="mermaid-loading-spinner"></div>Rendering diagram...</div>';
-    container.appendChild(inner);
-
-    // Lazy-load mermaid and render
-    (async () => {
-      try {
-        const mod = await import("mermaid");
-        const mermaid = mod.default;
-
-        // Read theme colors from CSS variables so mermaid follows the active theme
-        const cs = getComputedStyle(document.documentElement);
-        const v = (name: string, fallback: string) => cs.getPropertyValue(name).trim() || fallback;
-        const bgPrimary = v("--bg-primary", "#1e1e2e");
-        const bgSecondary = v("--bg-secondary", "#181825");
-        const bgTertiary = v("--bg-tertiary", "#313244");
-        const border = v("--border", "#45475a");
-        const textPrimary = v("--text-primary", "#cdd6f4");
-        const textMuted = v("--text-muted", "#6c7086");
-        const accent = v("--accent", "#89b4fa");
-
-        // Re-init each render so theme switches take effect
-        mermaid.initialize({
-          startOnLoad: false,
-          theme: "dark",
-          themeVariables: {
-            darkMode: true,
-            primaryColor: bgTertiary,
-            primaryTextColor: textPrimary,
-            primaryBorderColor: accent,
-            lineColor: textMuted,
-            secondaryColor: border,
-            tertiaryColor: bgPrimary,
-            background: bgPrimary,
-            mainBkg: bgTertiary,
-            nodeBorder: accent,
-            clusterBkg: bgSecondary,
-            clusterBorder: border,
-            titleColor: textPrimary,
-            edgeLabelBackground: bgSecondary,
-            nodeTextColor: textPrimary,
-          },
-          fontFamily: "'Inter', -apple-system, BlinkMacSystemFont, sans-serif",
-          // See `markdown/mermaid.ts`: the diagram source is note content, and
-          // a `click` directive under `loose` puts a `javascript:` URL into the
-          // rendered SVG. `strict` is mermaid's default.
-          securityLevel: "strict",
-        });
-        const id = `mermaid-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`;
-        const { svg } = await mermaid.render(id, this.code);
-        // Mermaid's own output, sanitized by mermaid at the `strict` level set
-        // above; see `markdown/mermaid.ts` for why it is not also run through
-        // `lib/sanitize-html`.
-        if (container.isConnected) {
-          inner.innerHTML = svg;
-        }
-      } catch (err: any) {
-        if (container.isConnected) {
-          inner.innerHTML = `<div class="mermaid-error"><div class="mermaid-error-title">&#9888; Diagram Error</div><div class="mermaid-error-message">${escapeHtml(err?.message || String(err))}</div></div>`;
-        }
-      }
-    })();
 
     return container;
   }

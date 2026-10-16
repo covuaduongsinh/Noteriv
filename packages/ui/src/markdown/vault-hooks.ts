@@ -1,6 +1,7 @@
 /**
  * Places where a live-preview renderer needs something from the host app that the UI package cannot know: where
- * a local image lives, and which notes a dataview query runs over. The app registers a function once (typically in
+ * a local image lives. (Dataview used to take its notes from here; since 2.5 it is a core plugin reading the vault
+ * through the plugin API.) The app registers a function once (typically in
  * an effect that follows the active vault) and clears it on teardown. Nothing here talks to a backend itself.
  */
 
@@ -23,25 +24,4 @@ export function setLocalImageLoader(loader: LocalImageLoader | null): void {
 
 export function getLocalImageLoader(): LocalImageLoader | null {
   return localImageLoader;
-}
-
-/** One note as a dataview query sees it. */
-export interface DataviewSourceNote {
-  path: string;
-  content: string;
-  created: string;
-  modified: string;
-  size: number;
-}
-
-export type DataviewSource = () => Promise<DataviewSourceNote[]>;
-
-let dataviewSource: DataviewSource | null = null;
-
-export function setDataviewSource(source: DataviewSource | null): void {
-  dataviewSource = source;
-}
-
-export function getDataviewSource(): DataviewSource | null {
-  return dataviewSource;
 }

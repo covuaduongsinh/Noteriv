@@ -13,8 +13,8 @@ import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, Bookm
 import VaultSearch from "@/components/VaultSearch";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
-import { createDesktopImageLoader, createDesktopDataviewSource, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
-import { setLocalImageLoader, setDataviewSource } from "@noteriv/ui/markdown";
+import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
+import { setLocalImageLoader } from "@noteriv/ui/markdown";
 import { refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
 import {
   CorePluginRibbonButtons,
@@ -34,7 +34,6 @@ import FileRecovery from "@/components/FileRecovery";
 import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
-import DataviewBlock from "@/components/DataviewBlock";
 import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
 import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
@@ -146,14 +145,12 @@ export default function Home() {
     () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
     [activeVaultPath]
   );
-  // The live preview loads local images and runs dataview queries through the active vault.
+  // The live preview loads local images through the active vault.
   useEffect(() => {
     if (!activeVaultPath) return;
     setLocalImageLoader(createDesktopImageLoader(activeVaultPath));
-    setDataviewSource(createDesktopDataviewSource(activeVaultPath));
     return () => {
       setLocalImageLoader(null);
-      setDataviewSource(null);
     };
   }, [activeVaultPath]);
   const listFiles = useMemo(
@@ -1241,12 +1238,6 @@ export default function Home() {
   }, [content, currentTab, handleContentChange]);
 
   // Insert dataview query template
-  const handleInsertDataview = useCallback(() => {
-    const view = editorViewRef.current;
-    if (!view) return;
-    insertAtCursor(view, '```dataview\nTABLE file.name, file.tags FROM "" SORT BY file.modified DESC LIMIT 10\n```');
-  }, []);
-
   // Toggle focus/typewriter mode
   const handleFocusMode = useCallback(() => {
     setFocusMode((f) => !f);
@@ -1328,7 +1319,6 @@ export default function Home() {
       insertDrawing: handleNewDrawing,
       insertToc: handleInsertToc,
       updateToc: handleUpdateToc,
-      insertDataview: handleInsertDataview,
       focusMode: handleFocusMode,
       publishNote: handlePublish,
       startCollab: () => setShowCollab(true),
@@ -1344,7 +1334,7 @@ export default function Home() {
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1511,7 +1501,6 @@ export default function Home() {
         insertDrawing: handleNewDrawing,
         insertToc: handleInsertToc,
         updateToc: handleUpdateToc,
-        insertDataview: handleInsertDataview,
         focusMode: handleFocusMode,
         publishNote: handlePublish,
         startCollab: () => setShowCollab(true),
@@ -1539,7 +1528,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleNewDrawing, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {

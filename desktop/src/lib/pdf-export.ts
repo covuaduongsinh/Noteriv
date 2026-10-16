@@ -2,7 +2,7 @@
  * PDF Export — converts markdown to styled HTML and triggers the browser print dialog.
  */
 
-import { markdownToHTML } from "@noteriv/core/markdown-to-html";
+import { markdownToHTML, preRenderCodeBlocks } from "@noteriv/core/markdown-to-html";
 
 /**
  * Print stylesheet for PDF export.
@@ -198,7 +198,8 @@ export async function exportToPDF(
   const columnLayout = options?.columnLayout ?? 2;
   const chessboardWidthPercent = options?.chessboardWidthPercent ?? 75;
 
-  const htmlContent = markdownToHTML(content);
+  // Diagrams and queries drawn by plugins (Mermaid, Dataview…) finish asynchronously: wait for them.
+  const htmlContent = markdownToHTML(content, { preRendered: await preRenderCodeBlocks(content) });
 
   const displayTitle = title.replace(/\.(md|markdown)$/i, "");
 

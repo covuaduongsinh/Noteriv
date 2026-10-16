@@ -2,13 +2,15 @@
  * Simple markdown-to-HTML converter.
  * Supports: headings, bold, italic, code (inline + blocks), links, images,
  * lists (ordered + unordered), blockquotes, horizontal rules, tables, task lists,
- * [TOC] placeholder, dataview code blocks, and excalidraw embeds.
+ * [TOC] placeholder, excalidraw embeds, and fenced blocks of languages a plugin renders (Mermaid, Dataview,
+ * a chess board…) through the same processors as the editor.
  */
 
 import { renderTocHTML } from "./toc-utils";
 import { isSafeUrl } from "./sanitize-html";
 import {
   getCodeBlockProcessor,
+  PENDING_ATTRIBUTE,
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
 } from "./markdown-code-block-registry";
@@ -30,7 +32,8 @@ function renderCodeBlockWithProcessor(
     const cleanup = processor(source, container, ctx);
     // Read innerHTML before running cleanup — some processors (e.g. the
     // chessboard plugin) clear the element in their cleanup function.
-    const result = container.innerHTML;
+    // A processor still drawing (PENDING_ATTRIBUTE) has nothing to show yet: the plain code is the better export.
+    const result = container.querySelector(`[${PENDING_ATTRIBUTE}]`) || container.hasAttribute(PENDING_ATTRIBUTE) ? "" : container.innerHTML;
     if (typeof cleanup === "function") {
       try {
         cleanup();
@@ -42,6 +45,63 @@ function renderCodeBlockWithProcessor(
   } catch {
     return null;
   }
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/**
+ * Renders every fenced block whose language has a processor and returns the HTML keyed for `markdownToHTML`'s
+ * `preRendered`, so an export shows what the editor shows. Processors may draw asynchronously: a sandboxed community
+ * plugin answers through its iframe into a Shadow DOM, a core plugin such as Mermaid loads its library first. Either
+ * way the block counts as done once something is drawn and no `PENDING_ATTRIBUTE` is left; a block still pending
+ * after `timeoutMs` stays plain code in the export.
+ */
+export async function preRenderCodeBlocks(md: string, timeoutMs = 9000): Promise<Map<string, string>> {
+  const out = new Map<string, string>();
+  if (typeof document === "undefined") return out;
+  const lines = md.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const open = lines[i].match(/^(`{3,}|~{3,})\s*(.*)$/);
+    if (!open) continue;
+    const fence = open[1];
+    const langKey = open[2].trim().split(/\s+/)[0]?.toLowerCase() ?? "";
+    const body: string[] = [];
+    let j = i + 1;
+    while (j < lines.length && !lines[j].startsWith(fence)) body.push(lines[j++]);
+    i = j; // continue after the closing fence
+
+    const entry = langKey ? getCodeBlockProcessor(langKey) : undefined;
+    if (!entry) continue;
+    const source = body.join("\n");
+    const key = `${langKey}\u0000${source}`;
+    if (out.has(key)) continue;
+
+    const el = document.createElement("div");
+    let cleanup: void | (() => void) = undefined;
+    try {
+      cleanup = entry.processor(source, el, { source, language: langKey, sourcePath: null });
+      const deadline = Date.now() + timeoutMs;
+      let html: string | null = null;
+      while (Date.now() < deadline) {
+        const root: ParentNode & { innerHTML: string } = el.shadowRoot ?? el;
+        if (root.innerHTML && !root.querySelector(`[${PENDING_ATTRIBUTE}]`) && !el.hasAttribute(PENDING_ATTRIBUTE)) {
+          html = root.innerHTML;
+          break;
+        }
+        await sleep(60);
+      }
+      if (html) out.set(key, `<div class="plugin-block">${html}</div>`);
+    } catch {
+      // leave this block as plain code in the export
+    } finally {
+      try {
+        if (typeof cleanup === "function") cleanup();
+      } catch {
+        // ignore
+      }
+    }
+  }
+  return out;
 }
 
 /**
@@ -83,13 +143,6 @@ export function markdownToHTML(md: string, opts: MarkdownToHtmlOptions = {}): st
         i++;
       }
       i++; // skip closing fence
-
-      // Dataview code blocks — render as a placeholder div
-      if (lang === "dataview") {
-        const queryText = codeLines.map(l => l.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"')).join("\n");
-        html.push(`<div class="dataview-block" data-query="${escapeHtml(queryText)}"></div>`);
-        continue;
-      }
 
       // Plugin-registered code block languages (e.g. ```chessboard) — render
       // through the same processor the live editor uses, so exports keep

@@ -85,6 +85,19 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Hiện file .board.md hoặc note có frontmatter board: true thành bảng Kanban (cột là heading ##, thẻ là - [ ]); lệnh tạo board mới.",
     load: () => import("@noteriv/plugins/board"),
   },
+  {
+    id: "mermaid",
+    name: "Mermaid",
+    description: "Vẽ sơ đồ từ khối ```mermaid trong editor, chế độ đọc và khi xuất PDF. Thư viện chỉ tải khi gặp sơ đồ đầu tiên.",
+    defaultEnabled: true,
+    load: () => import("@noteriv/plugins/mermaid"),
+  },
+  {
+    id: "dataview",
+    name: "Dataview",
+    description: "Truy vấn note bằng khối ```dataview (TABLE / LIST / TASK, lọc theo thư mục, tag, frontmatter); lệnh chèn truy vấn mẫu.",
+    load: () => import("@noteriv/plugins/dataview"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

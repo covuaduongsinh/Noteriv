@@ -33,12 +33,12 @@ describe("register / get", () => {
     registerCodeBlockProcessor("p1", "   ", proc());
     expect(getRegistryVersion()).toBe(v);
   });
-  it("refuses languages the app renders itself (dataview, mermaid) and warns", () => {
+  it("lets plugins register mermaid and dataview (core plugins since 2.5; nothing is reserved any more)", () => {
     registerCodeBlockProcessor("p1", "Mermaid", proc());
     registerCodeBlockProcessor("p1", "dataview", proc());
-    expect(getCodeBlockProcessor("mermaid")).toBeUndefined();
-    expect(getCodeBlockProcessor("dataview")).toBeUndefined();
-    expect(warn).toHaveBeenCalledTimes(2);
+    expect(getCodeBlockProcessor("mermaid")?.pluginId).toBe("p1");
+    expect(getCodeBlockProcessor("dataview")?.pluginId).toBe("p1");
+    expect(warn).not.toHaveBeenCalled();
   });
   it("lets another plugin override a language, with a warning", () => {
     const a = proc();

@@ -4,8 +4,7 @@
  * `document.createElement("iframe")` + `window.print()`, no Tauri API at all.
  */
 
-import { markdownToHTML } from "@noteriv/core/markdown-to-html";
-import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registry";
+import { markdownToHTML, preRenderCodeBlocks } from "@noteriv/core/markdown-to-html";
 import { webApi } from "./webApi";
 
 /**
@@ -192,65 +191,6 @@ export interface PdfOptions {
   chessboardWidthPercent?: 75 | 100;
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
-
-/**
- * Renders every fenced block whose language has a plugin processor (e.g. ```chessboard) and returns
- * the resulting HTML keyed for markdownToHTML's `preRendered`. Web processors draw into a Shadow DOM
- * after an async round-trip to the plugin's sandbox, so we wait for the real render (the host marks its
- * placeholder with data-nrv-pending) and take the shadow root's markup, which includes the plugin's CSS.
- */
-async function preRenderPluginBlocks(md: string): Promise<Map<string, string>> {
-  const out = new Map<string, string>();
-  const lines = md.split("\n");
-  for (let i = 0; i < lines.length; i++) {
-    const open = lines[i].match(/^(`{3,}|~{3,})\s*(.*)$/);
-    if (!open) continue;
-    const fence = open[1];
-    const langKey = open[2].trim().split(/\s+/)[0]?.toLowerCase() ?? "";
-    const body: string[] = [];
-    let j = i + 1;
-    while (j < lines.length && !lines[j].startsWith(fence)) body.push(lines[j++]);
-    i = j; // continue after the closing fence
-
-    const entry = langKey ? getCodeBlockProcessor(langKey) : undefined;
-    if (!entry) continue;
-    const source = body.join("\n");
-    const key = `${langKey}\u0000${source}`;
-    if (out.has(key)) continue;
-
-    const el = document.createElement("div");
-    let cleanup: void | (() => void) = undefined;
-    try {
-      cleanup = entry.processor(source, el, { source, language: langKey, sourcePath: null });
-      const deadline = Date.now() + 9000;
-      let html: string | null = null;
-      while (Date.now() < deadline) {
-        const root = el.shadowRoot;
-        if (root && root.innerHTML && !root.querySelector("[data-nrv-pending]")) {
-          html = root.innerHTML;
-          break;
-        }
-        if (!root && el.innerHTML) {
-          html = el.innerHTML; // a processor that drew straight into the element
-          break;
-        }
-        await sleep(60);
-      }
-      if (html) out.set(key, `<div class="plugin-block">${html}</div>`);
-    } catch {
-      // leave this block as plain code in the export
-    } finally {
-      try {
-        if (typeof cleanup === "function") cleanup();
-      } catch {
-        // ignore
-      }
-    }
-  }
-  return out;
-}
-
 const MAX_INLINE_BYTES = 24 * 1024 * 1024;
 
 /**
@@ -291,7 +231,7 @@ async function buildPdfDocument(content: string, title: string, options?: PdfOpt
   const columnLayout = options?.columnLayout ?? 2;
   const chessboardWidthPercent = options?.chessboardWidthPercent ?? 75;
 
-  const preRendered = await preRenderPluginBlocks(content);
+  const preRendered = await preRenderCodeBlocks(content);
   const htmlContent = await inlineImages(markdownToHTML(content, { preRendered }));
   const displayTitle = title.replace(/\.(md|markdown)$/i, "");
 

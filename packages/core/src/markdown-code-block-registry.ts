@@ -26,8 +26,15 @@ interface RegistryEntry {
   processor: CodeBlockProcessor;
 }
 
-// Languages the core app already renders natively — plugins cannot override these.
-const RESERVED_LANGUAGES = new Set(["dataview", "mermaid"]);
+// Languages the core app renders natively — plugins cannot override these. Empty since 2.5: Mermaid and Dataview,
+// the two that were here, are core plugins now and register like any other.
+const RESERVED_LANGUAGES = new Set<string>();
+
+/**
+ * A processor that draws asynchronously (a diagram library to load, a vault to scan) marks the element it is still
+ * filling with this attribute and removes it when done. Export waits for it to go (`preRenderCodeBlocks`).
+ */
+export const PENDING_ATTRIBUTE = "data-nrv-pending";
 
 const registry = new Map<string, RegistryEntry>();
 

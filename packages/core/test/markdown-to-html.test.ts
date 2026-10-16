@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it } from "vitest";
-import { markdownToHTML } from "../src/markdown-to-html";
-import { registerCodeBlockProcessor, unregisterAllCodeBlockProcessorsForPlugin } from "../src/markdown-code-block-registry";
+import { markdownToHTML, preRenderCodeBlocks } from "../src/markdown-to-html";
+import { PENDING_ATTRIBUTE, registerCodeBlockProcessor, unregisterAllCodeBlockProcessorsForPlugin } from "../src/markdown-code-block-registry";
 
 afterEach(() => unregisterAllCodeBlockProcessorsForPlugin("test-plugin"));
 
@@ -26,9 +26,6 @@ describe("block elements", () => {
   });
   it("lets an unclosed fence swallow the rest of the document", () => {
     expect(markdownToHTML("```\ncode\n# not a heading")).toBe("<pre><code>code\n# not a heading</code></pre>");
-  });
-  it("turns dataview fences into a placeholder carrying the query", () => {
-    expect(markdownToHTML('```dataview\nTABLE x FROM "a"\n```')).toBe('<div class="dataview-block" data-query="TABLE x FROM &quot;a&quot;"></div>');
   });
   it("renders [TOC] as a navigation block built from the document's headings", () => {
     const html = markdownToHTML("[TOC]\n# A\n## B");
@@ -153,5 +150,44 @@ describe("plugin code blocks", () => {
       el.textContent = s;
     });
     expect(markdownToHTML("```BoardX theme=dark\nE4\n```")).toBe("E4");
+  });
+  it("falls back to plain code while a processor is still drawing (pending marker)", () => {
+    registerCodeBlockProcessor("test-plugin", "slowx", (_s, el) => {
+      el.innerHTML = `<div ${PENDING_ATTRIBUTE}>Loading…</div>`;
+    });
+    expect(markdownToHTML("```slowx\nq\n```")).toBe('<pre><code class="language-slowx">q</code></pre>');
+  });
+  it("renders dataview and mermaid fences as plain code when no plugin handles them", () => {
+    expect(markdownToHTML('```dataview\nTABLE x FROM "a"\n```')).toBe('<pre><code class="language-dataview">TABLE x FROM &quot;a&quot;</code></pre>');
+  });
+});
+
+describe("preRenderCodeBlocks", () => {
+  it("waits for asynchronous processors to finish (pending marker gone) and keys the result", async () => {
+    registerCodeBlockProcessor("test-plugin", "slowx", (src, el) => {
+      const box = document.createElement("div");
+      box.setAttribute(PENDING_ATTRIBUTE, "");
+      box.textContent = "Loading…";
+      el.appendChild(box);
+      setTimeout(() => {
+        box.innerHTML = `<svg>${src}</svg>`;
+        box.removeAttribute(PENDING_ATTRIBUTE);
+      }, 100);
+    });
+    const md = "# T\n\n```slowx\nA-->B\n```\n\n```text\nplain\n```";
+    const pre = await preRenderCodeBlocks(md);
+    expect([...pre.keys()]).toEqual(["slowx\u0000A-->B"]);
+    expect(pre.get("slowx\u0000A-->B")).toBe('<div class="plugin-block"><div><svg>A--&gt;B</svg></div></div>');
+    expect(markdownToHTML(md, { preRendered: pre })).toContain("<svg>A--&gt;B</svg>");
+  });
+  it("gives up on a block still pending after the timeout (it stays plain code) and runs cleanups", async () => {
+    let cleaned = 0;
+    registerCodeBlockProcessor("test-plugin", "stuckx", (_s, el) => {
+      el.innerHTML = `<div ${PENDING_ATTRIBUTE}>…</div>`;
+      return () => void cleaned++;
+    });
+    const pre = await preRenderCodeBlocks("```stuckx\nq\n```", 200);
+    expect(pre.size).toBe(0);
+    expect(cleaned).toBe(1);
   });
 });

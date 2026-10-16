@@ -1,13 +1,12 @@
 import { afterEach, describe, expect, it } from "vitest";
 import {
   registerInlineRenderer,
-  setDataviewSource,
   setLocalImageLoader,
   unregisterRenderer,
   type InlineRenderer,
 } from "../src/markdown";
 import { getBlockRenderers, getInlineRenderers } from "../src/markdown/registry";
-import { getDataviewSource, getLocalImageLoader } from "../src/markdown/vault-hooks";
+import { getLocalImageLoader } from "../src/markdown/vault-hooks";
 import { getKatex, loadKatex } from "../src/markdown/katex-loader";
 
 // Characterisation of the live-preview renderers: the built-in set registers on import and each inline renderer
@@ -120,17 +119,11 @@ describe("inline renderers", () => {
 });
 
 describe("vault hooks", () => {
-  it("stores and clears the local image loader and the dataview source", () => {
+  it("stores and clears the local image loader", () => {
     const loader = { resolve: () => null, load: async () => null };
     setLocalImageLoader(loader);
     expect(getLocalImageLoader()).toBe(loader);
     setLocalImageLoader(null);
     expect(getLocalImageLoader()).toBeNull();
-
-    const source = async () => [];
-    setDataviewSource(source);
-    expect(getDataviewSource()).toBe(source);
-    setDataviewSource(null);
-    expect(getDataviewSource()).toBeNull();
   });
 });

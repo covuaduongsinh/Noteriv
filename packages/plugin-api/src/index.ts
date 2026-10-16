@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.6";
+export const PLUGIN_API_VERSION = "1.0.0-draft.7";
 
 // ─── Permissions (community tier) ───
 
