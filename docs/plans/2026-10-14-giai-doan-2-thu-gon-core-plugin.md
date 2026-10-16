@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.4b xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.5 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -13,7 +13,7 @@
 
 ## Phân loại tính năng
 
-**Giữ trong lõi** (không thể tắt): editor (live preview, source, vim là tuỳ chọn), cây file và thư mục, Quick Open, Command Palette, tìm kiếm, wikilink và backlink, Outline, Tags, Bookmarks, đồng bộ (git/WebDAV), cộng tác (web), cài đặt, theme và CSS snippet, trình quản lý plugin, thùng rác, đính kèm, xuất và xem trước PDF (dùng chung cho plugin cờ).
+**Giữ trong lõi** (không thể tắt): editor (live preview, source, vim là tuỳ chọn), cây file và thư mục, Quick Open, Command Palette, tìm kiếm, wikilink và backlink, Outline, Tags, Bookmarks, đồng bộ (git/WebDAV), cộng tác (web), cài đặt, theme và CSS snippet, trình quản lý plugin, thùng rác, đính kèm, xuất và xem trước PDF (dùng chung cho plugin cờ), công thức toán KaTeX (chốt 2.5: cú pháp của editor, đã tải lười), Web clipper (chốt 2.3).
 
 **Chuyển thành core plugin** (đề xuất mặc định bật hoặc tắt):
 
@@ -36,7 +36,7 @@
 | Markdown lint | `LintPanel.tsx`, `lib/markdown-lint.ts` | Tắt | |
 | Publish preview | `PublishPreview.tsx`, `lib/publish.ts` | Tắt | Giai đoạn 5 làm lại thành "xuất bản công khai" |
 | Web clipper (cài đặt) | `ClipperSection.tsx` | Tắt | |
-| Mermaid, Math (KaTeX) | `components/markdown/mermaid.ts`, `math.ts` | Bật | Tải thư viện khi gặp khối tương ứng |
+| Mermaid (Math giữ trong lõi, chốt 2.5) | `components/markdown/mermaid.ts`, `math.ts` | Bật | Tải thư viện khi gặp khối tương ứng |
 
 > **Đã chốt ở Phiên 2.1 (2026-10-16):** giữ nguyên danh sách và mặc định trên. Số đo từng tính năng: [docs/perf/2026-10-16-baseline.md](../perf/2026-10-16-baseline.md) mục 4. Mã ứng dụng của mỗi tính năng chỉ 5–35 KB; nặng là thư viện (Mermaid 2,4 MB đã tải lười; KaTeX 255 KB đang tải ngay).
 >
@@ -86,7 +86,10 @@ Mỗi tính năng làm theo **cùng một khuôn** như phiên 2.2 (plugin packa
 - **Lô B (view lớn):** chia hai phiên (chốt 2026-10-16):
   - **2.4**: Graph, Slides, Note history / Time scrubber (xong). File Recovery giữ trong lõi.
   - **2.4b**: Board (xong). Cần thêm: view gắn với loại file (`.board.md` hoặc frontmatter `board: true`) hiện **trong vùng editor** của tab (cả split pane), đọc/ghi qua bộ đệm của tab (dirty, lưu, tự lưu), mỗi tab một phiên bản, chế độ source trả về editor thô. Chi tiết thiếu sót: `docs/plugin-api/v1.md` mục "Lô B phần 1". Web hiện chỉ nhận board theo frontmatter, chưa có lệnh "New board": thống nhất với desktop.
-- **Lô C (nặng):** Canvas, Drawing, PDF viewer, Dataview, Mermaid và Math tải lười.
+- **Lô C (nặng):** chia ba phiên (chốt 2026-10-16):
+  - **2.5**: Mermaid, Dataview (xong). **Math (KaTeX) giữ trong lõi**: là cú pháp `$…$` của editor, đã tải lười từ 2.2.
+  - **2.5b**: Canvas, Drawing. Cần mở rộng view theo loại file cho file không phải markdown. Desktop lưu `.canvas`/`.drawing` (JSON) và mở theo `kind` của tab, Drawing là lớp phủ tự đọc/ghi file. Web lưu thành note markdown có frontmatter `canvas: true`/`drawing: true`, chưa có lệnh tạo. Node trỏ tới note/ảnh mang nghĩa khác nhau (desktop: đường dẫn tuyệt đối; web: id note/đính kèm). Ba bản CSS canvas trùng nhau.
+  - **2.5c**: PDF viewer. Đọc nhị phân (web: tải file đính kèm, mở từ AttachmentManager; desktop: tab `kind: "pdf"`, `readBinaryFile`). Chú thích lưu ở metadata của đính kèm (web) hoặc file `.<tên>-annotations.json` (desktop). pdf.js nạp từ `public/` của mỗi app. Xuất PDF (dịch vụ PDF) vẫn thuộc lõi.
 
 Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production.
 
@@ -132,5 +135,7 @@ Khoảng 6–8 buổi.
 | 2.3b Lô A (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3b-lo-a.md`; Lint (panel phải), Audio recorder thành plugin; API thêm panel bên, `setCursor`, `saveAttachment`; sửa lỗi desktop lưu ghi âm thành chữ; JS tải đầu web 446,8 KB gzip |
 | 2.4 Lô B (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-4-lo-b.md`; Graph (web bỏ route `/graph`, thành lớp phủ), Slides, Note history + Time scrubber thành plugin; API thêm nút thanh công cụ note, đọc lịch sử note, `renderReadOnly`; sửa phím plugin bị keymap editor nuốt (Ctrl+G, Ctrl+D); JS tải đầu web 444,8 KB gzip |
 | 2.4b Lô B (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-4b-lo-b.md`; Board thành plugin; API thêm view theo loại file (`ui.registerFileView`) thay editor trong tab; web nhận `.board.md` và có lệnh tạo board; JS tải đầu web 444,6 KB gzip |
-| 2.5 Lô C | Chưa làm | | |
+| 2.5 Lô C (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5-lo-c.md`; Mermaid, Dataview thành plugin; Math giữ trong lõi; xuất PDF hai app chờ khối plugin vẽ xong (có sơ đồ, bảng); JS tải đầu web 442,8 KB gzip |
+| 2.5b Lô C (phần 2) | Chưa làm | | Canvas, Drawing |
+| 2.5c Lô C (phần 3) | Chưa làm | | PDF viewer |
 | 2.6 Dọn dẹp, đo lại | Chưa làm | | |
