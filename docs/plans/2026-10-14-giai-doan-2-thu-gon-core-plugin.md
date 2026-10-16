@@ -113,6 +113,11 @@ Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production
 - **Phát audio trong note** (từ 2.3b, chủ dự án chọn để sau): `![Audio](…)` đang vẽ thành ảnh hỏng ở cả hai app. Cần renderer audio trong `packages/ui` (web: URL tải về; desktop: file trong vault, cần loader biết kiểu MIME audio).
 - **Desktop tự lưu mỗi 30 giây**: nội dung do plugin chèn ở trạng thái "unsaved" tới lần lưu kế tiếp. Cân nhắc lưu ngay sau khi plugin sửa nội dung.
 - **Tab cài đặt của core plugin** chưa được app hiển thị (chưa plugin nào cần).
+- **Từ 2.6** (chi tiết ở `docs/perf/2026-10-17-after-phase2.md` mục 5):
+  - Khôi phục tab nhanh hơn: `workspace-state` trả kèm nội dung note đang mở.
+  - Desktop tải editor theo cách của web (`editorPart`, tải trước khi rảnh).
+  - `GET /sync-connections` gọi 2 lần khi mở vault.
+  - Hộp CSS Snippets và Thùng rác không đóng bằng Esc.
 
 ## Rủi ro
 
@@ -138,4 +143,6 @@ Khoảng 6–8 buổi.
 | 2.5 Lô C (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5-lo-c.md`; Mermaid, Dataview thành plugin; Math giữ trong lõi; xuất PDF hai app chờ khối plugin vẽ xong (có sơ đồ, bảng); JS tải đầu web 442,8 KB gzip |
 | 2.5b Lô C (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5b-lo-c.md`; Canvas, Drawing thành plugin (gốc web; desktop nay trong tab, tự lưu); API thêm `vault.resolve`, `listAttachments`, `attachmentUrl`, file không phải markdown trên desktop; JS tải đầu web 442,2 KB gzip |
 | 2.5c Lô C (phần 3) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5c-lo-c.md`; PDF viewer + chú thích thành plugin (mặc định bật); API thêm trình xem đính kèm, `readAttachment`, `get/setAttachmentData`; **Lô C xong**; JS tải đầu web 442,7 KB gzip |
-| 2.6 Dọn dẹp, đo lại | Chưa làm | | |
+| 2.6 Dọn dẹp, đo lại | Xong | 2026-10-17 | `docs/plans/2026-10-17-phien-2-6-don-dep.md`; báo cáo `docs/perf/2026-10-17-after-phase2.md`; editor và hộp thoại tải lười (tải trước khi rảnh); bỏ API trùng khi mở vault; dọn mã chết; bỏ ~6 MB ảnh thừa desktop; **mọi ngân sách đạt**: JS tải đầu web 194,7 KB gzip, desktop 222,7 KB gzip |
+
+**Giai đoạn 2 xong (2026-10-17).** 17 core plugin; Clipper, Math, File Recovery, xuất PDF giữ trong lõi. Việc treo còn lại (mục "Việc treo") chuyển sang các giai đoạn sau khi cần.

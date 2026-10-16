@@ -41,7 +41,43 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 
 **Phiên 2.5b (Lô C phần 2) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5b-lo-c.md`. Chủ dự án chốt: lấy bản web làm gốc, desktop Canvas/Drawing hiện trong tab và tự lưu (bỏ lớp phủ Drawing, nút Save/Close, Esc-lưu-đóng; ảnh chọn từ vault hoặc tải lên). Canvas và Drawing là core plugin (mặc định tắt) qua view theo loại file; desktop mở `.canvas`/`.drawing` thành tab văn bản; định dạng giữ nguyên theo nền tảng. API (draft.8) thêm `vault.resolve`, `listAttachments`, `attachmentUrl`; `VaultAdapter.fileExists?`. JS tải đầu web 442,2 KB gzip. Gặp `index.lock` treo của worktree (không có tiến trình git) sau một lệnh git: đã xoá sau khi kiểm. 2.5b đã push (chưa lên `next`).
 
-**Phiên 2.5c (Lô C phần 3) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5c-lo-c.md`. **Lô C và toàn bộ việc chuyển tính năng thành plugin đã xong.** PDF viewer + chú thích là core plugin (mặc định bật) qua loại đóng góp mới **trình xem đính kèm** (`ui.registerAttachmentViewer`): desktop trong tab `pdf`, web ở lớp phủ khi bấm PDF trong Attachments. API (draft.9) thêm `vault.readAttachment`, `vault.get/setAttachmentData`. Chú thích cũ của hai nền tảng đọc được, dạng lưu giữ nguyên. JS tải đầu web 442,7 KB gzip (ngân sách ≤ 374, còn ~69 KB). Thử desktop: reload WebView ở chế độ portable đưa app về màn hình thiết lập; muốn đổi cấu hình plugin thì khởi động lại app thay vì reload. **Phiên kế tiếp: 2.6 (dọn dẹp, đo lại, ngân sách)**: xoá mã chết, gọn `page.tsx`, đo như 2.1 và so ngân sách, mô tả core plugin tiếng Việt trong Cài đặt. Trước 2.6 nên deploy staging một lần để chủ dự án thử cả Lô C (2.5–2.5c chưa lên `next`). Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-2-thu-gon-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 2.6**." Đọc thêm `docs/plugin-api/v1.md` và `docs/perf/2026-10-16-baseline.md` (mục 6, 7). Trạng thái nhánh: `covuaduongsinh/phase1-core` có 1.1–1.5 và 2.1–2.5c (2.1–2.5b đã push, 2.1–2.4b đã lên `next`; 2.5c chưa push); `next` có 1.1–2.4b; chưa gộp vào `main`; worktree Orca `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup` (đã có `web/server/.env` và `node_modules` của `web/server`). Việc chủ dự án còn nợ: dọn đĩa VPS (~90%), thử nốt 1.4 trên staging (1.5 đã thử đạt), quyết định sửa lỗi đổi tên note ở web (xem file 1.4), chọn các việc giảm tải ngoài plugin (mục 6 báo cáo baseline).
+**Phiên 2.5c (Lô C phần 3) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5c-lo-c.md`. **Lô C và toàn bộ việc chuyển tính năng thành plugin đã xong.** PDF viewer + chú thích là core plugin (mặc định bật) qua loại đóng góp mới **trình xem đính kèm** (`ui.registerAttachmentViewer`): desktop trong tab `pdf`, web ở lớp phủ khi bấm PDF trong Attachments. API (draft.9) thêm `vault.readAttachment`, `vault.get/setAttachmentData`. Chú thích cũ của hai nền tảng đọc được, dạng lưu giữ nguyên. JS tải đầu web 442,7 KB gzip (ngân sách ≤ 374, còn ~69 KB). Thử desktop: reload WebView ở chế độ portable đưa app về màn hình thiết lập; muốn đổi cấu hình plugin thì khởi động lại app thay vì reload. 2.5c đã lên `next`/staging; chủ dự án thử Lô C đạt; staging đã tắt.
+
+**Phiên 2.6 (dọn dẹp, đo lại) xong ngày 2026-10-17: Giai đoạn 2 xong.**
+
+- **Tài liệu**:
+  - Bản ghi phiên: `docs/plans/2026-10-17-phien-2-6-don-dep.md`.
+  - Báo cáo đo: `docs/perf/2026-10-17-after-phase2.md`.
+  - Tổng kết Plugin API: `docs/plugin-api/v1.md` mục 9.
+- **Chủ dự án chốt**: tải lười editor và các hộp thoại ít dùng, có tải trước khi rảnh; làm cả ba việc treo từ 2.1.
+- **Kết quả, mọi ngân sách đạt**:
+  - JS tải đầu web 194,7 KB gzip (baseline 533,9) và desktop 222,7 KB gzip (baseline 444,9).
+  - Bộ cài NSIS 7,9 MB (trước 11,1).
+  - `GET /vaults/:id` khi mở vault còn 1 lần, không còn `PUT` lặp.
+- **Lưu ý cho mã mới**:
+  - Đừng import editor (`@noteriv/ui/editor`) hay index của `@noteriv/ui/markdown` tĩnh trong trang vault web: cả hai kéo CodeMirror vào phần tải đầu. Kiểm bằng `npm run perf:web`.
+  - Component tải lười cần hiện ngay thì xem `editorPart` (`next/dynamic` hoãn ~300 ms ở lần dựng đầu).
+  - Cookie của API cục bộ hết hạn sau ~15 phút. Khi đo lâu, đăng nhập lại (script cookie trả 401 ở `auth/refresh`).
+- **Việc treo còn lại**: mục "Việc treo" cuối file Giai đoạn 2.
+
+**Phiên kế tiếp: Giai đoạn 3 (cờ vua), bắt đầu bằng Phiên 3.0** (kiểm tra giấy phép và dựng `@noteriv/chess`). Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-3-co-vua-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 3.0**." Đọc thêm `docs/plugin-api/v1.md` (mục 9: các loại đóng góp và thiếu sót còn mở, nhất là API mở rộng editor).
+
+**Trước Giai đoạn 3, chủ dự án nên quyết định:**
+
+1. Có gộp `next` vào `main` (đưa Giai đoạn 1–2 lên production) ở mốc này không.
+2. Có xem lại việc tách repo không: mục 3 ghi "xem lại ở cuối Giai đoạn 2".
+
+**Trạng thái nhánh**:
+
+- `covuaduongsinh/phase1-core` có 1.1–1.5 và 2.1–2.6; 2.6 chưa push.
+- `next` có 1.1–2.5c; chưa gộp vào `main`.
+- Worktree Orca: `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup` (đã có `web/server/.env` và `node_modules` của `web/server`).
+
+**Việc chủ dự án còn nợ**:
+
+- Dọn đĩa VPS (~84–90%).
+- Thử nốt 1.4 trên staging (1.5 đã thử đạt).
+- Quyết định sửa lỗi đổi tên note ở web (xem file 1.4).
 
 **Trước khi làm một phiên:** kiểm bảng "Trạng thái" cuối file giai đoạn (phiên trước đã xong chưa) và mục "Điều kiện bắt đầu" ở đầu file.
 
@@ -76,7 +112,7 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 | `packages/core/` | `@noteriv/core`: logic TypeScript thuần dùng chung web + desktop (15 module từ 2026-10-15: frontmatter, toc, wiki-link, markdown-lint, board, dataview, calendar, drawing, canvas, bookmark, slide, sanitize-html, markdown-to-html, publish, markdown-code-block-registry). **Nạp theo mã nguồn** (`exports` trỏ `src/*.ts`, app import `@noteriv/core/<module>`, `transpilePackages`). Quy tắc: không import mã app, React, CodeMirror, Tauri; `test/core-boundaries.test.ts` ép điều này. Bảng kiểm kê: `docs/plans/2026-10-15-phien-1-2-kiem-ke-core.md` Từ Phiên 1.3 còn có interface `VaultAdapter` (`vault-adapter.ts`), `MemoryVaultAdapter`, `tag-utils`, `outline-utils`; bản web ở `web/src/lib/webVaultAdapter.ts`, bản desktop ở `desktop/src/lib/desktopVaultAdapter.ts`. Component mới nên nhận `adapter` thay vì gọi `webApi`/`electronAPI` trực tiếp. |
 | `packages/ui/` | `@noteriv/ui`: React + CodeMirror dùng chung web + desktop (từ 2026-10-16): `markdown/` (renderer live preview), `editor/` (Editor, SourceEditor, ReadOnlyView, FormattingToolbar), `panels/` (Outline, Backlinks, Tags, Bookmarks, QuickOpen, CommandPalette), `graph/`, `styles/app.css`. Không import `@/…`, `webApi`, `electronAPI` (có test ranh giới). **Component mới dùng chung đặt ở đây**; thứ khác nhau giữa hai app được tiêm vào: `adapter` (VaultAdapter), `setLocalImageLoader`, `setDataviewSource`, `Editor.onImageDrop`, `labels`. Phần đăng ký nằm ở `web/src/lib/ui-hooks.ts`, `desktop/src/lib/ui-hooks.ts`. CSS chung ở `styles/app.css`; reset và `@source` ở `globals.css` của từng app. |
 | `packages/plugin-api/` | `@noteriv/plugin-api` (từ 2026-10-16): **chỉ kiểu** của Plugin API v1 (`PluginApi`, `CorePlugin`, `PluginPermission`). Đặc tả: `docs/plugin-api/v1.md`. |
-| `packages/plugins/` | `@noteriv/plugins`: **core plugin** (tầng tin cậy), mỗi plugin một thư mục `src/<id>/index.ts` với `export default { onload(api) }`. Hiện có `word-count`. Mỗi app khai danh sách ở `src/lib/core-plugins.ts` và **phải** nạp bằng `load: () => import(...)` (để tắt thì không vào bundle). Tính năng lớn chuyển thành core plugin ở Giai đoạn 2 đặt ở đây. |
+| `packages/plugins/` | `@noteriv/plugins`: **core plugin** (tầng tin cậy), mỗi plugin một thư mục `src/<id>/index.ts` với `export default { onload(api) }`. Sau Giai đoạn 2 có 17 plugin (danh sách và mặc định: `docs/plugin-api/v1.md` mục 9). Mỗi app khai danh sách ở `src/lib/core-plugins.ts` và **phải** nạp bằng `load: () => import(...)` (để tắt thì không vào bundle). Tính năng lớn chuyển thành core plugin ở Giai đoạn 2 đặt ở đây. |
 | `packages/ui/src/plugins/` | Host core plugin (`createCorePluginHost`, `useCorePluginHost`, `CorePluginsSection`) và `sandbox/` (host plugin cộng đồng dùng chung web + desktop, `PluginMirror`). Trang sandbox gốc: `packages/ui/public/plugin-sandbox.html`; bản trong `web/public` và `desktop/public` là **bản sao** (`npm run sync:sandbox`, test báo lỗi khi lệch). |
 | `web/` | Frontend Next.js 16 (App Router). **Đọc `web/AGENTS.md`**: Next 16 có thay đổi lớn, tra `node_modules/next/dist/docs/` trước khi viết code |
 | `web/src/app/vaults/[vaultId]/page.tsx` | Trang chính (editor, panel, lệnh, modal) |
