@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.3b xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.4 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -83,7 +83,9 @@ Mỗi tính năng làm theo **cùng một khuôn** như phiên 2.2 (plugin packa
   - **2.3**: Calendar/Daily notes, Templates, Vault insights, Note composer (xong).
   - **2.3b**: Lint, Audio recorder. Cần thêm: app hiển thị panel bên và tab cài đặt của core plugin (chưa có ở hai app), nhảy tới dòng trong editor, ghi file đính kèm (nhị phân).
   - **Clipper giữ trong lõi** (ngoại lệ): phần nhận dữ liệu nằm ở máy chủ (`/api/v1/clip`) và Rust (`clipper.rs`); trong app chỉ là trang quản lý mã truy cập.
-- **Lô B (view lớn):** Graph, Board, Slides, Note history.
+- **Lô B (view lớn):** chia hai phiên (chốt 2026-10-16):
+  - **2.4**: Graph, Slides, Note history / Time scrubber (xong). File Recovery giữ trong lõi.
+  - **2.4b**: Board. Cần thêm: view gắn với loại file (`.board.md` hoặc frontmatter `board: true`) hiện **trong vùng editor** của tab (cả split pane), đọc/ghi qua bộ đệm của tab (dirty, lưu, tự lưu), mỗi tab một phiên bản, chế độ source trả về editor thô. Chi tiết thiếu sót: `docs/plugin-api/v1.md` mục "Lô B phần 1". Web hiện chỉ nhận board theo frontmatter, chưa có lệnh "New board": thống nhất với desktop.
 - **Lô C (nặng):** Canvas, Drawing, PDF viewer, Dataview, Mermaid và Math tải lười.
 
 Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production.
@@ -128,6 +130,7 @@ Khoảng 6–8 buổi.
 | 2.2 Thí điểm Flashcards | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-2-flashcards.md`; KaTeX tải lười; JS tải đầu web 533,9 → 457,8 KB gzip (−14,3%); API thêm `closeView`, view dạng lớp phủ |
 | 2.3 Lô A (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3-lo-a.md`; Calendar/Daily, Templates, Note composer, Vault insights thành plugin; API thêm `vault.stats`, plugin dùng React; JS tải đầu web 449,4 KB gzip |
 | 2.3b Lô A (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3b-lo-a.md`; Lint (panel phải), Audio recorder thành plugin; API thêm panel bên, `setCursor`, `saveAttachment`; sửa lỗi desktop lưu ghi âm thành chữ; JS tải đầu web 446,8 KB gzip |
-| 2.4 Lô B | Chưa làm | | |
+| 2.4 Lô B (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-4-lo-b.md`; Graph (web bỏ route `/graph`, thành lớp phủ), Slides, Note history + Time scrubber thành plugin; API thêm nút thanh công cụ note, đọc lịch sử note, `renderReadOnly`; sửa phím plugin bị keymap editor nuốt (Ctrl+G, Ctrl+D); JS tải đầu web 444,8 KB gzip |
+| 2.4b Lô B (phần 2) | Chưa làm | | Board + view theo loại file trong vùng editor (nền cho Canvas/Drawing) |
 | 2.5 Lô C | Chưa làm | | |
 | 2.6 Dọn dẹp, đo lại | Chưa làm | | |
