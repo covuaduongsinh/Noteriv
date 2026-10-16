@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1, 2.2 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1, 2.2, 2.3 xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -79,7 +79,10 @@
 
 Mỗi tính năng làm theo **cùng một khuôn** như phiên 2.2 (plugin package → đăng ký lệnh/view/ribbon → giữ định dạng dữ liệu → gỡ mã cũ → kiểm tra hai nền tảng).
 
-- **Lô A (nhỏ):** Calendar/Daily notes, Templates, Vault insights, Audio recorder, Note composer, Lint, Clipper.
+- **Lô A (nhỏ):** chia hai phiên (chốt 2026-10-16):
+  - **2.3**: Calendar/Daily notes, Templates, Vault insights, Note composer (xong).
+  - **2.3b**: Lint, Audio recorder. Cần thêm: app hiển thị panel bên và tab cài đặt của core plugin (chưa có ở hai app), nhảy tới dòng trong editor, ghi file đính kèm (nhị phân).
+  - **Clipper giữ trong lõi** (ngoại lệ): phần nhận dữ liệu nằm ở máy chủ (`/api/v1/clip`) và Rust (`clipper.rs`); trong app chỉ là trang quản lý mã truy cập.
 - **Lô B (view lớn):** Graph, Board, Slides, Note history.
 - **Lô C (nặng):** Canvas, Drawing, PDF viewer, Dataview, Mermaid và Math tải lười.
 
@@ -117,7 +120,8 @@ Khoảng 6–8 buổi.
 |---|---|---|---|
 | 2.1 Đo đạc | Xong | 2026-10-16 | Baseline `docs/perf/2026-10-16-baseline.md`; ghi nhận `docs/plans/2026-10-16-phien-2-1-do-dac.md`; danh sách giữ nguyên, ngân sách −30%, KaTeX tải lười đưa vào 2.2 |
 | 2.2 Thí điểm Flashcards | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-2-flashcards.md`; KaTeX tải lười; JS tải đầu web 533,9 → 457,8 KB gzip (−14,3%); API thêm `closeView`, view dạng lớp phủ |
-| 2.3 Lô A | Chưa làm | | |
+| 2.3 Lô A (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-3-lo-a.md`; Calendar/Daily, Templates, Note composer, Vault insights thành plugin; API thêm `vault.stats`, plugin dùng React; JS tải đầu web 449,4 KB gzip |
+| 2.3b Lô A (phần 2) | Chưa làm | | Lint, Audio recorder |
 | 2.4 Lô B | Chưa làm | | |
 | 2.5 Lô C | Chưa làm | | |
 | 2.6 Dọn dẹp, đo lại | Chưa làm | | |
