@@ -132,6 +132,7 @@ function buildApi(boot) {
       exists: function (path) { return rpcCall("vault.exists", [path]); },
       delete: function (path) { return rpcCall("vault.delete", [path]); },
       stats: coreOnly("vault.stats"),
+      saveAttachment: coreOnly("vault.saveAttachment"),
     },
     ui: {
       addCommand: function (cmd) {
@@ -167,6 +168,7 @@ function buildApi(boot) {
         unmountMirror("sidebar", id);
         return rpcCall("ui.removeSidebarPanel", [id]);
       },
+      toggleSidebarPanel: coreOnly("ui.toggleSidebarPanel"),
       addSettingsTab: function (tab) {
         return mountMirror("settings", tab, "ui.addSettingsTab", tab.name);
       },
@@ -203,6 +205,7 @@ function buildApi(boot) {
       getSelection: function () { return editorState.selection; },
       replaceSelection: function (text) { rpcCall("editor.replaceSelection", [text]).catch(function () {}); },
       getCursorPosition: function () { return { line: editorState.cursor.line, ch: editorState.cursor.ch }; },
+      setCursor: coreOnly("editor.setCursor"),
     },
     markdown: {
       registerCodeBlockProcessor: function (language, processor) {

@@ -44,6 +44,8 @@ export interface CorePluginHostServices {
   closeView?(types: string[]): void;
   /** A plugin created, changed or deleted notes: the app refreshes its file tree / index. */
   onVaultChanged?(): void;
+  /** Shows or hides a core plugin's sidebar panel (namespaced key). Absent: `ui.toggleSidebarPanel` does nothing. */
+  toggleSidebarPanel?(key: string): void;
   notify(message: string, durationMs?: number): void;
   loadPluginSettings(pluginId: string): Promise<Record<string, unknown>>;
   savePluginSettings(pluginId: string, data: Record<string, unknown>): Promise<void>;
@@ -254,6 +256,12 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           for (const n of notes) if (dates[n.id]) out[n.path] = dates[n.id];
           return out;
         },
+        async saveAttachment(name, data) {
+          if (!adapter.saveAttachment) throw new Error("This vault cannot store attachments");
+          // A file name only: no folders, nothing that could step out of the attachments place.
+          const safe = name.replace(/[\\/:*?"<>|]/g, "_").replace(/^\.+/, "") || "attachment";
+          return adapter.saveAttachment(safe, data);
+        },
       },
 
       editor: services.editor,
@@ -288,6 +296,7 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         removeStatusBarItem: (id) => remove("statusItems", key(id)),
         addSidebarPanel: (p) => upsert("sidebarPanels", panel(p, p.title)),
         removeSidebarPanel: (id) => remove("sidebarPanels", key(id)),
+        toggleSidebarPanel: (id) => services.toggleSidebarPanel?.(key(id)),
         addSettingsTab: (t) => upsert("settingsTabs", panel(t, t.name)),
         removeSettingsTab: (id) => remove("settingsTabs", key(id)),
         showNotice: (message, durationMs) => services.notify(String(message), durationMs),

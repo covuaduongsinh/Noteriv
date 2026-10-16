@@ -21,7 +21,6 @@ import StatusBar from "@/components/StatusBar";
 import SettingsModal from "@/components/SettingsModal";
 import ImportVault from "@/components/ImportVault";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
-import LintPanel from "@/components/LintPanel";
 import DiagnosticsModal from "@/components/DiagnosticsModal";
 import { createUntitledNote } from "@/lib/note-names";
 import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
@@ -29,7 +28,6 @@ import TrashPanel from "@/components/TrashPanel";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import HoverPreview from "@/components/HoverPreview";
 import AttachmentManager from "@/components/AttachmentManager";
-import AudioRecorder from "@/components/AudioRecorder";
 import FileRecovery from "@/components/FileRecovery";
 import TimeScrubber from "@/components/TimeScrubber";
 import NoteHistory from "@/components/NoteHistory";
@@ -42,6 +40,7 @@ import { webCorePluginConfig } from "@/lib/core-plugins";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
+  CorePluginSidePanels,
   CorePluginViewOverlay,
   useCorePluginHost,
   useCorePluginHotkeys,
@@ -185,7 +184,6 @@ export default function VaultPage() {
   // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
   const [showTrash, setShowTrash] = useState(false);
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
-  const [showLint, setShowLint] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ blob: Blob; filename: string } | null>(null);
   const [zenMode, setZenMode] = useState(false);
@@ -204,7 +202,6 @@ export default function VaultPage() {
     [bookmarks, index]
   );
   const [showAttachments, setShowAttachments] = useState(false);
-  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
@@ -369,6 +366,13 @@ export default function VaultPage() {
         const head = view.state.selection.main.head;
         const line = view.state.doc.lineAt(head);
         return { line: line.number - 1, ch: head - line.from };
+      },
+      setCursor: ({ line, ch }) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const docLine = view.state.doc.line(Math.min(Math.max(line + 1, 1), view.state.doc.lines));
+        view.dispatch({ selection: { anchor: docLine.from + Math.min(Math.max(ch, 0), docLine.length) }, scrollIntoView: true });
+        view.focus();
       },
   };
   /**
@@ -948,9 +952,6 @@ export default function VaultPage() {
       case "reloadApp":
         handleReloadApp();
         break;
-      case "toggleLint":
-        setShowLint((v) => !v);
-        break;
       case "zenMode":
         setZenMode((v) => !v);
         break;
@@ -1300,7 +1301,6 @@ export default function VaultPage() {
             onTrash={() => setShowTrash(true)}
             onBookmarks={() => setBookmarksVisible((v) => !v)}
             onAttachments={() => setShowAttachments(true)}
-            onAudioRecorder={() => setShowAudioRecorder(true)}
             onSync={() => openSettings("sync")}
             onPlugins={() => setPluginManagerOpen(true)}
             onThemes={() => openSettings("appearance")}
@@ -1308,7 +1308,14 @@ export default function VaultPage() {
             pluginPanels={pluginHost.panels
               .filter((p) => p.kind === "sidebar")
               .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
-            coreRibbon={<CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />}
+            coreRibbon={
+              <CorePluginRibbonButtons
+                icons={corePlugins.contributions.ribbonIcons}
+                panels={corePlugins.contributions.sidebarPanels}
+                openPanels={corePluginHost.openPanels}
+                onTogglePanel={corePluginHost.togglePanel}
+              />
+            }
             activePluginPanel={activePluginPanel}
             onPluginPanel={(key) => {
               setActivePluginPanel((cur) => (cur === key ? null : key));
@@ -1498,15 +1505,13 @@ export default function VaultPage() {
                     onClose={() => setCollabVisible(false)}
                   />
                 )}
-              </div>
-              {showLint && (
-                <LintPanel
-                  content={draft}
-                  noteNames={(index?.notes ?? []).map((n) => n.name.replace(/\.(md|markdown)$/i, ""))}
-                  onLineClick={handleHeadingClick}
-                  onClose={() => setShowLint(false)}
+                <CorePluginSidePanels
+                  panels={corePlugins.contributions.sidebarPanels}
+                  open={corePluginHost.openPanels}
+                  onClose={corePluginHost.togglePanel}
+                  closeLabel="Đóng"
                 />
-              )}
+              </div>
               {!zenMode && (
                 <StatusBar
                   viewMode={viewMode}
@@ -1678,16 +1683,6 @@ export default function VaultPage() {
             refreshIndex();
             openNote(noteId);
           }}
-        />
-      )}
-
-      {showAudioRecorder && (
-        <AudioRecorder
-          vaultId={vaultId}
-          onInsert={(markdownLink) => {
-            if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
-          }}
-          onClose={() => setShowAudioRecorder(false)}
         />
       )}
 

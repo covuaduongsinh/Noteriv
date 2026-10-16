@@ -9379,3 +9379,49 @@ body {
   z-index: 9999;
   white-space: nowrap;
 }
+
+/* ── core plugin sidebar panels (CorePluginSidePanels, right column; same look as the lint panel they replace) ── */
+.core-panel {
+  width: 250px;
+  min-width: 250px;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary);
+  border-left: 1px solid var(--border);
+}
+.core-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 40px;
+  flex-shrink: 0;
+  border-bottom: 1px solid var(--border);
+}
+.core-panel-title {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.core-panel-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+.core-panel-close:hover {
+  color: var(--text-primary);
+}
+.core-panel-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+.core-panel-mount {
+  height: 100%;
+}

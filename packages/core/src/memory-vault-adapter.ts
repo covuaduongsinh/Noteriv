@@ -38,6 +38,15 @@ export class MemoryVaultAdapter implements VaultAdapter {
     this.dates.set(id, dates);
   }
 
+  /** Tests: attachments saved through `saveAttachment`, by link target. */
+  readonly attachments = new Map<string, Blob>();
+
+  async saveAttachment(name: string, data: Blob): Promise<string> {
+    const target = `attachments/${name}`;
+    this.attachments.set(target, data);
+    return target;
+  }
+
   async noteDates(): Promise<Record<string, NoteDates>> {
     return Object.fromEntries(Array.from(this.dates).filter(([id]) => this.notes.has(id)));
   }

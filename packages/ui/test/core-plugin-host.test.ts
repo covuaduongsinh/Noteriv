@@ -8,6 +8,7 @@ import { getCodeBlockProcessor } from "@noteriv/core/markdown-code-block-registr
 import {
   createCorePluginHost,
   CorePluginsSection,
+  CorePluginSidePanels,
   CorePluginViewOverlay,
   listVaultEntries,
   settingsKeyStateStore,
@@ -35,6 +36,7 @@ const editor = {
   getSelection: () => "",
   replaceSelection: vi.fn(),
   getCursorPosition: () => ({ line: 1, ch: 0 }),
+  setCursor: vi.fn(),
 };
 
 function makeHost(plugins: CorePluginDef<PluginApi>[], opts: { adapter?: MemoryVaultAdapter; store?: PluginStateStore } = {}) {
@@ -331,6 +333,75 @@ describe("plugin views (useCorePluginHost + CorePluginViewOverlay)", () => {
     expect(cleanup).toHaveBeenCalledTimes(3);
     await act(async () => root.unmount());
     el.remove();
+  });
+});
+
+describe("plugin sidebar panels (CorePluginSidePanels)", () => {
+  it("toggles a panel from the plugin, shows it on the right with its own DOM, and drops it when the plugin stops", async () => {
+    let api!: PluginApi;
+    const cleanup = vi.fn();
+    const config: CorePluginHostConfig = {
+      adapter: new MemoryVaultAdapter(),
+      platform: "web",
+      vaultPath: null,
+      plugins: [
+        {
+          ...def("p", {
+            onload(a) {
+              api = a;
+              a.ui.addSidebarPanel({
+                id: "side",
+                title: "Side",
+                icon: "S",
+                render(el) {
+                  el.textContent = "panel body";
+                  return cleanup;
+                },
+              });
+            },
+          }),
+          defaultEnabled: true,
+        },
+      ],
+      storage: { stateStore: memoryStore(), loadPluginSettings: async () => ({}), savePluginSettings: async () => undefined },
+    };
+    let hostRef: CorePluginHost | null = null;
+    function Harness() {
+      const h = useCorePluginHost(config, { editor, getCurrentFile: () => null, openFile: () => true });
+      const { contributions } = useCorePlugins(h.host);
+      hostRef = h.host;
+      return createElement(CorePluginSidePanels, { panels: contributions.sidebarPanels, open: h.openPanels, onClose: h.togglePanel });
+    }
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const root = createRoot(el);
+    await act(async () => root.render(createElement(Harness)));
+    await act(async () => void (await hostRef!.registry.setEnabled("p", true)));
+    expect(el.querySelector("[data-core-panel]")).toBeNull();
+
+    await act(async () => api.ui.toggleSidebarPanel("side"));
+    expect(el.querySelector('[data-core-panel="p:side"]')?.textContent).toContain("panel body");
+    await act(async () => el.querySelector<HTMLButtonElement>(".core-panel-close")!.click());
+    expect(el.querySelector("[data-core-panel]")).toBeNull();
+    expect(cleanup).toHaveBeenCalledTimes(1);
+
+    await act(async () => api.ui.toggleSidebarPanel("side"));
+    await act(async () => void (await hostRef!.registry.setEnabled("p", false)));
+    expect(el.querySelector("[data-core-panel]")).toBeNull();
+    expect(cleanup).toHaveBeenCalledTimes(2);
+    await act(async () => root.unmount());
+    el.remove();
+  });
+
+  it("stores attachments through the adapter under a plain file name", async () => {
+    const adapter = new MemoryVaultAdapter();
+    let api!: PluginApi;
+    const { host } = makeHost([def("a", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("a", true);
+    const target = await api.vault.saveAttachment("../evil/rec:1.webm", new Blob(["x"], { type: "audio/webm" }));
+    // Separators and reserved characters become "_", leading dots go: the name can never leave attachments/.
+    expect(target).toBe("attachments/_evil_rec_1.webm");
+    expect(adapter.attachments.has(target)).toBe(true);
   });
 });
 

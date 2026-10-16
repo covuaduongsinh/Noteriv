@@ -52,7 +52,6 @@ export type HotkeyAction =
   | "randomNote"
   | "fileRecovery"
   | "exportPDF"
-  | "audioRecorder"
   | "attachments"
   | "slidePresentation"
   | "pluginManager"
@@ -73,7 +72,6 @@ export type HotkeyAction =
   | "togglePinTab"
   | "noteHistory"
   | "timeScrubber"
-  | "toggleLint"
   | "splitEditor"
   | "closeSplit";
 
@@ -147,7 +145,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "randomNote", label: "Open Random Note", keys: "Ctrl+Shift+R", category: "Navigation" },
   { action: "fileRecovery", label: "File Recovery", keys: "", category: "File" },
   { action: "exportPDF", label: "Export as PDF", keys: "", category: "File" },
-  { action: "audioRecorder", label: "Audio Recorder", keys: "", category: "Edit" },
   { action: "attachments", label: "Attachment Manager", keys: "", category: "Edit" },
   { action: "slidePresentation", label: "Start Presentation", keys: "", category: "View" },
   // Ecosystem
@@ -173,7 +170,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   // Note history & lint
   { action: "noteHistory", label: "Note History", keys: "", category: "View" },
   { action: "timeScrubber", label: "Time Scrubber", keys: "Ctrl+Shift+H", category: "View" },
-  { action: "toggleLint", label: "Toggle Lint Warnings", keys: "Ctrl+Shift+L", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
 ];

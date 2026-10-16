@@ -65,7 +65,6 @@ export type HotkeyAction =
   | "importNewVault"
   | "newVaultFromGithub"
   | "randomNote"
-  | "toggleLint"
   | "zenMode"
   | "focusMode"
   | "reloadApp"
@@ -115,7 +114,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
-  { action: "toggleLint", label: "Toggle Lint Panel", keys: "", category: "View" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },
   { action: "focusMode", label: "Focus Mode (dim other lines)", keys: "", category: "View" },
   { action: "reloadApp", label: "Reload page (saves first)", keys: "", category: "Developer" },

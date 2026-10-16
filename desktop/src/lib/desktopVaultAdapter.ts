@@ -87,6 +87,18 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
       );
     },
 
+    // Binary write (raw base64, no `data:` prefix): the old recorder wrote the data-URL text and produced files that
+    // would not play.
+    async saveAttachment(name, data) {
+      const target = abs(`attachments/${name}`);
+      await api().createDir(dirOf(target));
+      const bytes = new Uint8Array(await data.arrayBuffer());
+      let binary = "";
+      for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+      if (!(await api().writeBinaryFile(target, btoa(binary)))) throw new Error(`Could not write attachments/${name}`);
+      return `attachments/${name}`;
+    },
+
     async getSettings() {
       return (await api().loadSettings()) ?? {};
     },

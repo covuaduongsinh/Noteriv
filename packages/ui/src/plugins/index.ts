@@ -15,6 +15,7 @@ export { matchesHotkey, parseHotkey, isMacPlatform } from "./hotkey";
 export { default as CorePluginsSection, type CorePluginsSectionProps, type CorePluginsLabels } from "./CorePluginsSection";
 export { CorePluginRibbonButtons, CorePluginStatusItems } from "./CorePluginButtons";
 export { CorePluginViewOverlay } from "./CorePluginViewOverlay";
+export { CorePluginSidePanels } from "./CorePluginSidePanels";
 export {
   useCorePluginHost,
   type ActiveCorePluginView,

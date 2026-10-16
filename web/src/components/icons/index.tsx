@@ -256,16 +256,6 @@ export function HistoryIcon({ size = 14, className }: IconProps) {
 }
 
 /** Phase D8 — Audio recorder. */
-export function MicIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="6" y="2" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M4 7.5a4 4 0 008 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M8 11.5v2.5M6 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 // ── Phase 1 discoverability additions (docs/plans/2026-10-14-noteriv-web-desktop-parity-v2.md) ──
 
 export function SyncIcon({ size = 16, className }: IconProps) {

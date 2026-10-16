@@ -47,6 +47,18 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Vault statistics: activity heatmap, most connected and orphan notes, top tags, growth and vault health.",
     load: () => import("@noteriv/plugins/vault-insights"),
   },
+  {
+    id: "markdown-lint",
+    name: "Markdown lint",
+    description: "Right-hand panel listing problems in the open note (broken links, headings…); click one to jump to its line. Ctrl+Shift+L.",
+    load: () => import("@noteriv/plugins/markdown-lint"),
+  },
+  {
+    id: "audio-recorder",
+    name: "Audio recorder",
+    description: "Record from the microphone, save it as an attachment and insert the link into the open note.",
+    load: () => import("@noteriv/plugins/audio-recorder"),
+  },
 ];
 
 const CONFIG_DIR = ".noteriv";

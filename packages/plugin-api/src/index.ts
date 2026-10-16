@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.3";
+export const PLUGIN_API_VERSION = "1.0.0-draft.4";
 
 // ─── Permissions (community tier) ───
 
@@ -49,6 +49,11 @@ export interface VaultApi {
   delete(path: string): Promise<boolean>;
   /** Core tier only. Creation / last-change time of every note, keyed by vault-relative path (absent: unknown). */
   stats(): Promise<Record<string, NoteStats>>;
+  /**
+   * Core tier only. Stores a binary attachment (a recording, an image…) under `name` and returns the link target to
+   * put in markdown (`![Audio](target)`): an attachment URL on web, `attachments/<name>` inside the vault on desktop.
+   */
+  saveAttachment(name: string, data: Blob): Promise<string>;
 }
 
 // ─── Editor ───
@@ -65,6 +70,8 @@ export interface EditorApi {
   getSelection(): string;
   replaceSelection(text: string): void;
   getCursorPosition(): CursorPosition;
+  /** Core tier only. Moves the cursor (0-based, clamped to the document), scrolls it into view and focuses the editor. */
+  setCursor(pos: CursorPosition): void;
 }
 
 // ─── Markdown ───
@@ -156,6 +163,8 @@ export interface UiApi {
   removeStatusBarItem(id: string): void;
   addSidebarPanel(panel: SidebarPanel): void;
   removeSidebarPanel(id: string): void;
+  /** Core tier only. Shows the panel (in the right column) or hides it if it is shown. */
+  toggleSidebarPanel(id: string): void;
   addSettingsTab(tab: SettingsTab): void;
   removeSettingsTab(id: string): void;
   showNotice(message: string, durationMs?: number): void;

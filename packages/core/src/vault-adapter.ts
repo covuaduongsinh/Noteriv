@@ -56,6 +56,11 @@ export interface VaultAdapter {
    * missing method or a missing entry as "unknown".
    */
   noteDates?(): Promise<Record<string, NoteDates>>;
+  /**
+   * Stores a binary attachment and returns the link target for markdown (web: attachment URL, desktop:
+   * `attachments/<name>` in the vault). Optional: plugins get an error where it is missing.
+   */
+  saveAttachment?(name: string, data: Blob): Promise<string>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

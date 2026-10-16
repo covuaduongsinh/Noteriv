@@ -55,7 +55,6 @@ const SECTIONS: MenuSection[] = [
       { action: "splitEditor", label: "Split Editor" },
       { action: "zenMode", label: "Zen Mode" },
       { action: "focusMode", label: "Focus Mode" },
-      { action: "toggleLint", label: "Lint Panel" },
       "sep",
       { action: "toggleOutline", label: "Outline" },
       { action: "toggleTags", label: "Tags" },

@@ -47,6 +47,18 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     description: "Thống kê vault: biểu đồ hoạt động, note kết nối nhiều và note mồ côi, tag phổ biến, tăng trưởng, sức khoẻ vault.",
     load: () => import("@noteriv/plugins/vault-insights"),
   },
+  {
+    id: "markdown-lint",
+    name: "Markdown lint",
+    description: "Panel bên phải liệt kê vấn đề của note đang mở (link hỏng, heading…); bấm một mục để nhảy tới dòng. Ctrl+Shift+L.",
+    load: () => import("@noteriv/plugins/markdown-lint"),
+  },
+  {
+    id: "audio-recorder",
+    name: "Ghi âm",
+    description: "Ghi âm từ microphone, lưu thành file đính kèm và chèn link vào note đang mở.",
+    load: () => import("@noteriv/plugins/audio-recorder"),
+  },
 ];
 
 /** Vault settings key holding each core plugin's own settings blob. On/off lives under `corePlugins`. */

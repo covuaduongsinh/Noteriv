@@ -12,7 +12,6 @@ import {
   TrashIcon,
   BookmarkIcon,
   AttachmentIcon,
-  MicIcon,
   SyncIcon,
   ThemeIcon,
   PluginIcon,
@@ -33,7 +32,6 @@ interface RibbonProps {
   onTrash: () => void;
   onBookmarks: () => void;
   onAttachments: () => void;
-  onAudioRecorder: () => void;
   onSync: () => void;
   onPlugins: () => void;
   onThemes: () => void;
@@ -91,7 +89,6 @@ export default function Ribbon(props: RibbonProps) {
 
   const moreItems: { label: string; icon: React.ReactNode; run: () => void }[] = [
     { label: "File đính kèm", icon: <AttachmentIcon />, run: props.onAttachments },
-    { label: "Ghi âm", icon: <MicIcon />, run: props.onAudioRecorder },
     { label: "Themes", icon: <ThemeIcon />, run: props.onThemes },
     { label: "CSS Snippets", icon: <SnippetsIcon />, run: props.onSnippets },
     { label: "Thùng rác", icon: <TrashIcon size={16} />, run: props.onTrash },

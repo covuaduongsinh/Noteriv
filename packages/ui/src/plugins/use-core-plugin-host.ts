@@ -54,8 +54,15 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
   const [notices, setNotices] = useState<CorePluginNotice[]>([]);
   const [activeView, setActiveView] = useState<ActiveCorePluginView | null>(null);
 
+  /** Keys (`<pluginId>:<panelId>`) of the core plugin sidebar panels shown in the right column. */
+  const [openPanels, setOpenPanels] = useState<string[]>([]);
+
   const dismissNotice = useCallback((key: string) => setNotices((prev) => prev.filter((n) => n.key !== key)), []);
   const closeView = useCallback(() => setActiveView(null), []);
+  const togglePanel = useCallback(
+    (key: string) => setOpenPanels((prev) => (prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key])),
+    []
+  );
 
   useEffect(() => {
     if (!config) return;
@@ -66,6 +73,7 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
       getSelection: () => portsRef.current.editor.getSelection(),
       replaceSelection: (t) => portsRef.current.editor.replaceSelection(t),
       getCursorPosition: () => portsRef.current.editor.getCursorPosition(),
+      setCursor: (pos) => portsRef.current.editor.setCursor(pos),
     };
     const h = createCorePluginHost({
       adapter: config.adapter,
@@ -80,6 +88,7 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
       },
       closeView: (types) => setActiveView((v) => (v && types.includes(v.type) ? null : v)),
       onVaultChanged: () => portsRef.current.onVaultChanged?.(),
+      toggleSidebarPanel: togglePanel,
       notify: (message, durationMs = 4000) => {
         const key = `core:${Date.now()}:${Math.random().toString(36).slice(2)}`;
         setNotices((prev) => [...prev, { key, message }]);
@@ -95,9 +104,10 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
     return () => {
       setHost(null);
       setActiveView(null);
+      setOpenPanels([]);
       void h.dispose();
     };
-  }, [config]);
+  }, [config, togglePanel]);
 
-  return { host, notices, dismissNotice, activeView, closeView };
+  return { host, notices, dismissNotice, activeView, closeView, openPanels, togglePanel };
 }

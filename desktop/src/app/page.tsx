@@ -20,6 +20,7 @@ import { refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adap
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
+  CorePluginSidePanels,
   CorePluginViewOverlay,
   useCorePluginHost,
   useCorePluginHotkeys,
@@ -28,7 +29,6 @@ import {
 import { desktopCorePluginConfig } from "@/lib/core-plugins";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import FileRecovery from "@/components/FileRecovery";
-import AudioRecorder from "@/components/AudioRecorder";
 import AttachmentManager from "@/components/AttachmentManager";
 import PluginManagerModal from "@/components/PluginManager";
 import CSSSnippets from "@/components/CSSSnippets";
@@ -42,7 +42,6 @@ import CollabPanel from "@/components/CollabPanel";
 import TrashPanel from "@/components/TrashPanel";
 import NoteHistory from "@/components/NoteHistory";
 import TimeScrubber from "@/components/TimeScrubber";
-import LintPanel from "@/components/LintPanel";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
 import { insertAtCursor } from "@noteriv/ui/editor/editor-commands";
@@ -145,7 +144,6 @@ export default function Home() {
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
-  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
   const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
@@ -190,7 +188,6 @@ export default function Home() {
   const [pinnedTabs, setPinnedTabs] = useState<Set<string>>(new Set());
   const [showNoteHistory, setShowNoteHistory] = useState(false);
   const [showTimeScrubber, setShowTimeScrubber] = useState(false);
-  const [showLintPanel, setShowLintPanel] = useState(false);
   const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
   const [communityPlugins, setCommunityPlugins] = useState<DesktopPlugin[]>([]);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
@@ -1344,7 +1341,6 @@ export default function Home() {
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
       fileRecovery: () => setShowFileRecovery(true),
       exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
-      audioRecorder: () => setShowAudioRecorder(true),
       attachments: () => setShowAttachments(true),
       slidePresentation: () => setShowSlidePresentation(true),
       pluginManager: () => setShowPluginManager(true),
@@ -1368,7 +1364,6 @@ export default function Home() {
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
       noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
       timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
-      toggleLint: () => setShowLintPanel((l) => !l),
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
     };
@@ -1534,7 +1529,6 @@ export default function Home() {
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
         fileRecovery: () => setShowFileRecovery(true),
         exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
-        audioRecorder: () => setShowAudioRecorder(true),
         attachments: () => setShowAttachments(true),
         slidePresentation: () => setShowSlidePresentation(true),
         pluginManager: () => setShowPluginManager(true),
@@ -1556,7 +1550,6 @@ export default function Home() {
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
         noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
         timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
-        toggleLint: () => setShowLintPanel((l) => !l),
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
         closeSplit: handleCloseSplit,
       };
@@ -1632,6 +1625,13 @@ export default function Home() {
         const head = view.state.selection.main.head;
         const line = view.state.doc.lineAt(head);
         return { line: line.number - 1, ch: head - line.from };
+      },
+      setCursor: ({ line, ch }) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const docLine = view.state.doc.line(Math.min(Math.max(line + 1, 1), view.state.doc.lines));
+        view.dispatch({ selection: { anchor: docLine.from + Math.min(Math.max(ch, 0), docLine.length) }, scrollIntoView: true });
+        view.focus();
       },
     },
     getCurrentFile: () => (activeTabRef.current && activeVaultPath ? relativeVaultPath(activeVaultPath, activeTabRef.current) : null),
@@ -1864,7 +1864,12 @@ export default function Home() {
                 </svg>
               </button>
               {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
-              <CorePluginRibbonButtons icons={corePlugins.contributions.ribbonIcons} />
+              <CorePluginRibbonButtons
+                icons={corePlugins.contributions.ribbonIcons}
+                panels={corePlugins.contributions.sidebarPanels}
+                openPanels={corePluginHost.openPanels}
+                onTogglePanel={corePluginHost.togglePanel}
+              />
             </div>
             <div className="ribbon-bottom">
               <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
@@ -2036,14 +2041,12 @@ export default function Home() {
             labels={{ hint: "Right-click a file or use Ctrl+B to bookmark." }}
           />
         )}
-        {showLintPanel && currentTab && activeVault && (
-          <LintPanel
-            content={content}
-            vaultPath={activeVault.path}
-            onLineClick={handleHeadingClick}
-            onClose={() => setShowLintPanel(false)}
-          />
-        )}
+        {/* Sidebar panels of core plugins (Lint, …) */}
+        <CorePluginSidePanels
+          panels={corePlugins.contributions.sidebarPanels}
+          open={corePluginHost.openPanels}
+          onClose={corePluginHost.togglePanel}
+        />
       </div>
 
       {/* Status bar */}
@@ -2189,21 +2192,6 @@ export default function Home() {
         />
       )}
 
-      {/* Audio recorder */}
-      {showAudioRecorder && activeVault && (
-        <AudioRecorder
-          vaultPath={activeVault.path}
-          onInsert={(link) => {
-            if (editorViewRef.current) {
-              const view = editorViewRef.current;
-              const pos = view.state.selection.main.head;
-              view.dispatch({ changes: { from: pos, insert: link } });
-            }
-            setShowAudioRecorder(false);
-          }}
-          onClose={() => setShowAudioRecorder(false)}
-        />
-      )}
 
       {/* Attachment manager */}
       {showAttachments && activeVault && (

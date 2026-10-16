@@ -87,6 +87,13 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
       );
     },
 
+    // Attachments live in object storage, not in the note tree; the link is the download URL (same as the old recorder).
+    async saveAttachment(name, data) {
+      const file = new File([data], name, { type: data.type || "application/octet-stream" });
+      const attachment = await webApi.attachments.upload(vaultId, file);
+      return webApi.attachments.downloadUrl(vaultId, attachment.id);
+    },
+
     async getSettings() {
       return (await webApi.vaults.get(vaultId)).settings ?? {};
     },
