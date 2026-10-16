@@ -1,6 +1,6 @@
 # Giai đoạn 2: Thu gọn: chuyển tính năng hiện có thành core plugin
 
-> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.5b xong)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> Ngày lập: 2026-10-14 · Trạng thái: **đang triển khai (2.1–2.5c xong; còn 2.6)** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 1 xong (đã có `@noteriv/core`, `@noteriv/ui`, `VaultAdapter`, `PluginRegistry` và Plugin API v1 nháp).
 
@@ -89,7 +89,7 @@ Mỗi tính năng làm theo **cùng một khuôn** như phiên 2.2 (plugin packa
 - **Lô C (nặng):** chia ba phiên (chốt 2026-10-16):
   - **2.5**: Mermaid, Dataview (xong). **Math (KaTeX) giữ trong lõi**: là cú pháp `$…$` của editor, đã tải lười từ 2.2.
   - **2.5b**: Canvas, Drawing (xong). Cần mở rộng view theo loại file cho file không phải markdown. Desktop lưu `.canvas`/`.drawing` (JSON) và mở theo `kind` của tab, Drawing là lớp phủ tự đọc/ghi file. Web lưu thành note markdown có frontmatter `canvas: true`/`drawing: true`, chưa có lệnh tạo. Node trỏ tới note/ảnh mang nghĩa khác nhau (desktop: đường dẫn tuyệt đối; web: id note/đính kèm). Ba bản CSS canvas trùng nhau.
-  - **2.5c**: PDF viewer. Đọc nhị phân (web: tải file đính kèm, mở từ AttachmentManager; desktop: tab `kind: "pdf"`, `readBinaryFile`). Chú thích lưu ở metadata của đính kèm (web) hoặc file `.<tên>-annotations.json` (desktop). pdf.js nạp từ `public/` của mỗi app. Xuất PDF (dịch vụ PDF) vẫn thuộc lõi.
+  - **2.5c**: PDF viewer (xong). Đọc nhị phân (web: tải file đính kèm, mở từ AttachmentManager; desktop: tab `kind: "pdf"`, `readBinaryFile`). Chú thích lưu ở metadata của đính kèm (web) hoặc file `.<tên>-annotations.json` (desktop). pdf.js nạp từ `public/` của mỗi app. Xuất PDF (dịch vụ PDF) vẫn thuộc lõi.
 
 Sau mỗi lô: deploy staging, chủ dự án thử, rồi mới vào production.
 
@@ -137,5 +137,5 @@ Khoảng 6–8 buổi.
 | 2.4b Lô B (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-4b-lo-b.md`; Board thành plugin; API thêm view theo loại file (`ui.registerFileView`) thay editor trong tab; web nhận `.board.md` và có lệnh tạo board; JS tải đầu web 444,6 KB gzip |
 | 2.5 Lô C (phần 1) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5-lo-c.md`; Mermaid, Dataview thành plugin; Math giữ trong lõi; xuất PDF hai app chờ khối plugin vẽ xong (có sơ đồ, bảng); JS tải đầu web 442,8 KB gzip |
 | 2.5b Lô C (phần 2) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5b-lo-c.md`; Canvas, Drawing thành plugin (gốc web; desktop nay trong tab, tự lưu); API thêm `vault.resolve`, `listAttachments`, `attachmentUrl`, file không phải markdown trên desktop; JS tải đầu web 442,2 KB gzip |
-| 2.5c Lô C (phần 3) | Chưa làm | | PDF viewer |
+| 2.5c Lô C (phần 3) | Xong | 2026-10-16 | `docs/plans/2026-10-16-phien-2-5c-lo-c.md`; PDF viewer + chú thích thành plugin (mặc định bật); API thêm trình xem đính kèm, `readAttachment`, `get/setAttachmentData`; **Lô C xong**; JS tải đầu web 442,7 KB gzip |
 | 2.6 Dọn dẹp, đo lại | Chưa làm | | |
