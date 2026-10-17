@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 // The main path a new user takes, end to end through the real UI: sign up with an invite code,
 // create a vault, write and link notes, rename, search, switch a core plugin on, delete a note
@@ -6,6 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
 
+let context: BrowserContext;
 let page: Page;
 const stamp = Date.now();
 const email = `e2e-${stamp}@example.test`;
@@ -13,13 +14,15 @@ const email = `e2e-${stamp}@example.test`;
 const password = `E2e-${stamp}-${Math.random().toString(36).slice(2)}`;
 
 test.beforeAll(async ({ browser }) => {
-  page = await browser.newPage();
+  // One context for the whole run, so a second tab (same session) can be opened.
+  context = await browser.newContext();
+  page = await context.newPage();
 });
 
 test.afterAll(async () => {
   // Remove the account and everything it owns, whatever happened above (E2E_KEEP_ACCOUNT=1 keeps it to debug).
   if (!process.env.E2E_KEEP_ACCOUNT) await page.request.delete("/api/v1/users/me").catch(() => undefined);
-  await page.close();
+  await context.close();
 });
 
 const sidebarItem = (name: string) => page.locator(".sidebar-root .sb-label").getByText(name, { exact: true }).first();
@@ -100,19 +103,22 @@ test("write two linked notes, rename them, see the backlink", async () => {
   await expect(page.locator(".bl-panel .bl-list")).toContainText("First");
 });
 
-test("search finds a note by its content", async () => {
+test("search finds the matching line as you type and opens the note there", async () => {
+  await sidebarItem("Second").click();
   await page.getByTitle("Tìm trong vault").click();
-  const box = page.getByPlaceholder("Tìm trong nội dung…");
-  await box.fill("e2e world");
+  const box = page.getByPlaceholder("Tìm trong nội dung các note…");
+  await box.fill("e2e world"); // no Enter needed to search
+  const result = page.getByRole("option").filter({ hasText: "First" });
+  await expect(result).toContainText("Hello e2e world");
+  await expect(result).toContainText(":3"); // the line it is on
   await box.press("Enter");
-  const result = page.getByRole("button", { name: /First\.md/ });
-  await expect(result).toContainText("e2e world");
-  await result.click();
+  await expect(box).toHaveCount(0);
   await expect(page.locator(".cm-content").first()).toContainText("Hello e2e world");
-  // Opening a result may already have closed the search panel.
-  const close = page.getByTitle("Đóng tìm kiếm");
-  if (await close.isVisible()) await close.click();
-  await expect(sidebarItem("Second")).toBeVisible();
+  // The cursor is at the start of that line: a typed character lands there.
+  await page.keyboard.type("Z");
+  await expect(page.locator(".cm-content").first()).toContainText("ZHello e2e world");
+  await page.keyboard.press("Backspace");
+  await expect(page.locator(".cm-content").first()).not.toContainText("ZHello");
 });
 
 test("switching a core plugin on adds its feature", async () => {
@@ -126,6 +132,24 @@ test("switching a core plugin on adds its feature", async () => {
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByText(/^\d+ từ$/).first()).toBeVisible();
+});
+
+test("another open tab follows a core plugin switch without reloading", async () => {
+  const other = await context.newPage();
+  await other.goto(page.url());
+  // Open a note there explicitly: the restored tabs may not have reached the server yet.
+  await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
+  await expect(other.getByText(/^\d+ từ$/).first()).toBeVisible();
+
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  const toggle = page.locator('[data-core-plugin="word-count"]').getByRole("switch");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Escape");
+
+  await expect(other.getByText(/^\d+ từ$/)).toHaveCount(0);
+  await other.close();
 });
 
 test("reloading restores the open tabs without a request per note", async () => {

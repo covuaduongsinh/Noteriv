@@ -46,6 +46,22 @@ function plugin(id: string, mod: Partial<CorePluginModule<Api>> = {}, extra: Par
 }
 
 describe("PluginRegistry", () => {
+  it("applies a change made in another tab without saving it again", async () => {
+    const onload = vi.fn();
+    const store = memoryStore();
+    const { registry, disposed } = setup([plugin("a", { onload })], store);
+    await registry.init();
+    await registry.applyExternalChange("a", true);
+    expect(onload).toHaveBeenCalledOnce();
+    expect(registry.list()[0].enabled).toBe(true);
+    await registry.applyExternalChange("a", true); // repeated message: no second start
+    expect(onload).toHaveBeenCalledOnce();
+    await registry.applyExternalChange("a", false);
+    expect(disposed).toEqual(["a"]);
+    await registry.applyExternalChange("unknown", true); // ignored, no throw
+    expect(store.saved).toEqual([]);
+  });
+
   it("lists plugins as disabled until initialised", () => {
     const { registry } = setup([plugin("a"), plugin("b")]);
     expect(registry.list().map((p) => [p.id, p.enabled, p.status])).toEqual([

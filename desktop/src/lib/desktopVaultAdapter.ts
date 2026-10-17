@@ -8,6 +8,7 @@ import {
   relativeVaultPath,
   toPosixPath,
   type NoteRef,
+  type NoteSearchHit,
   type VaultAdapter,
 } from "@noteriv/core/vault-adapter";
 
@@ -82,14 +83,17 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
     async search(query) {
       if (!query.trim()) return [];
       const rows = await api().searchInFiles(vaultPath, query);
-      const seen = new Set<string>();
-      const hits = [];
+      // One hit per file with all its matching lines (in file order of the results), like the web endpoint.
+      const byFile = new Map<string, NoteSearchHit>();
       for (const r of rows) {
-        if (seen.has(r.filePath)) continue; // first matching line per file, like the web endpoint
-        seen.add(r.filePath);
-        hits.push({ ref: refFromAbsolutePath(vaultPath, r.filePath), snippet: r.text.trim().slice(0, 120) });
+        let hit = byFile.get(r.filePath);
+        if (!hit) {
+          hit = { ref: refFromAbsolutePath(vaultPath, r.filePath), snippet: r.text.trim().slice(0, 120), matches: [] };
+          byFile.set(r.filePath, hit);
+        }
+        hit.matches!.push({ line: r.line, text: r.text.trim().slice(0, 200) });
       }
-      return hits;
+      return Array.from(byFile.values());
     },
 
     async backlinks(id) {

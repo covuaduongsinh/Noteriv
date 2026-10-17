@@ -9,7 +9,9 @@ export { markdownRenderTheme, mdHighlightStyle, editorTheme } from "./theme";
 export { RenderedMarkdownWidget } from "./widget";
 export {
   setLocalImageLoader,
+  setPostProcessorRunner,
   type LocalImageLoader,
+  type PostProcessorRunner,
 } from "./vault-hooks";
 export { setEditorViewForImages, setImageLightboxHandler } from "./renderers/images";
 export {

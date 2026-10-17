@@ -134,6 +134,25 @@ describe("inline renderers", () => {
 });
 
 describe("vault hooks", () => {
+  it("runs the post-processor runner over each rendered widget, and survives a failing one", async () => {
+    const { RenderedMarkdownWidget } = await import("../src/markdown/widget");
+    const { setPostProcessorRunner } = await import("../src/markdown/vault-hooks");
+    const seen: string[] = [];
+    setPostProcessorRunner((el) => {
+      seen.push(el.textContent ?? "");
+      el.setAttribute("data-processed", "yes");
+    });
+    const dom = new RenderedMarkdownWidget("<b>hello</b>", "md-x").toDOM();
+    expect(seen).toEqual(["hello"]);
+    expect(dom.getAttribute("data-processed")).toBe("yes");
+
+    setPostProcessorRunner(() => {
+      throw new Error("boom");
+    });
+    expect(new RenderedMarkdownWidget("<i>still</i>", "md-x").toDOM().textContent).toBe("still");
+    setPostProcessorRunner(null);
+  });
+
   it("stores and clears the local image loader", () => {
     const loader = { resolve: () => null, load: async () => null };
     setLocalImageLoader(loader);

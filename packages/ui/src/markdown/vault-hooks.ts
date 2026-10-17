@@ -25,3 +25,20 @@ export function setLocalImageLoader(loader: LocalImageLoader | null): void {
 export function getLocalImageLoader(): LocalImageLoader | null {
   return localImageLoader;
 }
+
+/**
+ * Runs the core plugins' markdown post-processors (`markdown.registerPostProcessor`) over a piece of rendered note
+ * DOM. The app registers its plugin host's runner; rendered widgets call it on the element they own (CodeMirror's
+ * own line DOM is redrawn at will, so it is not handed to plugins).
+ */
+export type PostProcessorRunner = (el: HTMLElement, ctx: { sourcePath: string | null }) => void;
+
+let postProcessorRunner: PostProcessorRunner | null = null;
+
+export function setPostProcessorRunner(runner: PostProcessorRunner | null): void {
+  postProcessorRunner = runner;
+}
+
+export function getPostProcessorRunner(): PostProcessorRunner | null {
+  return postProcessorRunner;
+}

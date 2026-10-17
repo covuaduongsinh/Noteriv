@@ -87,6 +87,8 @@ export interface ApiSearchResult {
   path: string;
   snippet: string;
   rank: number;
+  /** Lines containing the search words (1-based); absent from older servers. */
+  matches?: { line: number; text: string }[];
 }
 
 export interface ApiBacklink {
