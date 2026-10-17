@@ -63,7 +63,7 @@ Chỉnh các trang sẵn có trong `docs/getting-started`, `docs/features`, `doc
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 4.1 Hạ tầng i18n | Xong (chờ lên production) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-1-i18n.md); `packages/ui/src/i18n`, `api.i18n` (draft.10), panel dùng chung + thanh định dạng + `word-count` đọc catalog; mặc định chuyển tiếp web `vi` / desktop `en` tới cuối 4.3 (chủ dự án chốt); 448 test, E2E 9/9, smoke desktop 16/16 |
+| 4.1 Hạ tầng i18n | Xong, đã lên production (PR #9 merge `79318bf`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-1-i18n.md); `packages/ui/src/i18n`, `api.i18n` (draft.10), panel dùng chung + thanh định dạng + `word-count` đọc catalog; mặc định chuyển tiếp web `vi` / desktop `en` tới cuối 4.3 (chủ dự án chốt); 448 test, E2E 9/9, smoke desktop 16/16 |
 | 4.2 Rút chuỗi (phần 1) | Chưa làm | | |
 | 4.3 Rút chuỗi (phần 2) | Chưa làm | | |
 | 4.4 Người mới | Chưa làm | | |
