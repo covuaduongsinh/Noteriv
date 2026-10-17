@@ -37,8 +37,11 @@ export function CorePluginSidePanels({
   );
 }
 
-/** Mounts the plugin's own DOM; like CorePluginViewOverlay, each render gets its own element, detached afterwards. */
-function PanelBody({ panel }: { panel: HostPanel }) {
+/**
+ * Mounts the plugin's own DOM (side panels, settings tabs); like CorePluginViewOverlay, each render gets its own
+ * element, detached afterwards.
+ */
+export function PanelBody({ panel }: { panel: HostPanel }) {
   const slot = useRef<HTMLDivElement>(null);
   useEffect(() => {
     const slotEl = slot.current;

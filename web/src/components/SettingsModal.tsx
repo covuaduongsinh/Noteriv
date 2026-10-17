@@ -15,7 +15,7 @@ import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import ClipperSection from "@/components/ClipperSection";
 import type { PluginPanelRef } from "@noteriv/ui/plugins/sandbox";
 import type { MirrorEvent } from "@noteriv/ui/plugins/sandbox";
-import { CorePluginsSection } from "@noteriv/ui/plugins";
+import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 
 type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper";
@@ -67,6 +67,8 @@ interface SettingsModalProps {
   /** Built-in plugins (Plugin API v1 core tier) and their on/off switch. */
   corePlugins?: CorePluginInfo[];
   onToggleCorePlugin?: (id: string, enabled: boolean) => void;
+  /** Settings tabs registered by core plugins (shown under each plugin in "Core plugins"). */
+  corePluginSettingsTabs?: HostPanel[];
 }
 
 export default function SettingsModal({
@@ -87,6 +89,7 @@ export default function SettingsModal({
   onPluginEvent,
   corePlugins = [],
   onToggleCorePlugin,
+  corePluginSettingsTabs = [],
 }: SettingsModalProps) {
   const [active, setActive] = useState<Section>(initialSection ?? "general");
   const [recording, setRecording] = useState<HotkeyAction | null>(null);
@@ -393,7 +396,10 @@ export default function SettingsModal({
       <CorePluginsSection
         plugins={corePlugins}
         onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)}
+        settingsTabs={corePluginSettingsTabs}
         labels={{
+          settings: "Tuỳ chọn",
+          hideSettings: "Ẩn tuỳ chọn",
           intro: "Plugin có sẵn của Noteriv, bật/tắt riêng cho vault này. Plugin tắt thì mã của nó không được tải.",
           empty: "Chưa có core plugin nào.",
           loading: "Đang tải…",

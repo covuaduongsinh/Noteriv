@@ -23,7 +23,7 @@ import {
   type SyncProviderType,
 } from "@/lib/sync-providers";
 import ThemePicker from "@/components/ThemePicker";
-import { CorePluginsSection } from "@noteriv/ui/plugins";
+import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 
 type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem";
@@ -89,6 +89,8 @@ interface SettingsModalProps {
   /** Built-in plugins (Plugin API v1 core tier) and their on/off switch. */
   corePlugins?: CorePluginInfo[];
   onToggleCorePlugin?: (id: string, enabled: boolean) => void;
+  /** Settings tabs registered by core plugins (shown under each plugin in "Core plugins"). */
+  corePluginSettingsTabs?: HostPanel[];
   onClose: () => void;
 }
 
@@ -105,6 +107,7 @@ export default function SettingsModal({
   onOpenSnippets,
   corePlugins = [],
   onToggleCorePlugin,
+  corePluginSettingsTabs = [],
   onClose,
 }: SettingsModalProps) {
   const [active, setActive] = useState<Section>("general");
@@ -990,7 +993,13 @@ export default function SettingsModal({
     editor: renderEditor,
     shortcuts: renderShortcuts,
     sync: renderSync,
-    corePlugins: () => <CorePluginsSection plugins={corePlugins} onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)} />,
+    corePlugins: () => (
+      <CorePluginsSection
+        plugins={corePlugins}
+        onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)}
+        settingsTabs={corePluginSettingsTabs}
+      />
+    ),
     ecosystem: renderEcosystem,
   };
 
