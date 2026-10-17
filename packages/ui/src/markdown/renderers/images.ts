@@ -49,6 +49,8 @@ function getMime(name: string): string {
   const mimes: Record<string, string> = {
     png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg",
     gif: "image/gif", webp: "image/webp", svg: "image/svg+xml", bmp: "image/bmp",
+    mp3: "audio/mpeg", wav: "audio/wav", ogg: "audio/ogg", oga: "audio/ogg", opus: "audio/ogg",
+    m4a: "audio/mp4", aac: "audio/aac", flac: "audio/flac", webm: "audio/webm",
   };
   return mimes[ext] || "image/png";
 }
@@ -73,15 +75,16 @@ async function loadLocalImage(absPath: string): Promise<string | null> {
 }
 
 function loadPendingImages() {
-  const imgs = document.querySelectorAll("img[data-local-src]:not([data-loaded])");
-  imgs.forEach(async (img) => {
-    const absPath = img.getAttribute("data-local-src");
+  // Local images and audio clips (desktop vault files) are loaded the same way, as data URLs.
+  const els = document.querySelectorAll("img[data-local-src]:not([data-loaded]), audio[data-local-src]:not([data-loaded])");
+  els.forEach(async (el) => {
+    const absPath = el.getAttribute("data-local-src");
     if (!absPath) return;
-    img.setAttribute("data-loaded", "pending");
+    el.setAttribute("data-loaded", "pending");
     const dataUrl = await loadLocalImage(absPath);
-    if (dataUrl && img.isConnected) {
-      (img as HTMLImageElement).src = dataUrl;
-      img.setAttribute("data-loaded", "true");
+    if (dataUrl && el.isConnected) {
+      (el as HTMLImageElement | HTMLAudioElement).src = dataUrl;
+      el.setAttribute("data-loaded", "true");
     }
   });
 }
@@ -211,6 +214,12 @@ function attachResizeListeners() {
 
 if (typeof window !== "undefined") attachResizeListeners();
 
+/** Audio clips use the image syntax: `![Audio](…)` (what the recorder writes) or a link to an audio file. */
+const AUDIO_EXT = /\.(mp3|wav|ogg|oga|opus|m4a|aac|flac|webm)(?:[?#].*)?$/i;
+export function isAudioEmbed(alt: string, src: string): boolean {
+  return alt.trim().toLowerCase() === "audio" || AUDIO_EXT.test(src);
+}
+
 function escapeAttr(s: string): string {
   return s.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
 }
@@ -241,6 +250,19 @@ export const imageRenderer: InlineRenderer = {
       }
       const from = offset + match.index;
       const to = from + fullMatch.length;
+
+      if (isAudioEmbed(alt, rawSrc)) {
+        const cached = absPath ? imageCache.get(absPath) : undefined;
+        const srcAttr = absPath
+          ? cached
+            ? `src="${cached}"`
+            : `data-local-src="${escapeAttr(absPath)}"`
+          : `src="${escapeAttr(rawSrc)}"`;
+        const audioTag = `<audio controls preload="metadata" ${srcAttr} class="md-inline-audio" title="${escapeAttr(alt)}"></audio>`;
+        const html = `<span class="md-audio-wrapper" data-from="${from}" data-to="${to}" data-md="${escapeAttr(fullMatch)}">${audioTag}</span>`;
+        results.push({ from, to, html, className: "md-audio" });
+        continue;
+      }
 
       let imgTag: string;
       if (absPath) {
