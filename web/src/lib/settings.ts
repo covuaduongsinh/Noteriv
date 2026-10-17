@@ -33,6 +33,7 @@ export const DEFAULT_EDITOR_SETTINGS = {
   accentColor: "", // "" = keep the active theme's accent
   tabSize: 4,
   pdfColumnLayout: 2 as 1 | 2,
+  // No UI in the general product (still applied to PDF export); the chess edition plugin will expose it.
   pdfChessboardWidth: 75 as 75 | 100,
   /** Collapse the sidebar automatically on narrow windows. */
   autoCollapseSidebar: true,

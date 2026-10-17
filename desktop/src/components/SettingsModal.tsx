@@ -16,7 +16,6 @@ import {
   AUTO_SAVE_OPTIONS,
   SYNC_OPTIONS,
   PDF_COLUMN_LAYOUT_OPTIONS,
-  PDF_CHESSBOARD_WIDTH_OPTIONS,
 } from "@/lib/settings";
 import {
   SYNC_PROVIDERS,
@@ -221,17 +220,6 @@ export default function SettingsModal({
           onChange={(e) => update({ pdfColumnLayout: Number(e.target.value) as 1 | 2 })}
         >
           {PDF_COLUMN_LAYOUT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
-          ))}
-        </select>
-      </Row>
-      <Row label="Chessboard size" desc="Width of chessboard diagrams relative to the column width.">
-        <select
-          className="st-select"
-          value={settings.pdfChessboardWidth}
-          onChange={(e) => update({ pdfChessboardWidth: Number(e.target.value) as 75 | 100 })}
-        >
-          {PDF_CHESSBOARD_WIDTH_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>

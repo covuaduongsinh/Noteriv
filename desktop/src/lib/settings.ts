@@ -18,7 +18,7 @@ export interface AppSettings {
   autoCollapseSidebar: boolean;
   sidebarCollapseWidth: number;
   pdfColumnLayout: 1 | 2;       // number of print columns for PDF export
-  pdfChessboardWidth: 75 | 100; // chessboard width as % of column width
+  pdfChessboardWidth: 75 | 100; // chessboard width as % of column width; no UI in the general product, the chess edition plugin will expose it
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -83,11 +83,6 @@ export const SYNC_OPTIONS = [
 export const PDF_COLUMN_LAYOUT_OPTIONS = [
   { label: "1 column", value: 1 },
   { label: "2 columns", value: 2 },
-];
-
-export const PDF_CHESSBOARD_WIDTH_OPTIONS = [
-  { label: "75% of column width", value: 75 },
-  { label: "100% of column width (max)", value: 100 },
 ];
 
 export function applySettings(s: AppSettings) {

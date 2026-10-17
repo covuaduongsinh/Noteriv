@@ -61,7 +61,6 @@ next-env.d.ts
 eas.json
 # build tools
 bundletool-*.jar
-phone/eas.json
 web/server/dist/
 
 # build artifacts: binaries are published via releases or hosted upstream, never committed

@@ -10,6 +10,17 @@
 - Dữ liệu cũ không hỏng (khoá cài đặt vẫn đọc được để plugin cờ dùng lại).
 - Giấy phép và ghi công đúng trước khi thương mại hoá.
 
+## Quyết định của chủ dự án (2026-10-17)
+
+| Câu hỏi | Chốt |
+|---|---|
+| Email liên hệ tạm | `covuaduongsinh@gmail.com` (đổi hẳn ở Chặng 6) |
+| "PDF: cỡ bàn cờ" | Ẩn khỏi Cài đặt, **giữ tác dụng**: giá trị đã lưu vẫn áp khi xuất PDF; giữ nguyên CSS `.chessboard-plugin-widget` (không đổi sang quy ước chung như dự kiến ban đầu) |
+| Plugin mẫu chessboard | Giữ trong cây mã, ghi nguồn hình quân vào `NOTICE.md` |
+| README | Viết lại bằng tiếng Anh, bỏ phần tham khảo của upstream; sổ tay tiếng Việt ở `docs/dev/so-tay.md` |
+
+Bản ghi phiên: [2026-10-17-phien-chang-2.md](2026-10-17-phien-chang-2.md).
+
 ---
 
 ## Phiên 2.1: Tài liệu và pháp lý
@@ -47,5 +58,5 @@ Hiện trạng: `pdfChessboardWidth` đi qua `web/src/lib/settings.ts`, `desktop
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 2.1 Tài liệu và pháp lý | Chưa làm | | |
-| 2.2 Gỡ "cỡ bàn cờ" khỏi lõi | Chưa làm | | |
+| 2.1 Tài liệu và pháp lý | Xong (chờ lên production) | 2026-10-17 | README tiếng Anh, `docs/dev/so-tay.md`, `/privacy` trung lập, email mới, `NOTICE.md` ghi 2 bộ hình quân, `mcp/package.json`, xoá `phone/` |
+| 2.2 Gỡ "cỡ bàn cờ" khỏi lõi | Xong (chờ lên production) | 2026-10-17 | Ẩn khỏi Cài đặt hai app, giữ khoá dữ liệu và tác dụng khi in |

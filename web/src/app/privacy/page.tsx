@@ -58,7 +58,7 @@ export default function PrivacyPage() {
         </p>
 
         <h3>5. Trẻ em</h3>
-        <p>Noteriv có thể được dùng trong lớp học cờ vua. Nếu người dùng dưới 16 tuổi, phụ huynh hoặc giáo viên chịu trách nhiệm tạo tài khoản và đồng ý thay.</p>
+        <p>Nếu người dùng dưới 16 tuổi, phụ huynh hoặc người giám hộ, hoặc trường học hay tổ chức đã tạo tài khoản, chịu trách nhiệm tạo tài khoản và đồng ý thay.</p>
 
         <h3>6. Liên hệ</h3>
         <p>
@@ -113,7 +113,7 @@ export default function PrivacyPage() {
         </p>
 
         <h3>5. Children</h3>
-        <p>Noteriv may be used in chess classes. If a user is under 16, a parent or teacher is responsible for creating the account and consenting on their behalf.</p>
+        <p>If a user is under 16, a parent or guardian, or the school or organisation that set up the account, is responsible for creating it and consenting on their behalf.</p>
 
         <h3>6. Contact</h3>
         <p>
