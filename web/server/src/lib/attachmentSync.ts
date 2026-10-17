@@ -8,6 +8,7 @@
 import type { PrismaClient } from "@prisma/client";
 import { createWriteStream, existsSync } from "node:fs";
 import { mkdir, readdir, stat, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 import type { Readable } from "node:stream";
 import path from "node:path";
@@ -46,12 +47,20 @@ function safeName(filename: string): string {
   return filename.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(-150) || "file";
 }
 
-/** Writes every attachment into `dir` (at its syncPath, or attachments/<name>) and returns id -> repo path. */
+const sha256 = (b: Buffer) => createHash("sha256").update(b).digest("hex");
+
+/**
+ * Writes every attachment into `dir` (at its syncPath, or attachments/<name>) and returns
+ * id -> repo path. If `exportedHashes` is given, it receives repo path (lower-cased) ->
+ * content hash of each file as exported, so the import after the merge can tell which
+ * files the remote changed (web attachments are never edited in place).
+ */
 export async function exportAttachmentsToDir(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
-  report?: AttachmentSyncReport
+  report?: AttachmentSyncReport,
+  exportedHashes?: Map<string, string>
 ): Promise<Map<string, string>> {
   let storageDown = false;
   const attachments = await prisma.attachment.findMany({ where: { vaultId }, orderBy: { createdAt: "asc" } });
@@ -92,17 +101,24 @@ export async function exportAttachmentsToDir(
       }
     }
     pathById.set(a.id, rel);
+    if (exportedHashes && existsSync(dest)) exportedHashes.set(rel.toLowerCase(), sha256(await readFile(dest)));
   }
   return pathById;
 }
 
-/** Registers/uploads asset files found in `dir`; returns lower-cased repo path -> attachment id. */
+/**
+ * Registers/uploads asset files found in `dir`; returns lower-cased repo path -> attachment id.
+ * With `exportedHashes` (from the export earlier in the same sync), a known file whose
+ * content differs from what was exported was changed remotely: its new bytes replace the
+ * stored object. (Before, a known path was skipped, so remote edits to a binary were lost.)
+ */
 export async function importAttachmentsFromDir(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
   actorUserId: string | null,
-  report?: AttachmentSyncReport
+  report?: AttachmentSyncReport,
+  exportedHashes?: Map<string, string>
 ): Promise<Map<string, string>> {
   void actorUserId;
   let storageDown = false;
@@ -137,6 +153,23 @@ export async function importAttachmentsFromDir(
     const known = bySyncPath.get(key);
     if (known) {
       idByPath.set(key, known.id);
+      const exported = exportedHashes?.get(key);
+      if (exported && !storageDown) {
+        const bytes = await readFile(f.full);
+        if (sha256(bytes) !== exported && used - known.size + f.size <= ATTACHMENT_QUOTA_BYTES) {
+          try {
+            await putObject(known.storageKey, bytes, known.mimeType);
+            await prisma.attachment.update({ where: { id: known.id }, data: { size: f.size } });
+            used += f.size - known.size;
+          } catch (err) {
+            if (report) {
+              report.skipped++;
+              report.problem ??= describeStorageError(err);
+            }
+            if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|EAI_AGAIN/i.test(String(err))) storageDown = true;
+          }
+        }
+      }
       continue;
     }
     const filename = f.rel.split("/").pop()!;

@@ -11,7 +11,7 @@ import {
   SyncConflictError,
   type GitCredentials,
 } from "./gitSync.js";
-import { webdavSyncCore, type WebdavConfig } from "./webdavSync.js";
+import { webdavSyncCore, type WebdavConfig, type WebdavSyncState } from "./webdavSync.js";
 import { exportAttachmentsToDir, importAttachmentsFromDir, type AttachmentSyncReport } from "./attachmentSync.js";
 import { toRelativeLinks, fromRelativeLinks } from "./attachmentLinks.js";
 import type { SyncJobMode } from "./syncQueue.js";
@@ -41,9 +41,10 @@ async function exportVaultToDir(
   vaultId: string,
   dir: string,
   prune: boolean,
-  report: AttachmentSyncReport
+  report: AttachmentSyncReport,
+  exportedHashes?: Map<string, string>
 ): Promise<void> {
-  const pathById = await exportAttachmentsToDir(prisma, vaultId, dir, report);
+  const pathById = await exportAttachmentsToDir(prisma, vaultId, dir, report, exportedHashes);
   await exportNotesToDir(prisma, vaultId, dir, {
     prune,
     transform: (notePath, content) => toRelativeLinks(vaultId, notePath, content, pathById),
@@ -55,9 +56,10 @@ async function attachmentLinkTransform(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
-  report: AttachmentSyncReport
+  report: AttachmentSyncReport,
+  exportedHashes?: Map<string, string>
 ): Promise<(notePath: string, content: string) => string> {
-  const idByPath = await importAttachmentsFromDir(prisma, vaultId, dir, null, report);
+  const idByPath = await importAttachmentsFromDir(prisma, vaultId, dir, null, report, exportedHashes);
   return (notePath, content) => fromRelativeLinks(vaultId, notePath, content, idByPath);
 }
 
@@ -131,11 +133,13 @@ async function runLockedSyncJob(prisma: PrismaClient, connectionId: string, mode
         username: creds.username,
         password: creds.password,
       };
-      const result = await webdavSyncCore(dir, cfg);
+      const result = await webdavSyncCore(dir, cfg, (connection.syncState as WebdavSyncState | null) ?? {});
       pushed = result.pushed;
       pulled = result.pulled;
+      conflictCopies.push(...result.conflictCopies);
       const imported = await importDirToNotes(prisma, connection.vaultId, dir, null, { exportedAt });
       conflictCopies.push(...imported.conflictCopies);
+      await prisma.syncConnection.update({ where: { id: connectionId }, data: { syncState: result.state as object } });
     } else {
       const creds = decryptJson<GitCredentialsBlob>(connection.credentialsEncrypted);
       const gitCreds: GitCredentials | null = creds.token ? { username: creds.username, token: creds.token } : null;
@@ -182,13 +186,14 @@ async function runLockedSyncJob(prisma: PrismaClient, connectionId: string, mode
         pushed = result.pushedCommit ? 1 : 0;
       } else {
         const exportedAt = new Date();
+        const exportedHashes = new Map<string, string>();
         if (doPull) {
           await importNewNotesOnly(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
         }
         if (doPush) {
           // Push-only never imports, so remote-only files must not be pruned either —
           // otherwise the push would delete notes the remote has but the vault doesn't.
-          await exportVaultToDir(prisma, connection.vaultId, dir, doPull, attachmentReport);
+          await exportVaultToDir(prisma, connection.vaultId, dir, doPull, attachmentReport, exportedHashes);
           await ensureGitignore(dir);
         }
         const result = await gitSyncCore(
@@ -204,7 +209,7 @@ async function runLockedSyncJob(prisma: PrismaClient, connectionId: string, mode
         if (doPull) {
           // Re-scan: the pull may have brought new attachment files whose links the notes now reference.
           const imported = await importDirToNotes(prisma, connection.vaultId, dir, null, {
-            transform: await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport),
+            transform: await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport, exportedHashes),
             exportedAt,
           });
           conflictCopies.push(...imported.conflictCopies);

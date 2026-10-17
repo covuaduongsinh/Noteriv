@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { encryptJson, decryptJson } from "../lib/crypto.js";
@@ -70,7 +71,8 @@ const tokenSource = z.object({
 // A connection's row is safe to return to the client once its encrypted
 // credentials blob is stripped — never send that back, even to the owner.
 function toPublic(conn: Record<string, unknown>) {
-  const { credentialsEncrypted: _omit, ...rest } = conn;
+  // syncState is internal bookkeeping (one entry per file) — no use to the client, and large.
+  const { credentialsEncrypted: _omit, syncState: _state, ...rest } = conn;
   return rest;
 }
 
@@ -190,6 +192,10 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
       if (isWebdav) {
         if (p.webdavUrl !== undefined) data.webdavUrl = p.webdavUrl;
         if (p.webdavPath !== undefined) data.webdavPath = p.webdavPath;
+        // Another server or folder: the per-file record of the last sync no longer applies.
+        if ((p.webdavUrl !== undefined && p.webdavUrl !== existing.webdavUrl) || (p.webdavPath !== undefined && p.webdavPath !== existing.webdavPath)) {
+          data.syncState = Prisma.DbNull;
+        }
         if (p.password !== undefined || p.username !== undefined) {
           const old = decryptJson<{ username: string; password: string }>(existing.credentialsEncrypted);
           data.credentialsEncrypted = encryptJson({

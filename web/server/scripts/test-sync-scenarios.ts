@@ -14,7 +14,7 @@ import { encryptJson } from "../src/lib/crypto.js";
 import { runSyncJob, formatCommitMessage } from "../src/lib/syncRunner.js";
 import { askpassBody, conflictCopyPath } from "../src/lib/gitSync.js";
 import { importDirToNotes } from "../src/lib/vaultFs.js";
-import { putObject, makeStorageKey, deleteObject } from "../src/lib/attachments.js";
+import { putObject, makeStorageKey, deleteObject, getObjectStream } from "../src/lib/attachments.js";
 import { toRelativeLinks, fromRelativeLinks } from "../src/lib/attachmentLinks.js";
 
 const prisma = new PrismaClient();
@@ -256,6 +256,18 @@ async function main() {
   const jobsBefore = await prisma.syncJob.count({ where: { syncConnectionId: conn.id } });
   await runSyncJob(prisma, conn.id);
   check("attachments: second sync is a no-op (no duplicate upload)", (await prisma.attachment.count({ where: { vaultId: vault.id } })) === 1 && (await prisma.syncJob.count({ where: { syncConnectionId: conn.id } })) === jobsBefore + 1);
+
+  // remote edits an attachment's bytes (same name, same size) → the stored object is replaced
+  git(c1, "pull");
+  const edited = Buffer.from(PNG);
+  edited[edited.length - 5] ^= 0xff;
+  writeFileSync(path.join(c1, "attachments", "pic one.png"), edited);
+  push(c1, "remote edits the picture");
+  await runSyncJob(prisma, conn.id);
+  const stream = await getObjectStream(storageKey);
+  const chunks: Buffer[] = [];
+  for await (const c of stream as AsyncIterable<Buffer>) chunks.push(Buffer.from(c));
+  check("attachments: remote edit of a binary reaches storage", Buffer.concat(chunks).equals(edited));
 
   mkdirSync(path.join(c1, "assets", "img"), { recursive: true });
   writeFileSync(path.join(c1, "assets", "img", "remote pic.png"), PNG);
