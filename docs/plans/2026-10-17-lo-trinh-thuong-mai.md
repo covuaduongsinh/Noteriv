@@ -107,7 +107,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | Chặng | Trạng thái | Ngày | Ghi chú |
 |---|---|---|---|
 | 1 Hợp nhất nhánh | Xong | 2026-10-17 | Production chạy Giai đoạn 1–2, tag `v-core-plugins-2026-10-17`; nhánh đã dọn, `next` = `main` |
-| 2 Định vị lại | Chưa làm | | |
+| 2 Định vị lại | Xong | 2026-10-17 | PR #3 (`e8c1f7d`): README tiếng Anh, `/privacy` trung lập, `NOTICE.md`, xoá `phone/`, ẩn "cỡ bàn cờ"; bản ghi `2026-10-17-phien-chang-2.md` |
 | 3 Rà soát, hoàn thiện | Chưa làm | | |
 | 4 Quốc tế hoá, người mới | Chưa làm | | |
 | 5 Nền tảng thương mại | Chưa làm | | |

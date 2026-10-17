@@ -58,5 +58,7 @@ Hiện trạng: `pdfChessboardWidth` đi qua `web/src/lib/settings.ts`, `desktop
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 2.1 Tài liệu và pháp lý | Xong (chờ lên production) | 2026-10-17 | README tiếng Anh, `docs/dev/so-tay.md`, `/privacy` trung lập, email mới, `NOTICE.md` ghi 2 bộ hình quân, `mcp/package.json`, xoá `phone/` |
-| 2.2 Gỡ "cỡ bàn cờ" khỏi lõi | Xong (chờ lên production) | 2026-10-17 | Ẩn khỏi Cài đặt hai app, giữ khoá dữ liệu và tác dụng khi in |
+| 2.1 Tài liệu và pháp lý | Xong | 2026-10-17 | README tiếng Anh, `docs/dev/so-tay.md`, `/privacy` trung lập, email mới, `NOTICE.md` ghi 2 bộ hình quân, `mcp/package.json`, xoá `phone/` |
+| 2.2 Gỡ "cỡ bàn cờ" khỏi lõi | Xong | 2026-10-17 | Ẩn khỏi Cài đặt hai app, giữ khoá dữ liệu và tác dụng khi in |
+
+**Chặng 2 xong (2026-10-17):** PR #3, merge commit `e8c1f7d`; CI 3 job xanh; chủ dự án thử staging đạt (Cài đặt, xuất PDF); `/privacy` trên staging và production có email mới, không còn chữ cờ vua. **Webhook GitHub → Dokploy production trả 500** cho lần push của merge này (01:53 UTC, không có nội dung lỗi), nên production không tự deploy; đã deploy tay bằng `compose.deploy` (xong, 9 container chạy, `/` và `/api/v1/healthz` 200). Sau mỗi lần gộp vào `main`, kiểm `deployment.allByCompose` xem có bản deploy mới không.
