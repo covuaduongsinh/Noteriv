@@ -140,7 +140,8 @@ interface ElectronAPI {
   gitInit: (dir: string) => Promise<boolean>;
   gitSetRemote: (dir: string, url: string) => Promise<boolean>;
   gitStatus: (dir: string) => Promise<GitStatus>;
-  gitSync: (dir: string, message?: string, vaultId?: string) => Promise<boolean>;
+  /** Resolves to the conflict copies the merge created (empty when there was no conflict). */
+  gitSync: (dir: string, message?: string, vaultId?: string) => Promise<string[]>;
   gitPull: (dir: string, vaultId?: string) => Promise<boolean>;
   gitFetch: (dir: string, vaultId?: string) => Promise<boolean>;
   gitLog: (dir: string, count?: number) => Promise<GitLogEntry[]>;
