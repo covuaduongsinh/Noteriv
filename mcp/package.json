@@ -11,9 +11,9 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/thejacedev/Noteriv"
+    "url": "https://github.com/covuaduongsinh/Noteriv"
   },
-  "homepage": "https://github.com/thejacedev/Noteriv#readme",
+  "homepage": "https://github.com/covuaduongsinh/Noteriv#readme",
   "files": ["index.js"],
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.0.0"

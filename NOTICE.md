@@ -37,4 +37,22 @@ tree (it remains in git history, as it does upstream).
 
 ### Imported components
 
-None so far.
+Both entries below are chess piece artwork embedded in the example community plugin
+`desktop/examples/plugins/chessboard/main.js`. The full licence texts and the exact
+modifications are in
+[`desktop/examples/plugins/chessboard/THIRD-PARTY-LICENSES.md`](desktop/examples/plugins/chessboard/THIRD-PARTY-LICENSES.md).
+
+- **chessnut-pieces** ("classic" set, `PIECE_SVG`)
+  - Source: <https://github.com/LexLuengas/chessnut-pieces>
+  - Author: Copyright 2015 Alexis Luengas
+  - Licence: Apache License 2.0
+  - Modified: XML prolog, DOCTYPE, editor comments and `id` attributes removed; the 12
+    SVG files inlined as string literals. Path geometry and colours unchanged.
+- **lichess `spatial` piece set** (`PIECE_SVG_SPATIAL`)
+  - Source: <https://github.com/lichess-org/lila/tree/master/public/piece/spatial>
+    (original artwork: <https://github.com/maurimo/chess-art>)
+  - Author: Copyright Maurizio Monge
+  - Licence: MIT
+  - Modified: per-file gradient fills flattened to solid colours (the duplicated gradient
+    ids collided when inlined); `id` attributes and the shared `<style>` block removed.
+    Path geometry unchanged.
