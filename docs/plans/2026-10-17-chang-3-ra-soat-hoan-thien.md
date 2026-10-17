@@ -133,5 +133,5 @@ Chạy một lượt trên staging và desktop Tauri thật. Ghi lỗi theo mứ
 | 3.3 Bảo mật | Xong (trừ CSP desktop → 3.7, Prisma 7 → việc riêng) | 2026-10-17 | [Bản ghi](2026-10-17-phien-3-3-bao-mat.md); PR #5 merge `2458203`; sao lưu tay `before-webdav-state-20261017T120508Z.sql.gz`, áp migration trước deploy, `migrate resolve`; staging xác nhận API thấy IP thật dù header giả; 9 container, healthz 200 |
 | 3.4 E2E trong CI | Xong | 2026-10-17 | [Bản ghi 3.4 + 3.5](2026-10-17-phien-3-4-3-5-e2e-ux.md); `e2e/` + job CI `e2e` (7 bước); PR #6 merge `dd8fb8b`. Job E2E bắt được 1 lỗi thật trong 3.5 (yêu cầu đổi tên bị phát lại) và 1 lỗi định thời của test; cả hai đã sửa |
 | 3.5 Việc treo nhóm UX | Xong (desktop chưa chạy Tauri thật → 3.7) | 2026-10-17 | Đổi tên note vừa tạo, bấm đúp/F2, Esc, audio trong note, desktop auto-save, khôi phục tab một request, `sync-connections` một lần |
-| 3.6 Việc treo nhóm nền tảng plugin | Chưa làm | | |
+| 3.6 Việc treo nhóm nền tảng plugin | Xong (chờ lên production) | 2026-10-17 | [Bản ghi](2026-10-17-phien-3-6-nen-tang-plugin.md); tab cài đặt core plugin, post-processor, panel plugin desktop, đồng bộ plugin giữa tab, `VaultSearch` dùng chung (tìm theo dòng), CSS ≤ 600 px; 435 test, E2E 8/8 |
 | 3.7 Rà soát toàn bộ | Chưa làm | | |
