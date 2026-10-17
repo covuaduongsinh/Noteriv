@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useEscapeClose } from "@noteriv/ui/hooks";
 import {
   listTrash,
   restoreFile,
@@ -16,6 +17,7 @@ interface TrashPanelProps {
 }
 
 export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPanelProps) {
+  useEscapeClose(onClose);
   const [items, setItems] = useState<TrashItem[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);

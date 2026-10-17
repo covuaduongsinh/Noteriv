@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useEscapeClose } from "@noteriv/ui/hooks";
 import type { CSSSnippet } from "@/lib/css-snippets";
 import {
   toggleSnippet,
@@ -35,6 +36,8 @@ export default function CSSSnippets({
   const [newName, setNewName] = useState("");
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
   const [search, setSearch] = useState("");
+  // Escape closes the dialog, except while a snippet is open in the editor (unsaved CSS would be lost).
+  useEscapeClose(onClose, !editingId);
 
   // Community state
   const [communityEntries, setCommunityEntries] = useState<CommunitySnippetEntry[]>([]);

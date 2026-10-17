@@ -13,6 +13,7 @@
     "./editor/*": "./src/editor/*.ts",
     "./panels": "./src/panels/index.ts",
     "./panels/*": "./src/panels/*.ts",
+    "./hooks": "./src/hooks/index.ts",
     "./styles/*": "./styles/*",
     "./plugins": "./src/plugins/index.ts",
     "./plugins/*": "./src/plugins/*.ts",
