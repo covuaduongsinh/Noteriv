@@ -6,7 +6,21 @@ import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
 import SplitPane from "@/components/SplitPane";
-import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel } from "@noteriv/ui/panels";
+import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, type ConflictLabels } from "@noteriv/ui/panels";
+
+const CONFLICT_LABELS_VI: ConflictLabels = {
+  banner: "Đây là bản xung đột của {original}: phiên bản kia, được sync lưu lại lúc {stamp} (UTC) vì cả hai nơi cùng sửa ghi chú này.",
+  compare: "So sánh",
+  hideCompare: "Ẩn so sánh",
+  keepOriginal: "Giữ bản gốc (xoá bản này)",
+  useThisVersion: "Dùng bản này (thay bản gốc)",
+  keepBoth: "Giữ cả hai",
+  originalMissing: "Ghi chú gốc không còn nữa. Bản này giờ là một ghi chú bình thường.",
+  legendOriginal: "chỉ có trong bản gốc",
+  legendThis: "chỉ có trong bản này",
+  identical: "Hai bản giống hệt nhau.",
+  working: "Đang xử lý…",
+};
 import CollabPanel from "@/components/CollabPanel";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -1220,6 +1234,32 @@ export default function VaultPage() {
     isDirty: t.content !== t.savedContent,
   }));
 
+  // Sync conflict copies ("<name> (conflict …).md"): compare with the original and resolve from the banner.
+  const findNoteByPath = async (path: string) =>
+    index?.notes.find((n) => n.path === path) ?? (await vaultAdapter.listNotes()).find((n) => n.path === path) ?? null;
+  const loadConflictOriginal = useCallback(
+    async (path: string) => {
+      const ref = index?.notes.find((n) => n.path === path) ?? (await vaultAdapter.listNotes()).find((n) => n.path === path);
+      return ref ? vaultAdapter.readNote(ref.id) : null;
+    },
+    [index, vaultAdapter]
+  );
+  async function discardConflictCopy(copyId: string) {
+    clearTimeout(saveTimers.current[copyId]);
+    delete saveTimers.current[copyId];
+    await vaultAdapter.deleteNote(copyId); // to the trash, restorable
+    closeTab(copyId);
+    refreshIndex();
+  }
+  async function useConflictCopy(copy: OpenTab, originalPath: string) {
+    const original = await findNoteByPath(originalPath);
+    if (!original) return;
+    await vaultAdapter.writeNote(original.id, copy.content);
+    setTabs((prev) => prev.map((t) => (t.noteId === original.id ? { ...t, content: copy.content, savedContent: copy.content } : t)));
+    await discardConflictCopy(copy.noteId);
+    openNote(original.id);
+  }
+
   function renderNoteBody(tab: OpenTab, mode: ViewMode, isMain: boolean) {
     const content = tab.content;
     const onChange = isMain ? onDraftChange : onSplitDraftChange;
@@ -1242,6 +1282,14 @@ export default function VaultPage() {
 
     return (
       <div className="flex-1 min-h-0 flex flex-col">
+        <ConflictBanner
+          path={tab.path}
+          content={content}
+          loadOriginal={loadConflictOriginal}
+          onKeepOriginal={() => discardConflictCopy(tab.noteId)}
+          onUseThisVersion={(originalPath) => useConflictCopy(tab, originalPath)}
+          labels={CONFLICT_LABELS_VI}
+        />
         {mode !== "source" && (
           <FrontmatterEditor
             content={content}

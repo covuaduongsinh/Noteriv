@@ -10,3 +10,4 @@ export {
   type PaletteItem,
 } from "./CommandPalette";
 export { formatHotkey } from "./format-hotkey";
+export { default as ConflictBanner, type ConflictBannerProps, type ConflictLabels } from "./ConflictBanner";
