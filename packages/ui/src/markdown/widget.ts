@@ -1,5 +1,6 @@
 import { WidgetType } from "@codemirror/view";
 import { sanitizeHtml } from "@noteriv/core/sanitize-html";
+import { getPostProcessorRunner } from "./vault-hooks";
 
 /**
  * A CodeMirror widget that renders HTML inline.
@@ -16,6 +17,14 @@ export class RenderedMarkdownWidget extends WidgetType {
     const span = document.createElement("span");
     span.className = this.className;
     span.innerHTML = sanitizeHtml(this.html);
+    const run = getPostProcessorRunner();
+    if (run) {
+      try {
+        run(span, { sourcePath: null });
+      } catch (e) {
+        console.error("[markdown] post-processor failed:", e);
+      }
+    }
     return span;
   }
   ignoreEvent(e: Event) {
