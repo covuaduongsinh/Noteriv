@@ -21,8 +21,6 @@ const SECTIONS: MenuSection[] = [
     title: "File",
     entries: [
       { action: "newNote", label: "New Note" },
-      { action: "dailyNote", label: "Today's Daily Note" },
-      { action: "insertTemplate", label: "New from Template…" },
       "sep",
       { action: "save", label: "Save" },
       { action: "previewPDF", label: "Xem trước PDF" },
@@ -42,7 +40,6 @@ const SECTIONS: MenuSection[] = [
     title: "Edit",
     entries: [
       { action: "findInVault", label: "Find in Vault" },
-      { action: "noteComposer", label: "Note Composer…" },
       "sep",
       { action: "toggleBold", label: "Bold" },
       { action: "toggleItalic", label: "Italic" },
@@ -58,18 +55,13 @@ const SECTIONS: MenuSection[] = [
       { action: "splitEditor", label: "Split Editor" },
       { action: "zenMode", label: "Zen Mode" },
       { action: "focusMode", label: "Focus Mode" },
-      { action: "toggleLint", label: "Lint Panel" },
       "sep",
       { action: "toggleOutline", label: "Outline" },
       { action: "toggleTags", label: "Tags" },
       { action: "toggleBacklinks", label: "Backlinks" },
-      { action: "graphView", label: "Graph View" },
       "sep",
       { action: "randomNote", label: "Random Note" },
       { action: "commandPalette", label: "Command Palette" },
-      { action: "calendarView", label: "Calendar" },
-      { action: "flashcardReview", label: "Flashcards" },
-      { action: "vaultInsights", label: "Vault Insights" },
     ],
   },
   {
@@ -95,13 +87,24 @@ const SECTIONS: MenuSection[] = [
   },
 ];
 
+/** A command of an enabled core plugin (calendar, templates, flashcards…), listed under "Plugin". */
+export interface PluginMenuCommand {
+  key: string;
+  name: string;
+  hotkey?: string;
+  run(): void;
+}
+
 interface AppMenuProps {
   hotkeys: HotkeyBinding[];
   platform: string;
   onExecute: (action: HotkeyAction) => void;
+  pluginCommands?: PluginMenuCommand[];
 }
 
-export default function AppMenu({ hotkeys, platform, onExecute }: AppMenuProps) {
+type RenderedSection = { title: string; items: ({ key: string; label: string; keys: string; run: () => void } | "sep")[] };
+
+export default function AppMenu({ hotkeys, platform, onExecute, pluginCommands = [] }: AppMenuProps) {
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -123,9 +126,21 @@ export default function AppMenu({ hotkeys, platform, onExecute }: AppMenuProps) 
 
   const keysFor = (action: HotkeyAction) => hotkeys.find((h) => h.action === action)?.keys ?? "";
 
+  // App sections, then (when any core plugin contributes commands) a "Plugin" section after View.
+  const sections: RenderedSection[] = SECTIONS.map((s) => ({
+    title: s.title,
+    items: s.entries.map((e) => (e === "sep" ? e : { key: e.action, label: e.label, keys: keysFor(e.action), run: () => onExecute(e.action) })),
+  }));
+  if (pluginCommands.length > 0) {
+    const items = [...pluginCommands]
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((c) => ({ key: c.key, label: c.name, keys: (c.hotkey ?? "").replace(/^Mod\+/, "Ctrl+"), run: c.run }));
+    sections.splice(3, 0, { title: "Plugin", items });
+  }
+
   return (
     <div ref={rootRef} className="flex items-center" role="menubar">
-      {SECTIONS.map((section, i) => (
+      {sections.map((section, i) => (
         <div key={section.title} className="relative">
           <button
             role="menuitem"
@@ -145,22 +160,22 @@ export default function AppMenu({ hotkeys, platform, onExecute }: AppMenuProps) 
               role="menu"
               className="absolute left-0 top-full mt-1 z-50 min-w-[220px] py-1 rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] shadow-lg"
             >
-              {section.entries.map((entry, j) =>
+              {section.items.map((entry, j) =>
                 entry === "sep" ? (
                   <div key={`sep-${j}`} className="my-1 border-t border-[var(--border)]" />
                 ) : (
                   <button
-                    key={entry.action}
+                    key={entry.key}
                     role="menuitem"
                     onClick={() => {
                       setOpenIdx(null);
-                      onExecute(entry.action);
+                      entry.run();
                     }}
                     style={{ padding: "6px 12px" }}
                     className="w-full flex items-center justify-between gap-6 text-xs text-left text-[var(--text-primary)] hover:bg-[var(--bg-hover)]"
                   >
                     <span>{entry.label}</span>
-                    <span className="text-[var(--text-muted)]">{formatHotkey(keysFor(entry.action), platform)}</span>
+                    <span className="text-[var(--text-muted)]">{formatHotkey(entry.keys, platform)}</span>
                   </button>
                 )
               )}

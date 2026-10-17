@@ -3,9 +3,9 @@ name: Web CI
 on:
   push:
     branches: [main]
-    paths: ["web/**", ".github/workflows/web-ci.yml"]
+    paths: ["web/**", "desktop/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
   pull_request:
-    paths: ["web/**", ".github/workflows/web-ci.yml"]
+    paths: ["web/**", "desktop/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
 
 jobs:
   server:
@@ -55,11 +55,12 @@ jobs:
       - name: Build
         run: npm run build
 
+  # web and desktop are npm workspaces together with packages/* (root package.json and
+  # package-lock.json), so the frontend is installed and built from the repo root. web/server
+  # is NOT part of the workspace (it has its own lockfile and Docker build), see the job above.
   frontend:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: web
+    timeout-minutes: 15 # a sync infinite loop would otherwise hold the runner for hours
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +68,7 @@ jobs:
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: web/package-lock.json
+          cache-dependency-path: package-lock.json
 
       # `npm ci` here reliably fails: this lockfile is generated on Windows
       # dev machines, and npm doesn't always resolve nested optional deps
@@ -75,11 +76,38 @@ jobs:
       # pulled in via Tailwind's oxide/lightningcss native binaries) for a
       # platform other than the one that generated it. `npm install`
       # reconciles instead of hard-failing on the mismatch.
+      # Only web and the shared core are needed here (desktop's Tauri tooling is skipped).
       - name: Install deps
-        run: npm install
+        run: npm install -w web -w @noteriv/core -w @noteriv/ui -w @noteriv/plugin-api -w @noteriv/plugins --include-workspace-root --no-audit --no-fund
 
-      - name: Typecheck
-        run: npx tsc --noEmit
+      - name: Test shared packages
+        run: npm test -w @noteriv/core -w @noteriv/ui -w @noteriv/plugins
 
-      - name: Build
-        run: npm run build
+      - name: Typecheck packages and web
+        run: npm run typecheck -w @noteriv/core -w @noteriv/ui -w @noteriv/plugin-api -w @noteriv/plugins -w noteriv-web
+
+      - name: Build web
+        run: npm run build -w noteriv-web
+
+  # The desktop UI shares packages/core with web; check it still compiles (the Tauri/Rust
+  # build itself runs only in release.yml).
+  desktop-frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install deps
+        run: npm install -w noteriv -w @noteriv/core -w @noteriv/ui -w @noteriv/plugin-api -w @noteriv/plugins --include-workspace-root --no-audit --no-fund
+
+      - name: Typecheck desktop
+        run: npm run typecheck -w noteriv
+
+      - name: Build desktop UI (static export)
+        run: npm run build:next -w noteriv

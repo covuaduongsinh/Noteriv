@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { generatePublishHTML } from "@/lib/publish";
+import { generatePublishHTML } from "@noteriv/core/publish";
 import { webApi, type VaultIndex } from "@/lib/webApi";
 
 interface PublishPreviewProps {

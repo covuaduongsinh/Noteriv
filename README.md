@@ -1,5 +1,66 @@
+# Noteriv: ghi chú Markdown cho cộng đồng cờ vua
+
+> **Chess PKM**: quản lý tri thức cá nhân cho người học và dạy cờ vua. Ghi chú là các tệp Markdown thuần, mở được ở bất kỳ trình soạn thảo nào; bàn cờ, ván cờ và tài liệu học nằm ngay trong ghi chú.
+
+Đây là một **fork của [`thejacedev/Noteriv`](https://github.com/thejacedev/Noteriv)** (MIT, © 2026 Jace), do Phùng Đức Tường phát triển tiếp theo hướng web và cờ vua. Dự án thay thế ChessNote và hướng tới người dùng là học viên, giáo viên và cộng đồng cờ vua.
+
+*English: a fork of the open-source Noteriv markdown notes app, being developed as a web-first, chess-focused personal knowledge management tool. MIT licensed; see [LICENSE](LICENSE) and [NOTICE.md](NOTICE.md).*
+
+## Hiện có gì
+
+| Phần | Thư mục | Ghi chú |
+|---|---|---|
+| **Bản web** (sản phẩm chính) | `web/` (Next.js 16), `web/server/` (API Fastify + Prisma/PostgreSQL), `web/pdf-service/` (xuất PDF) | Đang chạy ở <https://noteriv.dsc.edu.vn>, **đăng ký bằng mã mời**. Có đồng bộ GitHub/WebDAV, cộng tác thời gian thực, plugin trong sandbox, xuất PDF, sao lưu mã hoá hằng đêm. |
+| Bản desktop | `desktop/` (Next.js + Tauri 2) | Vẫn được duy trì với cùng tính năng; hai bản sẽ dùng chung mã (Giai đoạn 1). |
+| Tiện ích mở rộng trình duyệt, MCP server | `extension/`, `mcp/` | Web clipper và máy chủ MCP đọc vault cục bộ. |
+| Ứng dụng di động | `phone/` | **Không còn được duy trì ở repo này** (sẽ được thay bằng PWA ở Giai đoạn 5). Các liên kết cửa hàng ứng dụng bên dưới là của upstream. |
+
+Bản staging dùng để thử trước khi lên production và là riêng tư.
+
+## Mô hình nhánh
+
+| Nhánh | Vai trò |
+|---|---|
+| `main` | **Production.** Chỉ nhận sửa lỗi, việc vận hành và các lần gộp `next` đã được duyệt. Push `main` thì Dokploy tự triển khai. Không force-push. |
+| `next` | **Tái cấu trúc** (Giai đoạn 1 trở đi). Bản staging tự triển khai từ nhánh này. Sửa lỗi production: tách từ `main`, merge vào `main`, rồi merge `main` vào `next`. |
+| `phase*/…`, `feature/…` | Nhánh làm việc, tách từ `next` (hoặc `main` cho việc vận hành), merge lại khi xong. |
+
+`next` chỉ được gộp vào `main` ở các mốc đã thử đầy đủ trên staging, có bản sao lưu mới nhất và được chủ dự án đồng ý.
+
+## Phát triển
+
+`web/`, `desktop/` và `packages/*` là **npm workspaces** (`web/server` và `web/pdf-service` thì không: mỗi cái có lockfile và Docker build riêng). Cài **một lần ở gốc repo**:
+
+```sh
+npm install                 # gốc repo; cho nhanh: npm install -w web -w @noteriv/core --include-workspace-root
+npm test                    # test @noteriv/core và @noteriv/ui (Vitest)
+npm run typecheck           # core, web, desktop
+npm run dev:web             # web ở http://localhost:3457 (cần API chạy ở cổng 4001)
+npm run build:web           # Next standalone
+npm run build:desktop       # giao diện desktop (xuất tĩnh); đóng gói Tauri: cd desktop && npm run build
+```
+
+Logic dùng chung nằm ở `packages/core` (`@noteriv/core`, TypeScript thuần, import bằng `@noteriv/core/<module>`); giao diện dùng chung (renderer markdown, editor, panel) ở `packages/ui` (`@noteriv/ui`). API: `cd web/server && npm install && npm run dev`.
+
+## Tài liệu
+
+- Lộ trình và kế hoạch từng giai đoạn: [`docs/plans/`](docs/plans/), bắt đầu từ [`2026-10-14-lo-trinh-noteriv-chess-pkm.md`](docs/plans/2026-10-14-lo-trinh-noteriv-chess-pkm.md). Người mới vào dự án đọc [`2026-10-14-huong-dan-ban-giao-phien.md`](docs/plans/2026-10-14-huong-dan-ban-giao-phien.md) trước.
+- Vận hành (tiếng Việt, cho người không chuyên): [`docs/ops/`](docs/ops/): triển khai, sao lưu và khôi phục, giám sát, xử lý sự cố, danh mục bí mật.
+- Theo dõi upstream: [`docs/upstream-notes.md`](docs/upstream-notes.md). Chúng tôi chỉ học ý tưởng từ upstream, không merge.
+
+## Giấy phép và liên hệ
+
+- MIT. Giữ nguyên bản quyền của tác giả gốc; nguồn gốc và quy tắc dùng mã bên thứ ba ở [`NOTICE.md`](NOTICE.md).
+- Báo lỗi bảo mật hoặc yêu cầu về dữ liệu cá nhân: duongsinhchess@gmail.com (xem thêm `/privacy` trên bản web).
+
+---
+
+# Phần tham khảo: ứng dụng desktop của upstream
+
+> **Đọc trước.** Mọi nội dung từ đây trở xuống là README gốc của dự án **upstream** (`thejacedev/Noteriv`), giữ lại làm tài liệu tính năng cho bản desktop. Các liên kết **website, docs, Google Play, App Store** trong phần này là của **upstream**, không phải kênh phân phối của dự án này. Một số tính năng mô tả có thể khác với bản web hiện tại.
+
 <div align="center">
-  <img src="desktop/public/banner.png" alt="Noteriv" />
+  <img src="docs/assets/banner.png" alt="Noteriv" />
   <h1>Noteriv</h1>
   <p><strong>Fast markdown notes, everywhere.</strong></p>
   <p>
@@ -475,12 +536,10 @@ desktop/
 │   │   ├── toc-utils.ts         Table of contents generation + auto-update
 │   │   ├── publish.ts           HTML export with theme colors
 │   │   ├── flashcard-utils.ts   SM-2 spaced repetition + card extraction
-│   │   ├── collab.ts            Yjs CRDT + WebRTC collaboration
-│   │   ├── focus-mode.ts        Focus/typewriter mode extension
-│   │   └── pdf-annotation.ts   PDF annotation types + sidecar I/O + markdown export
+│   │   └── collab.ts            Yjs CRDT + WebRTC collaboration
 │   └── types/
 │       └── electron.d.ts  IPC type definitions (50+ methods)
-└── public/               App icons (macOS, Windows, Linux)
+└── public/               pdf.js and the plugin sandbox page (app icons: src-tauri/icons)
 ```
 
 ---
@@ -493,7 +552,7 @@ desktop/
 
 The mobile app aims for feature parity with the desktop, adapted for touch interfaces. Notes are stored in the app's document directory and synced via the GitHub REST API.
 
-**Get it:** [App Store](https://apps.apple.com/app/id6761115699) &middot; [Google Play](https://play.google.com/store/apps/details?id=com.ironstacksoftware.noteriv) &middot; [Android APK](app-apk/noteriv.apk) (direct sideload download)
+**Get it:** [App Store](https://apps.apple.com/app/id6761115699) &middot; [Google Play](https://play.google.com/store/apps/details?id=com.ironstacksoftware.noteriv) &middot; [Android APK](https://github.com/thejacedev/Noteriv/blob/main/app-apk/noteriv.apk) (direct sideload download, **hosted and built by upstream**, not by this project)
 
 ### Development
 
@@ -728,7 +787,7 @@ Noteriv/
 │   ├── src-tauri/        Rust backend (IPC, file I/O, Git, sync, clipper server, vault watcher)
 │   ├── src/components/   41 React components + markdown rendering engine
 │   ├── src/lib/          33 utility modules
-│   └── public/           Platform icons + pdf.js worker
+│   └── public/           pdf.js + worker, plugin sandbox page
 ├── mcp/                  MCP server for AI assistant integration (22 tools, auto-discovers vaults)
 ├── extension/            Web Clipper browser extension (Manifest V3)
 ├── phone/                Expo + React Native mobile application

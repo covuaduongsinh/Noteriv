@@ -4,11 +4,25 @@
 
 ## 1. Cách chủ dự án mở một phiên mới
 
-Dán câu sau (đổi tên file giai đoạn và số phiên):
+Dán câu sau (đổi tên file chặng và số phiên):
 
-> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-0-nen-mong-an-toan.md`, rồi lập kế hoạch và triển khai **Phiên 0.1**.
+> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-1-hop-nhat-nhanh.md`, rồi lập kế hoạch và triển khai **Phiên 1.1 của Chặng 1**.
 
-Các tài liệu định hướng (theo thứ tự thực hiện):
+**Định hướng mới (từ 2026-10-17):** lộ trình thương mại `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` thay lộ trình "Chess PKM". Các chặng:
+
+| Chặng | File kế hoạch |
+|---|---|
+| Tổng | `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` |
+| 1 Hợp nhất nhánh | `docs/plans/2026-10-17-chang-1-hop-nhat-nhanh.md` |
+| 2 Định vị lại | `docs/plans/2026-10-17-chang-2-dinh-vi-lai.md` |
+| 3 Rà soát, hoàn thiện | `docs/plans/2026-10-17-chang-3-ra-soat-hoan-thien.md` |
+| 4 Quốc tế hoá, người mới | `docs/plans/2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md` |
+| 5 Nền tảng thương mại | `docs/plans/2026-10-17-chang-5-nen-tang-thuong-mai.md` |
+| 6 Thương hiệu, ra mắt | `docs/plans/2026-10-17-chang-6-thuong-hieu-ra-mat.md` |
+
+Số phiên trong chặng viết kèm tên chặng (ví dụ "Chặng 3, phiên 3.5") để không lẫn với phiên của các giai đoạn cũ.
+
+Lộ trình cũ (đã thay thế, giữ làm lịch sử; Giai đoạn 3 cũ là tài liệu cho **phiên bản cờ vua** làm sau):
 
 | GĐ | File kế hoạch |
 |---|---|
@@ -23,6 +37,62 @@ Các tài liệu định hướng (theo thứ tự thực hiện):
 
 Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và các file `docs/plans/2026-10-1x-*.md`.
 
+**Giai đoạn 1 đã xong phần chính (1.1–1.5, ngày 2026-10-16).** 1.5 đã lên staging và thử đạt (chessboard + Core plugins trên web). Trước khi gộp `next` vào `main` (chủ dự án quyết định mốc): thử nốt phần chưa kiểm của 1.4 và 1.5 (danh sách trong `docs/plans/2026-10-16-phien-1-5-plugin-api.md`, mục "Chưa kiểm").
+
+**Phiên 2.1 (đo đạc) xong ngày 2026-10-16:** baseline và ngân sách ở `docs/perf/2026-10-16-baseline.md`, ghi nhận ở `docs/plans/2026-10-16-phien-2-1-do-dac.md`. Danh sách core plugin giữ nguyên đề xuất; ngân sách −30% JS tải đầu.
+
+**Phiên 2.2 (thí điểm Flashcards + KaTeX tải lười) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-2-flashcards.md`. JS tải đầu web 533,9 → 457,8 KB gzip (ngân sách ≤ 374). Plugin API thêm `workspace.closeView`; view của plugin hiện dạng lớp phủ (`CorePluginViewOverlay`). Mẫu chuyển dữ liệu cũ của tính năng thành plugin: `docs/plugin-api/v1.md` mục 7. Kiểm desktop thật: cổng debug WebView2 (`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS=--remote-debugging-port=9223`) + puppeteer-core, cách làm trong file 2.2.
+
+**Phiên 2.3 (Lô A phần 1) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-3-lo-a.md`. Calendar/Daily notes, Templates, Note composer, Vault insights là core plugin. JS tải đầu web 449,4 KB gzip. Plugin API thêm `vault.stats`; core plugin dùng được React (`reactView`); web tự tạo thư mục khi plugin tạo note. Chủ dự án chốt: Lô A chia hai (2.3 / 2.3b), **Clipper giữ trong lõi**. 2.3 đã lên staging và chủ dự án thử đạt (2026-10-16), staging đã tắt lại.
+
+**Phiên 2.3b (Lô A phần 2) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-3b-lo-a.md`. Lint (panel cột phải) và Audio recorder là core plugin. JS tải đầu web 446,8 KB gzip (ngân sách ≤ 374). Plugin API thêm panel bên (`CorePluginSidePanels`, `ui.toggleSidebarPanel`), `editor.setCursor`, `vault.saveAttachment`; sửa lỗi desktop lưu ghi âm thành chữ base64. Việc treo của giai đoạn (phát audio trong note, desktop tự lưu 30 giây…): mục "Việc treo" trong file Giai đoạn 2. Thử ghi âm tự động: Chrome/WebView2 với `--use-fake-ui-for-media-stream --use-fake-device-for-media-stream`. 2.3b đã push (chưa lên `next`).
+
+**Phiên 2.4 (Lô B phần 1) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-4-lo-b.md`. Graph (web bỏ route `/graph`, thành lớp phủ như desktop), Slides, Note history + Time scrubber là core plugin; File Recovery giữ trong lõi. JS tải đầu web 444,8 KB gzip. Plugin API (draft.5) thêm `ui.addNoteToolbarButton`, đọc lịch sử note (`vault.versionSources/snapshots/gitLog…`), `markdown.renderReadOnly`; sửa phím plugin bị keymap của CodeMirror nuốt (Ctrl+G, Ctrl+D khi con trỏ ở editor). Thử web với snapshot: ghi thẳng một dòng `noteSnapshot` vào DB dev cho vault thử (job thật chạy 10 phút một lần ở sync-worker); thử git desktop: vault thử là repo git. Lưu ý khi dừng tác vụ nền `next start`/API/tunnel: tiến trình con có thể còn sống, kiểm cổng 3457/4001/55432 và tắt theo PID. 2.4 đã push (chưa lên `next`).
+
+**Phiên 2.4b (Lô B phần 2) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-4b-lo-b.md`. Board là core plugin (mặc định tắt) qua cơ chế mới **view theo loại file** (`ui.registerFileView`, `CorePluginFileView`): view thay editor trong tab, cả split pane, ghi qua bộ đệm của tab; chế độ source luôn là editor thô. Web nay nhận `.board.md` và có lệnh tạo board. JS tải đầu web 444,6 KB gzip. 2.4b đã push và lên `next`/staging (chủ dự án thử Lô A+B trên staging, đạt; staging đã tắt).
+
+**Phiên 2.5 (Lô C phần 1) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5-lo-c.md`. Chủ dự án chốt: Lô C chia ba (2.5 Mermaid + Dataview; 2.5b Canvas + Drawing; 2.5c PDF viewer); **Math giữ trong lõi**. Mermaid (bật) và Dataview (tắt) là core plugin qua `registerCodeBlockProcessor` (bỏ `RESERVED_LANGUAGES`); quy ước `data-nrv-pending` cho khối vẽ bất đồng bộ và `preRenderCodeBlocks` (core) nên xuất PDF cả hai app có sơ đồ/bảng. Dependency `mermaid` chuyển sang `packages/plugins`. JS tải đầu web 442,8 KB gzip. Thử xuất PDF desktop tự động: hộp in của iframe làm treo puppeteer, phải vô hiệu `print` ngay khi iframe được gắn (xem bản ghi phiên). 2.5 đã push (chưa lên `next`).
+
+**Phiên 2.5b (Lô C phần 2) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5b-lo-c.md`. Chủ dự án chốt: lấy bản web làm gốc, desktop Canvas/Drawing hiện trong tab và tự lưu (bỏ lớp phủ Drawing, nút Save/Close, Esc-lưu-đóng; ảnh chọn từ vault hoặc tải lên). Canvas và Drawing là core plugin (mặc định tắt) qua view theo loại file; desktop mở `.canvas`/`.drawing` thành tab văn bản; định dạng giữ nguyên theo nền tảng. API (draft.8) thêm `vault.resolve`, `listAttachments`, `attachmentUrl`; `VaultAdapter.fileExists?`. JS tải đầu web 442,2 KB gzip. Gặp `index.lock` treo của worktree (không có tiến trình git) sau một lệnh git: đã xoá sau khi kiểm. 2.5b đã push (chưa lên `next`).
+
+**Phiên 2.5c (Lô C phần 3) xong ngày 2026-10-16:** ghi nhận ở `docs/plans/2026-10-16-phien-2-5c-lo-c.md`. **Lô C và toàn bộ việc chuyển tính năng thành plugin đã xong.** PDF viewer + chú thích là core plugin (mặc định bật) qua loại đóng góp mới **trình xem đính kèm** (`ui.registerAttachmentViewer`): desktop trong tab `pdf`, web ở lớp phủ khi bấm PDF trong Attachments. API (draft.9) thêm `vault.readAttachment`, `vault.get/setAttachmentData`. Chú thích cũ của hai nền tảng đọc được, dạng lưu giữ nguyên. JS tải đầu web 442,7 KB gzip (ngân sách ≤ 374, còn ~69 KB). Thử desktop: reload WebView ở chế độ portable đưa app về màn hình thiết lập; muốn đổi cấu hình plugin thì khởi động lại app thay vì reload. 2.5c đã lên `next`/staging; chủ dự án thử Lô C đạt; staging đã tắt.
+
+**Phiên 2.6 (dọn dẹp, đo lại) xong ngày 2026-10-17: Giai đoạn 2 xong.**
+
+- **Tài liệu**:
+  - Bản ghi phiên: `docs/plans/2026-10-17-phien-2-6-don-dep.md`.
+  - Báo cáo đo: `docs/perf/2026-10-17-after-phase2.md`.
+  - Tổng kết Plugin API: `docs/plugin-api/v1.md` mục 9.
+- **Chủ dự án chốt**: tải lười editor và các hộp thoại ít dùng, có tải trước khi rảnh; làm cả ba việc treo từ 2.1.
+- **Kết quả, mọi ngân sách đạt**:
+  - JS tải đầu web 194,7 KB gzip (baseline 533,9) và desktop 222,7 KB gzip (baseline 444,9).
+  - Bộ cài NSIS 7,9 MB (trước 11,1).
+  - `GET /vaults/:id` khi mở vault còn 1 lần, không còn `PUT` lặp.
+- **Lưu ý cho mã mới**:
+  - Đừng import editor (`@noteriv/ui/editor`) hay index của `@noteriv/ui/markdown` tĩnh trong trang vault web: cả hai kéo CodeMirror vào phần tải đầu. Kiểm bằng `npm run perf:web`.
+  - Component tải lười cần hiện ngay thì xem `editorPart` (`next/dynamic` hoãn ~300 ms ở lần dựng đầu).
+  - Cookie của API cục bộ hết hạn sau ~15 phút. Khi đo lâu, đăng nhập lại (script cookie trả 401 ở `auth/refresh`).
+- **Việc treo còn lại**: mục "Việc treo" cuối file Giai đoạn 2.
+
+**Phiên kế tiếp (đổi ngày 2026-10-17): Chặng 1 của lộ trình thương mại** (hợp nhất nhánh về `main`); hai câu hỏi "gộp `next` vào `main`" và "tách repo" dưới đây đã được trả lời: gộp ở Chặng 1, tách repo ở Chặng 6 (cùng lúc đổi tên). Đoạn sau giữ để tham khảo khi làm phiên bản cờ vua: ~~Giai đoạn 3 (cờ vua), bắt đầu bằng Phiên 3.0~~ (kiểm tra giấy phép và dựng `@noteriv/chess`). Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-3-co-vua-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 3.0**." Đọc thêm `docs/plugin-api/v1.md` (mục 9: các loại đóng góp và thiếu sót còn mở, nhất là API mở rộng editor).
+
+**Trước Giai đoạn 3, chủ dự án nên quyết định:**
+
+1. Có gộp `next` vào `main` (đưa Giai đoạn 1–2 lên production) ở mốc này không.
+2. Có xem lại việc tách repo không: mục 3 ghi "xem lại ở cuối Giai đoạn 2".
+
+**Trạng thái nhánh**:
+
+- `covuaduongsinh/phase1-core` có 1.1–1.5 và 2.1–2.6; 2.6 chưa push.
+- `next` có 1.1–2.5c; chưa gộp vào `main`.
+- Worktree Orca: `C:\Users\duongsinh\orca\workspaces\Noteriv\phase1-repo-cleanup` (đã có `web/server/.env` và `node_modules` của `web/server`).
+
+**Việc chủ dự án còn nợ**:
+
+- Dọn đĩa VPS (~84–90%).
+- Thử nốt 1.4 trên staging (1.5 đã thử đạt).
+- Quyết định sửa lỗi đổi tên note ở web (xem file 1.4).
+
 **Trước khi làm một phiên:** kiểm bảng "Trạng thái" cuối file giai đoạn (phiên trước đã xong chưa) và mục "Điều kiện bắt đầu" ở đầu file.
 
 ## 2. Về chủ dự án và cách làm việc
@@ -31,13 +101,24 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - **Ngôn ngữ:** trả lời và tài liệu bằng tiếng Việt; code, tên file, commit message, PR bằng tiếng Anh.
 - **Kế hoạch luôn lưu trong `docs/plans/`** (đặt tên `YYYY-MM-DD-<chủ-đề>.md`). Plan mode: chỉ đọc và viết file kế hoạch, **không chạy shell** (kể cả lệnh "chỉ kiểm tra").
 - **Mô hình nhánh:** `main` = production (Dokploy tự deploy); `next` = tái cấu trúc (Giai đoạn 1 trở đi), bản staging deploy từ `next`. Sửa lỗi production: nhánh từ `main`, rồi **merge `main` vào `next`** (một chiều). Gộp `next` vào `main` chỉ ở mốc được chủ dự án duyệt. **Không bao giờ force-push `main`.**
-- **Hỏi trước khi push hoặc deploy.** Chủ dự án thường trả lời "push và deploy luôn" khi đồng ý.
+- **Nơi làm việc từ Giai đoạn 1 (đã chốt 2026-10-15):** `D:\code\Noteriv` luôn ở **`main`** (production, dev server và các file chưa commit của chủ dự án). Việc Giai đoạn 1 làm trong **worktree riêng do Orca tạo** từ `origin/next`, nhánh `covuaduongsinh/phase1-<việc>` (Orca tự thêm tiền tố tài khoản). Một nhánh không thể được checkout ở hai thư mục, nên đừng để thư mục gốc đứng trên `next`. Mỗi worktree cần `npm install` và file `.env` riêng. Trong Orca, ô Project hiện `thejacedev/Noteriv` (kho upstream): **đừng mở PR hay đẩy nhánh lên upstream từ Orca**; việc push luôn tới `origin` và phải hỏi chủ dự án.
+- **Hỏi trước khi push hoặc deploy.** Chủ dự án thường trả lời "push và deploy luôn" khi đồng ý. Mỗi lần push `next` làm staging tự build (7 phút, vài GB đĩa), nên gộp nhiều thay đổi vào ít lần push và tắt staging sau khi thử.
+- **Giấy phép và ghi công:** `LICENSE` (MIT, © Jace + © Phùng Đức Tường), `NOTICE.md` (nguồn gốc fork, quy tắc ghi mã bên thứ ba **tại thời điểm nhập**; danh sách "Imported components" hiện trống). Theo dõi upstream: `docs/upstream-notes.md`, kiểm mỗi tháng (lần kế tiếp ~2026-11-15). Không đăng lại tệp nhị phân do upstream dựng (APK) thành sản phẩm của dự án này.
 - **Không dán hoặc ghi secret** vào chat, tài liệu, commit. Khi đọc env Dokploy chỉ in **tên** biến.
 - **Không đụng các file chưa commit của chủ dự án** (hiện có: `desktop/examples/plugins/chessboard/*`, `docs/plans/2026-10-12-chessboard-plugin-improvements.md`). Khi `git add`, liệt kê từng file, không dùng `git add -A` hay `git add docs`.
 - **Kiểm chứng bằng chạy thật** (trình duyệt, API, chụp màn hình) trước khi báo "đã xong", và nói rõ phần nào chưa kiểm.
 - Cuối mỗi phiên: cập nhật bảng **"Trạng thái"** trong file kế hoạch giai đoạn tương ứng.
 
-## 3. Định hướng sản phẩm (đã chốt 2026-10-14)
+## 3. Định hướng sản phẩm
+
+**Từ 2026-10-17** (chi tiết: `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` mục 2):
+
+- Noteriv là **sản phẩm ghi chú tri thức chung, thương mại**, thị trường **quốc tế ngay** (tiếng Anh là mặc định, tiếng Việt là ngôn ngữ thứ hai). Chuỗi giao diện mới viết sao cho rút vào i18n được (Chặng 4).
+- **Đổi tên và tách repo khỏi upstream trước khi ra mắt** (Chặng 6). Đến lúc đó vẫn dùng tên Noteriv.
+- **Cờ vua là phiên bản chuyên ngành**: gói core plugin trong cùng repo, mặc định tắt ở bản chung, làm trong worktree riêng từ `main`, gộp về `main` theo mốc. Không đưa mã hay chữ riêng cho cờ vào lõi.
+- Mô hình kinh doanh **chưa chốt**; Chặng 5 làm tầng gói + hạn mức trung lập.
+
+Định hướng cũ (2026-10-14), phần còn hiệu lực là web chính + desktop cùng tính năng; phần "đối tượng cờ vua" đã thay:
 
 - **Web là sản phẩm chính**; **desktop vẫn được duy trì với cùng tính năng** nhờ dùng chung mã (`packages/*` từ Giai đoạn 1). Mọi tính năng mới phải chạy trên cả hai.
 - Đối tượng: **cộng đồng PKM cờ vua**. Tên: **Noteriv**.
@@ -50,11 +131,17 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 
 | Thư mục | Nội dung |
 |---|---|
+| `package.json`, `package-lock.json` (gốc) | **npm workspaces**: `packages/*`, `web`, `desktop`. `web/server` và `web/pdf-service` **không** nằm trong workspace (mỗi cái có lockfile và Docker build riêng). Cài ở **gốc repo**, không còn `npm install` riêng trong `web/` hay `desktop/` |
+| `packages/core/` | `@noteriv/core`: logic TypeScript thuần dùng chung web + desktop (15 module từ 2026-10-15: frontmatter, toc, wiki-link, markdown-lint, board, dataview, calendar, drawing, canvas, bookmark, slide, sanitize-html, markdown-to-html, publish, markdown-code-block-registry). **Nạp theo mã nguồn** (`exports` trỏ `src/*.ts`, app import `@noteriv/core/<module>`, `transpilePackages`). Quy tắc: không import mã app, React, CodeMirror, Tauri; `test/core-boundaries.test.ts` ép điều này. Bảng kiểm kê: `docs/plans/2026-10-15-phien-1-2-kiem-ke-core.md` Từ Phiên 1.3 còn có interface `VaultAdapter` (`vault-adapter.ts`), `MemoryVaultAdapter`, `tag-utils`, `outline-utils`; bản web ở `web/src/lib/webVaultAdapter.ts`, bản desktop ở `desktop/src/lib/desktopVaultAdapter.ts`. Component mới nên nhận `adapter` thay vì gọi `webApi`/`electronAPI` trực tiếp. |
+| `packages/ui/` | `@noteriv/ui`: React + CodeMirror dùng chung web + desktop (từ 2026-10-16): `markdown/` (renderer live preview), `editor/` (Editor, SourceEditor, ReadOnlyView, FormattingToolbar), `panels/` (Outline, Backlinks, Tags, Bookmarks, QuickOpen, CommandPalette), `graph/`, `styles/app.css`. Không import `@/…`, `webApi`, `electronAPI` (có test ranh giới). **Component mới dùng chung đặt ở đây**; thứ khác nhau giữa hai app được tiêm vào: `adapter` (VaultAdapter), `setLocalImageLoader`, `setDataviewSource`, `Editor.onImageDrop`, `labels`. Phần đăng ký nằm ở `web/src/lib/ui-hooks.ts`, `desktop/src/lib/ui-hooks.ts`. CSS chung ở `styles/app.css`; reset và `@source` ở `globals.css` của từng app. |
+| `packages/plugin-api/` | `@noteriv/plugin-api` (từ 2026-10-16): **chỉ kiểu** của Plugin API v1 (`PluginApi`, `CorePlugin`, `PluginPermission`). Đặc tả: `docs/plugin-api/v1.md`. |
+| `packages/plugins/` | `@noteriv/plugins`: **core plugin** (tầng tin cậy), mỗi plugin một thư mục `src/<id>/index.ts` với `export default { onload(api) }`. Sau Giai đoạn 2 có 17 plugin (danh sách và mặc định: `docs/plugin-api/v1.md` mục 9). Mỗi app khai danh sách ở `src/lib/core-plugins.ts` và **phải** nạp bằng `load: () => import(...)` (để tắt thì không vào bundle). Tính năng lớn chuyển thành core plugin ở Giai đoạn 2 đặt ở đây. |
+| `packages/ui/src/plugins/` | Host core plugin (`createCorePluginHost`, `useCorePluginHost`, `CorePluginsSection`) và `sandbox/` (host plugin cộng đồng dùng chung web + desktop, `PluginMirror`). Trang sandbox gốc: `packages/ui/public/plugin-sandbox.html`; bản trong `web/public` và `desktop/public` là **bản sao** (`npm run sync:sandbox`, test báo lỗi khi lệch). |
 | `web/` | Frontend Next.js 16 (App Router). **Đọc `web/AGENTS.md`**: Next 16 có thay đổi lớn, tra `node_modules/next/dist/docs/` trước khi viết code |
 | `web/src/app/vaults/[vaultId]/page.tsx` | Trang chính (editor, panel, lệnh, modal) |
-| `web/src/lib/` | `webApi.ts` (client REST), `pdf-export.ts`, `plugin-sandbox/*`, `hotkeys.ts`, `markdown-to-html.ts` |
+| `web/src/lib/` | `webApi.ts` (client REST), `pdf-export.ts`, `plugin-sandbox/usePluginHost.ts` (lớp bọc `webApi.plugins` quanh host sandbox chung), `core-plugins.ts`, `hotkeys.ts`, `markdown-to-html.ts` |
 | `web/src/components/` | Ribbon, AppMenu, SettingsModal, PluginManager, DiagnosticsModal, PdfPreviewModal… |
-| `web/public/plugin-sandbox.html` | Sandbox plugin (iframe `sandbox="allow-scripts"`, RPC qua postMessage, quyền mặc định bị chặn) |
+| `desktop/src/lib/plugin-api.ts` | Từ 1.5 chỉ còn **kho** plugin cộng đồng (`DesktopPluginStore`: đọc/cài/gỡ, bật/tắt, quyền, settings trong `.noteriv/`); plugin chạy trong sandbox như web, không còn `new Function`. |
 | `web/server/` | API Fastify + Prisma/PostgreSQL; `src/routes/*`, `src/lib/{gitSync,syncRunner,vaultFs,attachments,attachmentSync}.ts` |
 | `web/server/src/sync-worker/` | Worker BullMQ (sync git/WebDAV) |
 | `web/server/src/collab-server/` | Cộng tác thời gian thực (Yjs qua WebSocket) |
@@ -72,6 +159,8 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - **Container** (tiền tố `compose-parse-mobile-card-ue7dq8-`): `noteriv-web`, `noteriv-api`, `noteriv-worker`, `noteriv-collab`, `noteriv-pdf`, `noteriv-postgres`, `noteriv-redis`, `noteriv-garage`, `noteriv-backup` (từ 2026-10-15).
 - **Sao lưu:** `noteriv-backup` chạy 02:00 mỗi đêm, mã hoá age, đẩy vào repo private `covuaduongsinh/noteriv-backups`; giám sát healthchecks.io. Runbook: `docs/ops/sao-luu-khoi-phuc.md`. Khoá age bí mật **chỉ chủ dự án giữ**. Các file khoá cục bộ của chủ dự án nằm ở `~/.config/noteriv/` (`dokploy.key`, `backup-age.key`, `backup-deploy-key`) — đọc từ file, không in giá trị. Tên service có tiền tố `noteriv-` là **bắt buộc** (tránh trùng DNS trên mạng `dokploy-network` dùng chung).
 - **Staging** (từ 2026-10-15): compose Dokploy `klW9MC4cRpRHiPHMcMwIq` (`noteriv-staging`), nhánh **`next`**, `https://staging-noteriv.dsc.edu.vn` có basic-auth (user/mật khẩu trong `~/.config/noteriv/staging-basic-auth.txt`; middleware ở `/etc/dokploy/traefik/dynamic/noteriv-staging.yml` trên VPS). Tiền tố container `compose-generate-cross-platform-alarm-cdil47-`. **Mặc định tắt**, **không có sao lưu** (`BACKUP_REPLICAS=0`). Push `next` tự deploy nhờ webhook GitHub thứ hai. Chi tiết và quy trình: `docs/ops/trien-khai.md`.
+- **Đăng ký và pháp lý** (từ 2026-10-15): đăng ký **chỉ bằng mã mời** (`REGISTRATION_MODE=invite`, giá trị lạ hoặc rỗng = đóng); `ADMIN_EMAILS` (production: `duongsinhchess@gmail.com`) quản lý mã tại `/admin/invites` (liên kết ở trang "Vault của bạn"). `/terms` và `/privacy` công khai; họ tên chủ thể vận hành đặt trong `web/src/lib/legal.ts` (`OPERATOR_NAME`; còn trống thì hiện nhãn Bản nháp). Quên mật khẩu **chưa có** tự phục vụ. **Migration thêm cột vào bảng `users`: áp migration TRƯỚC khi deploy mã mới** (xem `docs/ops/trien-khai.md` mục 7) vì mã mới đọc cột đó ở mọi truy vấn user. Sự cố và bí mật: `docs/ops/su-co.md`, `docs/ops/bi-mat.md`.
+- **Giám sát** (từ 2026-10-15): `GET /api/v1/healthz` (công khai, DB + Redis, 200/503). UptimeRobot kiểm trang chủ và `/api/v1/healthz` mỗi 5 phút; healthchecks.io check `noteriv-host` nhận ping từ cron trên VPS (`/usr/local/bin/noteriv-check-host`, mỗi 10 phút, cấu hình `/etc/noteriv/check-host.env`, ngưỡng đĩa > 90% hoặc RAM khả dụng < 300MB). Chi tiết: `docs/ops/giam-sat.md`. Kho Docker trên VPS dùng containerd, `docker prune` thu được rất ít; đĩa phần lớn là image dự án khác (paperclip, ERPNext).
 - **Migration Prisma chạy tay** sau deploy: `docker exec <container noteriv-api> npx prisma migrate deploy`.
 - **Sau mỗi deploy** kiểm: `docker ps | grep noteriv`, trang chủ trả 200, menu Developer → Chẩn đoán (DB, Redis, git, S3, worker, dịch vụ PDF).
 
@@ -79,18 +168,25 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 
 1. Tunnel tới dịch vụ dev trên VPS: `ssh -N -L 55432:127.0.0.1:55432 -L 56379:127.0.0.1:56379 -L 59000:127.0.0.1:59000 217.15.160.118` (chạy nền).
 2. API: trong `web/server`, chạy `npm run dev` (cổng 4001) và `npm run dev:worker`. Env ở `web/server/.env` (gitignored, đã có `PDF_SERVICE_URL=http://127.0.0.1:4003`, `PDF_SERVICE_TOKEN=devtoken`).
-3. Web: trong `web`, chạy `npx next dev -p 3457`. Mở bằng **`http://localhost:3457`** (không dùng `127.0.0.1`, vì cookie).
+3. Web: **cài một lần ở gốc repo** (`npm install` ở thư mục gốc, hoặc `-w web -w @noteriv/core --include-workspace-root` cho nhanh), rồi trong `web` chạy `npx next dev -p 3457` (hoặc `npm run dev:web` từ gốc). Mở bằng **`http://localhost:3457`** (không dùng `127.0.0.1`, vì cookie).
 4. Dịch vụ PDF (khi cần): `node web/pdf-service/src/index.mjs` với env `PDF_SERVICE_TOKEN=devtoken`, `PORT=4003`, `PDF_CHROME_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe`.
 5. Dọn sau khi thử: tắt các tiến trình đã mở, xoá user và vault thử (qua API).
 
 ## 7. Kiểm thử
 
-- Kiểu: `npx tsc --noEmit` trong `web/` và `web/server/`; build: `npx next build` trong `web/`.
+- Kiểu: `npm run typecheck` ở gốc (core, web, desktop) và `npx tsc --noEmit` trong `web/server/`; test logic và giao diện dùng chung: `npm test` ở gốc (Vitest, `packages/core`, `packages/ui`, `packages/plugins`; ui chạy dưới jsdom); build: `npm run build:web` (Next standalone) và `npm run build:desktop` (xuất tĩnh ra `desktop/out/`). Image web: `web/Dockerfile` build từ **gốc repo**; standalone lồng thư mục (`CMD node web/server.js`) vì `outputFileTracingRoot` là gốc repo. CI (`web-ci.yml`) cài bằng `npm install -w …` (không `npm ci`, vì lockfile sinh trên Windows) và có job riêng cho desktop UI.
 - Sync: `web/server/scripts/test-sync-scenarios.ts` (và `test-s3-down.ts`).
 - Giao diện: claude-in-chrome. Nếu click hoặc gõ không tác dụng, dùng `javascript_tool` để bắn sự kiện DOM (`.click()`, setter `value` + sự kiện `input`). Menu tự đóng giữa hai lệnh, nên mở menu và bấm mục trong **cùng một** lệnh JS.
 - PDF: kiểm bằng PyMuPDF (`python -c "import fitz"` có sẵn) để dựng ảnh trang và xem font (`page.get_fonts()`).
+- Hiệu năng (từ 2.1): `npm run perf:web` / `npm run perf:desktop` cho dung lượng JS theo tính năng (cần `next analyze --output` trước); vault thử 500 note: `scripts/perf/seed-vault.mjs`. Quy trình đo đầy đủ và số baseline: `docs/perf/2026-10-16-baseline.md`. Desktop đo ở chế độ portable (`portable.txt` cạnh exe) để không đụng cấu hình thật của chủ dự án. Máy có Rust 1.95, `tauri build` lần đầu mất ~14 phút.
 
 ## 8. Bài học đã trả giá (đừng lặp lại)
+
+- **Gói `@tauri-apps/*` của desktop phải khớp phiên bản crate Rust trong `desktop/src-tauri/Cargo.lock`** (api 2.10.1, plugin-dialog 2.7.0, plugin-shell 2.3.5, plugin-updater 2.10.1, cli 2.10.1 đã được ghim đúng số). Gộp lockfile làm các gói này tự nhảy lên; nếu để vậy `tauri build` lỗi do lệch phiên bản.
+- **`markdownToHTML` từng treo vô hạn** với mục danh sách rỗng (`"- "`, `"1. "`): mẫu mục đòi ít nhất một ký tự nên trình phân tích không tiến, vòng lặp chính quay lại đúng dòng đó. Đã sửa ở `core` và có test hồi quy. Test chạy mã đồng bộ không thể bị ngắt bằng `testTimeout`, nên các job CI có `timeout-minutes`.
+- **`markdownToHTML` đã lọc URL nguy hiểm (sửa 2026-10-15, Phiên 1.3):** liên kết/ảnh có scheme mà `isSafeUrl` (`core/sanitize-html`) từ chối (`javascript:`, `vbscript:`, `data:` không phải ảnh) chỉ còn chữ (văn bản liên kết hoặc alt), không thành thẻ. Trước đó rủi ro nằm ở tệp HTML đã xuất bản (bấm liên kết `javascript:` từ ghi chú không tin cậy thì script chạy). Có test hồi quy.
+- Docker build trên VPS thỉnh thoảng đứt mạng khi `npm install` (`ECONNRESET`, 2 lần ngày 2026-10-15). `web/Dockerfile` đã bật `NPM_CONFIG_FETCH_RETRIES` để tự thử lại; nếu build lỗi đúng kiểu này, chỉ cần deploy lại.
+- Monitor chờ deploy bằng ngưỡng thời gian phải **sớm hơn** thời điểm push (đã nhầm hai lần); và nhớ phân biệt `done` với `error`.
 
 - **Không đặt thư mục scratch của git sync bên trong một repo git** (từng commit nhầm vào repo Noteriv thật). `gitSync.ts` đã có `assertIsOwnRepoRoot`; đừng gỡ nó.
 - Token git chỉ truyền qua `GIT_ASKPASS`, không đưa vào URL hay argv. Trên Windows dùng `-c core.autocrlf=false`.
@@ -98,6 +194,13 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - Font PDF: Georgia không có glyph tiếng Việt dựng sẵn (dấu bị lệch); dùng Noto Serif, Liberation Serif, Times New Roman.
 - Không restart Docker daemon trên VPS khi chưa hỏi (ảnh hưởng mọi dịch vụ khác).
 - Next.js dev: StrictMode chạy effect 2 lần; effect khôi phục trạng thái cần cờ `cancelled`.
+- **Phiên bản gói phụ thuộc vị trí file, không phụ thuộc app gọi.** Next phân giải import theo đường dẫn file; mã trong `packages/ui` dùng bản được hoist ở gốc. Khi hai app từng dùng hai phiên bản (mermaid 10 và 11, katex 0.19 và 0.16), phải khai phiên bản trong `packages/ui` và xoá khỏi app, rồi kiểm `npm ls`; không thì một app đổi phiên bản âm thầm. `web/Dockerfile` phải `COPY` cả `packages/ui/node_modules` (katex lồng) vào giai đoạn build.
+- **Chỉ một bản `@codemirror/state` và `@codemirror/view`.** Hai bản gây lỗi "multiple instances" khó đoán; kiểm bằng `npm ls @codemirror/state @codemirror/view` sau mỗi lần đổi dependency.
+- **Tailwind v4 chỉ quét class trong cây dự án của file CSS.** Class dùng trong `packages/ui` cần `@source "../../../packages/ui"` trong `globals.css` của app. Lệnh `* {margin:0;padding:0}` không bọc lớp thắng mọi tiện ích khoảng cách: web bọc trong `@layer base`, desktop giữ không bọc (UI desktop viết theo hành vi đó); đừng gộp hai khối này.
+- **`.noteriv/plugin-config.json` (desktop) có nhiều chủ** (`enabled`, `settings`, `permissions` của plugin cộng đồng; `core`, `coreSettings` của core plugin). Mọi lần ghi phải đọc–sửa–ghi toàn bộ object; bản cũ của `PluginManager.loadConfig` chỉ giữ hai khoá nên làm mất khoá khác (sửa ở 1.5). Tương tự `vault.settings` trên web: luôn `{ ...current, key }`.
+- **Thử UI desktop không cần Tauri:** phục vụ `desktop/out` bằng một máy chủ tĩnh và chèn `window.electronAPI` giả (Proxy: hàm `on*` trả hàm huỷ, hàm khác trả `null`) vào `<head>` của `index.html`. Cách này đã dùng ở 1.5 để thử plugin; harness nằm ngoài repo (scratchpad), dựng lại theo mô tả trong `docs/plans/2026-10-16-phien-1-5-plugin-api.md`.
+- jsdom không có `iframe.sandbox` (DOMTokenList): dùng `setAttribute("sandbox", "allow-scripts")`, hành vi trong trình duyệt như nhau.
+- **Heredoc trong công cụ Bash làm mất dấu `\` trong chuỗi regex** khi viết script sửa file; viết script bằng công cụ Write rồi chạy `node script.mjs`. File làm việc có CRLF: script sửa phải chuẩn hoá CRLF.
 
 ## 9. Việc còn treo từ trước (không thuộc Giai đoạn 0 nhưng cần nhớ)
 

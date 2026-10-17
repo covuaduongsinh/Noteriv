@@ -1,6 +1,8 @@
 # Giai đoạn 3: Cờ vua là trái tim: các core plugin cờ (web + desktop)
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> **Cập nhật 2026-10-17:** giai đoạn này nay là **phiên bản cờ vua**, làm trong worktree riêng sau Chặng 3 hoặc sau ra mắt, theo [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md) mục 5. Nội dung kỹ thuật bên dưới vẫn dùng; điều chỉnh: plugin cờ mặc định **tắt** ở bản chung, "Chess edition" là bộ cấu hình bật sẵn; cài đặt cỡ bàn cờ khi xuất PDF thuộc tab cài đặt của plugin cờ.
+>
+> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md) (đã thay thế)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 2 xong (Plugin API v1 đã kiểm chứng bằng nhiều core plugin; Flashcards đã là plugin).
 > **Nguồn tham khảo chính:** ChessNote `D:\code\chessnote` — `docs/CHESS_MODULES.md`, `docs/modules/01…07`, mã trong `plugs/chess*` (khoảng 9.500 dòng TypeScript).

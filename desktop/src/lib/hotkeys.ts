@@ -42,46 +42,28 @@ export type HotkeyAction =
   // Sync
   | "gitSync"
   // Daily notes
-  | "dailyNote"
   // Outline
   | "toggleOutline"
   // New features
-  | "graphView"
   | "toggleBacklinks"
   | "toggleTags"
-  | "insertTemplate"
   | "toggleBookmark"
   | "randomNote"
-  | "noteComposer"
   | "fileRecovery"
   | "exportPDF"
-  | "audioRecorder"
   | "attachments"
-  | "slidePresentation"
   | "pluginManager"
   | "cssSnippets"
   // New features
-  | "calendarView"
-  | "newBoard"
-  | "insertDrawing"
   | "insertToc"
   | "updateToc"
-  | "insertDataview"
   | "focusMode"
   | "publishNote"
-  | "flashcardReview"
   | "startCollab"
-  | "newCanvas"
-  | "openPdfViewer"
-  | "exportPdfAnnotations"
   | "openTrash"
   | "togglePinTab"
-  | "noteHistory"
-  | "timeScrubber"
-  | "toggleLint"
   | "splitEditor"
-  | "closeSplit"
-  | "vaultInsights";
+  | "closeSplit";
 
 export interface HotkeyBinding {
   action: HotkeyAction;
@@ -141,53 +123,35 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
 
   // Daily notes
-  { action: "dailyNote", label: "Open Daily Note", keys: "Ctrl+D", category: "Navigation" },
 
   // Outline
   { action: "toggleOutline", label: "Toggle Outline", keys: "Ctrl+Shift+O", category: "View" },
 
   // New features
-  { action: "graphView", label: "Graph View", keys: "Ctrl+G", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
-  { action: "insertTemplate", label: "Insert Template", keys: "Ctrl+T", category: "Edit" },
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "Ctrl+Shift+R", category: "Navigation" },
-  { action: "noteComposer", label: "Note Composer", keys: "", category: "Edit" },
   { action: "fileRecovery", label: "File Recovery", keys: "", category: "File" },
   { action: "exportPDF", label: "Export as PDF", keys: "", category: "File" },
-  { action: "audioRecorder", label: "Audio Recorder", keys: "", category: "Edit" },
   { action: "attachments", label: "Attachment Manager", keys: "", category: "Edit" },
-  { action: "slidePresentation", label: "Start Presentation", keys: "", category: "View" },
   // Ecosystem
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "View" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "View" },
   // New features
-  { action: "calendarView", label: "Calendar View", keys: "", category: "View" },
-  { action: "newBoard", label: "New Board", keys: "", category: "File" },
-  { action: "insertDrawing", label: "New Drawing", keys: "", category: "Edit" },
   { action: "insertToc", label: "Insert Table of Contents", keys: "", category: "Edit" },
   { action: "updateToc", label: "Update Table of Contents", keys: "", category: "Edit" },
-  { action: "insertDataview", label: "Insert Dataview Query", keys: "", category: "Edit" },
   { action: "focusMode", label: "Toggle Focus Mode", keys: "Ctrl+Shift+D", category: "View" },
   { action: "publishNote", label: "Publish Note as HTML", keys: "", category: "File" },
-  { action: "flashcardReview", label: "Flashcard Review", keys: "", category: "Navigation" },
   { action: "startCollab", label: "Live Collaboration", keys: "", category: "Edit" },
-  { action: "newCanvas", label: "New Canvas / Whiteboard", keys: "", category: "File" },
   // PDF
-  { action: "openPdfViewer", label: "Open PDF", keys: "", category: "File" },
-  { action: "exportPdfAnnotations", label: "Export PDF Annotations", keys: "", category: "File" },
   // Trash
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
   // Tab pinning
   { action: "togglePinTab", label: "Pin/Unpin Tab", keys: "Ctrl+Shift+T", category: "File" },
   // Note history & lint
-  { action: "noteHistory", label: "Note History", keys: "", category: "View" },
-  { action: "timeScrubber", label: "Time Scrubber", keys: "Ctrl+Shift+H", category: "View" },
-  { action: "toggleLint", label: "Toggle Lint Warnings", keys: "Ctrl+Shift+L", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
-  { action: "vaultInsights", label: "Vault Insights", keys: "", category: "View" },
 ];
 
 /**
@@ -220,16 +184,7 @@ export function matchesHotkey(e: KeyboardEvent, keys: string): boolean {
 /**
  * Format a key combo for display — replaces Ctrl with Cmd on macOS.
  */
-export function formatHotkey(keys: string, platform: string): string {
-  if (platform === "darwin") {
-    return keys
-      .replace(/Ctrl/g, "\u2318")
-      .replace(/Shift/g, "\u21E7")
-      .replace(/Alt/g, "\u2325")
-      .replace(/\+/g, "");
-  }
-  return keys;
-}
+export { formatHotkey } from "@noteriv/ui/panels/format-hotkey";
 
 /**
  * Convert a KeyboardEvent to a key combo string.

@@ -1,46 +1,38 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useEffect, useMemo, useRef } from "react";
 import dynamic from "next/dynamic";
 import Sidebar from "@/components/Sidebar";
 import TitleBar from "@/components/TitleBar";
-import SetupWizard from "@/components/SetupWizard";
 import DocumentTitle from "@/components/DocumentTitle";
-import FormattingToolbar from "@/components/FormattingToolbar";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
-import SettingsModal from "@/components/SettingsModal";
-import QuickOpen from "@/components/QuickOpen";
-import VaultSearch from "@/components/VaultSearch";
-import CommandPalette from "@/components/CommandPalette";
-import OutlinePanel from "@/components/OutlinePanel";
-import BacklinksPanel from "@/components/BacklinksPanel";
-import TagPane from "@/components/TagPane";
-import TemplatePicker from "@/components/TemplatePicker";
-import BookmarksPanel from "@/components/BookmarksPanel";
+import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
+import "@/styles/bookmarks.css";
+import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
+import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
+import { setLocalImageLoader } from "@noteriv/ui/markdown/vault-hooks";
+import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
+import {
+  CorePluginRibbonButtons,
+  CorePluginStatusItems,
+  CorePluginSidePanels,
+  CorePluginViewOverlay,
+  CorePluginFileView,
+  matchFileView,
+  CorePluginAttachmentViewer,
+  matchAttachmentViewer,
+  type HostFileView,
+  useCorePluginHost,
+  useCorePluginHotkeys,
+  useCorePlugins,
+} from "@noteriv/ui/plugins";
+import { desktopCorePluginConfig } from "@/lib/core-plugins";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
-import NoteComposer from "@/components/NoteComposer";
-import FileRecovery from "@/components/FileRecovery";
-import AudioRecorder from "@/components/AudioRecorder";
-import AttachmentManager from "@/components/AttachmentManager";
-import PluginManagerModal from "@/components/PluginManager";
-import CSSSnippets from "@/components/CSSSnippets";
-import CalendarView from "@/components/CalendarView";
-import DataviewBlock from "@/components/DataviewBlock";
-import { isBoardContent, isBoardFile, createBoardContent } from "@/lib/board-utils";
-import { isDrawingFile, generateDrawingName, createEmptyDrawing, serializeDrawing } from "@/lib/drawing-utils";
-import { isPdfFile } from "@/lib/pdf-annotation";
 import { isImageFile } from "@/lib/attachment-utils";
-import PublishPreview from "@/components/PublishPreview";
-import FlashcardReview from "@/components/FlashcardReview";
-import CollabPanel from "@/components/CollabPanel";
-import TrashPanel from "@/components/TrashPanel";
-import NoteHistory from "@/components/NoteHistory";
-import TimeScrubber from "@/components/TimeScrubber";
-import LintPanel from "@/components/LintPanel";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
-import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@/lib/toc-utils";
-import { insertAtCursor } from "@/lib/editor-commands";
+import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
+import { insertAtCursor } from "@noteriv/ui/editor/editor-commands";
 import {
   HotkeyBinding,
   HotkeyAction,
@@ -65,27 +57,38 @@ import {
   insertBlockquote as editorInsertBlockquote,
   insertTaskList as editorInsertTaskList,
   insertTable as editorInsertTable,
-} from "@/lib/editor-commands";
-import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
+} from "@noteriv/ui/editor/editor-commands";
+import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { getRandomNote } from "@/lib/random-note";
-import { exportToPDF } from "@/lib/pdf-export";
 import { saveSnapshot } from "@/lib/file-recovery";
-import { PluginManager, type PluginInstance } from "@/lib/plugin-api";
+import { DesktopPluginStore, PLUGIN_APP_VERSION, toSandboxRecord, type DesktopPlugin } from "@/lib/plugin-api";
+import { useSandboxPluginHost, type EditorSnapshot } from "@noteriv/ui/plugins/sandbox";
 import { BUILT_IN_THEMES, applyTheme, loadCustomThemes } from "@/lib/theme-utils";
 import { loadSnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import type { EditorView } from "@codemirror/view";
 
-const Editor = dynamic(() => import("@/components/Editor"), { ssr: false });
-const SourceEditor = dynamic(() => import("@/components/SourceEditor"), { ssr: false });
-const ReadOnlyView = dynamic(() => import("@/components/ReadOnlyView"), { ssr: false });
-const GraphView = dynamic(() => import("@/components/GraphView"), { ssr: false });
-const Canvas = dynamic(() => import("@/components/Canvas"), { ssr: false });
+// Dialogs opened on demand (and the first-run wizard): loaded when first shown.
+const SetupWizard = dynamic(() => import("@/components/SetupWizard"), { ssr: false });
+const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
+const VaultSearch = dynamic(() => import("@/components/VaultSearch"), { ssr: false });
+const FileRecovery = dynamic(() => import("@/components/FileRecovery"), { ssr: false });
+const AttachmentManager = dynamic(() => import("@/components/AttachmentManager"), { ssr: false });
+const PluginManagerModal = dynamic(() => import("@/components/PluginManager"), { ssr: false });
+const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
+const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
+const CollabPanel = dynamic(() => import("@/components/CollabPanel"), { ssr: false });
+const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
+/** PDF export (markdown → HTML, print): loaded when used. */
+const exportToPDF = async (...args: Parameters<typeof import("@/lib/pdf-export").exportToPDF>) =>
+  (await import("@/lib/pdf-export")).exportToPDF(...args);
+
+const Editor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.Editor), { ssr: false });
+const SourceEditor = dynamic(() => import("@noteriv/ui/editor").then((m) => m.SourceEditor), { ssr: false });
+const ReadOnlyView = dynamic(() => import("@noteriv/ui/editor").then((m) => m.ReadOnlyView), { ssr: false });
+const FormattingToolbar = dynamic(() => import("@noteriv/ui/editor").then((m) => m.FormattingToolbar), { ssr: false });
 const ImageViewer = dynamic(() => import("@/components/ImageViewer"), { ssr: false });
-const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
-const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
-const DrawingEditor = dynamic(() => import("@/components/DrawingEditor"), { ssr: false });
-const PDFViewer = dynamic(() => import("@/components/PDFViewer"), { ssr: false });
-const VaultInsights = dynamic(() => import("@/components/VaultInsights"), { ssr: false });
+/** PDFs open in a tab of their own, shown by a core plugin's attachment viewer (the PDF viewer, since 2.5c). */
+const isPdfFile = (path: string) => /\.pdf$/i.test(path);
 
 type ViewMode = "live" | "source" | "view";
 type AppState = "loading" | "setup" | "app";
@@ -96,7 +99,7 @@ interface TabState {
   savedContent: string;
   // Non-markdown tabs render a dedicated view instead of the text editor.
   // Absent = a normal markdown note.
-  kind?: "canvas" | "drawing" | "pdf" | "image";
+  kind?: "pdf" | "image";
 }
 
 export default function Home() {
@@ -135,16 +138,36 @@ export default function Home() {
   const [showVaultSearch, setShowVaultSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
-  const [showGraphView, setShowGraphView] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showNoteComposer, setShowNoteComposer] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
-  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
-  const [showSlidePresentation, setShowSlidePresentation] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
+  const activeVaultPath = activeVault?.path ?? "";
+  const vaultAdapter = useMemo(
+    () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
+    [activeVaultPath]
+  );
+  // The live preview loads local images through the active vault.
+  useEffect(() => {
+    if (!activeVaultPath) return;
+    setLocalImageLoader(createDesktopImageLoader(activeVaultPath));
+    return () => {
+      setLocalImageLoader(null);
+    };
+  }, [activeVaultPath]);
+  const listFiles = useMemo(
+    () => (activeVaultPath ? createDesktopFileLister(activeVaultPath) : async () => []),
+    [activeVaultPath]
+  );
+  const onImageDrop = useMemo(
+    () => (activeVaultPath ? createDesktopImageDrop(activeVaultPath) : undefined),
+    [activeVaultPath]
+  );
+  const bookmarkedNotes = useMemo(
+    () => bookmarks.map((p) => refFromAbsolutePath(activeVaultPath, p)),
+    [bookmarks, activeVaultPath]
+  );
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
 
   // Ecosystem
@@ -152,23 +175,14 @@ export default function Home() {
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
 
   // New features
-  const [showCalendarView, setShowCalendarView] = useState(false);
   const [focusMode, setFocusMode] = useState(false);
-  const [showFlashcards, setShowFlashcards] = useState(false);
   const [showCollab, setShowCollab] = useState(false);
   const [showPublish, setShowPublish] = useState(false);
   const [showTrash, setShowTrash] = useState(false);
   const [pinnedTabs, setPinnedTabs] = useState<Set<string>>(new Set());
-  const [showNoteHistory, setShowNoteHistory] = useState(false);
-  const [showTimeScrubber, setShowTimeScrubber] = useState(false);
-  const [showLintPanel, setShowLintPanel] = useState(false);
-  const [showVaultInsights, setShowVaultInsights] = useState(false);
   const [recentCommands, setRecentCommands] = useState<HotkeyAction[]>([]);
-  const [pluginInstances, setPluginInstances] = useState<PluginInstance[]>([]);
+  const [communityPlugins, setCommunityPlugins] = useState<DesktopPlugin[]>([]);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [pluginUITick, setPluginUITick] = useState(0);
-  const pluginManagerRef = useRef<PluginManager | null>(null);
 
   // Editor view ref (for formatting commands)
   const editorViewRef = useRef<EditorView | null>(null);
@@ -212,8 +226,6 @@ export default function Home() {
   const currentTab = tabs.find((t) => t.filePath === activeTab) || null;
   // Dedicated views are driven by the active tab's kind, so they live in the
   // tab strip and own the title bar / export the same way notes do.
-  const drawingFile = currentTab?.kind === "drawing" ? currentTab.filePath : null;
-  const pdfFile = currentTab?.kind === "pdf" ? currentTab.filePath : null;
   const content = currentTab?.content || "";
   const isDirty = currentTab ? currentTab.content !== currentTab.savedContent : false;
 
@@ -336,12 +348,10 @@ export default function Home() {
     // Restore tabs
     const restoredTabs: TabState[] = [];
     for (const filePath of ws.openTabs || []) {
-      // Dedicated-view tabs (canvas/drawing/pdf) carry no text content; they
-      // load their own files. Restore them by kind, not by reading as markdown.
+      // Dedicated-view tabs (pdf, image) carry no text content; they load their own files. Restore them by kind, not
+      // by reading as text. Canvas and drawing files are text tabs (core plugin file views, since 2.5b).
       let kind: TabState["kind"];
-      if (isDrawingFile(filePath)) kind = "drawing";
-      else if (filePath.endsWith(".canvas")) kind = "canvas";
-      else if (isPdfFile(filePath)) kind = "pdf";
+      if (isPdfFile(filePath)) kind = "pdf";
       else if (isImageFile(filePath)) kind = "image";
       if (kind) {
         restoredTabs.push({ filePath, content: "", savedContent: "", kind });
@@ -430,44 +440,6 @@ export default function Home() {
           refreshSnippets(snips);
         } catch {}
 
-        // Initialize plugin manager
-        try {
-          const pm = new PluginManager(vault.path, () => {
-            const view = editorViewRef.current;
-            return {
-              content: contentRef.current,
-              currentFile: activeTabRef.current,
-              insertAtCursor: (text: string) => {
-                if (!view) return;
-                const pos = view.state.selection.main.head;
-                view.dispatch({ changes: { from: pos, insert: text } });
-              },
-              getSelection: () => {
-                if (!view) return "";
-                return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
-              },
-              replaceSelection: (text: string) => {
-                if (!view) return;
-                view.dispatch(view.state.replaceSelection(text));
-              },
-              getCursorPosition: () => {
-                if (!view) return { line: 0, ch: 0 };
-                const pos = view.state.selection.main.head;
-                const line = view.state.doc.lineAt(pos);
-                return { line: line.number, ch: pos - line.from };
-              },
-              setContent: (newContent: string) => {
-                if (!view) return;
-                view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: newContent } });
-              },
-            };
-          });
-          pm.setUIChangeHandler(() => setPluginUITick((t) => t + 1));
-          pluginManagerRef.current = pm;
-          await pm.loadAllEnabled();
-          setPluginInstances(pm.getPlugins());
-        } catch {}
-
         // Load custom themes and apply if active theme is custom
         try {
           const customs = await loadCustomThemes(vault.path);
@@ -512,13 +484,6 @@ export default function Home() {
     if (cssSnippets.length > 0) {
       refreshSnippets(cssSnippets);
     }
-    // Re-load enabled plugins
-    const pm = pluginManagerRef.current;
-    if (pm) {
-      pm.loadAllEnabled().then(() => {
-        setPluginInstances(pm.getPlugins());
-      }).catch(() => {});
-    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [appState]);
 
@@ -547,15 +512,18 @@ export default function Home() {
   }, [appState, tabs, settings.autoSaveInterval]);
 
   // ============================================================
-  // Board auto-save (every 5s for .board.md files)
+  // Quick auto-save (every 5s) for files shown by a core plugin's file view (Board…): their edits are discrete
+  // actions (move a card), not typing, so they should not wait for the 30 s editor auto-save.
   // ============================================================
 
+  /** Set further down, once the core plugins are known; read here inside the interval. */
+  const fileViewForTabRef = useRef<(filePath: string, content: string) => HostFileView | undefined>(() => undefined);
   useEffect(() => {
     if (appState !== "app") return;
     const interval = setInterval(async () => {
       if (!window.electronAPI) return;
       for (const tab of tabs) {
-        if (tab.content !== tab.savedContent && (isBoardFile(tab.filePath) || isBoardContent(tab.content))) {
+        if (tab.content !== tab.savedContent && !tab.kind && fileViewForTabRef.current(tab.filePath, tab.content)) {
           const success = await window.electronAPI.writeFile(tab.filePath, tab.content);
           if (success) {
             setTabs((prev) =>
@@ -765,13 +733,11 @@ export default function Home() {
   const openingFilesRef = useRef(new Set<string>());
 
   const openFile = useCallback(async (filePath: string) => {
-    // Canvas / drawing / PDF open as dedicated-view tabs (no text content;
-    // each view manages its own file I/O). This makes them first-class tabs:
-    // they show in the tab strip, own the title bar, and gate the export action.
+    // PDF and images open as dedicated-view tabs (no text content; each view manages its own file I/O). Canvas and
+    // drawing files are text tabs shown by core plugin file views (since 2.5b): they load, save and auto-save like
+    // notes, and open as plain text when their plugin is off.
     let kind: TabState["kind"];
-    if (isDrawingFile(filePath)) kind = "drawing";
-    else if (filePath.endsWith(".canvas")) kind = "canvas";
-    else if (isPdfFile(filePath)) kind = "pdf";
+    if (isPdfFile(filePath)) kind = "pdf";
     else if (isImageFile(filePath)) kind = "image";
 
     if (kind) {
@@ -1219,81 +1185,7 @@ export default function Home() {
     return () => document.removeEventListener("click", handleLinkClick, true);
   }, []);
 
-  const handleDailyNote = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const now = new Date();
-    const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const dailyDir = `${activeVault.path}/Daily`;
-    const filePath = `${dailyDir}/${dateStr}.md`;
 
-    // Create directory if needed
-    await window.electronAPI.createDir(dailyDir);
-
-    // Check if file exists
-    const existing = await window.electronAPI.readFile(filePath);
-    if (existing === null) {
-      // Create with template
-      const template = `# ${dateStr}\n\n`;
-      await window.electronAPI.writeFile(filePath, template);
-    }
-
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
-  // Create daily note for a specific date (from calendar)
-  const handleCreateDailyNote = useCallback(async (dateStr: string) => {
-    if (!window.electronAPI || !activeVault) return;
-    const dailyDir = `${activeVault.path}/Daily`;
-    const filePath = `${dailyDir}/${dateStr}.md`;
-    await window.electronAPI.createDir(dailyDir);
-    const existing = await window.electronAPI.readFile(filePath);
-    if (existing === null) {
-      await window.electronAPI.writeFile(filePath, `# ${dateStr}\n\n`);
-    }
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
-  // Create new task board
-  const handleNewBoard = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    let name = "Board.board.md";
-    let counter = 1;
-    while (names.includes(name)) { counter++; name = `Board ${counter}.board.md`; }
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, createBoardContent());
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
-  // Create new canvas/whiteboard
-  const handleNewCanvas = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    let name = "Canvas.canvas";
-    let counter = 1;
-    while (names.includes(name)) { counter++; name = `Canvas ${counter}.canvas`; }
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, JSON.stringify({ nodes: [], edges: [] }, null, 2));
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
-
-  // Create new excalidraw drawing
-  const handleNewDrawing = useCallback(async () => {
-    if (!window.electronAPI || !activeVault) return;
-    const existing = await window.electronAPI.readDir(activeVault.path);
-    const names = existing.map((e) => e.name);
-    const name = generateDrawingName(names);
-    const filePath = `${activeVault.path}/${name}`;
-    await window.electronAPI.writeFile(filePath, serializeDrawing(createEmptyDrawing()));
-    openFile(filePath);
-    setSidebarRefresh((k) => k + 1);
-  }, [activeVault, openFile]);
 
   // Insert TOC placeholder
   const handleInsertToc = useCallback(() => {
@@ -1319,12 +1211,6 @@ export default function Home() {
   }, [content, currentTab, handleContentChange]);
 
   // Insert dataview query template
-  const handleInsertDataview = useCallback(() => {
-    const view = editorViewRef.current;
-    if (!view) return;
-    insertAtCursor(view, '```dataview\nTABLE file.name, file.tags FROM "" SORT BY file.modified DESC LIMIT 10\n```');
-  }, []);
-
   // Toggle focus/typewriter mode
   const handleFocusMode = useCallback(() => {
     setFocusMode((f) => !f);
@@ -1392,50 +1278,28 @@ export default function Home() {
       insertTaskList: () => { if (view) editorInsertTaskList(view); },
       insertTable: () => { if (view) editorInsertTable(view); },
       gitSync: handleGitSync,
-      dailyNote: handleDailyNote,
       toggleOutline: () => setShowOutline((o) => !o),
-      graphView: () => setShowGraphView(true),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
       toggleTags: () => setShowTagPane((t) => !t),
-      insertTemplate: () => setShowTemplatePicker(true),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
-      noteComposer: () => setShowNoteComposer(true),
       fileRecovery: () => setShowFileRecovery(true),
       exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
-      audioRecorder: () => setShowAudioRecorder(true),
       attachments: () => setShowAttachments(true),
-      slidePresentation: () => setShowSlidePresentation(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
-      calendarView: () => setShowCalendarView(true),
-      vaultInsights: () => setShowVaultInsights(true),
-      newBoard: handleNewBoard,
-      newCanvas: handleNewCanvas,
-      insertDrawing: handleNewDrawing,
       insertToc: handleInsertToc,
       updateToc: handleUpdateToc,
-      insertDataview: handleInsertDataview,
       focusMode: handleFocusMode,
       publishNote: handlePublish,
-      flashcardReview: () => setShowFlashcards(true),
       startCollab: () => setShowCollab(true),
-      openPdfViewer: () => {
-        if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
-      },
-      exportPdfAnnotations: () => {
-        if (pdfFile) { /* export handled inside PDFViewer */ }
-      },
       openTrash: () => setShowTrash(true),
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
-      noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
-      timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
-      toggleLint: () => setShowLintPanel((l) => !l),
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
     };
     actions[action]?.();
-  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, handleDailyNote, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, handleSplitRight, handleCloseSplit]);
+  }, [handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, handleTogglePin, handleSplitRight, handleCloseSplit]);
 
   // ============================================================
   // Recent commands handler
@@ -1586,45 +1450,25 @@ export default function Home() {
         // Sync
         gitSync: handleGitSync,
         // Daily notes
-        dailyNote: handleDailyNote,
         // Outline
         toggleOutline: () => setShowOutline((o) => !o),
         // New features
-        graphView: () => setShowGraphView(true),
         toggleBacklinks: () => setShowBacklinks((b) => !b),
         toggleTags: () => setShowTagPane((t) => !t),
-        insertTemplate: () => setShowTemplatePicker(true),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
-        noteComposer: () => setShowNoteComposer(true),
         fileRecovery: () => setShowFileRecovery(true),
         exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
-        audioRecorder: () => setShowAudioRecorder(true),
         attachments: () => setShowAttachments(true),
-        slidePresentation: () => setShowSlidePresentation(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
-        calendarView: () => setShowCalendarView(true),
-        vaultInsights: () => setShowVaultInsights(true),
-        newBoard: handleNewBoard,
-        newCanvas: handleNewCanvas,
-        insertDrawing: handleNewDrawing,
         insertToc: handleInsertToc,
         updateToc: handleUpdateToc,
-        insertDataview: handleInsertDataview,
         focusMode: handleFocusMode,
         publishNote: handlePublish,
-        flashcardReview: () => setShowFlashcards(true),
         startCollab: () => setShowCollab(true),
-        openPdfViewer: () => {
-          if (activeTab && isPdfFile(activeTab)) openFile(activeTab);
-        },
-        exportPdfAnnotations: () => {},
         openTrash: () => setShowTrash(true),
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
-        noteHistory: () => { if (currentTab) setShowNoteHistory(true); },
-        timeScrubber: () => { if (currentTab) setShowTimeScrubber(true); },
-        toggleLint: () => setShowLintPanel((l) => !l),
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
         closeSplit: handleCloseSplit,
       };
@@ -1643,7 +1487,7 @@ export default function Home() {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, handleDailyNote, activeVault, openFile, content, currentTab, handleNewBoard, handleNewDrawing, handleInsertToc, handleUpdateToc, handleInsertDataview, handleFocusMode, handlePublish, pdfFile, handleTogglePin, adjustEditorFontSize]);
+  }, [appState, hotkeys, handleSave, handleSaveAs, handleNewFile, handleNewFolder, handleOpenFile, activeTab, tabs, closeTab, showSettings, handleCloseAllTabs, handleCloseOtherTabs, handleDeleteFile, handleGitSync, handleToggleFullscreen, handleToggleSidebar, handleZenMode, activeVault, openFile, content, currentTab, handleInsertToc, handleUpdateToc, handleFocusMode, handlePublish, handleTogglePin, adjustEditorFontSize]);
 
   // Electron menu events
   useEffect(() => {
@@ -1663,6 +1507,167 @@ export default function Home() {
     if (typeof window === "undefined" || !window.electronAPI) return;
     return window.electronAPI.onMenuOpenFolder(handleOpenFolderAsVault);
   }, [handleOpenFolderAsVault]);
+
+  // ============================================================
+  // Core plugins (Plugin API v1, trusted tier): dynamic import, state in .noteriv/plugin-config.json
+  // ============================================================
+
+  const corePluginConfig = useMemo(
+    () => (vaultAdapter && activeVaultPath ? desktopCorePluginConfig(activeVaultPath, vaultAdapter) : null),
+    [vaultAdapter, activeVaultPath]
+  );
+  const corePluginHost = useCorePluginHost(corePluginConfig, {
+    editor: {
+      getContent: () => (activeTabRef.current ? contentRef.current : null),
+      setContent: (next) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+      },
+      insertAtCursor: (text) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const pos = view.state.selection.main.head;
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+      },
+      getSelection: () => {
+        const view = editorViewRef.current;
+        if (!view) return "";
+        return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+      },
+      replaceSelection: (text) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch(view.state.replaceSelection(text));
+      },
+      getCursorPosition: () => {
+        const view = editorViewRef.current;
+        if (!view) return { line: 0, ch: 0 };
+        const head = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(head);
+        return { line: line.number - 1, ch: head - line.from };
+      },
+      setCursor: ({ line, ch }) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const docLine = view.state.doc.line(Math.min(Math.max(line + 1, 1), view.state.doc.lines));
+        view.dispatch({ selection: { anchor: docLine.from + Math.min(Math.max(ch, 0), docLine.length) }, scrollIntoView: true });
+        view.focus();
+      },
+    },
+    getCurrentFile: () => (activeTabRef.current && activeVaultPath ? relativeVaultPath(activeVaultPath, activeTabRef.current) : null),
+    openFile: async (path) => {
+      const ref = (await vaultAdapter?.listNotes())?.find((n) => n.path === path);
+      if (ref) {
+        await openFile(ref.id);
+        return true;
+      }
+      // Not a note: a file a plugin shows itself (a .canvas or .drawing it just created).
+      if (!activeVaultPath || !(await vaultAdapter?.fileExists?.(path))) return false;
+      const sep = activeVaultPath.includes("\\") ? "\\" : "/";
+      await openFile(`${activeVaultPath.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+      setSidebarRefresh((k) => k + 1);
+      return true;
+    },
+    onVaultChanged: () => setSidebarRefresh((k) => k + 1),
+  });
+  const corePlugins = useCorePlugins(corePluginHost.host);
+  useCorePluginHotkeys(corePlugins.contributions.commands);
+
+  // Core plugin file views (Board…) replace the editor of the tabs they match, except in source mode.
+  const fileViewFor = (filePath: string, text: string) =>
+    matchFileView(corePlugins.contributions.fileViews, relativeVaultPath(activeVaultPath, filePath), text);
+  fileViewForTabRef.current = fileViewFor;
+  const mainFileView = currentTab && !currentTab.kind && viewMode !== "source" ? fileViewFor(currentTab.filePath, content) : undefined;
+  const splitFileView = splitTabState && viewMode !== "source" ? fileViewFor(splitTabState.filePath, splitContent) : undefined;
+
+  // App events for core plugins. Text tabs only: canvas/drawing/PDF tabs have no editor content.
+  const coreEventTab = currentTab && !currentTab.kind ? currentTab.filePath : null;
+  useEffect(() => {
+    if (coreEventTab && activeVaultPath) corePluginHost.host?.emit("file-open", relativeVaultPath(activeVaultPath, coreEventTab));
+  }, [coreEventTab, activeVaultPath, corePluginHost.host]);
+  useEffect(() => {
+    if (coreEventTab) corePluginHost.host?.emit("editor-change", content);
+  }, [content, coreEventTab, corePluginHost.host]);
+
+  // ============================================================
+  // Community plugins: same sandboxed iframe host as web (default-deny permissions)
+  // ============================================================
+
+  const pluginStore = useMemo(() => (activeVaultPath ? new DesktopPluginStore(activeVaultPath) : null), [activeVaultPath]);
+  const refreshCommunityPlugins = useCallback(async () => {
+    setCommunityPlugins(pluginStore ? await pluginStore.list() : []);
+  }, [pluginStore]);
+  useEffect(() => {
+    if (appState === "app") void refreshCommunityPlugins();
+  }, [appState, refreshCommunityPlugins]);
+  const sandboxRecords = useMemo(() => communityPlugins.map(toSandboxRecord), [communityPlugins]);
+  const sandboxHost = useSandboxPluginHost({
+    sandboxUrl: "/plugin-sandbox.html",
+    platform: "desktop",
+    appVersion: PLUGIN_APP_VERSION,
+    installed: sandboxRecords,
+    adapter: vaultAdapter,
+    editor: {
+      getContent: () => (activeTabRef.current ? contentRef.current : null),
+      setContent: (next) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+      },
+      insertAtCursor: (text) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const pos = view.state.selection.main.head;
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+      },
+      getSelection: () => {
+        const view = editorViewRef.current;
+        if (!view) return "";
+        return view.state.sliceDoc(view.state.selection.main.from, view.state.selection.main.to);
+      },
+      replaceSelection: (text) => {
+        const view = editorViewRef.current;
+        if (view) view.dispatch(view.state.replaceSelection(text));
+      },
+    },
+    onVaultMutated: () => setSidebarRefresh((n) => n + 1),
+    saveSettings: async (id, data) => {
+      await pluginStore?.saveSettings(id, data);
+      await refreshCommunityPlugins();
+    },
+    openFile: async (path) => {
+      const ref = (await vaultAdapter?.listNotes())?.find((n) => n.path === path);
+      if (!ref) return false;
+      await openFile(ref.id);
+      return true;
+    },
+  });
+
+  // The sandbox's api.editor.* are synchronous, so the host pushes a snapshot instead of answering RPC calls.
+  useEffect(() => {
+    const view = editorViewRef.current;
+    let selection = "";
+    let cursor = { line: 0, ch: 0 };
+    if (view) {
+      const sel = view.state.selection.main;
+      selection = view.state.sliceDoc(sel.from, sel.to);
+      const line = view.state.doc.lineAt(sel.head);
+      cursor = { line: line.number - 1, ch: sel.head - line.from };
+    }
+    const currentFile = coreEventTab && activeVaultPath ? relativeVaultPath(activeVaultPath, coreEventTab) : null;
+    const snapshot: EditorSnapshot = { content: coreEventTab ? content : null, selection, cursor, currentFile };
+    sandboxHost.syncEditorState(snapshot);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, coreEventTab, activeVaultPath]);
+  useEffect(() => {
+    if (coreEventTab && activeVaultPath) sandboxHost.emitEvent("file-open", relativeVaultPath(activeVaultPath, coreEventTab));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [coreEventTab, activeVaultPath]);
+  const prevSandboxContentRef = useRef<{ tab: string | null; content: string }>({ tab: null, content: "" });
+  useEffect(() => {
+    const prev = prevSandboxContentRef.current;
+    if (coreEventTab && prev.tab === coreEventTab && prev.content !== content) sandboxHost.emitEvent("editor-change", content);
+    prevSandboxContentRef.current = { tab: coreEventTab, content };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [content, coreEventTab]);
 
   // Web clipper: refresh sidebar when a note is clipped
   useEffect(() => {
@@ -1764,21 +1769,6 @@ export default function Home() {
                   <path d="M8 6v4M6 8h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Daily note" onClick={handleDailyNote}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M2 6.5h12" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
-              <button className="ribbon-btn" title="Graph view" onClick={() => setShowGraphView(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M6 7.2l4-2.4M6 8.8l4 2.4" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
               <button className="ribbon-btn" title="Command palette" onClick={() => setShowCommandPalette(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M4 5l4 3-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1792,29 +1782,13 @@ export default function Home() {
                   <path d="M14 13l1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Calendar view" onClick={() => setShowCalendarView(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M2 7h12" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                  <circle cx="5.5" cy="10" r="1" fill="currentColor" />
-                  <circle cx="8" cy="10" r="1" fill="currentColor" />
-                  <circle cx="10.5" cy="10" r="1" fill="currentColor" />
-                </svg>
-              </button>
-              <button className="ribbon-btn" title="Vault insights" onClick={() => setShowVaultInsights(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="9" width="3" height="5" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                  <rect x="6.5" y="5" width="3" height="9" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                  <rect x="11" y="2" width="3" height="12" rx="0.5" stroke="currentColor" strokeWidth="1.2" />
-                </svg>
-              </button>
-              <button className="ribbon-btn" title="Presentation" onClick={() => setShowSlidePresentation(true)}>
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
-                  <rect x="2" y="3" width="12" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
-                  <path d="M8 11v3M5 14h6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-                </svg>
-              </button>
+              {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
+              <CorePluginRibbonButtons
+                icons={corePlugins.contributions.ribbonIcons}
+                panels={corePlugins.contributions.sidebarPanels}
+                openPanels={corePluginHost.openPanels}
+                onTogglePanel={corePluginHost.togglePanel}
+              />
             </div>
             <div className="ribbon-bottom">
               <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
@@ -1860,20 +1834,25 @@ export default function Home() {
                     onRename={handleRenameCurrentFile}
                   />
                   {!zenMode &&
-                    !isBoardFile(currentTab.filePath) &&
-                    !isBoardContent(content) &&
+                    !mainFileView &&
                     viewMode !== "view" && (
                       <FormattingToolbar onAction={handleCommandExecute} />
                     )}
                   <div className="flex-1 overflow-hidden">
-                    {(isBoardFile(currentTab.filePath) || isBoardContent(content)) && viewMode !== "source" ? (
-                      <BoardView content={content} onChange={handleContentChange} />
+                    {mainFileView ? (
+                      <CorePluginFileView
+                        key={`${mainFileView.key}:${currentTab.filePath}`}
+                        view={mainFileView}
+                        path={relativeVaultPath(activeVaultPath, currentTab.filePath)}
+                        content={content}
+                        onChange={handleContentChange}
+                      />
                     ) : viewMode === "view" ? (
                       <ReadOnlyView content={content} onChange={handleContentChange} />
                     ) : viewMode === "source" ? (
-                      <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} vaultPath={activeVault?.path} />
+                      <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" />
                     ) : (
-                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} vaultPath={activeVault?.path} focusMode={focusMode} />
+                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} />
                     )}
                   </div>
                 </div>
@@ -1896,14 +1875,20 @@ export default function Home() {
                       </button>
                     </div>
                     <div className="flex-1 overflow-hidden">
-                      {(isBoardFile(splitTabState.filePath) || isBoardContent(splitContent)) && viewMode !== "source" ? (
-                        <BoardView content={splitContent} onChange={handleSplitContentChange} />
+                      {splitFileView ? (
+                        <CorePluginFileView
+                          key={`${splitFileView.key}:${splitTabState.filePath}`}
+                          view={splitFileView}
+                          path={relativeVaultPath(activeVaultPath, splitTabState.filePath)}
+                          content={splitContent}
+                          onChange={handleSplitContentChange}
+                        />
                       ) : viewMode === "view" ? (
                         <ReadOnlyView content={splitContent} onChange={handleSplitContentChange} />
                       ) : viewMode === "source" ? (
-                        <SourceEditor content={splitContent} onChange={handleSplitContentChange} vaultPath={activeVault?.path} />
+                        <SourceEditor content={splitContent} onChange={handleSplitContentChange} adapter={vaultAdapter} wikilinkLabel="path" />
                       ) : (
-                        <Editor content={splitContent} onChange={handleSplitContentChange} vaultPath={activeVault?.path} focusMode={false} />
+                        <Editor content={splitContent} onChange={handleSplitContentChange} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={false} />
                       )}
                     </div>
                   </div>
@@ -1925,23 +1910,20 @@ export default function Home() {
                 </button>
               </div>
             </div>
-          ) : currentTab.kind === "canvas" && activeVault ? (
-            <Canvas
-              filePath={currentTab.filePath}
-              vaultPath={activeVault.path}
-              onSave={async (c) => { if (window.electronAPI) await window.electronAPI.writeFile(currentTab.filePath, c); }}
-              onFileSelect={(f) => openFile(f)}
-              onClose={() => closeTab(currentTab.filePath)}
-            />
           ) : currentTab.kind === "image" ? (
             <ImageViewer filePath={currentTab.filePath} />
           ) : currentTab.kind === "pdf" && activeVault ? (
-            <PDFViewer
-              filePath={currentTab.filePath}
-              vaultPath={activeVault.path}
-              onExportedNote={(mdPath) => { openFile(mdPath); setSidebarRefresh((k) => k + 1); }}
-              onClose={() => closeTab(currentTab.filePath)}
-            />
+            (() => {
+              const file = { target: relativeVaultPath(activeVault.path, currentTab.filePath), name: baseName(currentTab.filePath) };
+              const viewer = matchAttachmentViewer(corePlugins.contributions.attachmentViewers, file);
+              return viewer ? (
+                <CorePluginAttachmentViewer viewer={viewer} target={file.target} name={file.name} onClose={() => closeTab(currentTab.filePath)} />
+              ) : (
+                <div className="flex items-center justify-center h-full text-sm text-[var(--text-muted)]">
+                  Turn on the PDF viewer core plugin (Settings → Core plugins) to read this file.
+                </div>
+              );
+            })()
           ) : null}
         </div>
 
@@ -1963,36 +1945,35 @@ export default function Home() {
             onClose={() => setShowOutline(false)}
           />
         )}
-        {showBacklinks && activeVault && currentTab && (
+        {showBacklinks && vaultAdapter && currentTab && (
           <BacklinksPanel
-            filePath={currentTab.filePath}
-            vaultPath={activeVault.path}
-            onFileOpen={openFile}
+            adapter={vaultAdapter}
+            noteId={currentTab.filePath}
+            onNoteOpen={openFile}
             onClose={() => setShowBacklinks(false)}
           />
         )}
         <TagPane
-          vaultPath={activeVault?.path || ""}
+          adapter={vaultAdapter}
           onTagClick={() => {}}
-          onFileSelect={openFile}
+          onNoteSelect={openFile}
           visible={showTagPane}
         />
-        <BookmarksPanel
-          bookmarks={bookmarks}
-          vaultPath={activeVault?.path || ""}
-          currentFile={activeTab}
-          onFileSelect={openFile}
-          onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}
-          visible={bookmarks.length > 0 || showTagPane}
-        />
-        {showLintPanel && currentTab && activeVault && (
-          <LintPanel
-            content={content}
-            vaultPath={activeVault.path}
-            onLineClick={handleHeadingClick}
-            onClose={() => setShowLintPanel(false)}
+        {(bookmarks.length > 0 || showTagPane) && (
+          <BookmarksPanel
+            notes={bookmarkedNotes}
+            currentNoteId={activeTab}
+            onNoteSelect={openFile}
+            onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}
+            labels={{ hint: "Right-click a file or use Ctrl+B to bookmark." }}
           />
         )}
+        {/* Sidebar panels of core plugins (Lint, …) */}
+        <CorePluginSidePanels
+          panels={corePlugins.contributions.sidebarPanels}
+          open={corePluginHost.openPanels}
+          onClose={corePluginHost.togglePanel}
+        />
       </div>
 
       {/* Status bar */}
@@ -2032,11 +2013,14 @@ export default function Home() {
                 <span>{content.length} chars</span>
               </>
             )}
-            {!currentTab?.kind && pluginManagerRef.current?.getStatusBarItems().map((item) => (
+            {!currentTab?.kind && (
+              <CorePluginStatusItems items={corePlugins.contributions.statusItems} buttonClassName="cursor-pointer hover:text-[var(--text-secondary)]" />
+            )}
+            {!currentTab?.kind && sandboxHost.statusItems.map((item) => (
               <span
-                key={item.id}
-                className={item.onClick ? "cursor-pointer hover:text-[var(--text-secondary)]" : ""}
-                onClick={item.onClick}
+                key={`${item.pluginDbId}:${item.id}`}
+                className={item.clickable ? "cursor-pointer hover:text-[var(--text-secondary)]" : ""}
+                onClick={item.clickable ? () => sandboxHost.clickStatusItem(item.pluginDbId, item.id) : undefined}
                 title={item.title}
               >
                 {item.text}
@@ -2059,6 +2043,8 @@ export default function Home() {
           onVaultUpdate={(v) => { setActiveVault(v); setVaults((prev) => prev.map((x) => x.id === v.id ? v : x)); }}
           onOpenPlugins={() => { setShowSettings(false); setShowPluginManager(true); }}
           onOpenSnippets={() => { setShowSettings(false); setShowCSSSnippets(true); }}
+          corePlugins={corePlugins.plugins}
+          onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
           onClose={() => setShowSettings(false)}
         />
       )}
@@ -2066,7 +2052,8 @@ export default function Home() {
       {/* Quick open (Ctrl+P) */}
       {showQuickOpen && activeVault && (
         <QuickOpen
-          vaultPath={activeVault.path}
+          load={listFiles}
+          labels={{ placeholder: "Type to search files...", empty: "No files found" }}
           onSelect={openFile}
           onClose={() => setShowQuickOpen(false)}
         />
@@ -2083,52 +2070,31 @@ export default function Home() {
 
       {/* Command palette (Ctrl+Shift+P) */}
       {showCommandPalette && (
-        <CommandPalette
+        <CommandPalette<string>
           hotkeys={hotkeys}
           platform={platform}
           recentActions={recentCommands}
-          onExecute={handleCommandExecute}
-          onRecent={handleRecentCommand}
-          onClose={() => setShowCommandPalette(false)}
-        />
-      )}
-
-      {/* Graph view */}
-      {showGraphView && activeVault && (
-        <GraphView
-          vaultPath={activeVault.path}
-          currentFile={activeTab}
-          onFileSelect={(f) => { openFile(f); setShowGraphView(false); }}
-          onClose={() => setShowGraphView(false)}
-        />
-      )}
-
-      {/* Template picker */}
-      {showTemplatePicker && activeVault && (
-        <TemplatePicker
-          vaultPath={activeVault.path}
-          noteTitle={currentTab?.filePath.split("/").pop()?.replace(/\.md$/i, "") || "Untitled"}
-          onInsert={(tpl) => {
-            if (editorViewRef.current) {
-              const view = editorViewRef.current;
-              const pos = view.state.selection.main.head;
-              view.dispatch({ changes: { from: pos, insert: tpl } });
-            }
-            setShowTemplatePicker(false);
+          extraItems={corePlugins.contributions.commands.map((c) => ({
+            action: `core:${c.key}`,
+            label: c.name,
+            // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
+            keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
+            category: "Core plugin",
+          })).concat(sandboxHost.commands.map((c) => ({
+            action: `plugin:${c.pluginDbId}:${c.id}`,
+            label: c.name,
+            keys: "",
+            category: `Plugin · ${c.pluginId}`,
+          })))}
+          onExecute={(action) => {
+            if (action.startsWith("core:")) corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();
+            else if (action.startsWith("plugin:")) {
+              const [, dbId, ...rest] = action.split(":");
+              sandboxHost.runCommand(dbId, rest.join(":"));
+            } else handleCommandExecute(action as HotkeyAction);
           }}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
-
-      {/* Note composer */}
-      {showNoteComposer && activeVault && (
-        <NoteComposer
-          vaultPath={activeVault.path}
-          currentFile={activeTab}
-          currentContent={content}
-          onClose={() => setShowNoteComposer(false)}
-          onFileSelect={openFile}
-          onContentChange={handleContentChange}
+          onRecent={(action) => handleRecentCommand(action as HotkeyAction)}
+          onClose={() => setShowCommandPalette(false)}
         />
       )}
 
@@ -2143,21 +2109,6 @@ export default function Home() {
         />
       )}
 
-      {/* Audio recorder */}
-      {showAudioRecorder && activeVault && (
-        <AudioRecorder
-          vaultPath={activeVault.path}
-          onInsert={(link) => {
-            if (editorViewRef.current) {
-              const view = editorViewRef.current;
-              const pos = view.state.selection.main.head;
-              view.dispatch({ changes: { from: pos, insert: link } });
-            }
-            setShowAudioRecorder(false);
-          }}
-          onClose={() => setShowAudioRecorder(false)}
-        />
-      )}
 
       {/* Attachment manager */}
       {showAttachments && activeVault && (
@@ -2175,48 +2126,38 @@ export default function Home() {
         />
       )}
 
-      {/* Slide presentation */}
-      {showSlidePresentation && (
-        <SlidePresentation
-          content={content}
-          onClose={() => setShowSlidePresentation(false)}
-        />
-      )}
-
       {/* Plugin manager */}
       {showPluginManager && activeVault && (
         <PluginManagerModal
           vaultPath={activeVault.path}
-          plugins={pluginInstances}
+          plugins={communityPlugins}
+          denied={sandboxHost.deniedPermissions}
+          settingsPanels={sandboxHost.panels}
+          onPanelEvent={(panel, e) => sandboxHost.sendMirrorEvent(panel.pluginDbId, panel.kind, panel.id, e)}
           onTogglePlugin={async (id, enabled) => {
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              await pm.setPluginEnabled(id, enabled);
-              setPluginInstances(pm.getPlugins());
-            }
+            await pluginStore?.setEnabled(id, enabled);
+            await refreshCommunityPlugins();
+          }}
+          onGrantPermissions={async (id, permissions) => {
+            await pluginStore?.setPermissions(id, permissions);
+            sandboxHost.clearDenied(id);
+            await refreshCommunityPlugins();
           }}
           onInstallPlugin={async () => {
-            if (!window.electronAPI) return;
+            if (!window.electronAPI || !pluginStore) return;
             const folder = await window.electronAPI.openFolder();
             if (!folder) return;
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              try {
-                await pm.installPlugin(folder);
-                await pm.loadAllEnabled();
-                setPluginInstances(pm.getPlugins());
-              } catch {}
-            }
+            try {
+              await pluginStore.installFromFolder(folder);
+              await refreshCommunityPlugins();
+            } catch {}
           }}
+          onInstalled={refreshCommunityPlugins}
           onUninstallPlugin={async (id) => {
-            const pm = pluginManagerRef.current;
-            if (pm) {
-              await pm.uninstallPlugin(id);
-              setPluginInstances(pm.getPlugins());
-            }
+            await pluginStore?.uninstall(id);
+            await refreshCommunityPlugins();
           }}
           onClose={() => setShowPluginManager(false)}
-          getSettingsTabs={() => pluginManagerRef.current?.getSettingsTabs() ?? []}
         />
       )}
 
@@ -2233,25 +2174,8 @@ export default function Home() {
         />
       )}
 
-      {/* Calendar View */}
-      {showCalendarView && activeVault && (
-        <CalendarView
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowCalendarView(false); }}
-          onCreateDailyNote={(date) => { handleCreateDailyNote(date); setShowCalendarView(false); }}
-          onClose={() => setShowCalendarView(false)}
-        />
-      )}
 
       {/* Drawing Editor */}
-      {drawingFile && activeVault && (
-        <DrawingEditor
-          filePath={drawingFile}
-          vaultPath={activeVault.path}
-          onSave={() => setSidebarRefresh((k) => k + 1)}
-          onClose={() => closeTab(drawingFile)}
-        />
-      )}
 
 
       {/* Publish Preview */}
@@ -2264,14 +2188,8 @@ export default function Home() {
         />
       )}
 
-      {/* Flashcard Review */}
-      {showFlashcards && activeVault && (
-        <FlashcardReview
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowFlashcards(false); }}
-          onClose={() => setShowFlashcards(false)}
-        />
-      )}
+      {/* Views opened by core plugins (Flashcards review, …) */}
+      <CorePluginViewOverlay host={corePluginHost.host} view={corePluginHost.activeView} onClose={corePluginHost.closeView} />
 
       {/* Live Collaboration */}
       {showCollab && (
@@ -2291,35 +2209,23 @@ export default function Home() {
         />
       )}
 
-      {/* Note History */}
-      {showNoteHistory && activeVault && currentTab && (
-        <NoteHistory
-          filePath={currentTab.filePath}
-          vaultPath={activeVault.path}
-          currentContent={content}
-          onRestore={(restored) => { handleContentChange(restored); setShowNoteHistory(false); }}
-          onClose={() => setShowNoteHistory(false)}
-        />
-      )}
 
-      {/* Time Scrubber */}
-      {showTimeScrubber && activeVault && currentTab && (
-        <TimeScrubber
-          filePath={currentTab.filePath}
-          vaultPath={activeVault.path}
-          currentContent={content}
-          onRestore={(restored) => { handleContentChange(restored); setShowTimeScrubber(false); }}
-          onClose={() => setShowTimeScrubber(false)}
-        />
-      )}
+      {/* Hidden sandboxed <iframe> per enabled community plugin (see @noteriv/ui/plugins/sandbox) */}
+      <div ref={sandboxHost.containerRef} style={{ display: "none" }} />
 
-      {/* Vault Insights */}
-      {showVaultInsights && activeVault && (
-        <VaultInsights
-          vaultPath={activeVault.path}
-          onFileSelect={(f) => { openFile(f); setShowVaultInsights(false); }}
-          onClose={() => setShowVaultInsights(false)}
-        />
+      {/* Notices from plugins (api.ui.showNotice) */}
+      {corePluginHost.notices.length + sandboxHost.notices.length > 0 && (
+        <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
+          {[...corePluginHost.notices, ...sandboxHost.notices].map((n) => (
+            <div
+              key={n.key}
+              onClick={() => (n.key.startsWith("core:") ? corePluginHost.dismissNotice(n.key) : sandboxHost.dismissNotice(n.key))}
+              className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
+            >
+              {n.message}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );

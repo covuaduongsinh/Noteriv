@@ -1,0 +1,24 @@
+{
+  "$comment": "Feature -> source path patterns (regex, matched against the module path without the [project]/ prefix). List the feature's own modules only; libraries it alone uses are found through the module graph. A feature's 'exclusive' size is what disappears from the bundle when its modules are removed. Used by bundle-report.mjs; keep in sync as features move into packages/plugins (phase 2).",
+  "features": {
+    "flashcards": { "label": "Flashcards", "patterns": ["plugins/src/flashcards/", "/src/components/FlashcardReview\\.", "/src/lib/flashcard-utils\\."] },
+    "calendar": { "label": "Calendar / Daily notes", "patterns": ["plugins/src/calendar/", "/src/components/CalendarView\\.", "core/src/calendar-utils\\."] },
+    "templates": { "label": "Templates", "patterns": ["plugins/src/templates/", "/src/components/TemplatePicker\\.", "/src/lib/template-utils\\."] },
+    "graph": { "label": "Graph view", "patterns": ["plugins/src/graph/", "ui/src/graph/","core/src/graph-utils\\.", "app/vaults/\\[vaultId\\]/graph/"] },
+    "canvas": { "label": "Canvas", "patterns": ["plugins/src/canvas/", "/src/components/CanvasView\\.","/src/components/Canvas\\.", "core/src/canvas-utils\\."] },
+    "board": { "label": "Board (Kanban)", "patterns": ["plugins/src/board/", "/src/components/BoardView\\.","core/src/board-utils\\."] },
+    "drawing": { "label": "Drawing", "patterns": ["plugins/src/drawing/", "/src/components/DrawingView\\.","/src/components/DrawingEditor\\.", "core/src/drawing-utils\\."] },
+    "slides": { "label": "Slides", "patterns": ["plugins/src/slides/", "/src/components/SlidePresentation\\.","core/src/slide-utils\\."] },
+    "pdf-viewer": { "label": "PDF viewer + chú thích", "patterns": ["plugins/src/pdf-viewer/", "/src/components/PDFViewer\\.","/src/lib/pdf-annotation\\.", "node_modules/pdfjs-dist/"] },
+    "dataview": { "label": "Dataview", "patterns": ["plugins/src/dataview/", "core/src/dataview\\.","/src/components/DataviewBlock\\."] },
+    "vault-insights": { "label": "Vault insights", "patterns": ["plugins/src/vault-insights/", "/src/components/VaultInsights\\.", "/src/lib/vault-insights-utils\\."] },
+    "audio-recorder": { "label": "Audio recorder", "patterns": ["plugins/src/audio-recorder/", "/src/components/AudioRecorder\\.", "/src/lib/audio-utils\\."] },
+    "note-composer": { "label": "Note composer", "patterns": ["plugins/src/note-composer/", "/src/components/NoteComposer\\.", "/src/lib/note-composer-utils\\."] },
+    "note-history": { "label": "Note history / Time scrubber", "patterns": ["plugins/src/note-history/", "/src/components/NoteHistory\\.", "/src/components/TimeScrubber\\.", "/src/lib/note-history\\.", "core/src/note-diff\\."] },
+    "markdown-lint": { "label": "Markdown lint", "patterns": ["plugins/src/markdown-lint/", "/src/components/LintPanel\\.", "core/src/markdown-lint\\."] },
+    "publish": { "label": "Publish preview", "patterns": ["/src/components/PublishPreview\\.", "core/src/publish\\.", "desktop/src/lib/publish\\."] },
+    "clipper": { "label": "Web clipper (cài đặt)", "patterns": ["/src/components/ClipperSection\\."] },
+    "mermaid": { "label": "Mermaid", "patterns": ["plugins/src/mermaid/", "ui/src/markdown/mermaid\\.","node_modules/mermaid/"] },
+    "math": { "label": "Math (KaTeX)", "patterns": ["ui/src/markdown/math\\.", "ui/src/markdown/renderers/math\\.", "ui/src/markdown/katex-loader\\."] }
+  }
+}

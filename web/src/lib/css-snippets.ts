@@ -33,11 +33,6 @@ export async function loadSnippets(vaultId: string): Promise<CSSSnippet[]> {
   return [...snippets].sort((a, b) => a.name.localeCompare(b.name));
 }
 
-export async function getEnabledSnippetIds(vaultId: string): Promise<string[]> {
-  const snippets = await readSnippets(vaultId);
-  return snippets.filter((s) => s.enabled).map((s) => s.id);
-}
-
 export async function toggleSnippet(vaultId: string, snippetId: string, enabled: boolean): Promise<void> {
   const snippets = await readSnippets(vaultId);
   await writeSnippets(

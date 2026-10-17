@@ -1,7 +1,7 @@
 "use client";
 
 import type { ViewMode } from "@/lib/webApi";
-import type { PluginStatusItem } from "@/lib/plugin-sandbox/types";
+import type { PluginStatusItem } from "@noteriv/ui/plugins/sandbox";
 
 interface StatusBarProps {
   viewMode: ViewMode;
@@ -14,6 +14,8 @@ interface StatusBarProps {
   onOpenSync?: () => void;
   pluginItems?: PluginStatusItem[];
   onPluginItemClick?: (pluginDbId: string, itemId: string) => void;
+  /** Status items of core plugins, rendered by @noteriv/ui (CorePluginStatusItems). */
+  coreItems?: React.ReactNode;
 }
 
 const VIEW_MODE_LABEL: Record<ViewMode, string> = {
@@ -46,6 +48,7 @@ export default function StatusBar({
   onOpenSync,
   pluginItems = [],
   onPluginItemClick,
+  coreItems,
 }: StatusBarProps) {
   return (
     <div className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] select-none shrink-0">
@@ -77,6 +80,7 @@ export default function StatusBar({
           </button>
         )}
         <div className="flex items-center gap-3">
+          {coreItems}
           {pluginItems.map((item) =>
             item.clickable ? (
               <button

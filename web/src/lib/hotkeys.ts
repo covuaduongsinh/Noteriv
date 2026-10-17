@@ -28,13 +28,10 @@ export type HotkeyAction =
   | "settings"
   | "toggleOutline"
   | "toggleTags"
-  | "graphView"
   | "toggleBacklinks"
   | "toggleCollab"
   | "exportPDF"
   | "previewPDF"
-  | "calendarView"
-  | "flashcardReview"
   | "pluginManager"
   | "cssSnippets"
   | "gitSync"
@@ -58,9 +55,6 @@ export type HotkeyAction =
   | "insertHorizontalRule"
   | "toggleBookmark"
   | "openTrash"
-  | "insertTemplate"
-  | "noteComposer"
-  | "vaultInsights"
   // Phase 1 discoverability (parity plan v2): entries that already existed as
   // ribbon/settings paths but had no palette/menu action.
   | "syncSettings"
@@ -69,9 +63,7 @@ export type HotkeyAction =
   | "exportVault"
   | "importNewVault"
   | "newVaultFromGithub"
-  | "dailyNote"
   | "randomNote"
-  | "toggleLint"
   | "zenMode"
   | "focusMode"
   | "reloadApp"
@@ -103,7 +95,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "settings", label: "Settings", keys: "Ctrl+,", category: "View" },
   { action: "toggleOutline", label: "Toggle Outline", keys: "Ctrl+Shift+O", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
-  { action: "graphView", label: "Graph View", keys: "Ctrl+G", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleCollab", label: "Toggle Collaboration", keys: "", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
@@ -112,8 +103,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "previewPDF", label: "Xem trước PDF", keys: "", category: "File" },
   { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
   { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
-  { action: "calendarView", label: "Calendar View", keys: "", category: "Navigation" },
-  { action: "flashcardReview", label: "Flashcard Review", keys: "", category: "Navigation" },
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },
@@ -122,9 +111,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
-  { action: "dailyNote", label: "Open Today's Daily Note", keys: "Ctrl+D", category: "Navigation" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
-  { action: "toggleLint", label: "Toggle Lint Panel", keys: "", category: "View" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },
   { action: "focusMode", label: "Focus Mode (dim other lines)", keys: "", category: "View" },
   { action: "reloadApp", label: "Reload page (saves first)", keys: "", category: "Developer" },
@@ -146,9 +133,6 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
 
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
-  { action: "insertTemplate", label: "New from Template", keys: "Ctrl+T", category: "File" },
-  { action: "noteComposer", label: "Note Composer", keys: "", category: "Edit" },
-  { action: "vaultInsights", label: "Vault Insights", keys: "", category: "View" },
 ];
 
 /** Parse a key combo string like "Ctrl+Shift+F" and check if a KeyboardEvent matches it. */
@@ -174,17 +158,7 @@ export function matchesHotkey(e: KeyboardEvent, keys: string): boolean {
 }
 
 /** Format a key combo for display — replaces Ctrl with Cmd on macOS. */
-export function formatHotkey(keys: string, platform: string): string {
-  if (!keys) return "";
-  if (platform === "darwin") {
-    return keys
-      .replace(/Ctrl/g, "⌘")
-      .replace(/Shift/g, "⇧")
-      .replace(/Alt/g, "⌥")
-      .replace(/\+/g, "");
-  }
-  return keys;
-}
+export { formatHotkey } from "@noteriv/ui/panels/format-hotkey";
 
 /** Convert a KeyboardEvent to a key combo string. Used when recording a new binding. */
 export function eventToKeyString(e: KeyboardEvent): string | null {

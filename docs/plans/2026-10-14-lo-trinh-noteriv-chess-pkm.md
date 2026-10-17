@@ -1,6 +1,8 @@
 # Lộ trình Noteriv: sổ tay tri thức cờ vua (Chess PKM), web + desktop
 
-> Ngày lập: 2026-10-14 · Cập nhật: 2026-10-14 (thứ tự 0 → 6 theo quyết định của chủ dự án) · Trạng thái: **đã duyệt, chưa triển khai**
+> **ĐÃ THAY THẾ (2026-10-17)** bởi [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md): sản phẩm chuyển sang hướng ghi chú tri thức chung, thương mại; cờ vua thành phiên bản chuyên ngành (gói core plugin) làm sau. Giai đoạn 0–2 dưới đây đã xong; Giai đoạn 3–6 được chia lại vào các chặng của lộ trình mới. File này giữ làm lịch sử.
+>
+> Ngày lập: 2026-10-14 · Cập nhật: 2026-10-14 (thứ tự 0 → 6 theo quyết định của chủ dự án) · Trạng thái: **đã thay thế**
 > Người quyết định: chủ dự án (covuaduongsinh). Tài liệu viết cho người không chuyên IT; thuật ngữ giải thích ở mục 11.
 > **Phiên làm việc mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 

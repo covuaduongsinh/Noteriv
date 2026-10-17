@@ -1,55 +1,45 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef, type ComponentType } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
-import Editor from "@/components/Editor";
-import SourceEditor from "@/components/SourceEditor";
-import ReadOnlyView from "@/components/ReadOnlyView";
 import SplitPane from "@/components/SplitPane";
-import QuickOpen from "@/components/QuickOpen";
-import BacklinksPanel from "@/components/BacklinksPanel";
+import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel } from "@noteriv/ui/panels";
 import CollabPanel from "@/components/CollabPanel";
-import PluginManager from "@/components/PluginManager";
-import CalendarView from "@/components/CalendarView";
-import FlashcardReview from "@/components/FlashcardReview";
-import CSSSnippets from "@/components/CSSSnippets";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
 import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
-import FormattingToolbar from "@/components/FormattingToolbar";
 import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
-import OutlinePanel from "@/components/OutlinePanel";
-import TagPane from "@/components/TagPane";
-import SettingsModal from "@/components/SettingsModal";
-import CommandPalette from "@/components/CommandPalette";
-import ImportVault from "@/components/ImportVault";
-import PluginMirror from "@/components/PluginMirror";
-import LintPanel from "@/components/LintPanel";
-import DiagnosticsModal from "@/components/DiagnosticsModal";
+import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { createUntitledNote } from "@/lib/note-names";
-import CreateVaultFromGithub from "@/components/sync/CreateVaultFromGithub";
-import TrashPanel from "@/components/TrashPanel";
-import BookmarksPanel from "@/components/BookmarksPanel";
-import VaultInsights from "@/components/VaultInsights";
-import TemplatePicker from "@/components/TemplatePicker";
-import NoteComposer from "@/components/NoteComposer";
+import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import HoverPreview from "@/components/HoverPreview";
-import AttachmentManager from "@/components/AttachmentManager";
-import AudioRecorder from "@/components/AudioRecorder";
-import FileRecovery from "@/components/FileRecovery";
-import TimeScrubber from "@/components/TimeScrubber";
-import NoteHistory from "@/components/NoteHistory";
-import { setImageLightboxHandler } from "@/components/markdown/renderers/images";
+import { setImageLightboxHandler } from "@noteriv/ui/markdown/renderers/images";
 import { CloseIcon } from "@/components/icons";
-import { toggleBookmark, isBookmarked } from "@/lib/bookmark-utils";
+import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
-import type { EditorSnapshot } from "@/lib/plugin-sandbox/types";
+import { webCorePluginConfig } from "@/lib/core-plugins";
+import {
+  CorePluginRibbonButtons,
+  CorePluginStatusItems,
+  CorePluginNoteToolbarButtons,
+  CorePluginFileView,
+  matchFileView,
+  CorePluginAttachmentViewer,
+  matchAttachmentViewer,
+  CorePluginSidePanels,
+  CorePluginViewOverlay,
+  useCorePluginHost,
+  useCorePluginHotkeys,
+  useCorePlugins,
+} from "@noteriv/ui/plugins";
+import type { EditorApi } from "@noteriv/plugin-api";
+import type { EditorSnapshot } from "@noteriv/ui/plugins/sandbox";
 import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
   webApi,
@@ -60,11 +50,6 @@ import {
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
-import { isBoardContent } from "@/lib/board-utils";
-import { isCanvasContent } from "@/lib/canvas-utils";
-import { isDrawingContent } from "@/lib/drawing-utils";
-import { exportToPDF, downloadPdf, renderPdf, saveBlob } from "@/lib/pdf-export";
-import PdfPreviewModal from "@/components/PdfPreviewModal";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import {
@@ -76,7 +61,7 @@ import {
   type HotkeyBinding,
   type HotkeyAction,
 } from "@/lib/hotkeys";
-import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor } from "@/lib/editor-commands";
+import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
@@ -99,11 +84,44 @@ function saveRecentCommand(action: string) {
   }
 }
 
-const BoardView = dynamic(() => import("@/components/BoardView"), { ssr: false });
-const CanvasView = dynamic(() => import("@/components/CanvasView"), { ssr: false });
-const DrawingView = dynamic(() => import("@/components/DrawingView"), { ssr: false });
-const SlidePresentation = dynamic(() => import("@/components/SlidePresentation"), { ssr: false });
 const PublishPreview = dynamic(() => import("@/components/PublishPreview"), { ssr: false });
+
+// The editor (CodeMirror with its language parsers) is the heaviest part of the page: it loads when a note opens, and
+// is prefetched once the vault has loaded and the browser is idle (see the effect below the index load).
+type EditorModule = typeof import("@noteriv/ui/editor");
+/** Set once the editor module has loaded. */
+let editorModule: EditorModule | null = null;
+const loadEditor = () => import("@noteriv/ui/editor").then((m) => (editorModule = m));
+/**
+ * A component of the editor module. Through `dynamic()` it suspends on its first mount even when the module is already
+ * here, and React then holds the reveal back for ~300 ms; so once the module has loaded (prefetched), it is rendered
+ * directly. The choice is made once per mount, so a mounted editor never swaps implementation.
+ */
+function editorPart<P extends object>(pick: (m: EditorModule) => ComponentType<P>) {
+  const Lazy = dynamic(() => loadEditor().then(pick), { ssr: false }) as ComponentType<P>;
+  return function EditorPart(props: P) {
+    const [Part] = useState(() => (editorModule ? pick(editorModule) : Lazy));
+    return <Part {...props} />;
+  };
+}
+const Editor = editorPart((m) => m.Editor);
+const SourceEditor = editorPart((m) => m.SourceEditor);
+const ReadOnlyView = editorPart((m) => m.ReadOnlyView);
+const FormattingToolbar = editorPart((m) => m.FormattingToolbar);
+
+// Dialogs opened on demand.
+const PluginManager = dynamic(() => import("@/components/PluginManager"), { ssr: false });
+const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
+const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
+const ImportVault = dynamic(() => import("@/components/ImportVault"), { ssr: false });
+const DiagnosticsModal = dynamic(() => import("@/components/DiagnosticsModal"), { ssr: false });
+const CreateVaultFromGithub = dynamic(() => import("@/components/sync/CreateVaultFromGithub"), { ssr: false });
+const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
+const AttachmentManager = dynamic(() => import("@/components/AttachmentManager"), { ssr: false });
+const FileRecovery = dynamic(() => import("@/components/FileRecovery"), { ssr: false });
+const PdfPreviewModal = dynamic(() => import("@/components/PdfPreviewModal"), { ssr: false });
+/** PDF export (markdown → HTML, the PDF service): loaded when used. */
+const loadPdfExport = () => import("@/lib/pdf-export");
 
 const SAVE_DEBOUNCE_MS = 800;
 const WORKSPACE_SAVE_DEBOUNCE_MS = 1000;
@@ -122,6 +140,8 @@ export default function VaultPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const vaultId = params.vaultId;
+  const vaultAdapter = useMemo(() => createWebVaultAdapter(vaultId), [vaultId]);
+  const listNotes = useCallback(() => vaultAdapter.listNotes(), [vaultAdapter]);
 
   const [vault, setVault] = useState<ApiVault | null>(null);
   const [allVaults, setAllVaults] = useState<ApiVault[]>([]);
@@ -138,6 +158,8 @@ export default function VaultPage() {
   const [splitTabId, setSplitTabId] = useState<string | null>(null);
   const [splitRatio, setSplitRatio] = useState(0.5);
   const workspaceLoadedRef = useRef(false);
+  /** The workspace state as the server has it (loaded, or last sent): an unchanged state is not sent again. */
+  const savedWorkspaceRef = useRef<string | null>(null);
   // State twin of workspaceLoadedRef: the `?note=` effect must wait for the
   // saved-tabs restore to finish, otherwise the restore's setTabs overwrites
   // the tab `?note=` just opened.
@@ -161,8 +183,6 @@ export default function VaultPage() {
   const [collabConnected, setCollabConnected] = useState(false);
   const [collabPeers, setCollabPeers] = useState<CollabPeer[]>([]);
   const [displayName, setDisplayName] = useState<string | undefined>(undefined);
-  const [showCalendarView, setShowCalendarView] = useState(false);
-  const [showFlashcards, setShowFlashcards] = useState(false);
   const [showCSSSnippets, setShowCSSSnippets] = useState(false);
   const [cssSnippets, setCSSSnippets] = useState<CSSSnippet[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>(getDefaultTheme().id);
@@ -180,13 +200,14 @@ export default function VaultPage() {
   const [platform, setPlatform] = useState("web");
   const [syncConnections, setSyncConnections] = useState<ApiSyncConnection[]>([]);
   const preferencesLoadedRef = useRef(false);
+  /** Preferences as the server has them (loaded, or last sent): unchanged ones are not sent again. */
+  const savedPreferencesRef = useRef<string | null>(null);
   const preferencesSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Phase C — Trash/Bookmarks/Vault Insights/Templates/Note Composer/hover preview
   // (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase C).
   const [showTrash, setShowTrash] = useState(false);
   const [showNewFromGithub, setShowNewFromGithub] = useState(false);
-  const [showLint, setShowLint] = useState(false);
   const [showDiagnostics, setShowDiagnostics] = useState(false);
   const [pdfPreview, setPdfPreview] = useState<{ blob: Blob; filename: string } | null>(null);
   const [zenMode, setZenMode] = useState(false);
@@ -196,22 +217,21 @@ export default function VaultPage() {
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
-  const [showInsights, setShowInsights] = useState(false);
-  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
-  const [showNoteComposer, setShowNoteComposer] = useState(false);
+  const bookmarkedNotes = useMemo(
+    () =>
+      bookmarks
+        .map((id) => index?.notes.find((n) => n.id === id))
+        .filter((n): n is NonNullable<typeof n> => !!n)
+        .map((n) => ({ id: n.id, name: n.name, path: n.path })),
+    [bookmarks, index]
+  );
   const [showAttachments, setShowAttachments] = useState(false);
-  const [showAudioRecorder, setShowAudioRecorder] = useState(false);
-  const [showSlidePresentation, setShowSlidePresentation] = useState(false);
+  /** An attachment shown by a core plugin's viewer (the PDF viewer), over the page. */
+  const [attachmentView, setAttachmentView] = useState<{ target: string; name: string } | null>(null);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
   const [showPublishPreview, setShowPublishPreview] = useState(false);
   // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
   const [showFileRecovery, setShowFileRecovery] = useState(false);
-  const [showTimeScrubber, setShowTimeScrubber] = useState(false);
-  const [showGitHistory, setShowGitHistory] = useState(false);
-  // Cheap client-side gate (no extra request): only offer Note History once a
-  // non-WebDAV sync connection has synced at least once. The /history endpoint
-  // itself still double-checks server-side and degrades gracefully either way.
-  const gitHistoryAvailable = syncConnections.some((c) => c.providerType !== "webdav" && c.lastSyncedAt);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -271,7 +291,7 @@ export default function VaultPage() {
     await webApi.notes.update(vaultId, noteId, { content });
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
     refreshIndex();
-    pluginHost.emitEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
+    emitPluginEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
   }
 
   function scheduleSave(noteId: string, content: string) {
@@ -332,10 +352,21 @@ export default function VaultPage() {
     webApi.vaults.index(vaultId).then(setIndex);
   }, [vaultId]);
 
-  const pluginHost = usePluginHost(
-    vaultId,
-    index,
-    {
+  // Once the vault is on screen, fetch the editor while the browser is idle, so opening a note does not wait for it.
+  const vaultShown = index !== null;
+  useEffect(() => {
+    if (!vaultShown) return;
+    const idle = (window as Window & { requestIdleCallback?: (cb: () => void, opts?: { timeout: number }) => number }).requestIdleCallback;
+    const prefetch = () => void loadEditor().catch(() => {});
+    if (idle) {
+      const id = idle(prefetch, { timeout: 3000 });
+      return () => (window as Window & { cancelIdleCallback?: (id: number) => void }).cancelIdleCallback?.(id);
+    }
+    const t = setTimeout(prefetch, 1500);
+    return () => clearTimeout(t);
+  }, [vaultShown]);
+
+  const editorBridge: EditorApi = {
       getContent: () => draftRef.current,
       setContent: (content) => onDraftChange(content),
       insertAtCursor: (text) => {
@@ -356,9 +387,60 @@ export default function VaultPage() {
         const sel = view.state.selection.main;
         view.dispatch({ changes: { from: sel.from, to: sel.to, insert: text } });
       },
+      getCursorPosition: () => {
+        const view = editorViewRef.current;
+        if (!view) return { line: 0, ch: 0 };
+        const head = view.state.selection.main.head;
+        const line = view.state.doc.lineAt(head);
+        return { line: line.number - 1, ch: head - line.from };
+      },
+      setCursor: ({ line, ch }) => {
+        const view = editorViewRef.current;
+        if (!view) return;
+        const docLine = view.state.doc.line(Math.min(Math.max(line + 1, 1), view.state.doc.lines));
+        view.dispatch({ selection: { anchor: docLine.from + Math.min(Math.max(ch, 0), docLine.length) }, scrollIntoView: true });
+        view.focus();
+      },
+  };
+  /**
+   * `workspace.openFile` for both plugin tiers. A note the plugin has just created is not in `index` yet (the refresh
+   * is still in flight), so a miss asks the adapter before giving up.
+   */
+  const openPluginPath = async (path: string) => {
+    const note = index?.notes.find((n) => n.path === path) ?? (await vaultAdapter.listNotes()).find((n) => n.path === path);
+    if (!note) return false;
+    openNote(note.id);
+    return true;
+  };
+  const pluginHost = usePluginHost(vaultId, vaultAdapter, editorBridge, refreshIndex, openPluginPath);
+
+  // Core plugins (Plugin API v1, trusted tier): loaded in-page by dynamic import, state in vault settings.
+  const activePathRef = useRef<string | null>(null);
+  activePathRef.current = activeTab?.path ?? null;
+  const corePluginConfig = useMemo(() => webCorePluginConfig(vaultAdapter), [vaultAdapter]);
+  const corePluginHost = useCorePluginHost(corePluginConfig, {
+    editor: editorBridge,
+    getCurrentFile: () => activePathRef.current,
+    // A core plugin opening a note (the PDF viewer's export…) brings the editor forward.
+    openFile: async (path) => {
+      const ok = await openPluginPath(path);
+      if (ok) {
+        setShowAttachments(false);
+        setAttachmentView(null);
+      }
+      return ok;
     },
-    refreshIndex
-  );
+    onVaultChanged: refreshIndex,
+  });
+  const corePlugins = useCorePlugins(corePluginHost.host);
+  useCorePluginHotkeys(corePlugins.contributions.commands);
+  // File Recovery (core) links to the Time scrubber while the Note history plugin is on.
+  const scrubberCommand = corePlugins.contributions.commands.find((c) => c.key === "note-history:scrubber");
+  /** Both plugin tiers receive the same app events. */
+  const emitPluginEvent = (event: Parameters<typeof pluginHost.emitEvent>[0], ...args: unknown[]) => {
+    pluginHost.emitEvent(event, ...args);
+    corePluginHost.host?.emit(event, ...args);
+  };
 
   // --- Plugin sandbox feeds (sync editor snapshot + desktop-style events) ---
   // The sandbox's api.editor.* are synchronous like desktop's, so we push a
@@ -402,13 +484,13 @@ export default function VaultPage() {
   const prevDraftRef = useRef<{ tabId: string | null; content: string }>({ tabId: null, content: "" });
   useEffect(() => {
     const prev = prevDraftRef.current;
-    if (prev.tabId === activeTabId && prev.content !== draft) pluginHost.emitEvent("editor-change", draft);
+    if (prev.tabId === activeTabId && prev.content !== draft) emitPluginEvent("editor-change", draft);
     prevDraftRef.current = { tabId: activeTabId, content: draft };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, activeTabId]);
 
   useEffect(() => {
-    if (activePath) pluginHost.emitEvent("file-open", activePath);
+    if (activePath) emitPluginEvent("file-open", activePath);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTabId]);
 
@@ -422,17 +504,17 @@ export default function VaultPage() {
     let changed = false;
     for (const [id, path] of current) {
       if (!prev.has(id)) {
-        pluginHost.emitEvent("file-create", path);
+        emitPluginEvent("file-create", path);
         changed = true;
       }
     }
     for (const [id, path] of prev) {
       if (!current.has(id)) {
-        pluginHost.emitEvent("file-delete", path);
+        emitPluginEvent("file-delete", path);
         changed = true;
       }
     }
-    if (changed) pluginHost.emitEvent("vault-change");
+    if (changed) emitPluginEvent("vault-change");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
@@ -574,6 +656,8 @@ export default function VaultPage() {
     webApi.workspace
       .getState(vaultId)
       .then(async (state) => {
+        // Tabs to restore will show an editor: fetch its chunk alongside the notes, not after they render.
+        if (state.openTabs.length > 0) void loadEditor().catch(() => {});
         // Only a 404 means the note is really gone and its tab should be
         // dropped. Any other failure (network blip, 5xx) leaves the restore
         // incomplete: those tabs are skipped for this session, but we must not
@@ -596,6 +680,12 @@ export default function VaultPage() {
           restoreIncompleteRef.current = true;
           setPageNotice("Không khôi phục được một số tab do lỗi kết nối; tải lại trang để thử lại.");
         }
+        savedWorkspaceRef.current = JSON.stringify({
+          openTabs: state.openTabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
+          activeTabId: state.activeTabId ?? null,
+          pinnedTabIds: state.pinnedTabIds,
+          fileViewModes: state.fileViewModes,
+        });
         setTabs(restoredTabs);
         // Prune ids of dropped tabs so dead pins/view-modes don't linger server-side.
         const liveIds = new Set(restoredTabs.map((t) => t.noteId));
@@ -627,16 +717,18 @@ export default function VaultPage() {
   // debounced the same way note autosave is.
   useEffect(() => {
     if (!workspaceLoadedRef.current) return;
+    const state = {
+      openTabs: tabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
+      activeTabId: activeTabId ?? null,
+      pinnedTabIds: Array.from(pinnedTabIds),
+      fileViewModes,
+    };
+    const serialized = JSON.stringify(state);
+    if (serialized === savedWorkspaceRef.current) return;
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     workspaceSaveTimer.current = setTimeout(() => {
-      webApi.workspace
-        .updateState(vaultId, {
-          openTabs: tabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
-          activeTabId,
-          pinnedTabIds: Array.from(pinnedTabIds),
-          fileViewModes,
-        })
-        .catch(() => undefined);
+      savedWorkspaceRef.current = serialized;
+      webApi.workspace.updateState(vaultId, state).catch(() => undefined);
     }, WORKSPACE_SAVE_DEBOUNCE_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [vaultId, tabs, activeTabId, pinnedTabIds, fileViewModes]);
@@ -651,8 +743,11 @@ export default function VaultPage() {
     webApi.preferences
       .get()
       .then((prefs) => {
-        setHotkeyBindings(mergeHotkeys(prefs.hotkeys));
-        setEditorSettingsState({ ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings });
+        const bindings = mergeHotkeys(prefs.hotkeys);
+        const settings = { ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings };
+        savedPreferencesRef.current = JSON.stringify({ hotkeys: hotkeysToOverrideMap(bindings), editorSettings: settings });
+        setHotkeyBindings(bindings);
+        setEditorSettingsState(settings);
       })
       .catch(() => undefined)
       .finally(() => {
@@ -699,11 +794,13 @@ export default function VaultPage() {
   // Persist hotkey/editor-setting changes, debounced like workspace state.
   useEffect(() => {
     if (!preferencesLoadedRef.current) return;
+    const prefs = { hotkeys: hotkeysToOverrideMap(hotkeyBindings), editorSettings };
+    const serialized = JSON.stringify(prefs);
+    if (serialized === savedPreferencesRef.current) return;
     if (preferencesSaveTimer.current) clearTimeout(preferencesSaveTimer.current);
     preferencesSaveTimer.current = setTimeout(() => {
-      webApi.preferences
-        .update({ hotkeys: hotkeysToOverrideMap(hotkeyBindings), editorSettings })
-        .catch(() => undefined);
+      savedPreferencesRef.current = serialized;
+      webApi.preferences.update(prefs).catch(() => undefined);
     }, WORKSPACE_SAVE_DEBOUNCE_MS);
   }, [hotkeyBindings, editorSettings]);
 
@@ -810,8 +907,6 @@ export default function VaultPage() {
       case "toggleTags":
         setTagPaneVisible((v) => !v);
         break;
-      case "graphView":
-        handleGraphView();
         break;
       case "toggleBacklinks":
         setBacklinksVisible((v) => !v);
@@ -827,12 +922,6 @@ export default function VaultPage() {
         break;
       case "printNote":
         handlePrint();
-        break;
-      case "calendarView":
-        setShowCalendarView(true);
-        break;
-      case "flashcardReview":
-        setShowFlashcards(true);
         break;
       case "pluginManager":
         setPluginManagerOpen(true);
@@ -888,15 +977,6 @@ export default function VaultPage() {
       case "openTrash":
         setShowTrash(true);
         break;
-      case "insertTemplate":
-        setShowTemplatePicker(true);
-        break;
-      case "noteComposer":
-        setShowNoteComposer(true);
-        break;
-      case "vaultInsights":
-        setShowInsights(true);
-        break;
       case "syncSettings":
         openSettings("sync");
         break;
@@ -908,9 +988,6 @@ export default function VaultPage() {
         break;
       case "newVaultFromGithub":
         setShowNewFromGithub(true);
-        break;
-      case "dailyNote":
-        handleDailyNote();
         break;
       case "randomNote":
         handleRandomNote();
@@ -924,9 +1001,6 @@ export default function VaultPage() {
         break;
       case "reloadApp":
         handleReloadApp();
-        break;
-      case "toggleLint":
-        setShowLint((v) => !v);
         break;
       case "zenMode":
         setZenMode((v) => !v);
@@ -1002,12 +1076,6 @@ export default function VaultPage() {
     setWikilinkHover(null);
   }
 
-  async function handleCreateFromTemplate(content: string, templateName: string) {
-    const note = await webApi.notes.create(vaultId, { name: `${templateName}.md`, folderId: null, content });
-    refreshIndex();
-    openNote(note.id);
-  }
-
   function openNoteByPath(path: string) {
     const note = index?.notes.find((n) => n.path === path);
     if (note) openNote(note.id);
@@ -1023,7 +1091,7 @@ export default function VaultPage() {
     if (!activeTab) return;
     setPageNotice("Đang tạo PDF…");
     try {
-      await downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
+      await (await loadPdfExport()).downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
       setPageNotice("Đã tải PDF.");
       setTimeout(() => setPageNotice((n) => (n === "Đã tải PDF." ? null : n)), 3000);
     } catch (err) {
@@ -1037,7 +1105,7 @@ export default function VaultPage() {
     if (!activeTab) return;
     setPageNotice("Đang tạo bản xem trước…");
     try {
-      setPdfPreview(await renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
+      setPdfPreview(await (await loadPdfExport()).renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
       setPageNotice(null);
     } catch (err) {
       const message = (err as { body?: { message?: string } } | null)?.body?.message;
@@ -1047,23 +1115,7 @@ export default function VaultPage() {
 
   async function handlePrint() {
     if (!activeTab) return;
-    await exportToPDF(draft, activeTab.name, pdfOptions());
-  }
-
-  // Same convention as desktop: Daily/YYYY-MM-DD.md, created on first use.
-  async function handleCreateDailyNote(date: string) {
-    const idx = await webApi.vaults.index(vaultId);
-    const path = `Daily/${date}.md`;
-    const existing = idx.notes.find((n) => n.path === path);
-    if (existing) {
-      openNote(existing.id);
-      return;
-    }
-    let folder = idx.folders.find((f) => f.path === "Daily");
-    if (!folder) folder = await webApi.folders.create(vaultId, { name: "Daily", parentId: null });
-    const note = await webApi.notes.create(vaultId, { name: `${date}.md`, folderId: folder.id, content: `# ${date}\n\n` });
-    refreshIndex();
-    openNote(note.id);
+    await (await loadPdfExport()).exportToPDF(draft, activeTab.name, pdfOptions());
   }
 
   // Developer > Reload: persist every edited tab first so reloading never drops unsaved text.
@@ -1072,11 +1124,6 @@ export default function VaultPage() {
     window.location.reload();
   }
 
-  function handleDailyNote() {
-    const now = new Date();
-    const date = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    handleCreateDailyNote(date);
-  }
 
   function handleRandomNote() {
     const candidates = (index?.notes ?? []).filter((n) => n.id !== activeTabId);
@@ -1113,10 +1160,6 @@ export default function VaultPage() {
     }
   }
 
-  function handleGraphView() {
-    router.push(`/vaults/${vaultId}/graph`);
-  }
-
   function handleHeadingClick(line: number) {
     const view = editorViewRef.current;
     if (!view) return;
@@ -1125,7 +1168,7 @@ export default function VaultPage() {
     view.focus();
   }
 
-  // Open the note requested via ?note=<id> (used by the Graph view's note click)
+  // Open the note requested via ?note=<id> (a link into a note of this vault)
   // Waits for the saved-tabs restore (workspaceReady) so the note is merged
   // into the restored tab list instead of being overwritten by it.
   useEffect(() => {
@@ -1187,23 +1230,14 @@ export default function VaultPage() {
         }
       : undefined;
 
-    if (isBoardContent(content)) {
-      return <BoardView key={tab.noteId} content={content} onChange={onChange} />;
-    }
-    if (isCanvasContent(content)) {
+    // A core plugin's file view (Board…) replaces the editor, except in source mode where the file stays editable as text.
+    const fileView = mode !== "source" ? matchFileView(corePlugins.contributions.fileViews, tab.path, content) : undefined;
+    if (fileView) {
       return (
-        <CanvasView
-          key={tab.noteId}
-          content={content}
-          onChange={onChange}
-          vaultId={vaultId}
-          index={index}
-          onNoteSelect={openNote}
-        />
+        <div className="flex-1 min-h-0" key={`${fileView.key}:${tab.noteId}`}>
+          <CorePluginFileView view={fileView} path={tab.path} content={content} onChange={onChange} />
+        </div>
       );
-    }
-    if (isDrawingContent(content)) {
-      return <DrawingView key={tab.noteId} content={content} onChange={onChange} />;
     }
 
     return (
@@ -1217,17 +1251,16 @@ export default function VaultPage() {
           />
         )}
         {isMain && mode === "live" && (
-          <FormattingToolbar key={editorViewVersion} editorView={editorViewRef.current} />
+          <FormattingToolbar key={editorViewVersion} onAction={(action) => runFormattingAction(editorViewRef.current, action)} />
         )}
         <div className="flex-1 min-h-0">
           {mode === "source" ? (
             <SourceEditor
               content={content}
               onChange={onChange}
-              vaultId={vaultId}
+              adapter={vaultAdapter}
               onViewReady={onReady}
-              spellCheck={editorSettings.spellCheck}
-              tabSize={editorSettings.tabSize}
+              prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
             />
           ) : mode === "view" ? (
             <ReadOnlyView content={content} onChange={onChange} />
@@ -1235,10 +1268,9 @@ export default function VaultPage() {
             <Editor
               content={content}
               onChange={onChange}
-              vaultId={vaultId}
+              adapter={vaultAdapter}
               vimMode={editorSettings.vimModeEnabled}
-              spellCheck={editorSettings.spellCheck}
-              tabSize={editorSettings.tabSize}
+              prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
               focusMode={focusMode}
               onViewReady={onReady}
               onWikilinkHover={isMain ? handleWikilinkHover : undefined}
@@ -1265,6 +1297,7 @@ export default function VaultPage() {
           hotkeys={hotkeyBindings}
           platform={platform}
           onMenuAction={executeCommand}
+          pluginCommands={corePlugins.contributions.commands}
           onImportNewVault={() => setImportMode("new")}
           onNewFromGithub={() => setShowNewFromGithub(true)}
           onVaultsChanged={() => {
@@ -1296,22 +1329,14 @@ export default function VaultPage() {
           <Ribbon
             onQuickOpen={() => setQuickOpenVisible(true)}
             onNewNote={handleQuickNewNote}
-            onDailyNote={handleDailyNote}
             onCommandPalette={() => setCommandPaletteOpen(true)}
-            onGraph={handleGraphView}
             onSearch={() => setSearchVisible(true)}
-            onCalendar={() => setShowCalendarView(true)}
-            onFlashcards={() => setShowFlashcards(true)}
             onSettings={() => openSettings("general")}
             onOutline={() => setOutlineVisible((v) => !v)}
             onTags={() => setTagPaneVisible((v) => !v)}
             onTrash={() => setShowTrash(true)}
             onBookmarks={() => setBookmarksVisible((v) => !v)}
-            onInsights={() => setShowInsights(true)}
-            onTemplates={() => setShowTemplatePicker(true)}
-            onNoteComposer={() => setShowNoteComposer(true)}
             onAttachments={() => setShowAttachments(true)}
-            onAudioRecorder={() => setShowAudioRecorder(true)}
             onSync={() => openSettings("sync")}
             onPlugins={() => setPluginManagerOpen(true)}
             onThemes={() => openSettings("appearance")}
@@ -1319,6 +1344,14 @@ export default function VaultPage() {
             pluginPanels={pluginHost.panels
               .filter((p) => p.kind === "sidebar")
               .map((p) => ({ key: `${p.pluginDbId}:${p.id}`, title: p.title, icon: p.icon }))}
+            coreRibbon={
+              <CorePluginRibbonButtons
+                icons={corePlugins.contributions.ribbonIcons}
+                panels={corePlugins.contributions.sidebarPanels}
+                openPanels={corePluginHost.openPanels}
+                onTogglePanel={corePluginHost.togglePanel}
+              />
+            }
             activePluginPanel={activePluginPanel}
             onPluginPanel={(key) => {
               setActivePluginPanel((cur) => (cur === key ? null : key));
@@ -1417,15 +1450,13 @@ export default function VaultPage() {
                 collabVisible={collabVisible}
                 collabPeerCount={collabPeers.length}
                 bookmarked={isBookmarked(bookmarks, activeTab.noteId)}
-                gitHistoryAvailable={gitHistoryAvailable}
                 onToggleBacklinks={() => setBacklinksVisible((v) => !v)}
                 onToggleCollab={() => setCollabVisible((v) => !v)}
                 onExportPDF={handleExportPDF}
                 onToggleBookmark={() => handleToggleBookmark(activeTab.noteId)}
-                onPresent={() => setShowSlidePresentation(true)}
                 onPublish={() => setShowPublishPreview(true)}
                 onFileRecovery={() => setShowFileRecovery(true)}
-                onGitHistory={() => setShowGitHistory(true)}
+                pluginButtons={<CorePluginNoteToolbarButtons buttons={corePlugins.contributions.noteToolbarButtons} />}
               />
               {pluginHost.commands.length > 0 && (
                 <div className="flex gap-2 px-4 py-1.5 border-b border-[var(--border)] text-xs">
@@ -1471,26 +1502,31 @@ export default function VaultPage() {
                 )}
                 {tagPaneVisible && (
                   <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
-                    <TagPane vaultId={vaultId} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
+                    <TagPane adapter={vaultAdapter} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
                   </div>
                 )}
                 {bookmarksVisible && (
                   <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
                     <BookmarksPanel
-                      bookmarks={bookmarks}
-                      index={index}
+                      notes={bookmarkedNotes}
                       currentNoteId={activeTabId}
                       onNoteSelect={openNote}
                       onBookmarkRemove={handleToggleBookmark}
                       onClose={() => setBookmarksVisible(false)}
+                      labels={{
+                        empty: "Chưa có bookmark nào.",
+                        hint: "Bấm icon bookmark trên thanh công cụ note để đánh dấu.",
+                        close: "Đóng",
+                        remove: "Bỏ bookmark",
+                      }}
                     />
                   </div>
                 )}
                 {backlinksVisible && (
                   <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
                     <BacklinksPanel
+                      adapter={vaultAdapter}
                       noteId={activeTab.noteId}
-                      vaultId={vaultId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
                     />
@@ -1503,15 +1539,13 @@ export default function VaultPage() {
                     onClose={() => setCollabVisible(false)}
                   />
                 )}
-              </div>
-              {showLint && (
-                <LintPanel
-                  content={draft}
-                  noteNames={(index?.notes ?? []).map((n) => n.name.replace(/\.(md|markdown)$/i, ""))}
-                  onLineClick={handleHeadingClick}
-                  onClose={() => setShowLint(false)}
+                <CorePluginSidePanels
+                  panels={corePlugins.contributions.sidebarPanels}
+                  open={corePluginHost.openPanels}
+                  onClose={corePluginHost.togglePanel}
+                  closeLabel="Đóng"
                 />
-              )}
+              </div>
               {!zenMode && (
                 <StatusBar
                   viewMode={viewMode}
@@ -1524,6 +1558,7 @@ export default function VaultPage() {
                   onOpenSync={() => openSettings("sync")}
                   pluginItems={pluginHost.statusItems}
                   onPluginItemClick={pluginHost.clickStatusItem}
+                  coreItems={<CorePluginStatusItems items={corePlugins.contributions.statusItems} buttonClassName="hover:text-[var(--text-primary)]" />}
                 />
               )}
             </>
@@ -1574,34 +1609,22 @@ export default function VaultPage() {
 
       {quickOpenVisible && (
         <QuickOpen
-          vaultId={vaultId}
+          load={listNotes}
           onSelect={(noteId) => openNote(noteId)}
           onClose={() => setQuickOpenVisible(false)}
         />
       )}
 
-      {showCalendarView && (
-        <CalendarView
-          vaultId={vaultId}
-          onFileSelect={openNoteByPath}
-          onCreateDailyNote={handleCreateDailyNote}
-          onClose={() => setShowCalendarView(false)}
-        />
-      )}
 
-      {showFlashcards && (
-        <FlashcardReview
-          vaultId={vaultId}
-          onFileSelect={openNoteByPath}
-          onClose={() => setShowFlashcards(false)}
-        />
-      )}
+      <CorePluginViewOverlay host={corePluginHost.host} view={corePluginHost.activeView} onClose={corePluginHost.closeView} />
 
       {settingsOpen && (
         <SettingsModal
           vaultId={vaultId}
           vaultName={vault?.name}
           pluginTabs={pluginHost.panels.filter((p) => p.kind === "settings")}
+          corePlugins={corePlugins.plugins}
+          onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
           onPluginEvent={(tab, e) => pluginHost.sendMirrorEvent(tab.pluginDbId, "settings", tab.id, e)}
           currentThemeId={currentThemeId}
           onThemeSelect={handleThemeSelect}
@@ -1621,18 +1644,30 @@ export default function VaultPage() {
       )}
 
       {commandPaletteOpen && (
-        <CommandPalette
+        <CommandPalette<string>
+          labels={{ placeholder: "Gõ để tìm lệnh…", recent: "Gần đây", empty: "Không tìm thấy lệnh nào" }}
           hotkeys={hotkeyBindings}
-          extraItems={pluginHost.commands.map((c) => ({
-            action: `plugin:${c.pluginDbId}:${c.id}`,
-            label: c.name,
-            keys: "",
-            category: `Plugin · ${c.pluginId}`,
-          }))}
+          extraItems={[
+            ...corePlugins.contributions.commands.map((c) => ({
+              action: `core:${c.key}`,
+              label: c.name,
+              // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
+              keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
+              category: "Core plugin",
+            })),
+            ...pluginHost.commands.map((c) => ({
+              action: `plugin:${c.pluginDbId}:${c.id}`,
+              label: c.name,
+              keys: "",
+              category: `Plugin · ${c.pluginId}`,
+            })),
+          ]}
           platform={platform}
           recentActions={recentCommands}
           onExecute={(action) => {
-            if (action.startsWith("plugin:")) {
+            if (action.startsWith("core:")) {
+              corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();
+            } else if (action.startsWith("plugin:")) {
               const [, dbId, ...rest] = action.split(":");
               pluginHost.runCommand(dbId, rest.join(":"));
             } else {
@@ -1670,27 +1705,6 @@ export default function VaultPage() {
         <TrashPanel vaultId={vaultId} onClose={() => setShowTrash(false)} onRestored={refreshIndex} />
       )}
 
-      {showInsights && (
-        <VaultInsights
-          vaultId={vaultId}
-          index={index}
-          onFileSelect={(noteId) => {
-            openNote(noteId);
-            setShowInsights(false);
-          }}
-          onClose={() => setShowInsights(false)}
-        />
-      )}
-
-      {showTemplatePicker && (
-        <TemplatePicker
-          vaultId={vaultId}
-          index={index}
-          onInsert={(content, name) => handleCreateFromTemplate(content, name)}
-          onClose={() => setShowTemplatePicker(false)}
-        />
-      )}
-
       {showAttachments && (
         <AttachmentManager
           vaultId={vaultId}
@@ -1698,42 +1712,27 @@ export default function VaultPage() {
             if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
           }}
           onClose={() => setShowAttachments(false)}
-          onOpenNote={(noteId) => {
-            setShowAttachments(false);
-            refreshIndex();
-            openNote(noteId);
+          viewerOpen={attachmentView !== null}
+          onView={(a) => {
+            const file = { target: webApi.attachments.downloadUrl(vaultId, a.id), name: a.filename };
+            if (!matchAttachmentViewer(corePlugins.contributions.attachmentViewers, file)) return false;
+            setAttachmentView(file);
+            return true;
           }}
         />
       )}
 
-      {showAudioRecorder && (
-        <AudioRecorder
-          vaultId={vaultId}
-          onInsert={(markdownLink) => {
-            if (editorViewRef.current) insertAtCursor(editorViewRef.current, markdownLink);
-          }}
-          onClose={() => setShowAudioRecorder(false)}
-        />
-      )}
+      {attachmentView &&
+        (() => {
+          const viewer = matchAttachmentViewer(corePlugins.contributions.attachmentViewers, attachmentView);
+          // Above the Attachments dialog (.am-overlay is 8500).
+          return viewer ? (
+            <div style={{ position: "fixed", inset: 0, zIndex: 9000, background: "var(--bg-primary)" }}>
+              <CorePluginAttachmentViewer viewer={viewer} target={attachmentView.target} name={attachmentView.name} onClose={() => setAttachmentView(null)} />
+            </div>
+          ) : null;
+        })()}
 
-      {showNoteComposer && (
-        <NoteComposer
-          vaultId={vaultId}
-          index={index}
-          currentNoteId={activeTabId}
-          currentNoteName={activeTab?.name ?? null}
-          currentFolderId={index?.notes.find((n) => n.id === activeTabId)?.folderId ?? null}
-          currentContent={draft}
-          onClose={() => setShowNoteComposer(false)}
-          onNoteSelect={openNote}
-          onContentChange={onDraftChange}
-          onRefresh={refreshIndex}
-        />
-      )}
-
-      {showSlidePresentation && activeTab && (
-        <SlidePresentation content={draft} onClose={() => setShowSlidePresentation(false)} />
-      )}
 
       {showPublishPreview && activeTab && (
         <PublishPreview
@@ -1753,32 +1752,14 @@ export default function VaultPage() {
           notePath={activeTab.path}
           onRestore={onDraftChange}
           onClose={() => setShowFileRecovery(false)}
-          onOpenScrubber={() => {
-            setShowFileRecovery(false);
-            setShowTimeScrubber(true);
-          }}
-        />
-      )}
-
-      {showTimeScrubber && activeTab && activeTabId && (
-        <TimeScrubber
-          vaultId={vaultId}
-          noteId={activeTabId}
-          notePath={activeTab.path}
-          currentContent={draft}
-          onRestore={onDraftChange}
-          onClose={() => setShowTimeScrubber(false)}
-        />
-      )}
-
-      {showGitHistory && activeTab && activeTabId && (
-        <NoteHistory
-          vaultId={vaultId}
-          noteId={activeTabId}
-          notePath={activeTab.path}
-          currentContent={draft}
-          onRestore={onDraftChange}
-          onClose={() => setShowGitHistory(false)}
+          onOpenScrubber={
+            scrubberCommand
+              ? () => {
+                  setShowFileRecovery(false);
+                  scrubberCommand.run();
+                }
+              : undefined
+          }
         />
       )}
 
@@ -1823,7 +1804,7 @@ export default function VaultPage() {
         <PdfPreviewModal
           blob={pdfPreview.blob}
           filename={pdfPreview.filename}
-          onDownload={() => saveBlob(pdfPreview.blob, pdfPreview.filename)}
+          onDownload={() => void loadPdfExport().then((m) => m.saveBlob(pdfPreview.blob, pdfPreview.filename))}
           onClose={() => setPdfPreview(null)}
         />
       )}
@@ -1880,12 +1861,12 @@ export default function VaultPage() {
         </div>
       )}
 
-      {pluginHost.notices.length > 0 && (
+      {pluginHost.notices.length + corePluginHost.notices.length > 0 && (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
-          {pluginHost.notices.map((n) => (
+          {[...pluginHost.notices, ...corePluginHost.notices].map((n) => (
             <div
               key={n.key}
-              onClick={() => pluginHost.dismissNotice(n.key)}
+              onClick={() => (n.key.startsWith("core:") ? corePluginHost.dismissNotice(n.key) : pluginHost.dismissNotice(n.key))}
               className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
             >
               {n.message}

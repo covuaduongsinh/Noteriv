@@ -33,30 +33,6 @@ export function NewNoteIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function GraphIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <circle cx="4" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="12" cy="4" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <circle cx="12" cy="12" r="2" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M6 7.2l4-2.4M6 8.8l4 2.4" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function CalendarIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2" y="3" width="12" height="11" rx="1.5" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M2 7h12" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M5 1.5v3M11 1.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <circle cx="5.5" cy="10" r="1" fill="currentColor" />
-      <circle cx="8" cy="10" r="1" fill="currentColor" />
-      <circle cx="10.5" cy="10" r="1" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function SearchIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -125,16 +101,6 @@ export function VaultChevronIcon({ size = 10, className }: IconProps) {
 }
 
 // ── New — web-only features, no desktop equivalent, same stroke style ──
-
-export function FlashcardIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2" y="4" width="10" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" />
-      <rect x="4.5" y="6" width="10" height="7" rx="1.2" stroke="currentColor" strokeWidth="1.2" fill="var(--bg-secondary)" />
-      <path d="M7 9.5h5" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" />
-    </svg>
-  );
-}
 
 export function SnippetsIcon({ size = 16, className }: IconProps) {
   return (
@@ -232,34 +198,6 @@ export function BookmarkIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function InsightsIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <path d="M2.5 13.5h11" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M4.5 13.5v-4M8 13.5v-7M11.5 13.5v-2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
-export function TemplateIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="2.5" y="2.5" width="11" height="11" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M2.5 6h11M6 6v7.5" stroke="currentColor" strokeWidth="1.2" />
-    </svg>
-  );
-}
-
-export function ComposerIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <path d="M3 3v4a3 3 0 003 3h4M3 3l2.5 2.5M3 3L5.5 5.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 13V9a3 3 0 00-3-3H6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M13 13l-2.5-2.5M13 13l-2.5 2.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function AttachmentIcon({ size = 16, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -274,16 +212,6 @@ export function AttachmentIcon({ size = 16, className }: IconProps) {
   );
 }
 
-export function PresentIcon({ size = 14, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="1.5" y="2.5" width="13" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M6.5 13.5h3M8 10.5v3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M6 7l2.3-1.5L6 4v3z" fill="currentColor" />
-    </svg>
-  );
-}
-
 export function PublishIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -294,9 +222,7 @@ export function PublishIcon({ size = 14, className }: IconProps) {
   );
 }
 
-/** Used for both File Recovery/Time Scrubber (D5) and Note History (D6) —
- * same clock glyph desktop uses in both NoteHistory.tsx's and
- * FileRecovery.tsx's own headers. */
+/** File Recovery button (D5): the clock glyph of FileRecovery.tsx's header. */
 export function HistoryIcon({ size = 14, className }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
@@ -307,16 +233,6 @@ export function HistoryIcon({ size = 14, className }: IconProps) {
 }
 
 /** Phase D8 — Audio recorder. */
-export function MicIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" className={className}>
-      <rect x="6" y="2" width="4" height="7" rx="2" stroke="currentColor" strokeWidth="1.2" />
-      <path d="M4 7.5a4 4 0 008 0" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-      <path d="M8 11.5v2.5M6 14h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 // ── Phase 1 discoverability additions (docs/plans/2026-10-14-noteriv-web-desktop-parity-v2.md) ──
 
 export function SyncIcon({ size = 16, className }: IconProps) {
@@ -348,16 +264,6 @@ export function CommandIcon({ size = 16, className }: IconProps) {
     <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M3 4.5l3.5 3.5L3 11.5" />
       <path d="M8.5 12h4.5" />
-    </svg>
-  );
-}
-
-export function DailyIcon({ size = 16, className }: IconProps) {
-  return (
-    <svg width={size} height={size} viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-      <rect x="2.5" y="3.5" width="11" height="10" rx="1.5" />
-      <path d="M2.5 6.5h11M5.5 2v3M10.5 2v3" />
-      <circle cx="8" cy="10" r="1.2" fill="currentColor" stroke="none" />
     </svg>
   );
 }

@@ -12,11 +12,6 @@ export interface WebDAVSyncConfig {
   remotePath: string;
 }
 
-export const DEFAULT_FOLDER_CONFIG: FolderSyncConfig = {
-  targetPath: "",
-  direction: "both",
-};
-
 export const DEFAULT_WEBDAV_CONFIG: WebDAVSyncConfig = {
   url: "",
   username: "",

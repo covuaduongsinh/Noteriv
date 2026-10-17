@@ -4,48 +4,32 @@ import { useEffect, useRef, useState } from "react";
 import {
   QuickOpenIcon,
   NewNoteIcon,
-  GraphIcon,
-  CalendarIcon,
-  FlashcardIcon,
   SettingsIcon,
   SearchIcon,
   OutlineIcon,
   TagIcon,
   TrashIcon,
   BookmarkIcon,
-  InsightsIcon,
-  TemplateIcon,
-  ComposerIcon,
   AttachmentIcon,
-  MicIcon,
   SyncIcon,
   ThemeIcon,
   PluginIcon,
   SnippetsIcon,
   CommandIcon,
-  DailyIcon,
   MoreIcon,
 } from "@/components/icons";
 
 interface RibbonProps {
   onQuickOpen: () => void;
   onNewNote: () => void;
-  onDailyNote: () => void;
   onCommandPalette: () => void;
-  onGraph: () => void;
   onSearch: () => void;
-  onCalendar: () => void;
-  onFlashcards: () => void;
   onSettings: () => void;
   onOutline: () => void;
   onTags: () => void;
   onTrash: () => void;
   onBookmarks: () => void;
-  onInsights: () => void;
-  onTemplates: () => void;
-  onNoteComposer: () => void;
   onAttachments: () => void;
-  onAudioRecorder: () => void;
   onSync: () => void;
   onPlugins: () => void;
   onThemes: () => void;
@@ -53,6 +37,8 @@ interface RibbonProps {
   syncAttention?: boolean;
   /** Sidebar panels registered by plugins; one extra button each. */
   pluginPanels?: { key: string; title: string; icon?: string }[];
+  /** Ribbon buttons of core plugins, rendered by @noteriv/ui (CorePluginRibbonButtons). */
+  coreRibbon?: React.ReactNode;
   activePluginPanel?: string | null;
   onPluginPanel?: (key: string) => void;
   outlineActive?: boolean;
@@ -72,9 +58,9 @@ const ACTIVE_STYLE = { color: "var(--accent)", background: "rgba(137,180,250,0.1
  */
 export default function Ribbon(props: RibbonProps) {
   const {
-    onQuickOpen, onNewNote, onDailyNote, onCommandPalette, onGraph, onSearch, onCalendar, onSettings,
+    onQuickOpen, onNewNote, onCommandPalette, onSearch, onSettings,
     onOutline, onTags, onBookmarks, onSync, onPlugins, syncAttention, pluginPanels = [], activePluginPanel = null,
-    onPluginPanel, outlineActive, tagsActive, bookmarksActive,
+    onPluginPanel, outlineActive, tagsActive, bookmarksActive, coreRibbon,
   } = props;
 
   const [moreOpen, setMoreOpen] = useState(false);
@@ -100,12 +86,7 @@ export default function Ribbon(props: RibbonProps) {
   }, [moreOpen]);
 
   const moreItems: { label: string; icon: React.ReactNode; run: () => void }[] = [
-    { label: "Tạo từ template", icon: <TemplateIcon />, run: props.onTemplates },
-    { label: "Flashcards", icon: <FlashcardIcon />, run: props.onFlashcards },
-    { label: "Note Composer (gộp/tách)", icon: <ComposerIcon />, run: props.onNoteComposer },
     { label: "File đính kèm", icon: <AttachmentIcon />, run: props.onAttachments },
-    { label: "Ghi âm", icon: <MicIcon />, run: props.onAudioRecorder },
-    { label: "Vault Insights", icon: <InsightsIcon />, run: props.onInsights },
     { label: "Themes", icon: <ThemeIcon />, run: props.onThemes },
     { label: "CSS Snippets", icon: <SnippetsIcon />, run: props.onSnippets },
     { label: "Thùng rác", icon: <TrashIcon size={16} />, run: props.onTrash },
@@ -119,12 +100,6 @@ export default function Ribbon(props: RibbonProps) {
         </button>
         <button className="ribbon-btn" title="Note mới" onClick={onNewNote}>
           <NewNoteIcon />
-        </button>
-        <button className="ribbon-btn" title="Daily note (Ctrl+D)" onClick={onDailyNote}>
-          <DailyIcon />
-        </button>
-        <button className="ribbon-btn" title="Graph view" onClick={onGraph}>
-          <GraphIcon />
         </button>
         <button className="ribbon-btn" title="Command palette (Ctrl+Shift+P hoặc F1)" onClick={onCommandPalette}>
           <CommandIcon />
@@ -141,9 +116,8 @@ export default function Ribbon(props: RibbonProps) {
         <button className="ribbon-btn" title="Bookmarks" onClick={onBookmarks} style={bookmarksActive ? ACTIVE_STYLE : undefined}>
           <BookmarkIcon />
         </button>
-        <button className="ribbon-btn" title="Calendar" onClick={onCalendar}>
-          <CalendarIcon />
-        </button>
+        {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
+        {coreRibbon}
       </div>
       <div className="ribbon-bottom" style={{ flexShrink: 0 }}>
         {pluginPanels.map((p) => (

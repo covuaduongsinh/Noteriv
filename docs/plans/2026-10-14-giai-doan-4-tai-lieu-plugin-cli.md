@@ -1,6 +1,8 @@
 # Giai đoạn 4: Plugin API v1 ổn định, tài liệu, plugin mẫu, CLI
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> **Cập nhật 2026-10-17:** chuyển vào backlog "Sau ra mắt" của [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md) mục 4. Nội dung bên dưới vẫn dùng; bỏ điều kiện phụ thuộc Giai đoạn 3A.
+>
+> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md) (đã thay thế)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 3A xong (ít nhất). API đã được kiểm chứng bởi khoảng 20 core plugin (Giai đoạn 2) và các plugin cờ (Giai đoạn 3).
 

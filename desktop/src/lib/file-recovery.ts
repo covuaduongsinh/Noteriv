@@ -106,39 +106,3 @@ export async function loadSnapshot(snapshotPath: string): Promise<string | null>
   return window.electronAPI.readFile(snapshotPath);
 }
 
-/**
- * Delete snapshots older than maxAge days.
- * @param maxAge - Maximum age in days (default 30)
- */
-export async function cleanOldSnapshots(
-  vaultPath: string,
-  maxAge: number = 30
-): Promise<void> {
-  if (!window.electronAPI) return;
-
-  const snapshotDir = `${vaultPath}/${SNAPSHOT_DIR}`;
-  let entries: { name: string; path: string; isDirectory: boolean }[];
-  try {
-    entries = await window.electronAPI.readDir(snapshotDir);
-  } catch {
-    return;
-  }
-
-  const cutoff = Date.now() - maxAge * 24 * 60 * 60 * 1000;
-
-  for (const entry of entries) {
-    if (entry.isDirectory) continue;
-    if (!entry.name.endsWith(".md")) continue;
-
-    // Extract timestamp from the end of the filename
-    const match = entry.name.match(/-(\d+)\.md$/);
-    if (!match) continue;
-
-    const timestamp = parseInt(match[1], 10);
-    if (isNaN(timestamp)) continue;
-
-    if (timestamp < cutoff) {
-      await window.electronAPI.deleteFile(entry.path);
-    }
-  }
-}

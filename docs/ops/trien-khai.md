@@ -22,6 +22,8 @@ Khác biệt giữa hai môi trường nằm hết trong **env của compose tr�
 - Dokploy → compose `noteriv-staging` → **Start / Stop**. Hoặc API: `compose.start`, `compose.stop` với header `x-api-key` (key ở `~/.config/noteriv/dokploy.key`).
 - Staging dùng khoảng 0,6GB RAM khi rảnh (giới hạn tổng ≈ 3GB). Trước khi bật kiểm `free -m` và `df -h /` trên VPS; **đĩa ≥ 92% thì dừng và hỏi chủ dự án**.
 - Push vào `next` sẽ tự deploy staging (kể cả khi đang tắt thì deploy sẽ bật nó lên): xong việc thì tắt lại.
+- **Cơ sở dữ liệu staging có thể trống mỗi lần dựng lại** (2026-10-16: 0 người dùng, 0 vault dù trước đó đã đăng ký). Đăng ký chỉ bằng mã mời, nên khi bật staging để thử tay: tạo mã mời bằng `psql` trên container postgres staging (`insert into invite_codes (id, code, note, max_uses, expires_at) values (gen_random_uuid(), '<mã 10 ký tự, bảng chữ cái không có 0/O/1/I/L>', 'ghi chú', 1, now() + interval '2 days')`), rồi chủ dự án tự đăng ký (mật khẩu do chính họ đặt). Không dùng dữ liệu staging để giữ ghi chú thật.
+- **Mở staging trong Chrome:** nhập basic-auth một lần trong cửa sổ ẩn danh; địa chỉ không có dấu chấm cuối (`…dsc.edu.vn.` gây `ERR_SSL_PROTOCOL_ERROR`). Phiên Claude không nhập được mật khẩu vào hộp này (hộp của trình duyệt, ngoài máy local), nên chủ dự án tự làm bước đăng nhập rồi chụp màn hình.
 
 ## 3. Quy trình git
 
@@ -48,6 +50,7 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - Menu Developer → Chẩn đoán: DB, Redis, storage, worker, PDF đều xanh.
 - `docker ps | grep cdil47`: **không có** container `noteriv-backup`.
 - `docker exec <web-staging> getent hosts noteriv-api` ra IP của api **staging** (không phải production).
+- `curl -u user:… https://staging-noteriv.dsc.edu.vn/api/v1/healthz` → `{"ok":true}` (200). Production: `curl https://noteriv.dsc.edu.vn/api/v1/healthz`. Giám sát: xem [`giam-sat.md`](giam-sat.md).
 
 ## 6. Lưu ý
 
@@ -61,4 +64,4 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - Tạo mã mời: đăng nhập bằng email admin → **Vault của bạn → Quản lý mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
 - Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.
 - Trang `/terms` và `/privacy` hiện nhãn **Bản nháp** cho tới khi điền `OPERATOR_NAME` và `CONTACT_EMAIL` trong `web/src/lib/legal.ts`.
-- Migration `20261015120000_invite_codes` phải chạy sau deploy: `docker exec <noteriv-api> npx prisma migrate deploy` (thử trên staging trước).
+- Migration `20261015120000_invite_codes` (đã áp dụng ở production ngày 2026-10-15). **Quy tắc rút ra:** khi migration chỉ *thêm* bảng/cột nullable mà mã mới đọc cột đó ở mọi truy vấn (ở đây là `users`), áp migration **trước** khi deploy (sao lưu thủ công, rồi `psql -1` file `migration.sql` vào Postgres), deploy, rồi `prisma migrate resolve --applied <tên>` để Prisma ghi nhận. Nếu làm ngược lại, đăng nhập lỗi cho tới khi migration chạy. Staging thì chạy `migrate deploy` bình thường.

@@ -1,0 +1,20 @@
+{
+  "name": "noteriv-workspace",
+  "private": true,
+  "description": "npm workspaces root for Noteriv: web, desktop and the shared packages. Not published.",
+  "workspaces": [
+    "packages/*",
+    "web",
+    "desktop"
+  ],
+  "scripts": {
+    "test": "npm test -w @noteriv/core -w @noteriv/ui -w @noteriv/plugins",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "dev:web": "npm run dev -w noteriv-web",
+    "build:web": "npm run build -w noteriv-web",
+    "build:desktop": "npm run build:next -w noteriv",
+    "sync:sandbox": "node scripts/sync-plugin-sandbox.mjs",
+    "perf:web": "node scripts/perf/bundle-report.mjs --app web",
+    "perf:desktop": "node scripts/perf/bundle-report.mjs --app desktop"
+  }
+}
