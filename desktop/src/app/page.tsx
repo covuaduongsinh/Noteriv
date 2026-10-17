@@ -7,12 +7,13 @@ import TitleBar from "@/components/TitleBar";
 import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
+import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
 import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
-import { setLocalImageLoader } from "@noteriv/ui/markdown/vault-hooks";
+import { setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
 import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
 import {
   CorePluginRibbonButtons,
@@ -195,6 +196,8 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "error">("idle");
   /** Shown after a git sync that had to keep both sides of a conflict (click to dismiss). */
   const [syncConflictNotice, setSyncConflictNotice] = useState<string | null>(null);
+  /** Community plugin sidebar panel shown in place of the file tree (`<pluginDbId>:<panelId>`), as on the web. */
+  const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [gitChanges, setGitChanges] = useState(0);
 
   // Hotkeys
@@ -1617,6 +1620,13 @@ export default function Home() {
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
+  // Core plugins' markdown post-processors run over each rendered piece of a note.
+  useEffect(() => {
+    const host = corePluginHost.host;
+    if (!host) return;
+    setPostProcessorRunner((el, ctx) => host.runPostProcessors(el, ctx));
+    return () => setPostProcessorRunner(null);
+  }, [corePluginHost.host]);
 
   // Core plugin file views (Board…) replace the editor of the tabs they match, except in source mode.
   const fileViewFor = (filePath: string, text: string) =>
@@ -1686,6 +1696,9 @@ export default function Home() {
       return true;
     },
   });
+  const activeSidebarPanel = activePluginPanel
+    ? sandboxHost.panels.find((p) => p.kind === "sidebar" && `${p.pluginDbId}:${p.id}` === activePluginPanel) ?? null
+    : null;
 
   // The sandbox's api.editor.* are synchronous, so the host pushes a snapshot instead of answering RPC calls.
   useEffect(() => {
@@ -1837,6 +1850,26 @@ export default function Home() {
               />
             </div>
             <div className="ribbon-bottom">
+              {/* Community plugin sidebar panels (api.ui.addSidebarPanel). */}
+              {sandboxHost.panels
+                .filter((p) => p.kind === "sidebar")
+                .map((p) => {
+                  const key = `${p.pluginDbId}:${p.id}`;
+                  return (
+                    <button
+                      key={key}
+                      className="ribbon-btn"
+                      title={p.title}
+                      onClick={() => {
+                        setActivePluginPanel((cur) => (cur === key ? null : key));
+                        if (sidebarCollapsedRef.current) handleToggleSidebar();
+                      }}
+                      style={{ fontSize: 12, fontWeight: 600, ...(activePluginPanel === key ? { color: "var(--accent)" } : {}) }}
+                    >
+                      {(p.icon && p.icon.length <= 2 ? p.icon : p.title.charAt(0)).toUpperCase()}
+                    </button>
+                  );
+                })}
               <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -1846,7 +1879,25 @@ export default function Home() {
             </div>
           </div>
         )}
-        {!zenMode && (
+        {!zenMode && activeSidebarPanel && !sidebarCollapsed ? (
+          <div className="sidebar-root flex flex-col" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
+            <div className="sidebar-header">
+              <span className="sidebar-title">{activeSidebarPanel.title}</span>
+              <div className="sidebar-actions">
+                <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title="Close panel">
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              <PluginMirror
+                html={activeSidebarPanel.html}
+                css={activeSidebarPanel.css}
+                onEvent={(e) => sandboxHost.sendMirrorEvent(activeSidebarPanel.pluginDbId, "sidebar", activeSidebarPanel.id, e)}
+              />
+            </div>
+          </div>
+        ) : !zenMode && (
           <Sidebar
             vault={activeVault}
             currentFile={activeTab}
@@ -2098,6 +2149,7 @@ export default function Home() {
           onOpenSnippets={() => { setShowSettings(false); setShowCSSSnippets(true); }}
           corePlugins={corePlugins.plugins}
           onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
+          corePluginSettingsTabs={corePlugins.contributions.settingsTabs}
           onClose={() => setShowSettings(false)}
         />
       )}

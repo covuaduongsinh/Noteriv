@@ -131,6 +131,20 @@ export class PluginRegistry<Api> {
     });
   }
 
+  /**
+   * Applies an on/off change already saved elsewhere (another browser tab on the same vault): starts or stops the
+   * plugin without writing the stored state again.
+   */
+  applyExternalChange(id: string, enabled: boolean): Promise<void> {
+    if (!this.defs.has(id)) return Promise.resolve();
+    return this.enqueue(async () => {
+      if (this.state[id] === enabled) return;
+      this.state = { ...this.state, [id]: enabled };
+      if (enabled) await this.start(id);
+      else await this.stop(id);
+    });
+  }
+
   /** Stop everything (vault closed or page unmounted). Does not touch the stored state. */
   dispose(): Promise<void> {
     return this.enqueue(async () => {

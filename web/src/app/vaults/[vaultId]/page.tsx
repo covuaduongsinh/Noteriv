@@ -34,6 +34,7 @@ import { createUntitledNote } from "@/lib/note-names";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
 import HoverPreview from "@/components/HoverPreview";
 import { setImageLightboxHandler } from "@noteriv/ui/markdown/renderers/images";
+import { setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
 import { CloseIcon } from "@/components/icons";
 import { toggleBookmark, isBookmarked } from "@noteriv/core/bookmark-utils";
 import { usePluginHost } from "@/lib/plugin-sandbox/usePluginHost";
@@ -451,6 +452,38 @@ export default function VaultPage() {
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
+  // Turning a core plugin on/off is saved per vault; tell the other open tabs of this vault so they follow without a reload.
+  const corePluginChannelRef = useRef<BroadcastChannel | null>(null);
+  useEffect(() => {
+    const host = corePluginHost.host;
+    if (!host || typeof BroadcastChannel === "undefined") return;
+    const channel = new BroadcastChannel(`noteriv-core-plugins:${vaultId}`);
+    channel.onmessage = (e: MessageEvent<{ id?: unknown; enabled?: unknown }>) => {
+      if (typeof e.data?.id === "string" && typeof e.data.enabled === "boolean") {
+        void host.registry.applyExternalChange(e.data.id, e.data.enabled);
+      }
+    };
+    corePluginChannelRef.current = channel;
+    return () => {
+      channel.close();
+      if (corePluginChannelRef.current === channel) corePluginChannelRef.current = null;
+    };
+  }, [corePluginHost.host, vaultId]);
+  const toggleCorePlugin = useCallback(
+    async (id: string, enabled: boolean) => {
+      await corePlugins.setEnabled(id, enabled);
+      corePluginChannelRef.current?.postMessage({ id, enabled });
+    },
+    [corePlugins]
+  );
+
+  // Core plugins' markdown post-processors run over each rendered piece of a note.
+  useEffect(() => {
+    const host = corePluginHost.host;
+    if (!host) return;
+    setPostProcessorRunner((el, ctx) => host.runPostProcessors(el, ctx));
+    return () => setPostProcessorRunner(null);
+  }, [corePluginHost.host]);
   // File Recovery (core) links to the Time scrubber while the Note history plugin is on.
   const scrubberCommand = corePlugins.contributions.commands.find((c) => c.key === "note-history:scrubber");
   /** Both plugin tiers receive the same app events. */
@@ -1690,7 +1723,8 @@ export default function VaultPage() {
           vaultName={vault?.name}
           pluginTabs={pluginHost.panels.filter((p) => p.kind === "settings")}
           corePlugins={corePlugins.plugins}
-          onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
+          onToggleCorePlugin={(id, enabled) => void toggleCorePlugin(id, enabled)}
+          corePluginSettingsTabs={corePlugins.contributions.settingsTabs}
           onPluginEvent={(tab, e) => pluginHost.sendMirrorEvent(tab.pluginDbId, "settings", tab.id, e)}
           currentThemeId={currentThemeId}
           onThemeSelect={handleThemeSelect}

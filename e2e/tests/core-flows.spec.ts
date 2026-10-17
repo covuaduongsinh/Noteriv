@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 
 // The main path a new user takes, end to end through the real UI: sign up with an invite code,
 // create a vault, write and link notes, rename, search, switch a core plugin on, delete a note
@@ -6,6 +6,7 @@ import { expect, test, type Page } from "@playwright/test";
 
 test.describe.configure({ mode: "serial" });
 
+let context: BrowserContext;
 let page: Page;
 const stamp = Date.now();
 const email = `e2e-${stamp}@example.test`;
@@ -13,13 +14,15 @@ const email = `e2e-${stamp}@example.test`;
 const password = `E2e-${stamp}-${Math.random().toString(36).slice(2)}`;
 
 test.beforeAll(async ({ browser }) => {
-  page = await browser.newPage();
+  // One context for the whole run, so a second tab (same session) can be opened.
+  context = await browser.newContext();
+  page = await context.newPage();
 });
 
 test.afterAll(async () => {
   // Remove the account and everything it owns, whatever happened above (E2E_KEEP_ACCOUNT=1 keeps it to debug).
   if (!process.env.E2E_KEEP_ACCOUNT) await page.request.delete("/api/v1/users/me").catch(() => undefined);
-  await page.close();
+  await context.close();
 });
 
 const sidebarItem = (name: string) => page.locator(".sidebar-root .sb-label").getByText(name, { exact: true }).first();
@@ -126,6 +129,22 @@ test("switching a core plugin on adds its feature", async () => {
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
   await expect(page.getByText(/^\d+ từ$/).first()).toBeVisible();
+});
+
+test("another open tab follows a core plugin switch without reloading", async () => {
+  const other = await context.newPage();
+  await other.goto(page.url());
+  await expect(other.getByText(/^\d+ từ$/).first()).toBeVisible();
+
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  const toggle = page.locator('[data-core-plugin="word-count"]').getByRole("switch");
+  await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Escape");
+
+  await expect(other.getByText(/^\d+ từ$/)).toHaveCount(0);
+  await other.close();
 });
 
 test("reloading restores the open tabs without a request per note", async () => {
