@@ -252,6 +252,8 @@ interface SidebarProps {
   onNewNote: () => void;
   /** Puts a just-created note into rename mode (the page creates notes from the ribbon, menu, palette…). */
   renameRequest?: { id: string; name: string; nonce: number } | null;
+  /** Called once the request is taken, so it is not replayed when the sidebar mounts again. */
+  onRenameRequestHandled?: () => void;
 }
 
 /**
@@ -272,6 +274,7 @@ export default function Sidebar({
   onRefresh,
   onNewNote,
   renameRequest,
+  onRenameRequestHandled,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState<{ id: string; type: TreeNode["type"]; name: string } | null>(null);
@@ -337,11 +340,12 @@ export default function Sidebar({
 
   // A note the page just created: enter rename mode for it (it may not be in the tree yet).
   useEffect(() => {
-    // Ignore a stale request replayed when the sidebar mounts again later (after search, collapse…).
-    if (!renameRequest || Date.now() - renameRequest.nonce > 5000) return;
+    if (!renameRequest) return;
+    // Taken once: the page clears it, so a sidebar mounted again later (after search, collapse…) doesn't replay it.
+    onRenameRequestHandled?.();
     setRenaming({ id: renameRequest.id, type: "note", name: renameRequest.name });
     setRenameValue(renameRequest.name);
-  }, [renameRequest]);
+  }, [renameRequest, onRenameRequestHandled]);
 
   async function submitRename() {
     const target = renaming;

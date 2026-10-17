@@ -194,6 +194,7 @@ export default function VaultPage() {
   const [searchResults, setSearchResults] = useState<ApiSearchResult[] | null>(null);
   /** Asks the sidebar to put a just-created note into rename mode. */
   const [sidebarRenameRequest, setSidebarRenameRequest] = useState<{ id: string; name: string; nonce: number } | null>(null);
+  const clearSidebarRenameRequest = useCallback(() => setSidebarRenameRequest(null), []);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
   const [collabVisible, setCollabVisible] = useState(false);
   const [collabConnected, setCollabConnected] = useState(false);
@@ -1502,6 +1503,7 @@ export default function VaultPage() {
               onRefresh={refreshIndex}
               onNewNote={handleQuickNewNote}
               renameRequest={sidebarRenameRequest}
+              onRenameRequestHandled={clearSidebarRenameRequest}
             />
           ))}
 
