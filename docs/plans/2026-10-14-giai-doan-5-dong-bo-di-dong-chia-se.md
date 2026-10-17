@@ -1,6 +1,8 @@
 # Giai đoạn 5: Đồng bộ an toàn, di động (PWA), chia sẻ và lớp học
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> **Cập nhật 2026-10-17:** theo [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md): 5.1 (xung đột đồng bộ) → [Chặng 3](2026-10-17-chang-3-ra-soat-hoan-thien.md) phiên 3.5; 5.2 (PWA, Ghi nhanh) → [Chặng 4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) phiên 4.5; 5.3 (xuất bản) và 5.4 (lớp học, tổng quát hoá thành nhóm) → backlog "Sau ra mắt". Bỏ các phần riêng cho cờ khi làm ở bản chung.
+>
+> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md) (đã thay thế)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 3A xong. Có thể chạy song song với Giai đoạn 4.
 

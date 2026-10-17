@@ -4,11 +4,25 @@
 
 ## 1. Cách chủ dự án mở một phiên mới
 
-Dán câu sau (đổi tên file giai đoạn và số phiên):
+Dán câu sau (đổi tên file chặng và số phiên):
 
-> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-0-nen-mong-an-toan.md`, rồi lập kế hoạch và triển khai **Phiên 0.1**.
+> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-1-hop-nhat-nhanh.md`, rồi lập kế hoạch và triển khai **Phiên 1.1 của Chặng 1**.
 
-Các tài liệu định hướng (theo thứ tự thực hiện):
+**Định hướng mới (từ 2026-10-17):** lộ trình thương mại `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` thay lộ trình "Chess PKM". Các chặng:
+
+| Chặng | File kế hoạch |
+|---|---|
+| Tổng | `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` |
+| 1 Hợp nhất nhánh | `docs/plans/2026-10-17-chang-1-hop-nhat-nhanh.md` |
+| 2 Định vị lại | `docs/plans/2026-10-17-chang-2-dinh-vi-lai.md` |
+| 3 Rà soát, hoàn thiện | `docs/plans/2026-10-17-chang-3-ra-soat-hoan-thien.md` |
+| 4 Quốc tế hoá, người mới | `docs/plans/2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md` |
+| 5 Nền tảng thương mại | `docs/plans/2026-10-17-chang-5-nen-tang-thuong-mai.md` |
+| 6 Thương hiệu, ra mắt | `docs/plans/2026-10-17-chang-6-thuong-hieu-ra-mat.md` |
+
+Số phiên trong chặng viết kèm tên chặng (ví dụ "Chặng 3, phiên 3.5") để không lẫn với phiên của các giai đoạn cũ.
+
+Lộ trình cũ (đã thay thế, giữ làm lịch sử; Giai đoạn 3 cũ là tài liệu cho **phiên bản cờ vua** làm sau):
 
 | GĐ | File kế hoạch |
 |---|---|
@@ -60,7 +74,7 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
   - Cookie của API cục bộ hết hạn sau ~15 phút. Khi đo lâu, đăng nhập lại (script cookie trả 401 ở `auth/refresh`).
 - **Việc treo còn lại**: mục "Việc treo" cuối file Giai đoạn 2.
 
-**Phiên kế tiếp: Giai đoạn 3 (cờ vua), bắt đầu bằng Phiên 3.0** (kiểm tra giấy phép và dựng `@noteriv/chess`). Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-3-co-vua-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 3.0**." Đọc thêm `docs/plugin-api/v1.md` (mục 9: các loại đóng góp và thiếu sót còn mở, nhất là API mở rộng editor).
+**Phiên kế tiếp (đổi ngày 2026-10-17): Chặng 1 của lộ trình thương mại** (hợp nhất nhánh về `main`); hai câu hỏi "gộp `next` vào `main`" và "tách repo" dưới đây đã được trả lời: gộp ở Chặng 1, tách repo ở Chặng 6 (cùng lúc đổi tên). Đoạn sau giữ để tham khảo khi làm phiên bản cờ vua: ~~Giai đoạn 3 (cờ vua), bắt đầu bằng Phiên 3.0~~ (kiểm tra giấy phép và dựng `@noteriv/chess`). Dán: "Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-14-giai-doan-3-co-vua-core-plugin.md`, rồi lập kế hoạch và triển khai **Phiên 3.0**." Đọc thêm `docs/plugin-api/v1.md` (mục 9: các loại đóng góp và thiếu sót còn mở, nhất là API mở rộng editor).
 
 **Trước Giai đoạn 3, chủ dự án nên quyết định:**
 
@@ -95,7 +109,16 @@ Lịch sử xây bản web: `docs/plans/2026-10-12-noteriv-web-version.md` và c
 - **Kiểm chứng bằng chạy thật** (trình duyệt, API, chụp màn hình) trước khi báo "đã xong", và nói rõ phần nào chưa kiểm.
 - Cuối mỗi phiên: cập nhật bảng **"Trạng thái"** trong file kế hoạch giai đoạn tương ứng.
 
-## 3. Định hướng sản phẩm (đã chốt 2026-10-14)
+## 3. Định hướng sản phẩm
+
+**Từ 2026-10-17** (chi tiết: `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` mục 2):
+
+- Noteriv là **sản phẩm ghi chú tri thức chung, thương mại**, thị trường **quốc tế ngay** (tiếng Anh là mặc định, tiếng Việt là ngôn ngữ thứ hai). Chuỗi giao diện mới viết sao cho rút vào i18n được (Chặng 4).
+- **Đổi tên và tách repo khỏi upstream trước khi ra mắt** (Chặng 6). Đến lúc đó vẫn dùng tên Noteriv.
+- **Cờ vua là phiên bản chuyên ngành**: gói core plugin trong cùng repo, mặc định tắt ở bản chung, làm trong worktree riêng từ `main`, gộp về `main` theo mốc. Không đưa mã hay chữ riêng cho cờ vào lõi.
+- Mô hình kinh doanh **chưa chốt**; Chặng 5 làm tầng gói + hạn mức trung lập.
+
+Định hướng cũ (2026-10-14), phần còn hiệu lực là web chính + desktop cùng tính năng; phần "đối tượng cờ vua" đã thay:
 
 - **Web là sản phẩm chính**; **desktop vẫn được duy trì với cùng tính năng** nhờ dùng chung mã (`packages/*` từ Giai đoạn 1). Mọi tính năng mới phải chạy trên cả hai.
 - Đối tượng: **cộng đồng PKM cờ vua**. Tên: **Noteriv**.

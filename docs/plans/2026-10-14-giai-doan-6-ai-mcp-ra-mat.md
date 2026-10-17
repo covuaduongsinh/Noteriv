@@ -1,6 +1,8 @@
 # Giai đoạn 6: AI, MCP trên máy chủ và ra mắt cộng đồng
 
-> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md)
+> **Cập nhật 2026-10-17:** theo [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md): 6.3–6.4 (chuẩn bị, ra mắt) → [Chặng 6](2026-10-17-chang-6-thuong-hieu-ra-mat.md) (ra mắt quốc tế, sản phẩm chung); 6.1 (AI) và 6.2 (MCP máy chủ) → backlog "Sau ra mắt", AI làm bản chung trước, AI Coach cờ thuộc phiên bản cờ vua.
+>
+> Ngày lập: 2026-10-14 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-14-lo-trinh-noteriv-chess-pkm.md](2026-10-14-lo-trinh-noteriv-chess-pkm.md) (đã thay thế)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Giai đoạn 3B xong (có Game Review và chỉ mục ván, là đầu vào cho AI). **Chủ dự án đã quyết chính sách AI** (lộ trình mục 9, câu 4).
 > **Tham khảo:** ChessNote `plugs/chess-ai/` (Coach, Trends, Tagging, QA), `ai-sidecar/`, `docs/modules/04-chess-ai.md`, `09-ai-sidecar.md`.
