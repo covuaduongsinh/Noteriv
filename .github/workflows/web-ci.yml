@@ -3,9 +3,9 @@ name: Web CI
 on:
   push:
     branches: [main]
-    paths: ["web/**", "desktop/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
+    paths: ["web/**", "desktop/**", "packages/**", "e2e/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
   pull_request:
-    paths: ["web/**", "desktop/**", "packages/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
+    paths: ["web/**", "desktop/**", "packages/**", "e2e/**", "package.json", "package-lock.json", ".github/workflows/web-ci.yml"]
 
 jobs:
   server:
@@ -111,3 +111,81 @@ jobs:
 
       - name: Build desktop UI (static export)
         run: npm run build:next -w noteriv
+
+  # End-to-end: the production web build and the API against a fresh database, driven by
+  # Playwright through the real UI (e2e/). Sign-up uses an invite code seeded by e2e/global-setup.ts.
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: noteriv
+          POSTGRES_PASSWORD: noteriv
+          POSTGRES_DB: noteriv_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U noteriv"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+    env:
+      DATABASE_URL: postgresql://noteriv:noteriv@127.0.0.1:5432/noteriv_e2e?schema=public
+      REDIS_URL: redis://127.0.0.1:6379
+      JWT_ACCESS_SECRET: e2e-access-secret
+      JWT_REFRESH_SECRET: e2e-refresh-secret
+      ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
+      REGISTRATION_MODE: invite
+      E2E_BASE_URL: http://localhost:3457
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            web/server/package-lock.json
+
+      - name: Install web and shared packages (root includes Playwright)
+        run: npm install -w web -w @noteriv/core -w @noteriv/ui -w @noteriv/plugin-api -w @noteriv/plugins --include-workspace-root --no-audit --no-fund
+
+      - name: Install API
+        working-directory: web/server
+        run: npm ci && npx prisma generate && npx prisma migrate deploy
+
+      - name: Build web
+        run: npm run build -w noteriv-web
+
+      - name: Start API and web
+        run: |
+          (cd web/server && nohup npx tsx src/index.ts > /tmp/api.log 2>&1 &)
+          cp -r web/public web/.next/standalone/web/public
+          cp -r web/.next/static web/.next/standalone/web/.next/static
+          (cd web/.next/standalone && PORT=3457 HOSTNAME=127.0.0.1 nohup node web/server.js > /tmp/web.log 2>&1 &)
+          for i in $(seq 1 60); do curl -sf http://127.0.0.1:4001/api/v1/healthz >/dev/null && curl -sf http://localhost:3457/login >/dev/null && exit 0; sleep 2; done
+          echo "servers did not start"; tail -50 /tmp/api.log /tmp/web.log; exit 1
+
+      - name: Install Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: End-to-end tests
+        run: npm run e2e
+
+      - name: Server logs
+        if: failure()
+        run: tail -100 /tmp/api.log /tmp/web.log
+
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7

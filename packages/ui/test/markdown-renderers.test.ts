@@ -69,6 +69,21 @@ describe("inline renderers", () => {
     expect(r[0].html).toContain("alias");
   });
 
+  it("images: a recorder clip or an audio file renders a player, other images stay images", () => {
+    const clip = find("images", "rec ![Audio](/api/v1/vaults/v/attachments/a/download)");
+    expect(clip).toHaveLength(1);
+    expect(clip[0].className).toBe("md-audio");
+    expect(clip[0].html).toContain("<audio controls");
+    expect(clip[0].html).toContain('src="/api/v1/vaults/v/attachments/a/download"');
+
+    const file = find("images", "![talk](https://example.com/talk.mp3)");
+    expect(file[0].html).toContain("<audio controls");
+
+    const pic = find("images", "![cat](https://example.com/cat.png)");
+    expect(pic[0].className).toBe("md-image");
+    expect(pic[0].html).toContain("<img");
+  });
+
   it("highlight: ==text==", () => {
     const r = find("inline-highlight", "a ==mark== b");
     expect(r).toHaveLength(1);

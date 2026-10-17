@@ -906,6 +906,7 @@ body {
   border: none;
   border-radius: 6px;
   cursor: pointer;
+  user-select: none; /* double-click renames; don't select the label text */
   transition: all 0.12s ease;
 }
 
@@ -9035,6 +9036,18 @@ body {
 .cmd-category-recent {
   color: var(--accent);
   opacity: 0.4;
+}
+
+/* Audio clips (`![Audio](…)`, recorder output) */
+.md-audio-wrapper {
+  display: inline-block;
+  vertical-align: middle;
+  max-width: 100%;
+}
+.md-audio-wrapper .md-inline-audio {
+  display: block;
+  max-width: 100%;
+  height: 36px;
 }
 
 /* Image resize wrapper */

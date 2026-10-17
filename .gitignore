@@ -65,3 +65,7 @@ web/server/dist/
 
 # build artifacts: binaries are published via releases or hosted upstream, never committed
 *.apk
+
+# end-to-end test output
+e2e/test-results/
+e2e/playwright-report/

@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useEscapeClose } from "@noteriv/ui/hooks";
 import { webApi, type ApiTrashedItem } from "@/lib/webApi";
 
 interface TrashPanelProps {
@@ -16,6 +17,7 @@ interface Row extends ApiTrashedItem {
 const TRASH_RETENTION_DAYS = 30;
 
 export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelProps) {
+  useEscapeClose(onClose);
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
   const [loading, setLoading] = useState(true);

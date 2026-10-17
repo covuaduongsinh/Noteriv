@@ -22,6 +22,9 @@ const EMPTY_STATE = {
   fileViewModes: {} as object,
 };
 
+/** Most note text inlined into one workspace-state response (characters); the rest is fetched per note. */
+const INLINE_NOTES_BUDGET = 2_000_000;
+
 export default async function userVaultStateRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
   fastify.addHook("preHandler", fastify.authenticate);
@@ -37,11 +40,36 @@ export default async function userVaultStateRoutes(fastify: FastifyInstance) {
         where: { vaultId_userId: { vaultId: vid, userId: request.user!.id } },
       });
       if (!state) return reply.send(EMPTY_STATE);
+
+      // The open tabs' notes come along, so restoring the workspace is one round trip instead of
+      // two (state, then every note). Ids not returned under `notes` but listed in `missingNoteIds`
+      // are gone (deleted/trashed); anything else past the size budget is fetched by the client as before.
+      const tabIds = (Array.isArray(state.openTabs) ? (state.openTabs as Array<{ noteId?: unknown }>) : [])
+        .map((t) => t?.noteId)
+        .filter((id): id is string => typeof id === "string");
+      const found = tabIds.length
+        ? await prisma.note.findMany({
+            where: { id: { in: tabIds }, vaultId: vid, deletedAt: null },
+            select: { id: true, path: true, name: true, content: true },
+          })
+        : [];
+      const byId = new Map(found.map((n) => [n.id, n]));
+      const ordered = [...tabIds].sort((a, b) => (a === state.activeTabId ? -1 : b === state.activeTabId ? 1 : 0));
+      const notes: Record<string, { id: string; path: string; name: string; content: string }> = {};
+      let budget = INLINE_NOTES_BUDGET;
+      for (const id of ordered) {
+        const n = byId.get(id);
+        if (!n || n.content.length > budget) continue;
+        budget -= n.content.length;
+        notes[id] = n;
+      }
       return reply.send({
         openTabs: state.openTabs,
         activeTabId: state.activeTabId,
         pinnedTabIds: state.pinnedTabIds,
         fileViewModes: state.fileViewModes,
+        notes,
+        missingNoteIds: tabIds.filter((id) => !byId.has(id)),
       });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

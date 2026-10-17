@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
 import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
@@ -66,6 +66,7 @@ interface TreeRowProps {
   onRenameChange: (val: string) => void;
   onRenameSubmit: () => void;
   onRenameCancel: () => void;
+  onStartRename: (node: TreeNode) => void;
   dragOverId: string | null;
   onDragOverFolder: (id: string | null) => void;
   onMove: (payload: DragPayload, targetFolderId: string | null) => void;
@@ -94,6 +95,7 @@ function TreeRow({
   onRenameChange,
   onRenameSubmit,
   onRenameCancel,
+  onStartRename,
   dragOverId,
   onDragOverFolder,
   onMove,
@@ -130,8 +132,22 @@ function TreeRow({
     const isDropTarget = dragOverId === node.id;
     return (
       <div>
-        <button
-          onClick={() => onToggleFolder(node.id)}
+        <div
+          role="treeitem"
+          tabIndex={0}
+          aria-expanded={expanded}
+          onClick={() => !isRenaming && onToggleFolder(node.id)}
+          onDoubleClick={() => onStartRename(node)}
+          onKeyDown={(e) => {
+            if (isRenaming || e.target !== e.currentTarget) return;
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault();
+              onToggleFolder(node.id);
+            } else if (e.key === "F2") {
+              e.preventDefault();
+              onStartRename(node);
+            }
+          }}
           onContextMenu={(e) => onContextMenu(e, node)}
           className="sb-row sb-folder"
           draggable={!isRenaming}
@@ -162,7 +178,7 @@ function TreeRow({
           {guides}
           <ChevronIcon className={`sb-chevron ${expanded ? "sb-chevron-open" : ""}`} />
           {isRenaming ? renameInput : <span className="sb-label">{node.name}</span>}
-        </button>
+        </div>
         {expanded &&
           node.children.map((child) => (
             <TreeRow
@@ -179,6 +195,7 @@ function TreeRow({
               onRenameChange={onRenameChange}
               onRenameSubmit={onRenameSubmit}
               onRenameCancel={onRenameCancel}
+              onStartRename={onStartRename}
               dragOverId={dragOverId}
               onDragOverFolder={onDragOverFolder}
               onMove={onMove}
@@ -191,8 +208,24 @@ function TreeRow({
 
   const isActive = node.id === activeNoteId;
   return (
-    <button
-      onClick={() => onFileSelect(node.id)}
+    // A div, not a <button>: the rename <input> lives inside the row, and an input inside a
+    // button can't be typed into reliably (Firefox ignores keys; Space/Enter re-trigger the button).
+    <div
+      role="treeitem"
+      tabIndex={0}
+      aria-selected={isActive}
+      onClick={() => !isRenaming && onFileSelect(node.id)}
+      onDoubleClick={() => onStartRename(node)}
+      onKeyDown={(e) => {
+        if (isRenaming || e.target !== e.currentTarget) return;
+        if (e.key === "Enter") {
+          e.preventDefault();
+          onFileSelect(node.id);
+        } else if (e.key === "F2") {
+          e.preventDefault();
+          onStartRename(node);
+        }
+      }}
       onContextMenu={(e) => onContextMenu(e, node)}
       className={`sb-row${isActive ? " sb-active" : ""}`}
       draggable={!isRenaming}
@@ -203,7 +236,7 @@ function TreeRow({
       {guides}
       {isActive && <span className="sb-indicator" />}
       {isRenaming ? renameInput : <span className="sb-label">{node.name}</span>}
-    </button>
+    </div>
   );
 }
 
@@ -217,6 +250,10 @@ interface SidebarProps {
   onFileSelect: (noteId: string) => void;
   onRefresh: () => void;
   onNewNote: () => void;
+  /** Puts a just-created note into rename mode (the page creates notes from the ribbon, menu, palette…). */
+  renameRequest?: { id: string; name: string; nonce: number } | null;
+  /** Called once the request is taken, so it is not replayed when the sidebar mounts again. */
+  onRenameRequestHandled?: () => void;
 }
 
 /**
@@ -236,9 +273,12 @@ export default function Sidebar({
   onFileSelect,
   onRefresh,
   onNewNote,
+  renameRequest,
+  onRenameRequestHandled,
 }: SidebarProps) {
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
-  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renaming, setRenaming] = useState<{ id: string; type: TreeNode["type"]; name: string } | null>(null);
+  const renamingId = renaming?.id ?? null;
   const [renameValue, setRenameValue] = useState("");
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; node: TreeNode | null } | null>(null);
   const [dragOverId, setDragOverId] = useState<string | null>(null);
@@ -294,32 +334,39 @@ export default function Sidebar({
   }
 
   function startRename(node: TreeNode) {
-    setRenamingId(node.id);
+    setRenaming({ id: node.id, type: node.type, name: node.name });
     setRenameValue(node.name);
   }
 
-  async function submitRename() {
-    const id = renamingId;
-    const value = renameValue.trim();
-    setRenamingId(null);
-    if (!id || !value) return;
+  // A note the page just created: enter rename mode for it (it may not be in the tree yet).
+  useEffect(() => {
+    if (!renameRequest) return;
+    // Taken once: the page clears it, so a sidebar mounted again later (after search, collapse…) doesn't replay it.
+    onRenameRequestHandled?.();
+    setRenaming({ id: renameRequest.id, type: "note", name: renameRequest.name });
+    setRenameValue(renameRequest.name);
+  }, [renameRequest, onRenameRequestHandled]);
 
-    const folder = index?.folders.find((f) => f.id === id);
-    const note = index?.notes.find((n) => n.id === id);
+  async function submitRename() {
+    const target = renaming;
+    const value = renameValue.trim();
+    setRenaming(null);
+    // Works from what was being renamed, not from `index`: a note created a moment ago is not in
+    // the index yet, and looking it up there silently dropped the new name.
+    if (!target || !value || value === target.name) return;
     try {
-      if (folder && value !== folder.name) {
-        await webApi.folders.update(vaultId, id, { name: value });
-        onRefresh();
-      } else if (note) {
+      if (target.type === "folder") {
+        await webApi.folders.update(vaultId, target.id, { name: value });
+      } else {
         const newName = /\.(md|markdown)$/i.test(value) ? value : `${value}.md`;
-        if (newName !== note.name) {
-          await webApi.notes.update(vaultId, id, { name: newName });
-          onRefresh();
-        }
+        const current = /\.(md|markdown)$/i.test(target.name) ? target.name : `${target.name}.md`;
+        if (newName === current) return;
+        await webApi.notes.update(vaultId, target.id, { name: newName });
       }
-    } catch {
-      // name collision or validation error from the API — silently keep
-      // the old name rather than crash; the tree just won't show the edit.
+      onRefresh();
+    } catch (err) {
+      const status = err instanceof ApiError ? err.status : 0;
+      showActionError(status === 409 ? `Đã có mục tên "${value}" ở đây.` : "Không đổi tên được.");
     }
   }
 
@@ -427,7 +474,7 @@ export default function Sidebar({
           {vaultName}
         </span>
         <div className="sidebar-actions">
-          <button onClick={onNewNote} className="sidebar-btn" title="New file">
+          <button onClick={() => handleNewFileIn(null)} className="sidebar-btn" title="New file">
             <PlusIcon size={14} />
           </button>
         </div>
@@ -468,7 +515,8 @@ export default function Sidebar({
               renameValue={renameValue}
               onRenameChange={setRenameValue}
               onRenameSubmit={submitRename}
-              onRenameCancel={() => setRenamingId(null)}
+              onRenameCancel={() => setRenaming(null)}
+              onStartRename={startRename}
               dragOverId={dragOverId}
               onDragOverFolder={setDragOverId}
               onMove={moveNode}

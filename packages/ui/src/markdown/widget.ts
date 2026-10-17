@@ -19,8 +19,8 @@ export class RenderedMarkdownWidget extends WidgetType {
     return span;
   }
   ignoreEvent(e: Event) {
-    // Let images handle their own clicks (for resize/select)
-    if (this.className === "md-image") return true;
+    // Let images handle their own clicks (for resize/select), and audio players their controls
+    if (this.className === "md-image" || this.className === "md-audio") return true;
     // Let click events through for interactive elements (wikilinks, links, etc)
     if (e.type === "mousedown") {
       const target = e.target as HTMLElement;
