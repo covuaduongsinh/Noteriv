@@ -6,7 +6,9 @@
 
 Dán câu sau (đổi tên file chặng và số phiên):
 
-> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-1-hop-nhat-nhanh.md`, rồi lập kế hoạch và triển khai **Phiên 1.1 của Chặng 1**.
+> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-2-dinh-vi-lai.md`, rồi lập kế hoạch và triển khai **Phiên 2.1 của Chặng 2**.
+
+**Chặng 1 xong (2026-10-17):** production chạy Giai đoạn 1–2 (merge `d15a810`, tag `v-core-plugins-2026-10-17`); `next` = `main`; nhánh cũ đã xoá (`feat/*` còn ở tag `archive/*`). **Mô hình nhánh từ nay:** `main` = production; `next` = staging, đưa về bằng `main` sau mỗi mốc; việc mới đi nhánh ngắn từ `main` tên `covuaduongsinh/<chặng>-<việc>`, thử bằng cách gộp vào `next`, rồi gộp vào `main` qua PR (CI chỉ chạy khi push `main` hoặc có PR). Phần cờ vua: worktree từ `main`, nhánh `covuaduongsinh/chess-<phiên>`. Các ghi chú "`next` = tái cấu trúc" ở mục 2 dưới đây là mô hình cũ. Kế tiếp có thể làm Chặng 2 và Chặng 3 đan xen.
 
 **Định hướng mới (từ 2026-10-17):** lộ trình thương mại `docs/plans/2026-10-17-lo-trinh-thuong-mai.md` thay lộ trình "Chess PKM". Các chặng:
 

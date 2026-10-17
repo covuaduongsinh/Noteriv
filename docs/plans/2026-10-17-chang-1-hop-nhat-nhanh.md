@@ -89,4 +89,6 @@
 |---|---|---|---|
 | 1.1 Staging, thử nốt, chuyển tiếp dữ liệu | Xong | 2026-10-17 | `next` = `1f632c0` (2.6 đã có sẵn trên `next`); không có migration giữa `main` và `next`; production 1 người dùng, 1 vault, 1925 note, **0** note board/canvas/drawing/dataview/slides nên không cần bước chuyển tiếp; chủ dự án thử staging đạt |
 | 1.2 Gộp vào `main`, deploy | Xong | 2026-10-17 | PR #2, merge commit `d15a810`, tag `v-core-plugins-2026-10-17`; CI 3 job xanh; typecheck, 420 test, server tsc sạch; production deploy `done`, 9 container chạy, `/` và `/api/v1/healthz` 200; đĩa VPS 85%, RAM khả dụng 3 GB |
-| 1.3 Gọn nhánh | Chưa làm | | |
+| 1.3 Gọn nhánh | Xong | 2026-10-17 | `next` = `main`; tag `archive/feat-chessboard-plugin-api`, `archive/feat-mobile-plugin-engine`; đã xoá trên `origin`: `feat/*`, `phase0/*`, `covuaduongsinh/phase1-core` (đều đã nằm trong `main`); nhánh local cũ của worktree cũng đã xoá. Worktree Orca nay ở nhánh `covuaduongsinh/chang1-hop-nhat` |
+
+**Chặng 1 xong (2026-10-17).**
