@@ -11,3 +11,4 @@ export {
 } from "./CommandPalette";
 export { formatHotkey } from "./format-hotkey";
 export { default as ConflictBanner, type ConflictBannerProps, type ConflictLabels } from "./ConflictBanner";
+export { default as VaultSearch, type VaultSearchProps, type VaultSearchLabels } from "./VaultSearch";

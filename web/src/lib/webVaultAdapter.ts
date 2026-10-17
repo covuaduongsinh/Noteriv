@@ -76,7 +76,7 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
     async search(query): Promise<NoteSearchHit[]> {
       if (!query.trim()) return [];
       const hits = await webApi.vaults.search(vaultId, query);
-      return hits.map((h) => ({ ref: toRef(h), snippet: h.snippet }));
+      return hits.map((h) => ({ ref: toRef(h), snippet: h.snippet, matches: h.matches }));
     },
 
     // The server endpoint knows which notes link here but not where, so line and snippet stay unset.

@@ -103,19 +103,22 @@ test("write two linked notes, rename them, see the backlink", async () => {
   await expect(page.locator(".bl-panel .bl-list")).toContainText("First");
 });
 
-test("search finds a note by its content", async () => {
+test("search finds the matching line as you type and opens the note there", async () => {
+  await sidebarItem("Second").click();
   await page.getByTitle("Tìm trong vault").click();
-  const box = page.getByPlaceholder("Tìm trong nội dung…");
-  await box.fill("e2e world");
+  const box = page.getByPlaceholder("Tìm trong nội dung các note…");
+  await box.fill("e2e world"); // no Enter needed to search
+  const result = page.getByRole("option").filter({ hasText: "First" });
+  await expect(result).toContainText("Hello e2e world");
+  await expect(result).toContainText(":3"); // the line it is on
   await box.press("Enter");
-  const result = page.getByRole("button", { name: /First\.md/ });
-  await expect(result).toContainText("e2e world");
-  await result.click();
+  await expect(box).toHaveCount(0);
   await expect(page.locator(".cm-content").first()).toContainText("Hello e2e world");
-  // Opening a result may already have closed the search panel.
-  const close = page.getByTitle("Đóng tìm kiếm");
-  if (await close.isVisible()) await close.click();
-  await expect(sidebarItem("Second")).toBeVisible();
+  // The cursor is at the start of that line: a typed character lands there.
+  await page.keyboard.type("Z");
+  await expect(page.locator(".cm-content").first()).toContainText("ZHello e2e world");
+  await page.keyboard.press("Backspace");
+  await expect(page.locator(".cm-content").first()).not.toContainText("ZHello");
 });
 
 test("switching a core plugin on adds its feature", async () => {

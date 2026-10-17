@@ -47,9 +47,18 @@ export interface NoteBacklink {
   snippet?: string;
 }
 
+export interface NoteSearchMatch {
+  /** 1-based line number in the note. */
+  line: number;
+  /** The line's text (trimmed, may be shortened). */
+  text: string;
+}
+
 export interface NoteSearchHit {
   ref: NoteRef;
   snippet: string;
+  /** Matching lines, in order (a few per note). Absent when the backend only knows the note matched. */
+  matches?: NoteSearchMatch[];
 }
 
 export interface VaultAdapter {

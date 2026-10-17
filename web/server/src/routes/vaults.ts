@@ -155,12 +155,13 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
     try {
       await requireVaultAccess(prisma, id, request.user!.id);
       const results = await prisma.$queryRaw<
-        Array<{ id: string; name: string; path: string; snippet: string; rank: number }>
+        Array<{ id: string; name: string; path: string; snippet: string; rank: number; content: string }>
       >(Prisma.sql`
         SELECT
           id,
           name,
           path,
+          content,
           ts_headline('simple', content, plainto_tsquery('simple', ${q}),
             'MaxFragments=1, MaxWords=20, MinWords=5') AS snippet,
           ts_rank(content_tsv, plainto_tsquery('simple', ${q})) AS rank
@@ -169,7 +170,11 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
         ORDER BY rank DESC
         LIMIT 50
       `);
-      return reply.send(results);
+      // The lines that contain the search words, so the client can list and jump to them (like desktop search).
+      const terms = q.toLowerCase().split(/\s+/).filter(Boolean);
+      return reply.send(
+        results.map(({ content, ...r }) => ({ ...r, matches: matchingLines(content, terms, MAX_MATCHES_PER_NOTE) }))
+      );
     } catch (err) {
       if (err instanceof VaultAccessError) {
         return reply.code(err.statusCode).send({ error: err.message });
@@ -177,4 +182,25 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
       throw err;
     }
   });
+}
+
+const MAX_MATCHES_PER_NOTE = 5;
+
+/** Lines of `content` containing every search term (case-insensitive), 1-based, at most `max`. */
+export function matchingLines(content: string, terms: string[], max: number): Array<{ line: number; text: string }> {
+  if (terms.length === 0) return [];
+  const out: Array<{ line: number; text: string }> = [];
+  const lines = content.split("\n");
+  for (let i = 0; i < lines.length && out.length < max; i++) {
+    const lower = lines[i].toLowerCase();
+    if (terms.every((t) => lower.includes(t))) out.push({ line: i + 1, text: lines[i].trim().slice(0, 200) });
+  }
+  if (out.length === 0) {
+    // Words spread over several lines: point at the first line holding any of them.
+    for (let i = 0; i < lines.length; i++) {
+      const lower = lines[i].toLowerCase();
+      if (terms.some((t) => lower.includes(t))) return [{ line: i + 1, text: lines[i].trim().slice(0, 200) }];
+    }
+  }
+  return out;
 }

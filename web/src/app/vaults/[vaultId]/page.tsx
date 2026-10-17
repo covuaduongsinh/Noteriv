@@ -3,10 +3,9 @@
 import { useEffect, useState, useCallback, useMemo, useRef, type ComponentType } from "react";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
-import DOMPurify from "dompurify";
 import type { EditorView } from "@codemirror/view";
 import SplitPane from "@/components/SplitPane";
-import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, type ConflictLabels } from "@noteriv/ui/panels";
+import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch, type ConflictLabels } from "@noteriv/ui/panels";
 
 const CONFLICT_LABELS_VI: ConflictLabels = {
   banner: "Đây là bản xung đột của {original}: phiên bản kia, được sync lưu lại lúc {stamp} (UTC) vì cả hai nơi cùng sửa ghi chú này.",
@@ -61,7 +60,6 @@ import {
   ApiError,
   type ApiVault,
   type VaultIndex,
-  type ApiSearchResult,
   type ApiSyncConnection,
   type ViewMode,
 } from "@/lib/webApi";
@@ -190,9 +188,10 @@ export default function VaultPage() {
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
+  /** The vault search box (shared VaultSearch, as on desktop). */
   const [searchVisible, setSearchVisible] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<ApiSearchResult[] | null>(null);
+  /** A line to jump to once the note it belongs to is open in the editor (from a search result). */
+  const pendingJumpRef = useRef<{ noteId: string; line: number } | null>(null);
   /** Asks the sidebar to put a just-created note into rename mode. */
   const [sidebarRenameRequest, setSidebarRenameRequest] = useState<{ id: string; name: string; nonce: number } | null>(null);
   const clearSidebarRenameRequest = useCallback(() => setSidebarRenameRequest(null), []);
@@ -568,11 +567,20 @@ export default function VaultPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
+  // Search results open a note at a line: move the cursor there once that note's editor is ready.
+  useEffect(() => {
+    const pending = pendingJumpRef.current;
+    const view = editorViewRef.current;
+    if (!pending || pending.noteId !== activeTabId || !view) return;
+    pendingJumpRef.current = null;
+    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+    view.focus();
+  }, [activeTabId, editorViewVersion, draft]);
+
   const openNote = useCallback(
     async (noteId: string) => {
       setSearchVisible(false);
-      setSearchResults(null);
-      setSearchQuery("");
 
       const alreadyOpen = tabs.some((t) => t.noteId === noteId);
       if (alreadyOpen) {
@@ -1266,16 +1274,6 @@ export default function VaultPage() {
     scheduleSave(splitTabId, value);
   }
 
-  async function runSearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!searchQuery.trim()) {
-      setSearchResults(null);
-      return;
-    }
-    const results = await webApi.vaults.search(vaultId, searchQuery.trim());
-    setSearchResults(results);
-  }
-
   const tabBarTabs: TabBarTab[] = tabs.map((t) => ({
     noteId: t.noteId,
     path: t.path,
@@ -1485,45 +1483,6 @@ export default function VaultPage() {
                 </div>
               );
             })()
-          ) : searchVisible ? (
-            <div className="sidebar-root flex flex-col" style={{ width: sidebarWidth, minWidth: sidebarWidth }}>
-              <div className="sidebar-header">
-                <span className="sidebar-title">Tìm kiếm</span>
-                <div className="sidebar-actions">
-                  <button onClick={() => { setSearchVisible(false); setSearchResults(null); setSearchQuery(""); }} className="sidebar-btn" title="Đóng tìm kiếm">
-                    <CloseIcon size={12} />
-                  </button>
-                </div>
-              </div>
-              <form onSubmit={runSearch} className="px-3 py-2 border-b border-[var(--border)]">
-                <input
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Tìm trong nội dung…"
-                  className="w-full text-sm px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
-                />
-              </form>
-              <div className="flex-1 overflow-y-auto px-2 pb-4">
-                {searchResults !== null && (
-                  <div className="px-2 py-1 text-xs text-[var(--text-muted)]">{searchResults.length} kết quả</div>
-                )}
-                {(searchResults ?? []).map((r) => (
-                  <button
-                    key={r.id}
-                    onClick={() => openNote(r.id)}
-                    className="w-full text-left px-2 py-1.5 rounded-md hover:bg-[var(--bg-tertiary)]"
-                  >
-                    <div className="text-sm text-[var(--text-primary)] truncate">{r.name}</div>
-                    <div
-                      className="text-xs text-[var(--text-muted)] truncate [&_b]:text-[var(--text-primary)] [&_b]:font-semibold"
-                      // ts_headline() only ever emits <b>…</b> around matched terms — restrict to that tag.
-                      dangerouslySetInnerHTML={{ __html: DOMPurify.sanitize(r.snippet, { ALLOWED_TAGS: ["b"] }) }}
-                    />
-                  </button>
-                ))}
-              </div>
-            </div>
           ) : (
             <Sidebar
               vaultId={vaultId}
@@ -1705,6 +1664,18 @@ export default function VaultPage() {
           )}
         </main>
       </div>
+
+      {searchVisible && (
+        <VaultSearch
+          adapter={vaultAdapter}
+          onOpen={(ref, line) => {
+            if (line !== undefined) pendingJumpRef.current = { noteId: ref.id, line };
+            openNote(ref.id);
+          }}
+          onClose={() => setSearchVisible(false)}
+          labels={{ placeholder: "Tìm trong nội dung các note…", noResults: "Không có kết quả", hint: "Gõ để tìm trong toàn bộ vault" }}
+        />
+      )}
 
       {quickOpenVisible && (
         <QuickOpen

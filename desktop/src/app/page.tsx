@@ -72,7 +72,7 @@ import type { EditorView } from "@codemirror/view";
 // Dialogs opened on demand (and the first-run wizard): loaded when first shown.
 const SetupWizard = dynamic(() => import("@/components/SetupWizard"), { ssr: false });
 const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
-const VaultSearch = dynamic(() => import("@/components/VaultSearch"), { ssr: false });
+const VaultSearch = dynamic(() => import("@noteriv/ui/panels").then((m) => m.VaultSearch), { ssr: false });
 const FileRecovery = dynamic(() => import("@/components/FileRecovery"), { ssr: false });
 const AttachmentManager = dynamic(() => import("@/components/AttachmentManager"), { ssr: false });
 const PluginManagerModal = dynamic(() => import("@/components/PluginManager"), { ssr: false });
@@ -1177,9 +1177,30 @@ export default function Home() {
     }
   }, [zenMode]);
 
+  /** A line to jump to once its file is open in the editor (from a search result). */
+  const pendingJumpRef = useRef<{ filePath: string; line: number } | null>(null);
+  const jumpIfPending = useCallback(() => {
+    const pending = pendingJumpRef.current;
+    const view = editorViewRef.current;
+    if (!pending || !view || activeTabRef.current !== pending.filePath) return;
+    pendingJumpRef.current = null;
+    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
+    view.focus();
+  }, []);
   const handleEditorViewReady = useCallback((view: EditorView) => {
     editorViewRef.current = view;
-  }, []);
+    jumpIfPending();
+  }, [jumpIfPending]);
+  const openFileAtLine = useCallback(
+    async (filePath: string, line?: number) => {
+      if (line !== undefined) pendingJumpRef.current = { filePath, line };
+      await openFile(filePath);
+      // The editor may already be showing this file (no new view): try now, then once the content has landed.
+      setTimeout(jumpIfPending, 50);
+    },
+    [openFile, jumpIfPending]
+  );
 
   // Wiki link click handler — global mousedown capture
   useEffect(() => {
@@ -2165,10 +2186,10 @@ export default function Home() {
       )}
 
       {/* Vault search (Ctrl+Shift+F) */}
-      {showVaultSearch && activeVault && (
+      {showVaultSearch && activeVault && vaultAdapter && (
         <VaultSearch
-          vaultPath={activeVault.path}
-          onSelect={openFile}
+          adapter={vaultAdapter}
+          onOpen={(ref, line) => void openFileAtLine(ref.id, line)}
           onClose={() => setShowVaultSearch(false)}
         />
       )}
