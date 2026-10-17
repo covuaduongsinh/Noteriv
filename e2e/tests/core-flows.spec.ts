@@ -140,6 +140,11 @@ test("reloading restores the open tabs without a request per note", async () => 
     if (r.method() === "GET" && r.url().endsWith("/sync-connections")) syncLists.push(r.url());
   };
   page.on("request", onSync);
+  // The open tabs are saved to the server a moment after they change; reload only once they are there.
+  const vaultId = new URL(page.url()).pathname.split("/")[2];
+  await expect
+    .poll(async () => ((await (await page.request.get(`/api/v1/vaults/${vaultId}/workspace-state`)).json()).openTabs ?? []).length)
+    .toBeGreaterThanOrEqual(2);
   await page.reload();
   await expect(page.locator(".cm-content").first()).toContainText(/Hello e2e world|The second note/);
   await expect(page.getByText("First.md", { exact: true }).first()).toBeVisible();
