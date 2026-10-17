@@ -128,7 +128,7 @@ Chạy một lượt trên staging và desktop Tauri thật. Ghi lỗi theo mứ
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 3.1 Chống mất dữ liệu (sync git web) | Đang làm | 2026-10-17 | Kịch bản sync xanh trên DB dev |
+| 3.1 Chống mất dữ liệu (sync git web) | Xong | 2026-10-17 | PR #4, merge `deab4d7`; kịch bản sync ALL PASSED; production: sao lưu tay `/root/noteriv-manual-backups/before-sync-lock-20261017T101806Z.sql.gz`, áp migration trước, deploy, `migrate resolve --applied`; 9 container, healthz 200 |
 | 3.2 Xung đột (UI, desktop, WebDAV, cộng tác) | Chưa làm | | |
 | 3.3 Bảo mật | Chưa làm | | |
 | 3.4 E2E trong CI | Chưa làm | | |

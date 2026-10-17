@@ -44,6 +44,20 @@
 - Migration đã áp lên DB dev.
 - `npx tsx scripts/test-sync-scenarios.ts` (DB dev qua tunnel, repo bare cục bộ, Garage): **ALL PASSED**. Lần chạy đầu có 1 FAIL do bản clone thử trên Windows đổi xuống dòng thành CRLF (mã sync dùng `core.autocrlf=false`); đã sửa phép so trong test.
 
+## Lên production (2026-10-17)
+
+1. Sao lưu tay: `pg_dump` ra `/root/noteriv-manual-backups/before-sync-lock-20261017T101806Z.sql.gz` (16 MB) trên VPS.
+2. Áp `migration.sql` bằng `psql -1` **trước** khi deploy; bản đang chạy không bị ảnh hưởng (healthz 200).
+3. Gộp PR #4 (`deab4d7`); webhook chạy bình thường; deploy `done`.
+4. `prisma migrate resolve --applied 20261017120000_sync_lock`; `migrate status`: schema đã khớp.
+5. 9 container chạy; `/` và `/api/v1/healthz` trả 200; log API 5 phút sau deploy không có lỗi.
+6. Staging: CI xanh, `migrate deploy` đã chạy, cột có mặt.
+
+**Chưa thử:** sync với một repo GitHub thật sau khi sửa. Cách thử (trên staging hoặc production, dùng vault thử và repo trống):
+1. Kết nối repo, bấm Sync.
+2. Sửa cùng một dòng ở web và trên GitHub.
+3. Sync lại. Kết quả đúng: note giữ bản web; có thêm note "(conflict …)" chứa bản GitHub; có cảnh báo vàng trong Cài đặt → Sync; trên GitHub không có `<<<<<<<`.
+
 ## Chưa làm trong phiên này (thuộc 3.2)
 
 - Giao diện so sánh bản xung đột. Hiện bản xung đột là note thường, có tên "(conflict …)", kèm cảnh báo trong Cài đặt → Sync.

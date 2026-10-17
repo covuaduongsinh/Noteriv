@@ -6,7 +6,9 @@
 
 Dán câu sau (đổi tên file chặng và số phiên):
 
-> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-3-ra-soat-hoan-thien.md`, rồi lập kế hoạch và triển khai **Phiên 3.1 của Chặng 3**.
+> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-3-ra-soat-hoan-thien.md`, rồi lập kế hoạch và triển khai **phiên kế tiếp chưa xong của Chặng 3** (xem bảng "Trạng thái" cuối file chặng).
+
+**Chặng 3 (từ 2026-10-17):** thứ tự đã đổi sau khi rà mã: sync mất dữ liệu và bảo mật làm trước. **3.1 xong** (PR #4): sync git web không còn xoá thùng rác hay commit ký hiệu xung đột; xung đột tạo note "(conflict …)"; có khoá `sync_locked_at`. Thử sync: `cd web/server && npx tsx scripts/test-sync-scenarios.ts` (cần tunnel 55432 + 59000). **Migration chỉ thêm cột mà mã mới đọc ở mọi truy vấn của bảng đó: sao lưu tay, áp `migration.sql` bằng `psql -1` trước khi deploy, rồi `migrate resolve --applied`** (đã làm như vậy ở 3.1, xem bản ghi `2026-10-17-phien-3-1-chong-mat-du-lieu.md`).
 
 **Chặng 2 xong (2026-10-17):** README tiếng Anh (sổ tay tiếng Việt ở `docs/dev/so-tay.md`), `/privacy` trung lập, email liên hệ tạm `covuaduongsinh@gmail.com`, `NOTICE.md` ghi hình quân của plugin mẫu chessboard, `phone/` đã xoá, cài đặt "cỡ bàn cờ" ẩn khỏi giao diện (khoá `pdfChessboardWidth` vẫn lưu và vẫn áp khi in). Bản ghi: `docs/plans/2026-10-17-phien-chang-2.md`.
 
