@@ -7,7 +7,8 @@ import TitleBar from "@/components/TitleBar";
 import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
-import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel } from "@noteriv/ui/panels";
+import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
+import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
@@ -192,6 +193,8 @@ export default function Home() {
   // Sync status
   const [lastSyncTime, setLastSyncTime] = useState<Date | null>(null);
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "error">("idle");
+  /** Shown after a git sync that had to keep both sides of a conflict (click to dismiss). */
+  const [syncConflictNotice, setSyncConflictNotice] = useState<string | null>(null);
   const [gitChanges, setGitChanges] = useState(0);
 
   // Hotkeys
@@ -580,7 +583,13 @@ export default function Home() {
       // Git sync (if configured)
       if (activeVault.gitRemote) {
         const msg = message || formatCommitMessage(settings.commitMessageFormat);
-        await window.electronAPI.gitSync(activeVault.path, msg, activeVault.id);
+        const conflictCopies = await window.electronAPI.gitSync(activeVault.path, msg, activeVault.id);
+        if (Array.isArray(conflictCopies) && conflictCopies.length > 0) {
+          setSyncConflictNotice(
+            `Sync kept both versions of ${conflictCopies.length} note${conflictCopies.length > 1 ? "s" : ""} edited here and on the remote. ` +
+              `The remote version is saved next to it as "(conflict …)": ${conflictCopies.slice(0, 3).join(", ")}${conflictCopies.length > 3 ? ", …" : ""}`
+          );
+        }
       }
 
       // Extra sync provider (folder, webdav, s3)
@@ -1103,6 +1112,29 @@ export default function Home() {
       setSidebarRefresh((k) => k + 1);
     }
   }, [currentTab, closeTab, activeVault]);
+
+  // Sync conflict copies ("<name> (conflict …).md", see commands_git.rs): the banner above the editor compares the
+  // open copy with its original and resolves. The original sits next to the copy, so its absolute path is derived
+  // from the copy's own path.
+  const conflictOriginalAbs = useCallback(
+    (copyAbs: string) => parseConflictCopy(copyAbs)?.originalPath ?? null,
+    []
+  );
+  const loadConflictOriginal = useCallback(async () => {
+    const abs = currentTab ? conflictOriginalAbs(currentTab.filePath) : null;
+    if (!abs || !window.electronAPI) return null;
+    return (await window.electronAPI.readFile(abs)) ?? null;
+  }, [currentTab, conflictOriginalAbs]);
+  const useConflictCopy = useCallback(async () => {
+    if (!window.electronAPI || !currentTab) return;
+    const abs = conflictOriginalAbs(currentTab.filePath);
+    if (!abs) return;
+    const copyContent = currentTab.content;
+    if (!(await window.electronAPI.writeFile(abs, copyContent))) return;
+    setTabs((prev) => prev.map((t) => (t.filePath === abs ? { ...t, content: copyContent, savedContent: copyContent } : t)));
+    await handleDeleteFile();
+    await openFile(abs);
+  }, [currentTab, conflictOriginalAbs, handleDeleteFile, openFile]);
 
   const handleTrashFileFromSidebar = useCallback(async (filePath: string) => {
     if (!activeVault) return;
@@ -1833,6 +1865,13 @@ export default function Home() {
                     filePath={currentTab.filePath}
                     onRename={handleRenameCurrentFile}
                   />
+                  <ConflictBanner
+                    path={relativeVaultPath(activeVaultPath, currentTab.filePath)}
+                    content={content}
+                    loadOriginal={loadConflictOriginal}
+                    onKeepOriginal={handleDeleteFile}
+                    onUseThisVersion={useConflictCopy}
+                  />
                   {!zenMode &&
                     !mainFileView &&
                     viewMode !== "view" && (
@@ -2213,9 +2252,18 @@ export default function Home() {
       {/* Hidden sandboxed <iframe> per enabled community plugin (see @noteriv/ui/plugins/sandbox) */}
       <div ref={sandboxHost.containerRef} style={{ display: "none" }} />
 
-      {/* Notices from plugins (api.ui.showNotice) */}
-      {corePluginHost.notices.length + sandboxHost.notices.length > 0 && (
+      {/* Notices from plugins (api.ui.showNotice) and from sync */}
+      {corePluginHost.notices.length + sandboxHost.notices.length > 0 || syncConflictNotice ? (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
+          {syncConflictNotice && (
+            <div
+              onClick={() => setSyncConflictNotice(null)}
+              className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--yellow)] text-sm cursor-pointer shadow-lg"
+              style={{ maxWidth: 420 }}
+            >
+              {syncConflictNotice}
+            </div>
+          )}
           {[...corePluginHost.notices, ...sandboxHost.notices].map((n) => (
             <div
               key={n.key}
@@ -2226,7 +2274,7 @@ export default function Home() {
             </div>
           ))}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

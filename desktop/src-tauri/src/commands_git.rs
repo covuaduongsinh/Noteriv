@@ -203,9 +203,125 @@ fn rebase_in_progress(dir: &Path) -> bool {
     git_dir.join("rebase-merge").exists() || git_dir.join("rebase-apply").exists()
 }
 
+/// True while a merge is stopped on conflicts (MERGE_HEAD exists).
+fn merge_in_progress(dir: &Path) -> bool {
+    let r = run_git(&["rev-parse", "--git-dir"], dir, None);
+    let git_dir = if r.success && !r.stdout.is_empty() {
+        dir.join(r.stdout)
+    } else {
+        dir.join(".git")
+    };
+    git_dir.join("MERGE_HEAD").exists()
+}
+
 /// True when HEAD is attached to a branch (not detached / mid-rebase).
 fn on_branch(dir: &Path) -> bool {
     run_git(&["symbolic-ref", "--quiet", "HEAD"], dir, None).success
+}
+
+/// Sibling path for the losing side of a conflict: `notes/a.md` →
+/// `notes/a (conflict 2026-10-17 0153).md`, numbered if that exists too.
+/// Mirrors `conflictCopyPath` in web/server/src/lib/gitSync.ts.
+fn conflict_copy_path(rel: &str, dir: &Path) -> String {
+    let (dir_part, file) = match rel.rfind('/') {
+        Some(i) => (&rel[..=i], &rel[i + 1..]),
+        None => ("", rel),
+    };
+    let (stem, ext) = match file.rfind('.') {
+        Some(i) if i > 0 => (&file[..i], &file[i..]),
+        _ => (file, ""),
+    };
+    let stamp = Utc::now().format("%Y-%m-%d %H%M").to_string();
+    let mut n = 1;
+    loop {
+        let suffix = if n > 1 { format!(" {n}") } else { String::new() };
+        let candidate = format!("{dir_part}{stem} (conflict {stamp}{suffix}){ext}");
+        if !dir.join(&candidate).exists() {
+            return candidate;
+        }
+        n += 1;
+    }
+}
+
+/// Resolves every unmerged path of an in-progress merge without losing either side:
+/// both changed → the local version stays, the remote one becomes a conflict copy;
+/// deleted locally, changed remotely → the deletion stands, the remote version becomes
+/// a conflict copy; changed locally, deleted remotely → the local version stays.
+/// Returns the conflict copies it created. (Same rules as web/server/src/lib/gitSync.ts.)
+fn resolve_conflicts_keep_both(dir: &Path) -> Result<Vec<String>, String> {
+    let out = ok_or_err(run_git(&["ls-files", "-u", "-z"], dir, None))?;
+    let mut stages: std::collections::BTreeMap<String, (bool, bool)> = std::collections::BTreeMap::new();
+    for entry in out.split('\0').filter(|e| !e.is_empty()) {
+        let Some(tab) = entry.find('\t') else { continue };
+        let stage = entry[..tab].split(' ').nth(2).unwrap_or("");
+        let path = entry[tab + 1..].to_string();
+        let e = stages.entry(path).or_insert((false, false));
+        match stage {
+            "2" => e.0 = true,
+            "3" => e.1 = true,
+            _ => {}
+        }
+    }
+
+    let mut copies = Vec::new();
+    for (rel, (ours, theirs)) in stages {
+        let full = dir.join(&rel);
+        if theirs {
+            ok_or_err(run_git(&["checkout", "--theirs", "--", &rel], dir, None))?;
+            let copy = conflict_copy_path(&rel, dir);
+            let copy_full = dir.join(&copy);
+            if let Some(parent) = copy_full.parent() {
+                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+            }
+            fs::rename(&full, &copy_full).map_err(|e| e.to_string())?;
+            ok_or_err(run_git(&["add", "--", &copy], dir, None))?;
+            copies.push(copy);
+        }
+        if ours {
+            ok_or_err(run_git(&["checkout", "--ours", "--", &rel], dir, None))?;
+            ok_or_err(run_git(&["add", "--", &rel], dir, None))?;
+        } else {
+            ok_or_err(run_git(&["rm", "--cached", "--quiet", "--ignore-unmatch", "--", &rel], dir, None))?;
+            let _ = fs::remove_file(&full);
+        }
+    }
+
+    let left = run_git(&["ls-files", "-u"], dir, None);
+    if !left.success || !left.stdout.is_empty() {
+        return Err("Sync paused: some conflicts could not be resolved automatically and need manual attention.".into());
+    }
+    Ok(copies)
+}
+
+/// Stages everything and commits it if anything changed.
+fn commit_all(dir: &Path, msg: &str) -> Result<(), String> {
+    ok_or_err(run_git(&["add", "-A"], dir, None))?;
+    let st = run_git(&["status", "--porcelain"], dir, None);
+    if st.success && !st.stdout.is_empty() {
+        ok_or_err(run_git(&["commit", "-m", msg], dir, None))?;
+    }
+    Ok(())
+}
+
+/// Fetches `branch` and merges it (3-way). Local changes must already be committed.
+/// A fetch failure (empty remote, offline) is not an error here: there is nothing to
+/// merge, and the push that follows reports real network problems.
+fn merge_remote(dir: &Path, pull_url: &str, branch: &str, token: Option<&str>) -> Result<Vec<String>, String> {
+    let fetch = run_git(&["fetch", pull_url, branch], dir, token);
+    if !fetch.success {
+        return Ok(Vec::new());
+    }
+    let merge = run_git(&["merge", "--no-edit", "FETCH_HEAD"], dir, None);
+    if merge.success {
+        return Ok(Vec::new());
+    }
+    if !merge_in_progress(dir) {
+        return Err(format!("Sync paused: could not merge remote changes. {}", merge.stderr));
+    }
+    let copies = resolve_conflicts_keep_both(dir)?;
+    let msg = format!("Noteriv: merge remote changes ({} conflict copies)", copies.len());
+    ok_or_err(run_git(&["commit", "--no-edit", "-m", &msg], dir, None))?;
+    Ok(copies)
 }
 
 /// True only if `dir` itself has a `.git` entry — i.e. it is a repo root, not
@@ -378,8 +494,14 @@ pub struct GitSyncInput {
     pub vault_id: Option<String>,
 }
 
+/// Commits local changes, merges the remote branch (keeping both sides of real
+/// conflicts), commits, pushes. Returns the conflict copies created by the merge.
+///
+/// Local changes are committed before merging rather than stashed: the old
+/// stash → pull --rebase → stash pop sequence ignored a failed pop, so when both
+/// sides edited the same note the conflict markers were committed and pushed.
 #[tauri::command]
-pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
+pub async fn git_sync(args: GitSyncInput) -> Result<Vec<String>, String> {
     let p = Path::new(&args.dir);
     assert_is_own_repo_root(p)?;
     let creds = credentials_for_vault(args.vault_id.as_deref());
@@ -403,35 +525,8 @@ pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
     if rebase_in_progress(p) {
         let _ = run_git(&["rebase", "--abort"], p, None);
     }
-
-    if let Some(r) = remote.as_deref() {
-        let pull_url = match &creds {
-            Some(c) => c.auth_url(r),
-            None => "origin".into(),
-        };
-        let has_changes = run_git(&["status", "--porcelain"], p, None);
-        let needs_stash = has_changes.success && !has_changes.stdout.is_empty();
-        if needs_stash {
-            let _ = run_git(&["stash", "push", "-m", "noteriv-sync-stash"], p, None);
-        }
-        let _ = run_git(&["fetch", &pull_url], p, token_ref);
-        let pull = run_git(&["pull", "--rebase", &pull_url, &branch], p, token_ref);
-        // A conflicting rebase stops mid-way and leaves HEAD detached. Don't
-        // commit on top of it: abort, restore the stash, and surface the
-        // conflict so the user knows sync needs manual attention.
-        if !pull.success && rebase_in_progress(p) {
-            let _ = run_git(&["rebase", "--abort"], p, None);
-            if needs_stash {
-                let _ = run_git(&["stash", "pop"], p, None);
-            }
-            return Err(format!(
-                "Sync paused: remote changes conflict with local edits and need manual resolution. {}",
-                pull.stderr
-            ));
-        }
-        if needs_stash {
-            let _ = run_git(&["stash", "pop"], p, None);
-        }
+    if merge_in_progress(p) {
+        let _ = run_git(&["merge", "--abort"], p, None);
     }
 
     // Never commit/push from a detached HEAD: current_branch() guesses a branch
@@ -443,11 +538,18 @@ pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
         );
     }
 
-    ok_or_err(run_git(&["add", "-A"], p, None))?;
-    let st = run_git(&["status", "--porcelain"], p, None);
-    if st.success && !st.stdout.is_empty() {
-        ok_or_err(run_git(&["commit", "-m", &msg], p, None))?;
+    // Commit first so the merge has a common base (git combines edits to different parts of a note).
+    commit_all(p, &msg)?;
+
+    let mut copies = Vec::new();
+    if let Some(r) = remote.as_deref() {
+        let pull_url = match &creds {
+            Some(c) => c.auth_url(r),
+            None => "origin".into(),
+        };
+        copies = merge_remote(p, &pull_url, &branch, token_ref)?;
     }
+
     if let Some(r) = remote.as_deref() {
         let push_url = match &creds {
             Some(c) => c.auth_url(r),
@@ -476,7 +578,7 @@ pub async fn git_sync(args: GitSyncInput) -> Result<bool, String> {
             });
         }
     }
-    Ok(true)
+    Ok(copies)
 }
 
 #[derive(Debug, Deserialize)]
@@ -489,26 +591,30 @@ pub struct GitDirVaultInput {
 #[tauri::command]
 pub async fn git_pull(args: GitDirVaultInput) -> Result<bool, String> {
     let p = Path::new(&args.dir);
+    assert_is_own_repo_root(p)?;
     let creds = credentials_for_vault(args.vault_id.as_deref());
     let branch = current_branch(p);
-    let has_changes = run_git(&["status", "--porcelain"], p, None);
-    let needs_stash = has_changes.success && !has_changes.stdout.is_empty();
-    if needs_stash {
-        ok_or_err(run_git(&["stash", "push", "-m", "noteriv-pull-stash"], p, None))?;
+    if rebase_in_progress(p) {
+        let _ = run_git(&["rebase", "--abort"], p, None);
     }
-    let result = if let Some(c) = creds.as_ref() {
-        let remote = ok_or_err(run_git(&["remote", "get-url", "origin"], p, None))?;
-        let auth = c.auth_url(&remote);
-        run_git(&["pull", &auth, &branch, "--rebase"], p, Some(&c.token))
-    } else {
-        run_git(&["pull", "origin", &branch, "--rebase"], p, None)
+    if merge_in_progress(p) {
+        let _ = run_git(&["merge", "--abort"], p, None);
+    }
+    if !on_branch(p) {
+        return Err("Pull paused: repository is in a detached HEAD state and needs manual attention.".into());
+    }
+    // Same as git_sync: commit local edits, then merge, so nothing is ever stashed and lost.
+    commit_all(p, &format!("Local changes before pull {}", Utc::now().format("%Y-%m-%d %H:%M")))?;
+    let remote = ok_or_err(run_git(&["remote", "get-url", "origin"], p, None))?;
+    let (pull_url, token) = match creds.as_ref() {
+        Some(c) => (c.auth_url(&remote), Some(c.token.as_str())),
+        None => ("origin".to_string(), None),
     };
-    if needs_stash {
-        let _ = run_git(&["stash", "pop"], p, None);
+    let fetch = run_git(&["fetch", &pull_url, &branch], p, token);
+    if !fetch.success {
+        return Err(fetch.stderr);
     }
-    if !result.success {
-        return Err(result.stderr);
-    }
+    merge_remote(p, &pull_url, &branch, token)?;
     Ok(true)
 }
 
@@ -898,5 +1004,122 @@ mod repo_root_tests {
             .output()
             .unwrap();
         assert!(log.status.success() && !log.stdout.is_empty(), "remote bare repo should have received the pushed commit");
+    }
+
+    /// A bare remote seeded with `files`, plus two clones: `vault` (the desktop vault
+    /// git_sync runs in) and `other` (another device pushing to the same remote).
+    fn two_clones(files: &[(&str, &str)]) -> (TempDir, TempDir, TempDir) {
+        let bare = TempDir::new("conflict-bare");
+        git(bare.path(), &["init", "-q", "--bare", "-b", "main"]);
+        let seed = TempDir::new("conflict-seed");
+        git(seed.path(), &["init", "-q", "-b", "main"]);
+        git(seed.path(), &["config", "core.autocrlf", "false"]);
+        git(seed.path(), &["config", "user.email", "test@example.com"]);
+        git(seed.path(), &["config", "user.name", "Test"]);
+        for (name, content) in files {
+            fs::write(seed.path().join(name), content).unwrap();
+        }
+        git(seed.path(), &["add", "-A"]);
+        git(seed.path(), &["commit", "-q", "-m", "seed"]);
+        git(seed.path(), &["push", "-q", &bare.path().to_string_lossy(), "main"]);
+        let clone = |label: &str| {
+            let t = TempDir::new(label);
+            // autocrlf off from the very first checkout: a machine-wide autocrlf=true would
+            // otherwise leave CRLF files that git then reports as locally modified.
+            git(t.path(), &["clone", "-q", "-c", "core.autocrlf=false", &bare.path().to_string_lossy(), "."]);
+            git(t.path(), &["config", "user.email", "test@example.com"]);
+            git(t.path(), &["config", "user.name", "Test"]);
+            t
+        };
+        let vault = clone("conflict-vault");
+        let other = clone("conflict-other");
+        (bare, vault, other)
+    }
+
+    fn commit_and_push(dir: &Path, msg: &str) {
+        git(dir, &["add", "-A"]);
+        git(dir, &["commit", "-q", "-m", msg]);
+        git(dir, &["push", "-q", "origin", "main"]);
+    }
+
+    async fn sync(dir: &Path) -> Result<Vec<String>, String> {
+        git_sync(GitSyncInput { dir: dir.to_string_lossy().into_owned(), message: Some("test sync".into()), vault_id: None }).await
+    }
+
+    fn no_markers(dir: &Path) -> bool {
+        fs::read_dir(dir).unwrap().flatten().all(|e| {
+            !e.path().is_file() || !fs::read_to_string(e.path()).unwrap_or_default().contains("<<<<<<<")
+        })
+    }
+
+    #[tokio::test]
+    async fn git_sync_same_line_keeps_both_versions() {
+        let (_bare, vault, other) = two_clones(&[("a.md", "# A\noriginal\n")]);
+        fs::write(other.path().join("a.md"), "# A\nREMOTE\n").unwrap();
+        commit_and_push(other.path(), "remote edit");
+        fs::write(vault.path().join("a.md"), "# A\nLOCAL\n").unwrap();
+
+        let copies = sync(vault.path()).await.expect("sync must not pause on a plain conflict");
+        assert_eq!(copies.len(), 1, "one conflict copy expected: {copies:?}");
+        assert_eq!(fs::read_to_string(vault.path().join("a.md")).unwrap(), "# A\nLOCAL\n");
+        assert_eq!(fs::read_to_string(vault.path().join(&copies[0])).unwrap(), "# A\nREMOTE\n");
+        assert!(copies[0].starts_with("a (conflict "), "{copies:?}");
+        assert!(no_markers(vault.path()), "no conflict markers may reach the vault");
+
+        git(other.path(), &["pull", "-q", "origin", "main"]);
+        assert_eq!(fs::read_to_string(other.path().join("a.md")).unwrap(), "# A\nLOCAL\n");
+        assert!(other.path().join(&copies[0]).exists(), "the copy is pushed too");
+    }
+
+    #[tokio::test]
+    async fn git_sync_merges_edits_to_different_parts() {
+        let (_bare, vault, other) = two_clones(&[("g.md", "1\n2\n3\n4\n5\n")]);
+        fs::write(other.path().join("g.md"), "1\n2\n3\n4\n5 remote\n").unwrap();
+        commit_and_push(other.path(), "remote edit end");
+        fs::write(vault.path().join("g.md"), "1 local\n2\n3\n4\n5\n").unwrap();
+
+        let copies = sync(vault.path()).await.unwrap();
+        assert!(copies.is_empty(), "{copies:?}");
+        assert_eq!(fs::read_to_string(vault.path().join("g.md")).unwrap(), "1 local\n2\n3\n4\n5 remote\n");
+    }
+
+    #[tokio::test]
+    async fn git_sync_keeps_local_edit_when_remote_deleted() {
+        let (_bare, vault, other) = two_clones(&[("i.md", "# I\n"), ("keep.md", "x\n")]);
+        git(other.path(), &["rm", "-q", "i.md"]);
+        commit_and_push(other.path(), "remote deletes i");
+        fs::write(vault.path().join("i.md"), "# I\nlocal edit\n").unwrap();
+
+        let copies = sync(vault.path()).await.unwrap();
+        assert!(copies.is_empty(), "{copies:?}");
+        assert_eq!(fs::read_to_string(vault.path().join("i.md")).unwrap(), "# I\nlocal edit\n");
+    }
+
+    #[tokio::test]
+    async fn git_sync_keeps_remote_edit_as_copy_when_deleted_locally() {
+        let (_bare, vault, other) = two_clones(&[("h.md", "# H\n"), ("keep.md", "x\n")]);
+        fs::write(other.path().join("h.md"), "# H\nremote edit\n").unwrap();
+        commit_and_push(other.path(), "remote edits h");
+        fs::remove_file(vault.path().join("h.md")).unwrap();
+
+        let copies = sync(vault.path()).await.unwrap();
+        assert_eq!(copies.len(), 1, "{copies:?}");
+        assert!(!vault.path().join("h.md").exists(), "the local deletion stands");
+        assert_eq!(fs::read_to_string(vault.path().join(&copies[0])).unwrap(), "# H\nremote edit\n");
+    }
+
+    #[tokio::test]
+    async fn git_pull_keeps_uncommitted_edits() {
+        let (_bare, vault, other) = two_clones(&[("a.md", "# A\noriginal\n")]);
+        fs::write(other.path().join("a.md"), "# A\nREMOTE\n").unwrap();
+        commit_and_push(other.path(), "remote edit");
+        fs::write(vault.path().join("a.md"), "# A\nLOCAL\n").unwrap();
+
+        let r = git_pull(GitDirVaultInput { dir: vault.path().to_string_lossy().into_owned(), vault_id: None }).await;
+        assert!(r.is_ok(), "{r:?}");
+        assert_eq!(fs::read_to_string(vault.path().join("a.md")).unwrap(), "# A\nLOCAL\n");
+        assert!(no_markers(vault.path()));
+        let copy = fs::read_dir(vault.path()).unwrap().flatten().find(|e| e.file_name().to_string_lossy().starts_with("a (conflict "));
+        assert!(copy.is_some(), "the remote version must be kept as a conflict copy");
     }
 }

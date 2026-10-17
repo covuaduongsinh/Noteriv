@@ -137,10 +137,12 @@ function safeFileName(title: string): string {
 export async function clipPublicRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
 
+  // Keyed by client IP: keying by the Authorization header let anyone get a fresh bucket per
+  // made-up token. 120/hour per address is plenty for a person clipping pages.
   await fastify.register(rateLimit, {
-    max: 60,
+    max: 120,
     timeWindow: "1 hour",
-    keyGenerator: (req) => (req.headers.authorization ?? req.ip).slice(0, 80),
+    keyGenerator: (req) => req.ip,
   });
 
   fastify.addHook("onRequest", async (request, reply) => {
@@ -160,6 +162,16 @@ export async function clipPublicRoutes(fastify: FastifyInstance) {
 
     const row = await prisma.clipToken.findUnique({ where: { tokenHash: hashToken(token) } });
     if (!row) return reply.code(401).send({ error: "unauthorized" });
+
+    // The token carries its creator's authority, which can change after it was issued: someone
+    // removed from the vault, or demoted to viewer, must not keep writing into it through an old token.
+    try {
+      const { role } = await requireVaultAccess(prisma, row.vaultId, row.userId);
+      if (role === "viewer") return reply.code(403).send({ error: "forbidden" });
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(403).send({ error: "forbidden" });
+      throw err;
+    }
 
     const parsed = clipSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });

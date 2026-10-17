@@ -225,6 +225,9 @@ model SyncConnection {
   /// Set while a sync of this connection runs (see runSyncJob): two syncs of one connection
   /// would share a scratch directory and race each other's imports.
   syncLockedAt   DateTime?     @map("sync_locked_at")
+  /// WebDAV only: per-file content hash + remote mtime after the last sync, so the next
+  /// sync knows which side changed (see webdavSyncCore). Lost or empty = treated as a first sync.
+  syncState      Json?         @map("sync_state")
   createdAt      DateTime      @default(now()) @map("created_at")
 
   vault Vault     @relation(fields: [vaultId], references: [id], onDelete: Cascade)

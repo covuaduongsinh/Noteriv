@@ -24,7 +24,10 @@ import attachmentRoutes from "./routes/attachments.js";
 import { syncQueue } from "./lib/syncQueue.js";
 import adminRoutes from "./routes/admin.js";
 
-const fastify = Fastify({ logger: true, trustProxy: true });
+// Trust X-Forwarded-For only from proxies on private addresses (Traefik, the web container,
+// localhost in dev). `trustProxy: true` trusted the whole header, so a client could put any
+// address in it and get a fresh rate-limit bucket per request (login limit included).
+const fastify = Fastify({ logger: true, trustProxy: ["loopback", "linklocal", "uniquelocal"] });
 
 // Prisma first so the public clip route (below) can use it; that route must be registered
 // BEFORE the app-wide CORS plugin — it needs its own wide-open CORS (bearer-token auth, no cookies).
