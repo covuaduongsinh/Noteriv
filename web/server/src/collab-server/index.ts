@@ -18,6 +18,7 @@ import { PrismaClient } from "@prisma/client";
 import { parseCookie } from "cookie";
 import jwt from "jsonwebtoken";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
+import { snapshotBeforeOverwrite } from "../lib/noteSnapshots.js";
 
 const MESSAGE_SYNC = 0;
 const MESSAGE_AWARENESS = 1;
@@ -34,14 +35,30 @@ interface Room {
   persistTimer: ReturnType<typeof setTimeout> | null;
   /** Which awareness client IDs each socket has announced, so disconnect can clear exactly those. */
   connAwarenessIds: Map<WebSocket, Set<number>>;
+  /** The note's DB content as of the room's load or last persist; anything else in the DB was written by someone else. */
+  baseContent: string;
+  /** Sockets of viewers: they receive updates but their edits are ignored. */
+  readOnly: Set<WebSocket>;
+  /** Clients past auth whose upgrade hasn't completed yet; the room must not be dropped under them. */
+  joining: number;
 }
 
 const rooms = new Map<string, Room>();
+/** Rooms being created, so two clients joining a new note at once share one room. */
+const pendingRooms = new Map<string, Promise<Room>>();
 
-async function getOrCreateRoom(noteId: string, vaultId: string): Promise<Room> {
+function getOrCreateRoom(noteId: string, vaultId: string): Promise<Room> {
   const existing = rooms.get(noteId);
-  if (existing) return existing;
+  if (existing) return Promise.resolve(existing);
+  let pending = pendingRooms.get(noteId);
+  if (!pending) {
+    pending = createRoom(noteId, vaultId).finally(() => pendingRooms.delete(noteId));
+    pendingRooms.set(noteId, pending);
+  }
+  return pending;
+}
 
+async function createRoom(noteId: string, vaultId: string): Promise<Room> {
   const doc = new Y.Doc();
   const ytext = doc.getText("content");
   const note = await prisma.note.findUnique({ where: { id: noteId }, select: { content: true } });
@@ -50,7 +67,18 @@ async function getOrCreateRoom(noteId: string, vaultId: string): Promise<Room> {
   }
 
   const awareness = new awarenessProtocol.Awareness(doc);
-  const room: Room = { noteId, vaultId, doc, awareness, clients: new Set(), persistTimer: null, connAwarenessIds: new Map() };
+  const room: Room = {
+    noteId,
+    vaultId,
+    doc,
+    awareness,
+    clients: new Set(),
+    persistTimer: null,
+    connAwarenessIds: new Map(),
+    baseContent: note?.content ?? "",
+    readOnly: new Set(),
+    joining: 0,
+  };
 
   doc.on("update", (update: Uint8Array, origin: unknown) => {
     const encoder = encoding.createEncoder();
@@ -88,17 +116,55 @@ function broadcast(room: Room, message: Uint8Array, exclude?: WebSocket) {
   }
 }
 
+/**
+ * Writes the room's text to the note. If the DB content changed behind the room's back
+ * (a sync import, an edit outside collaboration), that version is kept as a snapshot
+ * first so File Recovery can bring it back — the room never silently erases it.
+ */
+async function persistRoom(room: Room): Promise<void> {
+  const content = room.doc.getText("content").toString();
+  try {
+    const current = await prisma.note.findUnique({ where: { id: room.noteId }, select: { content: true, deletedAt: true } });
+    if (!current || current.deletedAt) return; // deleted or trashed meanwhile: don't write into the trash
+    if (current.content === content) {
+      room.baseContent = content;
+      return;
+    }
+    if (current.content !== room.baseContent) {
+      await snapshotBeforeOverwrite(prisma, room.noteId, current.content);
+    }
+    await prisma.note.update({ where: { id: room.noteId }, data: { content, sizeBytes: Buffer.byteLength(content, "utf8") } });
+    room.baseContent = content;
+    await recomputeBacklinksForNote(prisma, room.vaultId, room.noteId, content);
+  } catch (err) {
+    console.error(`[collab-server] failed to persist note ${room.noteId}:`, err);
+  }
+}
+
 function schedulePersist(room: Room) {
   if (room.persistTimer) clearTimeout(room.persistTimer);
-  room.persistTimer = setTimeout(async () => {
-    const content = room.doc.getText("content").toString();
-    try {
-      await prisma.note.update({ where: { id: room.noteId }, data: { content } });
-      await recomputeBacklinksForNote(prisma, room.vaultId, room.noteId, content);
-    } catch (err) {
-      console.error(`[collab-server] failed to persist note ${room.noteId}:`, err);
-    }
+  room.persistTimer = setTimeout(() => {
+    room.persistTimer = null;
+    void persistRoom(room);
   }, PERSIST_DEBOUNCE_MS);
+}
+
+/**
+ * Last client left: flush any pending write, then drop the room so the next visitor
+ * starts from the DB (which may have changed since — e.g. a sync import). A room kept
+ * alive forever used to overwrite such changes with its stale text on the next edit.
+ */
+async function closeRoomIfEmpty(room: Room): Promise<void> {
+  if (room.clients.size > 0 || room.joining > 0) return;
+  if (room.persistTimer) {
+    clearTimeout(room.persistTimer);
+    room.persistTimer = null;
+    await persistRoom(room);
+  }
+  if (room.clients.size > 0 || room.joining > 0 || rooms.get(room.noteId) !== room) return; // someone (re)joined meanwhile
+  rooms.delete(room.noteId);
+  room.awareness.destroy();
+  room.doc.destroy();
 }
 
 async function authenticate(cookieHeader: string | undefined): Promise<{ userId: string } | null> {
@@ -114,15 +180,16 @@ async function authenticate(cookieHeader: string | undefined): Promise<{ userId:
   }
 }
 
-async function canAccessNote(userId: string, noteId: string): Promise<{ vaultId: string } | null> {
-  const note = await prisma.note.findUnique({ where: { id: noteId }, select: { vaultId: true } });
-  if (!note) return null;
+/** Members may join a live (not trashed) note; viewers join read-only. */
+async function canAccessNote(userId: string, noteId: string): Promise<{ vaultId: string; canWrite: boolean } | null> {
+  const note = await prisma.note.findUnique({ where: { id: noteId }, select: { vaultId: true, deletedAt: true } });
+  if (!note || note.deletedAt) return null;
   const vault = await prisma.vault.findUnique({ where: { id: note.vaultId }, select: { workspaceId: true } });
   if (!vault) return null;
   const membership = await prisma.workspaceMember.findUnique({
     where: { workspaceId_userId: { workspaceId: vault.workspaceId, userId } },
   });
-  return membership ? { vaultId: note.vaultId } : null;
+  return membership ? { vaultId: note.vaultId, canWrite: membership.role !== "viewer" } : null;
 }
 
 const httpServer = createServer();
@@ -150,9 +217,27 @@ httpServer.on("upgrade", async (request, socket, head) => {
     return;
   }
 
-  wss.handleUpgrade(request, socket, head, async (ws) => {
-    const room = await getOrCreateRoom(noteId, access.vaultId);
+  // Load the room BEFORE completing the upgrade: the client sends its sync step 1 as soon
+  // as the socket opens, and a message arriving before the handlers below are attached is
+  // dropped — the joining client then never received the document.
+  const room = await getOrCreateRoom(noteId, access.vaultId);
+  room.joining++;
+  let joined = false;
+  socket.once("close", () => {
+    // Upgrade never completed (client went away): stop holding the room open.
+    if (joined) return;
+    joined = true;
+    room.joining--;
+    void closeRoomIfEmpty(room);
+  });
+
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    if (!joined) {
+      joined = true;
+      room.joining--;
+    }
     room.clients.add(ws);
+    if (!access.canWrite) room.readOnly.add(ws);
 
     // Initial sync: tell the new client what we have (step 1), and ask for theirs.
     const syncEncoder = encoding.createEncoder();
@@ -178,7 +263,15 @@ httpServer.on("upgrade", async (request, socket, head) => {
       if (messageType === MESSAGE_SYNC) {
         const encoder = encoding.createEncoder();
         encoding.writeVarUint(encoder, MESSAGE_SYNC);
-        syncProtocol.readSyncMessage(decoder, encoder, room.doc, ws);
+        if (room.readOnly.has(ws)) {
+          // Viewers may ask for the document (step 1) but their step 2 / updates are dropped.
+          const syncType = decoding.readVarUint(decoder);
+          if (syncType === syncProtocol.messageYjsSyncStep1) {
+            syncProtocol.readSyncStep1(decoder, encoder, room.doc);
+          }
+        } else {
+          syncProtocol.readSyncMessage(decoder, encoder, room.doc, ws);
+        }
         if (encoding.length(encoder) > 1) {
           ws.send(encoding.toUint8Array(encoder));
         }
@@ -191,11 +284,13 @@ httpServer.on("upgrade", async (request, socket, head) => {
 
     ws.on("close", () => {
       room.clients.delete(ws);
+      room.readOnly.delete(ws);
       const ids = room.connAwarenessIds.get(ws);
       if (ids && ids.size > 0) {
         awarenessProtocol.removeAwarenessStates(room.awareness, Array.from(ids), null);
       }
       room.connAwarenessIds.delete(ws);
+      void closeRoomIfEmpty(room);
     });
   });
 });
