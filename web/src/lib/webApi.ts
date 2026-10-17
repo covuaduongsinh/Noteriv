@@ -108,6 +108,10 @@ export interface ApiWorkspaceState {
   activeTabId: string | null;
   pinnedTabIds: string[];
   fileViewModes: Record<string, ViewMode>;
+  /** GET only: the open tabs' notes, inlined so restoring needs no extra request per tab (may be partial). */
+  notes?: Record<string, { id: string; path: string; name: string; content: string }>;
+  /** GET only: open-tab ids whose note no longer exists. */
+  missingNoteIds?: string[];
 }
 
 export type SyncProviderType = "github" | "gitlab" | "gitea" | "forgejo" | "webdav";
@@ -277,6 +281,8 @@ async function refreshSession(): Promise<boolean> {
 }
 
 async function request<T>(path: string, init?: RequestInit, _retrying = false): Promise<T> {
+  // Any change to sync connections (create, edit, delete, trigger, resolve…) drops the shared list.
+  if (init?.method && init.method !== "GET" && path.includes("/sync-connections")) syncLists.clear();
   const res = await fetch(`/api/v1${path}`, {
     ...init,
     credentials: "include",
@@ -353,6 +359,25 @@ function getVaultShared(id: string): Promise<ApiVault> {
     return entry.vault.then((v) => structuredClone(v));
   }
   return hit.vault.then((v) => structuredClone(v));
+}
+
+/**
+ * `GET /sync-connections`, shared for 2 s like `vaults.get`: opening a vault asked twice (the page's sync status
+ * and the note-history plugin's "git history available?" check). Writes clear it (see `request`).
+ */
+const SYNC_LIST_TTL_MS = 2000;
+const syncLists = new Map<string, { at: number; list: Promise<ApiSyncConnection[]> }>();
+function syncListShared(vaultId: string): Promise<ApiSyncConnection[]> {
+  const hit = syncLists.get(vaultId);
+  if (!hit || Date.now() - hit.at > SYNC_LIST_TTL_MS) {
+    const entry = { at: Date.now(), list: request<ApiSyncConnection[]>(`/vaults/${vaultId}/sync-connections`) };
+    syncLists.set(vaultId, entry);
+    entry.list.catch(() => {
+      if (syncLists.get(vaultId) === entry) syncLists.delete(vaultId);
+    });
+    return entry.list.then((l) => structuredClone(l));
+  }
+  return hit.list.then((l) => structuredClone(l));
 }
 
 export const webApi = {
@@ -447,7 +472,7 @@ export const webApi = {
   },
 
   sync: {
-    list: (vaultId: string) => request<ApiSyncConnection[]>(`/vaults/${vaultId}/sync-connections`),
+    list: (vaultId: string) => syncListShared(vaultId),
     createGit: (
       vaultId: string,
       data: ApiSyncOptions & {
