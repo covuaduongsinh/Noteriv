@@ -70,11 +70,36 @@ export function formatCommitMessage(template: string, changedCount: number, now 
     .replace(/\{count\}/g, String(changedCount));
 }
 
+/** A sync lock older than this is treated as abandoned (a crashed worker never released it). */
+const SYNC_LOCK_STALE_MS = 30 * 60 * 1000;
+
+/**
+ * Runs one sync of a connection. Returns "skipped" without doing anything when another
+ * sync of the same connection is already running: both would share one scratch
+ * directory, and two imports racing each other can overwrite fresh content.
+ */
 export async function runSyncJob(
   prisma: PrismaClient,
   connectionId: string,
   mode: SyncJobMode = "sync"
-): Promise<void> {
+): Promise<"done" | "skipped"> {
+  const lock = await prisma.syncConnection.updateMany({
+    where: {
+      id: connectionId,
+      OR: [{ syncLockedAt: null }, { syncLockedAt: { lt: new Date(Date.now() - SYNC_LOCK_STALE_MS) } }],
+    },
+    data: { syncLockedAt: new Date() },
+  });
+  if (lock.count === 0) return "skipped";
+  try {
+    await runLockedSyncJob(prisma, connectionId, mode);
+    return "done";
+  } finally {
+    await prisma.syncConnection.update({ where: { id: connectionId }, data: { syncLockedAt: null } }).catch(() => undefined);
+  }
+}
+
+async function runLockedSyncJob(prisma: PrismaClient, connectionId: string, mode: SyncJobMode): Promise<void> {
   const connection = await prisma.syncConnection.findUniqueOrThrow({ where: { id: connectionId } });
 
   const job = await prisma.syncJob.create({
@@ -82,6 +107,8 @@ export async function runSyncJob(
   });
   // Attachment (object storage) trouble is reported as a warning on a successful job, not as a failure.
   const attachmentReport: AttachmentSyncReport = { skipped: 0 };
+  // Conflict copies (git merge or import) are also a warning on a successful job: nothing was lost.
+  const conflictCopies: string[] = [];
 
   try {
     const dir = path.resolve(SCRATCH_ROOT, connectionId);
@@ -95,6 +122,7 @@ export async function runSyncJob(
       // remote-only files into `dir` itself, after export's prune has already run
       // against whatever was on disk *before* anything remote was fetched — so
       // there's nothing on disk yet for prune to wrongly delete).
+      const exportedAt = new Date();
       await exportNotesToDir(prisma, connection.vaultId, dir);
       const creds = decryptJson<WebdavCredentialsBlob>(connection.credentialsEncrypted);
       const cfg: WebdavConfig = {
@@ -106,7 +134,8 @@ export async function runSyncJob(
       const result = await webdavSyncCore(dir, cfg);
       pushed = result.pushed;
       pulled = result.pulled;
-      await importDirToNotes(prisma, connection.vaultId, dir, null);
+      const imported = await importDirToNotes(prisma, connection.vaultId, dir, null, { exportedAt });
+      conflictCopies.push(...imported.conflictCopies);
     } else {
       const creds = decryptJson<GitCredentialsBlob>(connection.credentialsEncrypted);
       const gitCreds: GitCredentials | null = creds.token ? { username: creds.username, token: creds.token } : null;
@@ -133,7 +162,9 @@ export async function runSyncJob(
       if (mode === "resolve-remote") {
         // Take the remote's content wholesale, then mirror it into the DB.
         await adoptRemoteTip(dir, remoteUrl, connection.branch, gitCreds, "hard");
-        await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
+        await importDirToNotes(prisma, connection.vaultId, dir, null, {
+          transform: await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport),
+        });
         pulled = 1;
       } else if (mode === "resolve-web") {
         // Keep the web's content: move to the remote tip but keep the DB export as the
@@ -150,6 +181,7 @@ export async function runSyncJob(
         );
         pushed = result.pushedCommit ? 1 : 0;
       } else {
+        const exportedAt = new Date();
         if (doPull) {
           await importNewNotesOnly(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
         }
@@ -167,25 +199,54 @@ export async function runSyncJob(
           { pull: true, push: doPush }
         );
         pushed = result.pushedCommit ? 1 : 0;
+        conflictCopies.push(...result.conflictCopies);
         // Pull-only never re-exports the DB, so the working tree is exactly the remote's.
         if (doPull) {
           // Re-scan: the pull may have brought new attachment files whose links the notes now reference.
-          await importDirToNotes(prisma, connection.vaultId, dir, null, await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport));
+          const imported = await importDirToNotes(prisma, connection.vaultId, dir, null, {
+            transform: await attachmentLinkTransform(prisma, connection.vaultId, dir, attachmentReport),
+            exportedAt,
+          });
+          conflictCopies.push(...imported.conflictCopies);
         }
       }
     }
 
     const status = "success" as const;
-    const warning = attachmentReport.problem
-      ? `Đã đồng bộ note; bỏ qua ${attachmentReport.skipped} file đính kèm: ${attachmentReport.problem}.`
-      : null;
+    const warnings: string[] = [];
+    if (conflictCopies.length > 0) {
+      const names = conflictCopies.slice(0, 5).join(", ") + (conflictCopies.length > 5 ? ", …" : "");
+      warnings.push(
+        `Web và repo cùng sửa một chỗ: giữ bản web, bản kia lưu thành ${conflictCopies.length} ghi chú "(conflict …)" để bạn so sánh (${names}).`
+      );
+    }
+    if (attachmentReport.problem) {
+      warnings.push(`Đã đồng bộ note; bỏ qua ${attachmentReport.skipped} file đính kèm: ${attachmentReport.problem}.`);
+    }
+    const warning = warnings.length > 0 ? warnings.join(" ") : null;
     await prisma.syncJob.update({
       where: { id: job.id },
-      data: { status, pushedCount: pushed, pulledCount: pulled, finishedAt: new Date(), errorMessage: warning },
+      data: {
+        status,
+        pushedCount: pushed,
+        pulledCount: pulled,
+        finishedAt: new Date(),
+        errorMessage: warning,
+        ...(conflictCopies.length > 0 ? { conflictFiles: conflictCopies } : {}),
+      },
     });
     await prisma.syncConnection.update({
       where: { id: connectionId },
-      data: { lastSyncedAt: new Date(), lastSyncStatus: { status, pushed, pulled, ...(warning ? { warning } : {}) } },
+      data: {
+        lastSyncedAt: new Date(),
+        lastSyncStatus: {
+          status,
+          pushed,
+          pulled,
+          ...(warning ? { warning } : {}),
+          ...(conflictCopies.length > 0 ? { conflictCopies } : {}),
+        },
+      },
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

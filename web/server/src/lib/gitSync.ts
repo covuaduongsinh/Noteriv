@@ -7,7 +7,7 @@
 // error text can't leak the token.
 
 import { spawn } from "node:child_process";
-import { writeFile, rm, mkdir, realpath } from "node:fs/promises";
+import { writeFile, rm, mkdir, realpath, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -147,6 +147,83 @@ async function rebaseInProgress(dir: string): Promise<boolean> {
   return existsSync(path.join(gitDir, "rebase-merge")) || existsSync(path.join(gitDir, "rebase-apply"));
 }
 
+async function mergeInProgress(dir: string): Promise<boolean> {
+  const r = await runGit(["rev-parse", "--git-dir"], dir);
+  const gitDir = r.success && r.stdout ? path.join(dir, r.stdout) : path.join(dir, ".git");
+  return existsSync(path.join(gitDir, "MERGE_HEAD"));
+}
+
+/**
+ * Sibling path for the losing side of a conflict: `notes/a.md` →
+ * `notes/a (conflict 2026-10-17 0153).md`, numbered if that is taken too. `taken`
+ * says whether a candidate path is already used (on disk, in the DB, …).
+ */
+export function conflictCopyPath(relPath: string, taken: (candidate: string) => boolean, now = new Date()): string {
+  const slash = relPath.lastIndexOf("/");
+  const dirPart = slash === -1 ? "" : relPath.slice(0, slash + 1);
+  const file = slash === -1 ? relPath : relPath.slice(slash + 1);
+  const dot = file.lastIndexOf(".");
+  const stem = dot > 0 ? file.slice(0, dot) : file;
+  const ext = dot > 0 ? file.slice(dot) : "";
+  const iso = now.toISOString();
+  const stamp = `${iso.slice(0, 10)} ${iso.slice(11, 13)}${iso.slice(14, 16)}`;
+  for (let n = 1; ; n++) {
+    const candidate = `${dirPart}${stem} (conflict ${stamp}${n > 1 ? ` ${n}` : ""})${ext}`;
+    if (!taken(candidate)) return candidate;
+  }
+}
+
+/**
+ * Resolves every unmerged path of an in-progress merge without losing either side:
+ * - both sides changed → the local (web) version stays at the path, the remote version
+ *   is written next to it as a conflict copy;
+ * - deleted locally, changed remotely → the deletion stands, the remote version becomes a conflict copy;
+ * - changed locally, deleted remotely → the local version stays.
+ * Returns the repo-relative paths of the conflict copies it created.
+ */
+async function resolveConflictsKeepBoth(dir: string): Promise<string[]> {
+  const unmerged = await runGit(["ls-files", "-u", "-z"], dir);
+  okOrThrow(unmerged);
+  const stagesByPath = new Map<string, Set<number>>();
+  for (const entry of unmerged.stdout.split("\0").filter(Boolean)) {
+    const tab = entry.indexOf("\t");
+    const stage = Number(entry.slice(0, tab).split(" ")[2]);
+    const p = entry.slice(tab + 1);
+    if (!stagesByPath.has(p)) stagesByPath.set(p, new Set());
+    stagesByPath.get(p)!.add(stage);
+  }
+
+  const copies: string[] = [];
+  const now = new Date();
+  for (const [p, stages] of stagesByPath) {
+    const full = path.join(dir, p.replace(/\//g, path.sep));
+    const hasOurs = stages.has(2);
+    const hasTheirs = stages.has(3);
+    if (hasTheirs) {
+      okOrThrow(await runGit(["checkout", "--theirs", "--", p], dir));
+      const copy = conflictCopyPath(p, (c) => existsSync(path.join(dir, c.replace(/\//g, path.sep))), now);
+      const copyFull = path.join(dir, copy.replace(/\//g, path.sep));
+      await mkdir(path.dirname(copyFull), { recursive: true });
+      await rename(full, copyFull);
+      okOrThrow(await runGit(["add", "--", copy], dir));
+      copies.push(copy);
+    }
+    if (hasOurs) {
+      okOrThrow(await runGit(["checkout", "--ours", "--", p], dir));
+      okOrThrow(await runGit(["add", "--", p], dir));
+    } else {
+      okOrThrow(await runGit(["rm", "--cached", "--quiet", "--ignore-unmatch", "--", p], dir));
+      await rm(full, { force: true });
+    }
+  }
+
+  const left = await runGit(["ls-files", "-u"], dir);
+  if (!left.success || left.stdout.length > 0) {
+    throw new Error("Sync paused: some conflicts could not be resolved automatically and need manual attention.");
+  }
+  return copies;
+}
+
 async function onBranch(dir: string): Promise<boolean> {
   return (await runGit(["symbolic-ref", "--quiet", "HEAD"], dir)).success;
 }
@@ -284,13 +361,20 @@ export interface GitSyncOptions {
 
 export interface GitSyncResult {
   pushedCommit: boolean;
+  /** Conflict copies created while merging remote changes (repo-relative paths). */
+  conflictCopies: string[];
 }
 
 /**
- * Core sync cycle: recover from a half-finished rebase, stash local changes,
- * fetch+rebase-pull, detect and bail cleanly on conflicts, commit, push.
+ * Core sync cycle: recover from a half-finished rebase/merge, commit the local state,
+ * fetch and merge the remote branch (git's 3-way merge combines edits to different
+ * parts of a note), keep both sides of any real conflict, commit, push.
  * Assumes `dir` already has the vault's current state materialized onto disk
  * (the caller exports DB notes into `dir` before calling this).
+ *
+ * Local changes are committed before merging rather than stashed: the old
+ * stash → pull --rebase → stash pop sequence ignored a failed pop, so when both sides
+ * edited the same note the conflict markers were committed, pushed and imported.
  */
 export async function gitSyncCore(
   dir: string,
@@ -301,40 +385,56 @@ export async function gitSyncCore(
 ): Promise<GitSyncResult> {
   const doPull = opts.pull !== false;
   const doPush = opts.push !== false;
+  const commitMessage = (changed: number) => (typeof message === "function" ? message(changed) : message);
 
   await assertIsOwnRepoRoot(dir);
 
   if (await rebaseInProgress(dir)) {
     await runGit(["rebase", "--abort"], dir);
   }
+  if (await mergeInProgress(dir)) {
+    await runGit(["merge", "--abort"], dir);
+  }
 
   const remoteR = await runGit(["remote", "get-url", "origin"], dir);
   const remote = remoteR.success ? remoteR.stdout : null;
 
+  let pushedCommit = false;
+  const conflictCopies: string[] = [];
+
+  /** Stages everything; commits if anything changed. Returns whether a commit was made. */
+  const commitAll = async (msg: (changed: number) => string): Promise<boolean> => {
+    okOrThrow(await runGit(["add", "-A"], dir));
+    const status = await runGit(["status", "--porcelain"], dir);
+    if (!status.success || status.stdout.length === 0) return false;
+    const changed = status.stdout.split("\n").filter(Boolean).length;
+    okOrThrow(await runGit(["commit", "-m", msg(changed)], dir));
+    return true;
+  };
+
   if (remote && doPull) {
     const pullUrl = effectiveUrl(remote, creds);
-    const hasChanges = await runGit(["status", "--porcelain"], dir);
-    const needsStash = hasChanges.success && hasChanges.stdout.length > 0;
-    if (needsStash) {
-      await runGit(["stash", "push", "-m", "noteriv-sync-stash"], dir);
+    if (doPush) {
+      // The working tree is the DB export: commit it so the merge below has a common base.
+      if (await commitAll(commitMessage)) pushedCommit = true;
+    } else {
+      // Nothing local is ever pushed in this mode; drop stray working-tree changes so the merge is clean.
+      await runGit(["reset", "--hard", "HEAD"], dir);
     }
 
-    await runGit(["fetch", pullUrl], dir, creds);
-    const pull = await runGit(["pull", "--rebase", pullUrl, branch], dir, creds);
-
-    if (!pull.success && (await rebaseInProgress(dir))) {
-      const unmerged = await runGit(["diff", "--name-only", "--diff-filter=U"], dir);
-      const files = unmerged.success ? unmerged.stdout.split("\n").map((l) => l.trim()).filter(Boolean) : [];
-      await runGit(["rebase", "--abort"], dir);
-      if (needsStash) await runGit(["stash", "pop"], dir);
-      throw new SyncConflictError(
-        `Sync paused: remote changes conflict with local edits and need manual resolution. ${pull.stderr}`,
-        files
-      );
-    }
-
-    if (needsStash) {
-      await runGit(["stash", "pop"], dir);
+    // An empty remote (no branch yet) fails here; there is simply nothing to merge.
+    const fetch = await runGit(["fetch", pullUrl, branch], dir, creds);
+    if (fetch.success) {
+      const merge = await runGit(["merge", "--no-edit", "FETCH_HEAD"], dir);
+      if (!merge.success) {
+        if (!(await mergeInProgress(dir))) {
+          throw new Error(`Sync paused: could not merge remote changes. ${merge.stderr}`);
+        }
+        conflictCopies.push(...(await resolveConflictsKeepBoth(dir)));
+        okOrThrow(
+          await runGit(["commit", "--no-edit", "-m", `Noteriv: merge remote changes (${conflictCopies.length} conflict copies)`], dir)
+        );
+      }
     }
   }
 
@@ -342,15 +442,9 @@ export async function gitSyncCore(
     throw new Error("Sync paused: repository is in a detached HEAD state and needs manual attention.");
   }
 
-  let pushedCommit = false;
   if (doPush) {
-    okOrThrow(await runGit(["add", "-A"], dir));
-    const status = await runGit(["status", "--porcelain"], dir);
-    if (status.success && status.stdout.length > 0) {
-      const changed = status.stdout.split("\n").filter(Boolean).length;
-      okOrThrow(await runGit(["commit", "-m", typeof message === "function" ? message(changed) : message], dir));
-      pushedCommit = true;
-    }
+    if (await commitAll(commitMessage)) pushedCommit = true;
+    if (conflictCopies.length > 0) pushedCommit = true;
 
     if (remote) {
       const push = await runGit(["push", "-u", effectiveUrl(remote, creds), branch], dir, creds);
@@ -368,7 +462,7 @@ export async function gitSyncCore(
     }
   }
 
-  return { pushedCommit };
+  return { pushedCommit, conflictCopies };
 }
 
 /**
@@ -388,6 +482,7 @@ export async function adoptRemoteTip(
 ): Promise<void> {
   await assertIsOwnRepoRoot(dir);
   if (await rebaseInProgress(dir)) await runGit(["rebase", "--abort"], dir);
+  if (await mergeInProgress(dir)) await runGit(["merge", "--abort"], dir);
   okOrThrow(await runGit(["fetch", effectiveUrl(remote, creds), branch], dir, creds));
   okOrThrow(await runGit(["reset", mode === "hard" ? "--hard" : "--mixed", "FETCH_HEAD"], dir));
 }

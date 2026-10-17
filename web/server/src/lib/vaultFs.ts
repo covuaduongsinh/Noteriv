@@ -6,6 +6,27 @@ import type { PrismaClient } from "@prisma/client";
 import { readdir, readFile, writeFile, mkdir, unlink } from "node:fs/promises";
 import path from "node:path";
 import { recomputeBacklinksForNote } from "./backlinks.js";
+import { snapshotBeforeOverwrite } from "./noteSnapshots.js";
+import { trashNote } from "./trash.js";
+import { conflictCopyPath } from "./gitSync.js";
+
+export interface ImportOptions {
+  transform?: (notePath: string, content: string) => string;
+  /**
+   * When the vault was exported for this sync. A note edited after this moment changed
+   * while the sync ran: its newer content is kept and the file's version becomes a
+   * conflict copy; a note created after it is never trashed for lacking a file.
+   * Omitted (e.g. "take remote"), the files simply win.
+   */
+  exportedAt?: Date;
+}
+
+export interface ImportReport {
+  /** Vault paths of notes created to hold content that would otherwise have been overwritten. */
+  conflictCopies: string[];
+  /** Notes moved to the trash because their file is gone. */
+  trashed: number;
+}
 
 /** Writes every note in the vault to `dir/<path>`, removing files for notes that no longer exist (unless `prune: false`). */
 export async function exportNotesToDir(
@@ -49,14 +70,21 @@ export async function exportNotesToDir(
   if (prune) await pruneRecurse(dir);
 }
 
-/** Reads every `.md` file in `dir` back into Postgres: upserts by path, deletes notes whose file is gone. */
+/**
+ * Reads every `.md` file in `dir` back into Postgres: updates notes by path (after a
+ * snapshot of the old content), creates notes for new files, and moves notes whose file
+ * is gone to the trash. Trashed notes are never touched, and nothing is hard-deleted.
+ */
 export async function importDirToNotes(
   prisma: PrismaClient,
   vaultId: string,
   dir: string,
   actorUserId: string | null,
-  transform: (notePath: string, content: string) => string = (_p, c) => c
-): Promise<void> {
+  opts: ImportOptions = {}
+): Promise<ImportReport> {
+  const transform = opts.transform ?? ((_p: string, c: string) => c);
+  const exportedAt = opts.exportedAt;
+  const report: ImportReport = { conflictCopies: [], trashed: 0 };
   const files: Array<{ rel: string; full: string }> = [];
   async function recurse(cur: string) {
     let entries;
@@ -77,38 +105,22 @@ export async function importDirToNotes(
   }
   await recurse(dir);
 
-  const existingNotes = await prisma.note.findMany({ where: { vaultId }, select: { id: true, path: true, content: true } });
-  const existingByPath = new Map(existingNotes.map((n) => [n.path, n]));
+  // Every path in the vault (trashed ones included) is unique, so conflict copies must avoid all of them.
+  const allNotes = await prisma.note.findMany({
+    where: { vaultId },
+    select: { id: true, path: true, content: true, deletedAt: true, createdAt: true, updatedAt: true },
+  });
+  const takenPaths = new Set(allNotes.map((n) => n.path));
+  for (const f of files) takenPaths.add(f.rel);
+  const liveByPath = new Map(allNotes.filter((n) => !n.deletedAt).map((n) => [n.path, n]));
   const existingFolders = await prisma.folder.findMany({ where: { vaultId }, select: { id: true, path: true } });
   const folderByPath = new Map(existingFolders.map((f) => [f.path, f.id]));
 
-  const seenPaths = new Set<string>();
-
-  for (const { rel, full } of files) {
-    seenPaths.add(rel);
-    const content = transform(rel, await readFile(full, "utf8"));
-    const existing = existingByPath.get(rel);
-
-    if (existing) {
-      if (existing.content !== content) {
-        await prisma.note.update({
-          where: { id: existing.id },
-          data: { content, sizeBytes: Buffer.byteLength(content, "utf8"), updatedById: actorUserId },
-        });
-        await recomputeBacklinksForNote(prisma, vaultId, existing.id, content);
-      }
-      continue;
-    }
-
-    // New file pulled from remote — ensure its folder chain exists, then create the note.
+  const createNote = async (rel: string, content: string) => {
     const lastSlash = rel.lastIndexOf("/");
     const name = lastSlash === -1 ? rel : rel.slice(lastSlash + 1);
     const folderPath = lastSlash === -1 ? null : rel.slice(0, lastSlash);
-    let folderId: string | null = null;
-    if (folderPath) {
-      folderId = await ensureFolderChain(prisma, vaultId, folderPath, folderByPath);
-    }
-
+    const folderId = folderPath ? await ensureFolderChain(prisma, vaultId, folderPath, folderByPath) : null;
     const created = await prisma.note.create({
       data: {
         vaultId,
@@ -121,15 +133,59 @@ export async function importDirToNotes(
         updatedById: actorUserId,
       },
     });
+    takenPaths.add(rel);
     await recomputeBacklinksForNote(prisma, vaultId, created.id, content);
+  };
+  const createConflictCopy = async (rel: string, content: string) => {
+    const copy = conflictCopyPath(rel, (c) => takenPaths.has(c));
+    await createNote(copy, content);
+    report.conflictCopies.push(copy);
+  };
+
+  const seenPaths = new Set<string>();
+
+  for (const { rel, full } of files) {
+    seenPaths.add(rel);
+    const content = transform(rel, await readFile(full, "utf8"));
+    const existing = liveByPath.get(rel);
+
+    if (existing) {
+      if (existing.content === content) continue;
+      if (exportedAt && existing.updatedAt > exportedAt) {
+        // Edited on the web while this sync ran: keep that edit, save the file's version beside it.
+        await createConflictCopy(rel, content);
+        continue;
+      }
+      await snapshotBeforeOverwrite(prisma, existing.id, existing.content);
+      await prisma.note.update({
+        where: { id: existing.id },
+        data: { content, sizeBytes: Buffer.byteLength(content, "utf8"), updatedById: actorUserId },
+      });
+      await recomputeBacklinksForNote(prisma, vaultId, existing.id, content);
+      continue;
+    }
+
+    if (allNotes.some((n) => n.path === rel)) {
+      // The path belongs to a note in the trash: leave it there. (Git already turns "trashed on
+      // the web, edited remotely" into a conflict copy during the merge; WebDAV, which has no
+      // deletion tracking yet, would otherwise resurrect or duplicate the note on every sync.)
+      continue;
+    }
+
+    // New file pulled from remote — ensure its folder chain exists, then create the note.
+    await createNote(rel, content);
   }
 
-  // Anything in the DB that wasn't on disk after this pull was deleted remotely.
-  for (const note of existingNotes) {
-    if (!seenPaths.has(note.path)) {
-      await prisma.note.delete({ where: { id: note.id } }).catch(() => undefined);
-    }
+  // A live note with no file was deleted remotely: move it to the trash (restorable), never hard-delete.
+  for (const note of liveByPath.values()) {
+    if (seenPaths.has(note.path)) continue;
+    if (exportedAt && note.createdAt > exportedAt) continue; // created while this sync ran
+    await snapshotBeforeOverwrite(prisma, note.id, note.content);
+    await trashNote(prisma, note.id);
+    report.trashed++;
   }
+
+  return report;
 }
 
 /**
@@ -175,6 +231,7 @@ export async function importNewNotesOnly(
   await recurse(dir);
   if (files.length === 0) return;
 
+  // Trashed notes count too: their paths are still taken (vaultId+path is unique).
   const existingNotes = await prisma.note.findMany({ where: { vaultId }, select: { path: true } });
   const existingPaths = new Set(existingNotes.map((n) => n.path));
   const existingFolders = await prisma.folder.findMany({ where: { vaultId }, select: { id: true, path: true } });

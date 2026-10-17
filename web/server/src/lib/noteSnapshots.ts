@@ -38,6 +38,31 @@ export async function captureSnapshots(prisma: PrismaClient): Promise<void> {
   }
 }
 
+/**
+ * Saves the note's current content as a snapshot (unless the latest snapshot already
+ * holds it) before something other than the user overwrites or trashes the note — a
+ * sync import, for instance — so File Recovery can always bring it back.
+ */
+export async function snapshotBeforeOverwrite(prisma: PrismaClient, noteId: string, content: string): Promise<void> {
+  if (!content) return;
+  const latest = await prisma.noteSnapshot.findFirst({
+    where: { noteId },
+    orderBy: { createdAt: "desc" },
+    select: { content: true },
+  });
+  if (latest && latest.content === content) return;
+  await prisma.noteSnapshot.create({ data: { noteId, content } });
+  const toPrune = await prisma.noteSnapshot.findMany({
+    where: { noteId },
+    orderBy: { createdAt: "desc" },
+    skip: MAX_SNAPSHOTS_PER_NOTE,
+    select: { id: true },
+  });
+  if (toPrune.length > 0) {
+    await prisma.noteSnapshot.deleteMany({ where: { id: { in: toPrune.map((s) => s.id) } } });
+  }
+}
+
 /** Metadata only (no content) — mirrors desktop's getSnapshots() shape. */
 export async function listSnapshots(prisma: PrismaClient, noteId: string) {
   const rows = await prisma.noteSnapshot.findMany({

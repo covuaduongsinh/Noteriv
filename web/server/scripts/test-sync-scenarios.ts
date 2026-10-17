@@ -1,8 +1,8 @@
 // Manual end-to-end check of the git sync engine against LOCAL bare repos (no
 // network, no GitHub). Run: npx tsx scripts/test-sync-scenarios.ts
-// Covers the three scenarios the sync code's history demands: empty remote,
-// remote with conflicting commits, and several two-way rounds — plus direction
-// modes, commit templates, .gitignore, conflict resolution and the askpass helper.
+// Covers empty remote, several two-way rounds, both sides editing (merge, conflict
+// copies, trash, snapshots, edits during a sync, concurrent syncs) — plus direction
+// modes, commit templates, .gitignore, explicit resolution modes and the askpass helper.
 // Uses the dev database (DATABASE_URL) and removes everything it creates.
 
 import { PrismaClient } from "@prisma/client";
@@ -12,7 +12,8 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { encryptJson } from "../src/lib/crypto.js";
 import { runSyncJob, formatCommitMessage } from "../src/lib/syncRunner.js";
-import { askpassBody } from "../src/lib/gitSync.js";
+import { askpassBody, conflictCopyPath } from "../src/lib/gitSync.js";
+import { importDirToNotes } from "../src/lib/vaultFs.js";
 import { putObject, makeStorageKey, deleteObject } from "../src/lib/attachments.js";
 import { toRelativeLinks, fromRelativeLinks } from "../src/lib/attachmentLinks.js";
 
@@ -91,45 +92,129 @@ async function main() {
   git(c1, "pull");
   check("round: nested folder note pushed", existsSync(path.join(c1, "sub", "d.md")));
 
-  // --- 3. conflict then resolve (keep web) ---
+  // --- 3. both sides edit: merge, keep both, never lose content ---
+  const liveNotes = () => prisma.note.findMany({ where: { vaultId: vault.id, deletedAt: null }, select: { path: true, content: true } });
+  const copiesOf = async (stem: string) => (await liveNotes()).filter((n) => n.path.startsWith(`${stem} (conflict `));
+  const noMarkers = async () => (await liveNotes()).every((n) => !/^(<<<<<<<|>>>>>>>) /m.test(n.content));
+
+  // 3a. same line edited on both sides
+  git(c1, "pull");
   await prisma.note.updateMany({ where: { vaultId: vault.id, path: "a.md" }, data: { content: "# A\nWEB SIDE" } });
   writeFileSync(path.join(c1, "a.md"), "# A\nREMOTE SIDE");
   push(c1, "remote edits a");
-  // A plain sync lets the DB win on overlapping paths, so force a *git-level* conflict:
-  // commit locally in the scratch copy with content the remote also changed.
-  const scratch = path.resolve(process.env.SYNC_SCRATCH_DIR ?? path.join(tmpdir(), "noteriv-sync-scratch"), conn.id);
-  writeFileSync(path.join(scratch, "a.md"), "# A\nLOCAL COMMITTED");
-  git(scratch, "add", "-A");
-  git(scratch, "commit", "-m", "local divergent commit");
-  let conflicted = false;
-  try {
-    await runSyncJob(prisma, conn.id);
-  } catch {
-    conflicted = true;
-  }
-  const job = await lastJob();
+  await runSyncJob(prisma, conn.id);
+  const aCopies = await copiesOf("a");
+  check("same line: job success (no pause)", (await lastJob())?.status === "success", JSON.stringify(await lastJob()));
+  check("same line: note keeps the web version", (await noteContent("a.md")) === "# A\nWEB SIDE", String(await noteContent("a.md")));
+  check("same line: remote version saved as a conflict copy", aCopies.length === 1 && aCopies[0].content === "# A\nREMOTE SIDE", JSON.stringify(aCopies));
+  check("same line: no conflict markers in any note", await noMarkers());
+  check("same line: job reports the copy", ((await lastJob())?.errorMessage ?? "").includes("conflict"), String((await lastJob())?.errorMessage));
+  git(c1, "pull");
+  // (the test clone may check files out with CRLF on Windows)
+  const repoA = readFileSync(path.join(c1, "a.md"), "utf8").replace(/\r\n/g, "\n");
   check(
-    "conflict: job marked conflict with file list",
-    conflicted && job?.status === "conflict" && Array.isArray(job?.conflictFiles) && (job.conflictFiles as string[]).includes("a.md"),
-    JSON.stringify(job)
+    "same line: repo has web version and the copy",
+    repoA === "# A\nWEB SIDE" && aCopies.every((c) => existsSync(path.join(c1, c.path))),
+    `${JSON.stringify(repoA)} copies=${JSON.stringify(aCopies.map((c) => [c.path, existsSync(path.join(c1, c.path))]))}`
   );
 
+  // 3b. different parts edited → merged automatically, no copy
+  await note("g.md", "line 1\nline 2\nline 3\nline 4\nline 5\n");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  await prisma.note.updateMany({ where: { vaultId: vault.id, path: "g.md" }, data: { content: "line 1 WEB\nline 2\nline 3\nline 4\nline 5\n" } });
+  writeFileSync(path.join(c1, "g.md"), "line 1\nline 2\nline 3\nline 4\nline 5 REMOTE\n");
+  push(c1, "remote edits g end");
+  await runSyncJob(prisma, conn.id);
+  check("different parts: both edits merged", (await noteContent("g.md")) === "line 1 WEB\nline 2\nline 3\nline 4\nline 5 REMOTE\n", String(await noteContent("g.md")));
+  check("different parts: no conflict copy", (await copiesOf("g")).length === 0);
+
+  // 3c. trashed on the web, edited remotely → stays trashed, remote edit kept as a copy
+  await note("h.md", "# H\noriginal");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  await prisma.note.updateMany({ where: { vaultId: vault.id, path: "h.md" }, data: { deletedAt: new Date() } });
+  writeFileSync(path.join(c1, "h.md"), "# H\nremote edit");
+  push(c1, "remote edits h");
+  await runSyncJob(prisma, conn.id);
+  const h = await prisma.note.findFirst({ where: { vaultId: vault.id, path: "h.md" } });
+  check("trash vs remote edit: note still in the trash", !!h && h.deletedAt !== null, JSON.stringify(h));
+  check("trash vs remote edit: remote edit kept as a copy", (await copiesOf("h")).some((c) => c.content === "# H\nremote edit"));
+
+  // 3d. deleted remotely, edited on the web → web version stays
+  await note("i.md", "# I\noriginal");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  await prisma.note.updateMany({ where: { vaultId: vault.id, path: "i.md" }, data: { content: "# I\nweb edit" } });
+  git(c1, "rm", "-q", "i.md");
+  push(c1, "remote deletes i");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  check("remote delete vs web edit: web version kept", (await noteContent("i.md")) === "# I\nweb edit" && existsSync(path.join(c1, "i.md")));
+
+  // 3e. deleted remotely, untouched on the web → moved to the trash, not hard-deleted; snapshot kept
+  await note("j.md", "# J\nkeep me");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  git(c1, "rm", "-q", "j.md");
+  push(c1, "remote deletes j");
+  await runSyncJob(prisma, conn.id);
+  const j = await prisma.note.findFirst({ where: { vaultId: vault.id, path: "j.md" } });
+  check("remote delete: note moved to the trash (restorable)", !!j && j.deletedAt !== null, JSON.stringify(j));
+
+  // 3f. the note trashed in round 2 (b.md) survived every sync since
+  const b = await prisma.note.findFirst({ where: { vaultId: vault.id, path: "b.md" } });
+  check("trashed note survives later syncs", !!b && b.deletedAt !== null && b.content === "# B\ntwo", JSON.stringify(b));
+
+  // 3g. remote edit overwrites an untouched note → the old content is a snapshot
+  await note("k.md", "# K\nbefore");
+  await runSyncJob(prisma, conn.id);
+  git(c1, "pull");
+  writeFileSync(path.join(c1, "k.md"), "# K\nafter");
+  push(c1, "remote edits k");
+  await runSyncJob(prisma, conn.id);
+  const k = await prisma.note.findFirst({ where: { vaultId: vault.id, path: "k.md" } });
+  const kSnap = k ? await prisma.noteSnapshot.findFirst({ where: { noteId: k.id, content: "# K\nbefore" } }) : null;
+  check("overwrite: remote content imported", k?.content === "# K\nafter");
+  check("overwrite: previous content kept as a snapshot", !!kSnap);
+
+  // 3h. note edited while a sync runs → the edit is kept, the file's version becomes a copy
+  // (own vault: the directory below holds only w.md, so every other note would look deleted remotely)
+  const vault2 = await prisma.vault.create({ data: { name: "sync-test-window", workspaceId: ws.id } });
+  const window = path.join(root, "window");
+  mkdirSync(window, { recursive: true });
+  const exportedAt = new Date(Date.now() - 60_000);
+  await prisma.note.create({ data: { vaultId: vault2.id, name: "w.md", path: "w.md", content: "# W\nedited during sync", sizeBytes: 1 } });
+  await prisma.note.create({ data: { vaultId: vault2.id, name: "new.md", path: "new.md", content: "# created during sync", sizeBytes: 1 } });
+  writeFileSync(path.join(window, "w.md"), "# W\nfrom file");
+  const report = await importDirToNotes(prisma, vault2.id, window, null, { exportedAt });
+  const v2 = await prisma.note.findMany({ where: { vaultId: vault2.id, deletedAt: null }, select: { path: true, content: true } });
+  check("edit during sync: web edit kept", v2.find((n) => n.path === "w.md")?.content === "# W\nedited during sync", JSON.stringify(v2));
+  check(
+    "edit during sync: file version saved as a copy",
+    report.conflictCopies.length === 1 && v2.some((n) => n.path.startsWith("w (conflict ") && n.content === "# W\nfrom file"),
+    JSON.stringify(report)
+  );
+  check("edit during sync: note created after export (no file) is not trashed", report.trashed === 0 && v2.some((n) => n.path === "new.md"), JSON.stringify(report));
+  await prisma.vault.delete({ where: { id: vault2.id } });
+
+  // 3i. two syncs of one connection at once → one runs, the other is skipped
+  const both = await Promise.all([runSyncJob(prisma, conn.id), runSyncJob(prisma, conn.id)]);
+  check("concurrent syncs: one skipped", both.includes("done") && both.includes("skipped"), JSON.stringify(both));
+  check("concurrent syncs: lock released", (await prisma.syncConnection.findUnique({ where: { id: conn.id } }))?.syncLockedAt === null);
+
+  // --- 4. explicit resolution modes still work ---
+  git(c1, "pull");
+  await prisma.note.updateMany({ where: { vaultId: vault.id, path: "a.md" }, data: { content: "# A\nWEB FORCED" } });
+  writeFileSync(path.join(c1, "a.md"), "# A\nREMOTE FORCED");
+  push(c1, "remote edits a again");
   await runSyncJob(prisma, conn.id, "resolve-web");
   git(c1, "pull");
-  check("resolve-web: remote now carries web content (fast-forward, no force)", readFileSync(path.join(c1, "a.md"), "utf8").includes("WEB SIDE"));
+  check("resolve-web: remote now carries web content (no force push)", readFileSync(path.join(c1, "a.md"), "utf8").includes("WEB FORCED"));
   check("resolve-web: job success", (await lastJob())?.status === "success");
 
-  // --- 4. resolve-remote ---
   writeFileSync(path.join(c1, "a.md"), "# A\nREMOTE WINS");
   push(c1, "remote edit 2");
-  writeFileSync(path.join(scratch, "a.md"), "# A\nLOCAL DIVERGE 2");
-  git(scratch, "add", "-A");
-  git(scratch, "commit", "-m", "local divergent 2");
-  try {
-    await runSyncJob(prisma, conn.id);
-  } catch {
-    /* expected conflict */
-  }
   await runSyncJob(prisma, conn.id, "resolve-remote");
   check("resolve-remote: DB took remote content", ((await noteContent("a.md")) ?? "").includes("REMOTE WINS"), String(await noteContent("a.md")));
 
@@ -189,6 +274,12 @@ async function main() {
 
   // --- 7. helpers ---
   check("commit template tokens", formatCommitMessage("x {count} {date}", 3, new Date("2026-01-02T03:04:05Z")) === "x 3 2026-01-02");
+  const at = new Date("2026-01-02T03:04:05Z");
+  check("conflict copy name", conflictCopyPath("sub/n.md", () => false, at) === "sub/n (conflict 2026-01-02 0304).md");
+  check(
+    "conflict copy name: numbered when taken",
+    conflictCopyPath("n.md", (c) => c === "n (conflict 2026-01-02 0304).md", at) === "n (conflict 2026-01-02 0304 2).md"
+  );
   const body = askpassBody({ username: "me", token: "tok'en" }, false);
   const script = path.join(root, "askpass.sh");
   writeFileSync(script, body, { mode: 0o700 });
