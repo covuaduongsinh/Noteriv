@@ -106,7 +106,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 
 | Chặng | Trạng thái | Ngày | Ghi chú |
 |---|---|---|---|
-| 1 Hợp nhất nhánh | Chưa làm | | |
+| 1 Hợp nhất nhánh | Đang làm (1.1, 1.2 xong) | 2026-10-17 | Production chạy Giai đoạn 1–2, tag `v-core-plugins-2026-10-17` |
 | 2 Định vị lại | Chưa làm | | |
 | 3 Rà soát, hoàn thiện | Chưa làm | | |
 | 4 Quốc tế hoá, người mới | Chưa làm | | |
