@@ -9,6 +9,7 @@ import {
   unregisterCodeBlockProcessor,
 } from "@noteriv/core/markdown-code-block-registry";
 import { listVaultEntries } from "../core-plugin-host";
+import { t } from "../../i18n";
 import { mountMirror, type MirrorEvent } from "./mirror";
 import type {
   EditorBridge,
@@ -55,10 +56,13 @@ export interface SandboxHostLabels {
   pluginError: (pluginId: string, error: string) => string;
 }
 
-const DEFAULT_LABELS: SandboxHostLabels = {
-  renderFailed: "The plugin could not render this block.",
-  pluginError: (pluginId, error) => `Plugin "${pluginId}" failed: ${error}`,
-};
+/** Defaults from the i18n catalog, read when a message is shown so a language change applies to the next one. */
+function labelsOf(labels: Partial<SandboxHostLabels> | undefined): SandboxHostLabels {
+  return {
+    renderFailed: labels?.renderFailed ?? t("plugins.sandbox.renderFailed"),
+    pluginError: labels?.pluginError ?? ((pluginId, error) => t("plugins.sandbox.pluginError", { id: pluginId, error })),
+  };
+}
 
 export interface SandboxPluginHostOptions {
   /** URL of plugin-sandbox.html as the app serves it (both apps: `/plugin-sandbox.html`). */
@@ -98,9 +102,6 @@ const permsKeyOf = (p: SandboxPluginRecord) => JSON.stringify(p.permissions.slic
 export function useSandboxPluginHost(options: SandboxPluginHostOptions) {
   const optsRef = useRef(options);
   optsRef.current = options;
-  const text = { ...DEFAULT_LABELS, ...options.labels };
-  const textRef = useRef(text);
-  textRef.current = text;
   const { installed } = options;
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -179,7 +180,7 @@ export function useSandboxPluginHost(options: SandboxPluginHostOptions) {
         mirror.update({ html: '<div data-nrv-pending="1" style="opacity:.6;font-size:12px">…</div>', css: "" });
         renderCodeBlock(pluginDbId, language, source).then((r) => {
           if (disposed) return;
-          const fail = `<div style="color:#f38ba8;font-size:12px">${textRef.current.renderFailed}</div>`;
+          const fail = `<div style="color:#f38ba8;font-size:12px">${labelsOf(optsRef.current.labels).renderFailed}</div>`;
           mirror.update(r ?? { html: fail, css: "" });
         });
       }
@@ -501,7 +502,7 @@ export function useSandboxPluginHost(options: SandboxPluginHostOptions) {
 
       if (data.type === "noteriv:boot-result" && data.ok === false) {
         const key = `${loaded.dbId}:boot-error`;
-        setNotices((prev) => [...prev.filter((n) => n.key !== key), { key, message: textRef.current.pluginError(loaded.pluginId, String(data.error)) }]);
+        setNotices((prev) => [...prev.filter((n) => n.key !== key), { key, message: labelsOf(optsRef.current.labels).pluginError(loaded.pluginId, String(data.error)) }]);
       }
 
       if (data.type === "noteriv:log" && data.level === "error") {

@@ -3,6 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import { diffStrings } from "@noteriv/core/note-diff";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 export interface ConflictLabels {
   /** "{original}" and "{stamp}" are replaced. */
@@ -19,19 +21,19 @@ export interface ConflictLabels {
   working: string;
 }
 
-const DEFAULT_LABELS: ConflictLabels = {
-  banner: "This is a conflict copy of {original}: the other version, saved by sync on {stamp} (UTC) when both sides had changed it.",
-  compare: "Compare",
-  hideCompare: "Hide comparison",
-  keepOriginal: "Keep the original (delete this copy)",
-  useThisVersion: "Use this version (replace the original)",
-  keepBoth: "Keep both",
-  originalMissing: "The original note no longer exists. This copy is now an ordinary note.",
-  legendOriginal: "only in the original",
-  legendThis: "only in this copy",
-  identical: "Both versions are identical.",
-  working: "Working…",
-};
+const defaultLabels = (): ConflictLabels => ({
+  banner: t("panels.conflict.banner"),
+  compare: t("panels.conflict.compare"),
+  hideCompare: t("panels.conflict.hideCompare"),
+  keepOriginal: t("panels.conflict.keepOriginal"),
+  useThisVersion: t("panels.conflict.useThisVersion"),
+  keepBoth: t("panels.conflict.keepBoth"),
+  originalMissing: t("panels.conflict.originalMissing"),
+  legendOriginal: t("panels.conflict.legendOriginal"),
+  legendThis: t("panels.conflict.legendThis"),
+  identical: t("panels.conflict.identical"),
+  working: t("panels.conflict.working"),
+});
 
 export interface ConflictBannerProps {
   /** Path and current content of the open note (shown only when it is a conflict copy). */
@@ -51,7 +53,8 @@ export interface ConflictBannerProps {
  * and resolves the conflict in one click. Renders nothing for an ordinary note.
  */
 export default function ConflictBanner({ path, content, loadOriginal, onKeepOriginal, onUseThisVersion, labels }: ConflictBannerProps) {
-  const t = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   const info = useMemo(() => parseConflictCopy(path), [path]);
   const [open, setOpen] = useState(false);
   const [dismissed, setDismissed] = useState(false);
@@ -110,38 +113,38 @@ export default function ConflictBanner({ path, content, loadOriginal, onKeepOrig
   if (original === null) {
     return (
       <div style={box} data-testid="conflict-banner">
-        {t.originalMissing}
+        {text.originalMissing}
       </div>
     );
   }
 
   return (
     <div style={box} data-testid="conflict-banner">
-      <div>{t.banner.replace("{original}", info.originalPath).replace("{stamp}", info.stamp)}</div>
+      <div>{text.banner.replace("{original}", info.originalPath).replace("{stamp}", info.stamp)}</div>
       <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
         <button type="button" style={btn} disabled={busy || original === undefined} onClick={() => setOpen((v) => !v)}>
-          {open ? t.hideCompare : t.compare}
+          {open ? text.hideCompare : text.compare}
         </button>
         <button type="button" style={btn} disabled={busy} onClick={() => run(onKeepOriginal)}>
-          {t.keepOriginal}
+          {text.keepOriginal}
         </button>
         <button type="button" style={btn} disabled={busy || original === undefined} onClick={() => run(() => onUseThisVersion(info.originalPath))}>
-          {t.useThisVersion}
+          {text.useThisVersion}
         </button>
         <button type="button" style={btn} disabled={busy} onClick={() => setDismissed(true)}>
-          {t.keepBoth}
+          {text.keepBoth}
         </button>
-        {busy && <span style={{ color: "var(--text-muted)", alignSelf: "center" }}>{t.working}</span>}
+        {busy && <span style={{ color: "var(--text-muted)", alignSelf: "center" }}>{text.working}</span>}
       </div>
       {diff && (
         <div style={{ marginTop: 8 }}>
           <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-            <span style={{ color: "var(--red, #e06c75)" }}>− {t.legendOriginal}</span>
+            <span style={{ color: "var(--red, #e06c75)" }}>− {text.legendOriginal}</span>
             {"  ·  "}
-            <span style={{ color: "var(--green, #98c379)" }}>+ {t.legendThis}</span>
+            <span style={{ color: "var(--green, #98c379)" }}>+ {text.legendThis}</span>
           </div>
           {diff.every((l) => l.type === "same") ? (
-            <div style={{ color: "var(--text-muted)" }}>{t.identical}</div>
+            <div style={{ color: "var(--text-muted)" }}>{text.identical}</div>
           ) : (
             <pre
               data-testid="conflict-diff"

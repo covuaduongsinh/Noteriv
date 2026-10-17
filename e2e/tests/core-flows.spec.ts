@@ -134,6 +134,24 @@ test("switching a core plugin on adds its feature", async () => {
   await expect(page.getByText(/^\d+ từ$/).first()).toBeVisible();
 });
 
+test("the interface switches to English (developer override until the Language picker exists)", async () => {
+  // Stage 4: the web app is Vietnamese by default for now; `noteriv.locale.dev` tries another catalog.
+  const other = await context.newPage();
+  await other.goto(page.url());
+  await other.evaluate(() => localStorage.setItem("noteriv.locale.dev", "en"));
+  try {
+    await other.reload();
+    await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
+    await expect(other.locator("html")).toHaveAttribute("lang", "en");
+    await expect(other.getByText(/^\d+ words?$/).first()).toBeVisible(); // core plugin text
+    await other.getByTitle("Tìm trong vault").click(); // (the ribbon is not in the catalog yet)
+    await expect(other.getByPlaceholder("Search across all notes…")).toBeVisible(); // shared panel text
+  } finally {
+    await other.evaluate(() => localStorage.removeItem("noteriv.locale.dev"));
+    await other.close();
+  }
+});
+
 test("another open tab follows a core plugin switch without reloading", async () => {
   const other = await context.newPage();
   await other.goto(page.url());

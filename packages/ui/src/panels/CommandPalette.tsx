@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { formatHotkey } from "./format-hotkey";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 /** A palette row: a built-in action, or a plugin command ("plugin:<dbId>:<cmdId>"). */
 export interface PaletteItem<A extends string = string> {
@@ -17,7 +19,11 @@ export interface CommandPaletteLabels {
   empty: string;
 }
 
-const DEFAULT_LABELS: CommandPaletteLabels = { placeholder: "Type a command...", recent: "Recent", empty: "No commands found" };
+const defaultLabels = (): CommandPaletteLabels => ({
+  placeholder: t("panels.commandPalette.placeholder"),
+  recent: t("panels.commandPalette.recent"),
+  empty: t("panels.commandPalette.empty"),
+});
 
 export interface CommandPaletteProps<A extends string = string> {
   hotkeys: PaletteItem<A>[];
@@ -37,7 +43,8 @@ export interface CommandPaletteProps<A extends string = string> {
  * (Ctrl/Cmd+K), which switches notes.
  */
 export default function CommandPalette<A extends string = string>({ hotkeys: builtIn, extraItems = [], platform, recentActions = [], onExecute, onRecent, onClose, labels }: CommandPaletteProps<A>) {
-  const text = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   const hotkeys: PaletteItem<string>[] = useMemo(() => [...builtIn, ...extraItems], [builtIn, extraItems]);
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);

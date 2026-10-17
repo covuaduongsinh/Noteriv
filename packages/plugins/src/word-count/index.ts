@@ -3,33 +3,15 @@ import { countText, type TextStats } from "./count";
 
 export { countText, type TextStats };
 
-// Web speaks Vietnamese, desktop English (same convention as the shared panels' labels).
-const TEXT = {
-  web: {
-    words: (n: number) => `${n} từ`,
-    title: (s: TextStats) => `${s.characters} ký tự · khoảng ${s.readingMinutes} phút đọc`,
-    command: "Đếm từ: thống kê ghi chú",
-    ribbon: "Đếm từ",
-    notice: (s: TextStats) => `${s.words} từ · ${s.characters} ký tự · khoảng ${s.readingMinutes} phút đọc`,
-    noNote: "Chưa mở ghi chú nào.",
-  },
-  desktop: {
-    words: (n: number) => `${n} ${n === 1 ? "word" : "words"}`,
-    title: (s: TextStats) => `${s.characters} characters · ~${s.readingMinutes} min read`,
-    command: "Word count: show note statistics",
-    ribbon: "Word count",
-    notice: (s: TextStats) => `${s.words} words · ${s.characters} characters · ~${s.readingMinutes} min read`,
-    noNote: "No note is open.",
-  },
-};
-
 const ICON =
   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M3 8h10M3 12h6" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg>';
 
 /** Word count: status bar count for the open note, plus a command and a ribbon button with full statistics. */
 const wordCount: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
+    // Text lives in the shared catalog under plugins.wordCount (packages/ui/src/i18n/locales).
+    const t = (key: string, params?: Record<string, string | number>) => api.i18n.t(`plugins.wordCount.${key}`, params);
+    const stats = (s: TextStats) => ({ count: s.words, characters: s.characters, minutes: s.readingMinutes });
 
     const update = (content?: unknown) => {
       const text = typeof content === "string" ? content : api.editor.getContent();
@@ -37,20 +19,20 @@ const wordCount: CorePlugin = {
         api.ui.removeStatusBarItem("count");
         return;
       }
-      const stats = countText(text);
-      api.ui.addStatusBarItem({ id: "count", text: t.words(stats.words), title: t.title(stats) });
+      const counted = stats(countText(text));
+      api.ui.addStatusBarItem({ id: "count", text: t("words", counted), title: t("title", counted) });
     };
 
     const show = () => {
       const text = api.editor.getContent();
-      api.ui.showNotice(text === null ? t.noNote : t.notice(countText(text)));
+      api.ui.showNotice(text === null ? t("noNote") : t("notice", stats(countText(text))));
     };
 
     update();
     api.events.on("editor-change", update);
     api.events.on("file-open", () => update());
-    api.ui.addCommand({ id: "show", name: t.command, hotkey: "Mod+Alt+W", callback: show });
-    api.ui.addRibbonIcon({ id: "show", title: t.ribbon, icon: ICON, onClick: show });
+    api.ui.addCommand({ id: "show", name: t("command"), hotkey: "Mod+Alt+W", callback: show });
+    api.ui.addRibbonIcon({ id: "show", title: t("ribbon"), icon: ICON, onClick: show });
   },
 };
 

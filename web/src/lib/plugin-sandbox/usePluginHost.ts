@@ -52,10 +52,6 @@ export function usePluginHost(
       await webApi.plugins.update(vaultId, id, { settings });
       refreshInstalled();
     },
-    labels: {
-      renderFailed: "Plugin không render được khối này.",
-      pluginError: (pluginId, error) => `Plugin "${pluginId}" lỗi: ${error}`,
-    },
   });
 
   return { ...host, installed, refreshInstalled };

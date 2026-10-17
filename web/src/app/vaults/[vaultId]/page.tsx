@@ -5,21 +5,10 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { EditorView } from "@codemirror/view";
 import SplitPane from "@/components/SplitPane";
-import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch, type ConflictLabels } from "@noteriv/ui/panels";
-
-const CONFLICT_LABELS_VI: ConflictLabels = {
-  banner: "Đây là bản xung đột của {original}: phiên bản kia, được sync lưu lại lúc {stamp} (UTC) vì cả hai nơi cùng sửa ghi chú này.",
-  compare: "So sánh",
-  hideCompare: "Ẩn so sánh",
-  keepOriginal: "Giữ bản gốc (xoá bản này)",
-  useThisVersion: "Dùng bản này (thay bản gốc)",
-  keepBoth: "Giữ cả hai",
-  originalMissing: "Ghi chú gốc không còn nữa. Bản này giờ là một ghi chú bình thường.",
-  legendOriginal: "chỉ có trong bản gốc",
-  legendThis: "chỉ có trong bản này",
-  identical: "Hai bản giống hệt nhau.",
-  working: "Đang xử lý…",
-};
+import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch } from "@noteriv/ui/panels";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
+import { applyLanguage } from "@/lib/i18n";
 import CollabPanel from "@/components/CollabPanel";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -149,6 +138,7 @@ interface OpenTab {
 }
 
 export default function VaultPage() {
+  useLocale(); // re-render on a language change (labels passed to shared panels)
   const params = useParams<{ vaultId: string }>();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -815,6 +805,7 @@ export default function VaultPage() {
       .then((prefs) => {
         const bindings = mergeHotkeys(prefs.hotkeys);
         const settings = { ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings };
+        applyLanguage(settings.language);
         savedPreferencesRef.current = JSON.stringify({ hotkeys: hotkeysToOverrideMap(bindings), editorSettings: settings });
         setHotkeyBindings(bindings);
         setEditorSettingsState(settings);
@@ -1335,7 +1326,6 @@ export default function VaultPage() {
           loadOriginal={loadConflictOriginal}
           onKeepOriginal={() => discardConflictCopy(tab.noteId)}
           onUseThisVersion={(originalPath) => useConflictCopy(tab, originalPath)}
-          labels={CONFLICT_LABELS_VI}
         />
         {mode !== "source" && (
           <FrontmatterEditor
@@ -1571,12 +1561,7 @@ export default function VaultPage() {
                       onNoteSelect={openNote}
                       onBookmarkRemove={handleToggleBookmark}
                       onClose={() => setBookmarksVisible(false)}
-                      labels={{
-                        empty: "Chưa có bookmark nào.",
-                        hint: "Bấm icon bookmark trên thanh công cụ note để đánh dấu.",
-                        close: "Đóng",
-                        remove: "Bỏ bookmark",
-                      }}
+                      labels={{ hint: t("web.bookmarks.hint") }}
                     />
                   </div>
                 )}
@@ -1673,7 +1658,6 @@ export default function VaultPage() {
             openNote(ref.id);
           }}
           onClose={() => setSearchVisible(false)}
-          labels={{ placeholder: "Tìm trong nội dung các note…", noResults: "Không có kết quả", hint: "Gõ để tìm trong toàn bộ vault" }}
         />
       )}
 
@@ -1716,7 +1700,6 @@ export default function VaultPage() {
 
       {commandPaletteOpen && (
         <CommandPalette<string>
-          labels={{ placeholder: "Gõ để tìm lệnh…", recent: "Gần đây", empty: "Không tìm thấy lệnh nào" }}
           hotkeys={hotkeyBindings}
           extraItems={[
             ...corePlugins.contributions.commands.map((c) => ({

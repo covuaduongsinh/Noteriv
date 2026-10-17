@@ -5,19 +5,21 @@ import type { FormattingAction } from "./editor-commands";
 // The action type and runFormattingAction live in editor-commands.ts (no CodeMirror at runtime), so a host can run an
 // action without loading the editor; they are re-exported here as before.
 export { runFormattingAction, type FormattingAction } from "./editor-commands";
+import { useT } from "../i18n/react";
 
-const actions: { action: FormattingAction; label: string; shortcut?: string; content: string; className?: string }[] = [
-  { action: "toggleBold", label: "Bold", content: "B", className: "formatting-toolbar-bold" },
-  { action: "toggleItalic", label: "Italic", shortcut: "Ctrl+I", content: "I", className: "formatting-toolbar-italic" },
-  { action: "toggleStrikethrough", label: "Strikethrough", content: "S", className: "formatting-toolbar-strike" },
-  { action: "toggleCode", label: "Inline code", shortcut: "Ctrl+`", content: "<>" },
-  { action: "insertLink", label: "Insert link", shortcut: "Ctrl+K", content: "Link" },
-  { action: "insertImage", label: "Insert image", content: "Image" },
-  { action: "insertBlockquote", label: "Blockquote", content: "Quote" },
-  { action: "insertCodeBlock", label: "Code block", content: "Code" },
-  { action: "insertTaskList", label: "Task list", content: "Task" },
-  { action: "insertTable", label: "Insert table", content: "Table" },
-  { action: "insertHorizontalRule", label: "Horizontal rule", content: "Rule" },
+// `label` and `short` are i18n keys under editor.toolbar; `content` is a symbol that needs no translation.
+const actions: { action: FormattingAction; label: string; shortcut?: string; content?: string; short?: string; className?: string }[] = [
+  { action: "toggleBold", label: "bold", content: "B", className: "formatting-toolbar-bold" },
+  { action: "toggleItalic", label: "italic", shortcut: "Ctrl+I", content: "I", className: "formatting-toolbar-italic" },
+  { action: "toggleStrikethrough", label: "strikethrough", content: "S", className: "formatting-toolbar-strike" },
+  { action: "toggleCode", label: "code", shortcut: "Ctrl+`", content: "<>" },
+  { action: "insertLink", label: "link", shortcut: "Ctrl+K", short: "link" },
+  { action: "insertImage", label: "image", short: "image" },
+  { action: "insertBlockquote", label: "blockquote", short: "blockquote" },
+  { action: "insertCodeBlock", label: "codeBlock", short: "codeBlock" },
+  { action: "insertTaskList", label: "taskList", short: "taskList" },
+  { action: "insertTable", label: "table", short: "table" },
+  { action: "insertHorizontalRule", label: "rule", short: "rule" },
 ];
 
 /**
@@ -26,21 +28,25 @@ const actions: { action: FormattingAction; label: string; shortcut?: string; con
  * knows about more commands than these.
  */
 export default function FormattingToolbar({ onAction }: { onAction: (action: FormattingAction) => void }) {
+  const t = useT();
   return (
-    <div className="formatting-toolbar" aria-label="Formatting toolbar">
-      {actions.map(({ action, label, shortcut, content, className }) => (
-        <button
-          key={action}
-          type="button"
-          className={`formatting-toolbar-button ${className || ""}`}
-          title={shortcut ? `${label} (${shortcut})` : label}
-          aria-label={label}
-          onMouseDown={(event) => event.preventDefault()}
-          onClick={() => onAction(action)}
-        >
-          {content}
-        </button>
-      ))}
+    <div className="formatting-toolbar" aria-label={t("editor.toolbar.label")}>
+      {actions.map(({ action, label: labelKey, shortcut, content, short, className }) => {
+        const label = t(`editor.toolbar.${labelKey}`);
+        return (
+          <button
+            key={action}
+            type="button"
+            className={`formatting-toolbar-button ${className || ""}`}
+            title={shortcut ? `${label} (${shortcut})` : label}
+            aria-label={label}
+            onMouseDown={(event) => event.preventDefault()}
+            onClick={() => onAction(action)}
+          >
+            {content ?? t(`editor.toolbar.short.${short}`)}
+          </button>
+        );
+      })}
     </div>
   );
 }

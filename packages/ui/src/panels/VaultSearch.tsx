@@ -2,6 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { NoteRef, NoteSearchHit, VaultAdapter } from "@noteriv/core/vault-adapter";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 export interface VaultSearchLabels {
   placeholder: string;
@@ -9,11 +11,11 @@ export interface VaultSearchLabels {
   hint: string;
 }
 
-const DEFAULT_LABELS: VaultSearchLabels = {
-  placeholder: "Search across all notes…",
-  noResults: "No results found",
-  hint: "Start typing to search across all notes",
-};
+const defaultLabels = (): VaultSearchLabels => ({
+  placeholder: t("panels.vaultSearch.placeholder"),
+  noResults: t("panels.vaultSearch.noResults"),
+  hint: t("panels.vaultSearch.hint"),
+});
 
 export interface VaultSearchProps {
   adapter: VaultAdapter;
@@ -49,7 +51,8 @@ function toRows(hits: NoteSearchHit[]): Row[] {
  * Shared by web and desktop (the search itself is the adapter's: Postgres full-text on the web, a file scan on desktop).
  */
 export default function VaultSearch({ adapter, onOpen, onClose, labels, debounceMs = 250 }: VaultSearchProps) {
-  const t = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   const [query, setQuery] = useState("");
   const [rows, setRows] = useState<Row[]>([]);
   const [selected, setSelected] = useState(0);
@@ -133,7 +136,7 @@ export default function VaultSearch({ adapter, onOpen, onClose, labels, debounce
 
   return (
     <div className="palette-overlay" onClick={onClose}>
-      <div className="palette palette-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={t.placeholder}>
+      <div className="palette palette-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label={text.placeholder}>
         <div className="palette-input-wrap">
           <svg width="14" height="14" viewBox="0 0 14 14" className="palette-icon" aria-hidden="true">
             <circle cx="6" cy="6" r="4.5" stroke="currentColor" strokeWidth="1.2" fill="none" />
@@ -145,7 +148,7 @@ export default function VaultSearch({ adapter, onOpen, onClose, labels, debounce
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder={t.placeholder}
+            placeholder={text.placeholder}
             className="palette-input"
           />
           {searching && <span className="palette-spinner" />}
@@ -167,8 +170,8 @@ export default function VaultSearch({ adapter, onOpen, onClose, labels, debounce
               <div className="search-result-text">{highlight(r.text)}</div>
             </button>
           ))}
-          {!searching && query.trim() && rows.length === 0 && <div className="palette-empty">{t.noResults}</div>}
-          {!query.trim() && <div className="palette-empty">{t.hint}</div>}
+          {!searching && query.trim() && rows.length === 0 && <div className="palette-empty">{text.noResults}</div>}
+          {!query.trim() && <div className="palette-empty">{text.hint}</div>}
         </div>
       </div>
     </div>

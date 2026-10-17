@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.9";
+export const PLUGIN_API_VERSION = "1.0.0-draft.10";
 
 // ─── Permissions (community tier) ───
 
@@ -359,6 +359,18 @@ export interface AppApi {
   saveSettings(data: Record<string, unknown>): Promise<void>;
 }
 
+/**
+ * Core tier only. The app's language and its translation catalog: core plugins keep their text under
+ * `plugins.<pluginId>.*` in the shared catalog (packages/ui/src/i18n/locales). After a language change the host
+ * reloads every enabled core plugin, so text set once in `onload` (command names, ribbon titles) follows.
+ */
+export interface I18nApi {
+  /** Current language, e.g. "en" or "vi". */
+  readonly locale: string;
+  /** Text for a catalog key; `{name}` is filled from `params`, plural forms are chosen with `params.count`. */
+  t(key: string, params?: Record<string, string | number>): string;
+}
+
 // ─── The API object a plugin receives ───
 
 export interface PluginApi {
@@ -370,6 +382,7 @@ export interface PluginApi {
   workspace: WorkspaceApi;
   settings: SettingsApi;
   app: AppApi;
+  i18n: I18nApi;
 }
 
 // ─── Plugin module shapes ───

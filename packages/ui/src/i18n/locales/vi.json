@@ -1,0 +1,107 @@
+{
+  "editor": {
+    "toolbar": {
+      "label": "Thanh định dạng",
+      "bold": "In đậm",
+      "italic": "In nghiêng",
+      "strikethrough": "Gạch ngang",
+      "code": "Mã trong dòng",
+      "link": "Chèn liên kết",
+      "image": "Chèn ảnh",
+      "blockquote": "Trích dẫn",
+      "codeBlock": "Khối mã",
+      "taskList": "Danh sách việc",
+      "table": "Chèn bảng",
+      "rule": "Đường kẻ ngang",
+      "short": {
+        "link": "Link",
+        "image": "Ảnh",
+        "blockquote": "Trích",
+        "codeBlock": "Mã",
+        "taskList": "Việc",
+        "table": "Bảng",
+        "rule": "Kẻ"
+      }
+    }
+  },
+  "panels": {
+    "quickOpen": {
+      "placeholder": "Gõ để tìm note...",
+      "empty": "Không tìm thấy note nào"
+    },
+    "commandPalette": {
+      "placeholder": "Gõ để tìm lệnh…",
+      "recent": "Gần đây",
+      "empty": "Không tìm thấy lệnh nào"
+    },
+    "vaultSearch": {
+      "placeholder": "Tìm trong nội dung các note…",
+      "noResults": "Không có kết quả",
+      "hint": "Gõ để tìm trong toàn bộ vault"
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "empty": "Chưa có bookmark nào.",
+      "hint": "Bấm nút bookmark để đánh dấu.",
+      "close": "Đóng",
+      "remove": "Bỏ bookmark"
+    },
+    "conflict": {
+      "banner": "Đây là bản xung đột của {original}: phiên bản kia, được sync lưu lại lúc {stamp} (UTC) vì cả hai nơi cùng sửa ghi chú này.",
+      "compare": "So sánh",
+      "hideCompare": "Ẩn so sánh",
+      "keepOriginal": "Giữ bản gốc (xoá bản này)",
+      "useThisVersion": "Dùng bản này (thay bản gốc)",
+      "keepBoth": "Giữ cả hai",
+      "originalMissing": "Ghi chú gốc không còn nữa. Bản này giờ là một ghi chú bình thường.",
+      "legendOriginal": "chỉ có trong bản gốc",
+      "legendThis": "chỉ có trong bản này",
+      "identical": "Hai bản giống hệt nhau.",
+      "working": "Đang xử lý…"
+    }
+  },
+  "settings": {
+    "corePlugins": {
+      "intro": "Plugin có sẵn của Noteriv, bật/tắt riêng cho vault này. Plugin tắt thì mã của nó không được tải.",
+      "empty": "Chưa có core plugin nào.",
+      "loading": "Đang tải…",
+      "failed": "Không tải được",
+      "enable": "Bật",
+      "disable": "Tắt",
+      "settings": "Tuỳ chọn",
+      "hideSettings": "Ẩn tuỳ chọn"
+    }
+  },
+  "plugins": {
+    "sandbox": {
+      "renderFailed": "Plugin không render được khối này.",
+      "pluginError": "Plugin \"{id}\" lỗi: {error}"
+    },
+    "wordCount": {
+      "words": {
+        "other": "{count} từ"
+      },
+      "title": "{characters} ký tự · khoảng {minutes} phút đọc",
+      "command": "Đếm từ: thống kê ghi chú",
+      "ribbon": "Đếm từ",
+      "notice": {
+        "other": "{count} từ · {characters} ký tự · khoảng {minutes} phút đọc"
+      },
+      "noNote": "Chưa mở ghi chú nào."
+    }
+  },
+  "web": {
+    "bookmarks": {
+      "hint": "Bấm icon bookmark trên thanh công cụ note để đánh dấu."
+    }
+  },
+  "desktop": {
+    "bookmarks": {
+      "hint": "Chuột phải vào file hoặc bấm Ctrl+B để đánh dấu."
+    },
+    "quickOpen": {
+      "placeholder": "Gõ để tìm file...",
+      "empty": "Không tìm thấy file nào"
+    }
+  }
+}

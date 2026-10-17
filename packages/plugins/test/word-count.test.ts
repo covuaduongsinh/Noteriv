@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { PluginApi } from "@noteriv/plugin-api";
 import wordCount, { countText } from "../src/word-count";
+import { testI18n } from "./i18n";
 
 describe("countText", () => {
   it("counts Vietnamese words and skips frontmatter and markdown punctuation", () => {
@@ -23,11 +24,12 @@ describe("countText", () => {
 });
 
 describe("word-count plugin", () => {
-  function fakeApi(content: string | null, platform: "web" | "desktop" = "desktop") {
+  function fakeApi(content: string | null, locale: "en" | "vi" = "en") {
     const status = new Map<string, { text: string }>();
     const handlers = new Map<string, (...a: unknown[]) => void>();
     const api = {
-      app: { platform },
+      app: { platform: "web" },
+      i18n: testI18n(locale),
       editor: { getContent: () => content },
       events: { on: (e: string, h: (...a: unknown[]) => void) => handlers.set(e, h) },
       ui: {
@@ -47,16 +49,19 @@ describe("word-count plugin", () => {
     expect(status.get("count")?.text).toBe("3 words");
     handlers.get("editor-change")!("just one");
     expect(status.get("count")?.text).toBe("2 words");
+    handlers.get("editor-change")!("one");
+    expect(status.get("count")?.text).toBe("1 word");
     expect(ui.addCommand).toHaveBeenCalledWith(expect.objectContaining({ id: "show", hotkey: "Mod+Alt+W" }));
     expect(ui.addRibbonIcon).toHaveBeenCalledOnce();
   });
 
-  it("has no status item without an open note, and words its text per platform", async () => {
+  it("has no status item without an open note, and words its text in the app's language", async () => {
     const none = fakeApi(null);
     await wordCount.onload(none.api);
     expect(none.status.size).toBe(0);
-    const web = fakeApi("một hai", "web");
-    await wordCount.onload(web.api);
-    expect(web.status.get("count")?.text).toBe("2 từ");
+    const vi = fakeApi("một hai", "vi");
+    await wordCount.onload(vi.api);
+    expect(vi.status.get("count")?.text).toBe("2 từ");
+    expect(vi.ui.addCommand).toHaveBeenCalledWith(expect.objectContaining({ name: "Đếm từ: thống kê ghi chú" }));
   });
 });
