@@ -9,6 +9,9 @@ import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
+import { applyLanguage } from "@/lib/i18n";
 import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
@@ -105,6 +108,7 @@ interface TabState {
 }
 
 export default function Home() {
+  useLocale(); // re-render on a language change (labels passed to shared panels)
   const [appState, setAppState] = useState<AppState>("loading");
   const [showSetupWizard, setShowSetupWizard] = useState(false);
 
@@ -406,6 +410,8 @@ export default function Home() {
           if (theme) applyTheme(theme);
         }
       } catch {}
+
+      void applyLanguage(merged.language);
 
       const setupDone = await window.electronAPI.isSetupComplete();
       if (!setupDone) { setAppState("setup"); return; }
@@ -2090,7 +2096,7 @@ export default function Home() {
             currentNoteId={activeTab}
             onNoteSelect={openFile}
             onBookmarkRemove={(f) => setBookmarks((b) => b.filter((x) => x !== f))}
-            labels={{ hint: "Right-click a file or use Ctrl+B to bookmark." }}
+            labels={{ hint: t("desktop.bookmarks.hint") }}
           />
         )}
         {/* Sidebar panels of core plugins (Lint, …) */}
@@ -2179,7 +2185,7 @@ export default function Home() {
       {showQuickOpen && activeVault && (
         <QuickOpen
           load={listFiles}
-          labels={{ placeholder: "Type to search files...", empty: "No files found" }}
+          labels={{ placeholder: t("desktop.quickOpen.placeholder"), empty: t("desktop.quickOpen.empty") }}
           onSelect={openFile}
           onClose={() => setShowQuickOpen(false)}
         />

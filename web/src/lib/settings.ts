@@ -37,6 +37,8 @@ export const DEFAULT_EDITOR_SETTINGS = {
   pdfChessboardWidth: 75 as 75 | 100,
   /** Collapse the sidebar automatically on narrow windows. */
   autoCollapseSidebar: true,
+  /** Interface language; unset = the app default (web/src/lib/i18n.ts). */
+  language: undefined as "en" | "vi" | undefined,
 };
 
 export const ACCENT_COLORS: { name: string; value: string }[] = [

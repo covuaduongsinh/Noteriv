@@ -1,8 +1,10 @@
 "use client";
 
 import type { NoteRef } from "@noteriv/core/vault-adapter";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
-/** Visible text. Each app words these for its own audience (and its own way of bookmarking). */
+/** Visible text. Defaults come from the i18n catalog; an app overrides what it words differently (how to bookmark). */
 export interface BookmarksLabels {
   title: string;
   empty: string;
@@ -11,13 +13,13 @@ export interface BookmarksLabels {
   remove: string;
 }
 
-const DEFAULT_LABELS: BookmarksLabels = {
-  title: "Bookmarks",
-  empty: "No bookmarks yet.",
-  hint: "Use the bookmark button to add one.",
-  close: "Close",
-  remove: "Remove bookmark",
-};
+const defaultLabels = (): BookmarksLabels => ({
+  title: t("panels.bookmarks.title"),
+  empty: t("panels.bookmarks.empty"),
+  hint: t("panels.bookmarks.hint"),
+  close: t("panels.bookmarks.close"),
+  remove: t("panels.bookmarks.remove"),
+});
 
 export interface BookmarksPanelProps {
   notes: NoteRef[]; // bookmarked notes, in bookmark order
@@ -30,7 +32,8 @@ export interface BookmarksPanelProps {
 }
 
 export default function BookmarksPanel({ notes, currentNoteId, onNoteSelect, onBookmarkRemove, onClose, labels }: BookmarksPanelProps) {
-  const text = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   return (
     <div className="bm-panel">
       <div className="bm-header">

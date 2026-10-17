@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import type { NoteRef } from "@noteriv/core/vault-adapter";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 export interface QuickOpenLabels {
   placeholder: string;
   empty: string;
 }
 
-const DEFAULT_LABELS: QuickOpenLabels = { placeholder: "Type to search notes...", empty: "No notes found" };
+const defaultLabels = (): QuickOpenLabels => ({ placeholder: t("panels.quickOpen.placeholder"), empty: t("panels.quickOpen.empty") });
 
 export interface QuickOpenProps {
   /** Lists what can be opened. The host decides: the web app lists notes, the desktop app every file. */
@@ -19,7 +21,8 @@ export interface QuickOpenProps {
 }
 
 export default function QuickOpen({ load, onSelect, onClose, labels }: QuickOpenProps) {
-  const text = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   const [query, setQuery] = useState("");
   const [notes, setNotes] = useState<NoteRef[]>([]);
   const [filtered, setFiltered] = useState<NoteRef[]>([]);

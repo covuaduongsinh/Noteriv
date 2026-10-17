@@ -235,6 +235,7 @@ export interface ApiUserPreferences {
     lineHeight?: number;
     autoSaveInterval?: number;
     vimModeEnabled?: boolean;
+    language?: "en" | "vi";
   };
 }
 

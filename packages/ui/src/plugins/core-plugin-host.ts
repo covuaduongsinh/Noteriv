@@ -31,6 +31,7 @@ import {
   unregisterAllCodeBlockProcessorsForPlugin,
   unregisterCodeBlockProcessor,
 } from "@noteriv/core/markdown-code-block-registry";
+import { getLocale, onLocaleChange, t } from "../i18n";
 
 export interface CorePluginHostServices {
   adapter: VaultAdapter;
@@ -489,6 +490,13 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         loadSettings: () => services.loadPluginSettings(pluginId),
         saveSettings: (data) => services.savePluginSettings(pluginId, data),
       },
+
+      i18n: {
+        get locale() {
+          return getLocale();
+        },
+        t: (key, params) => t(key, params),
+      },
     };
   }
 
@@ -529,6 +537,8 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
     },
   });
 
+  let stopLocaleWatch: (() => void) | null = null;
+
   const host: CorePluginHost = {
     registry,
     getContributions: () => contributions,
@@ -556,8 +566,15 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
         }
       }
     },
-    init: () => registry.init(),
-    dispose: () => registry.dispose(),
+    init: () => {
+      stopLocaleWatch ??= onLocaleChange(() => void registry.restartRunning());
+      return registry.init();
+    },
+    dispose: () => {
+      stopLocaleWatch?.();
+      stopLocaleWatch = null;
+      return registry.dispose();
+    },
   };
   return host;
 }

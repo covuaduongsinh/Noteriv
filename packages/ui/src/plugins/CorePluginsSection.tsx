@@ -4,8 +4,10 @@ import { useState } from "react";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 import type { HostPanel } from "./core-plugin-host";
 import { PanelBody } from "./CorePluginSidePanels";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
-/** Visible text. Each app words these for its own audience. */
+/** Visible text; defaults come from the i18n catalog. */
 export interface CorePluginsLabels {
   intro: string;
   empty: string;
@@ -17,16 +19,16 @@ export interface CorePluginsLabels {
   hideSettings: string;
 }
 
-const DEFAULT_LABELS: CorePluginsLabels = {
-  intro: "Built-in plugins that ship with Noteriv. A disabled plugin's code is not loaded.",
-  empty: "No core plugins.",
-  loading: "Loading…",
-  failed: "Failed to load",
-  enable: "Enable",
-  disable: "Disable",
-  settings: "Options",
-  hideSettings: "Hide options",
-};
+const defaultLabels = (): CorePluginsLabels => ({
+  intro: t("settings.corePlugins.intro"),
+  empty: t("settings.corePlugins.empty"),
+  loading: t("settings.corePlugins.loading"),
+  failed: t("settings.corePlugins.failed"),
+  enable: t("settings.corePlugins.enable"),
+  disable: t("settings.corePlugins.disable"),
+  settings: t("settings.corePlugins.settings"),
+  hideSettings: t("settings.corePlugins.hideSettings"),
+});
 
 export interface CorePluginsSectionProps {
   plugins: CorePluginInfo[];
@@ -38,7 +40,8 @@ export interface CorePluginsSectionProps {
 
 /** Settings section listing core plugins with an on/off switch each (same row and toggle styles as Settings). */
 export default function CorePluginsSection({ plugins, onToggle, settingsTabs = [], labels }: CorePluginsSectionProps) {
-  const text = { ...DEFAULT_LABELS, ...labels };
+  useLocale();
+  const text = { ...defaultLabels(), ...labels };
   const [openId, setOpenId] = useState<string | null>(null);
   return (
     <div className="st-section">

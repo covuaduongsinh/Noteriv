@@ -1,0 +1,109 @@
+{
+  "editor": {
+    "toolbar": {
+      "label": "Formatting toolbar",
+      "bold": "Bold",
+      "italic": "Italic",
+      "strikethrough": "Strikethrough",
+      "code": "Inline code",
+      "link": "Insert link",
+      "image": "Insert image",
+      "blockquote": "Blockquote",
+      "codeBlock": "Code block",
+      "taskList": "Task list",
+      "table": "Insert table",
+      "rule": "Horizontal rule",
+      "short": {
+        "link": "Link",
+        "image": "Image",
+        "blockquote": "Quote",
+        "codeBlock": "Code",
+        "taskList": "Task",
+        "table": "Table",
+        "rule": "Rule"
+      }
+    }
+  },
+  "panels": {
+    "quickOpen": {
+      "placeholder": "Type to search notes...",
+      "empty": "No notes found"
+    },
+    "commandPalette": {
+      "placeholder": "Type a command...",
+      "recent": "Recent",
+      "empty": "No commands found"
+    },
+    "vaultSearch": {
+      "placeholder": "Search across all notes…",
+      "noResults": "No results found",
+      "hint": "Start typing to search across all notes"
+    },
+    "bookmarks": {
+      "title": "Bookmarks",
+      "empty": "No bookmarks yet.",
+      "hint": "Use the bookmark button to add one.",
+      "close": "Close",
+      "remove": "Remove bookmark"
+    },
+    "conflict": {
+      "banner": "This is a conflict copy of {original}: the other version, saved by sync on {stamp} (UTC) when both sides had changed it.",
+      "compare": "Compare",
+      "hideCompare": "Hide comparison",
+      "keepOriginal": "Keep the original (delete this copy)",
+      "useThisVersion": "Use this version (replace the original)",
+      "keepBoth": "Keep both",
+      "originalMissing": "The original note no longer exists. This copy is now an ordinary note.",
+      "legendOriginal": "only in the original",
+      "legendThis": "only in this copy",
+      "identical": "Both versions are identical.",
+      "working": "Working…"
+    }
+  },
+  "settings": {
+    "corePlugins": {
+      "intro": "Built-in plugins that ship with Noteriv, turned on or off for each vault. A disabled plugin's code is not loaded.",
+      "empty": "No core plugins.",
+      "loading": "Loading…",
+      "failed": "Failed to load",
+      "enable": "Enable",
+      "disable": "Disable",
+      "settings": "Options",
+      "hideSettings": "Hide options"
+    }
+  },
+  "plugins": {
+    "sandbox": {
+      "renderFailed": "The plugin could not render this block.",
+      "pluginError": "Plugin \"{id}\" failed: {error}"
+    },
+    "wordCount": {
+      "words": {
+        "one": "{count} word",
+        "other": "{count} words"
+      },
+      "title": "{characters} characters · ~{minutes} min read",
+      "command": "Word count: show note statistics",
+      "ribbon": "Word count",
+      "notice": {
+        "one": "{count} word · {characters} characters · ~{minutes} min read",
+        "other": "{count} words · {characters} characters · ~{minutes} min read"
+      },
+      "noNote": "No note is open."
+    }
+  },
+  "web": {
+    "bookmarks": {
+      "hint": "Click the bookmark icon in the note toolbar to add one."
+    }
+  },
+  "desktop": {
+    "bookmarks": {
+      "hint": "Right-click a file or use Ctrl+B to bookmark."
+    },
+    "quickOpen": {
+      "placeholder": "Type to search files...",
+      "empty": "No files found"
+    }
+  }
+}

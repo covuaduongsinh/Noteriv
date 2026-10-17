@@ -3,6 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import type { NoteSearchHit, VaultAdapter } from "@noteriv/core/vault-adapter";
 import { VaultSearch } from "../src/panels";
+import { setLocale } from "../src/i18n";
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -28,6 +29,21 @@ async function typeInto(input: HTMLInputElement, value: string) {
 }
 
 describe("VaultSearch", () => {
+  it("re-renders its text when the language changes, and an app label still wins", async () => {
+    const adapter = { searchNotes: async () => [] } as unknown as VaultAdapter;
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => root!.render(createElement(VaultSearch, { adapter, onOpen: vi.fn(), onClose: vi.fn(), labels: { hint: "App hint" } })));
+    const input = host.querySelector("input")!;
+    expect(input.placeholder).toBe("Search across all notes…");
+    await act(async () => setLocale("vi"));
+    expect(input.placeholder).toBe("Tìm trong nội dung các note…");
+    expect(host.textContent).toContain("App hint");
+    await act(async () => setLocale("en"));
+    expect(input.placeholder).toBe("Search across all notes…");
+  });
+
   it("searches as you type, lists matching lines and opens the chosen one at its line", async () => {
     const hits: NoteSearchHit[] = [
       { ref: ref("a.md"), snippet: "x", matches: [{ line: 3, text: "hello world" }, { line: 9, text: "world again" }] },

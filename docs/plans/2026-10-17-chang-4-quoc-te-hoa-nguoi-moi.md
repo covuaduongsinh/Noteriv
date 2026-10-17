@@ -1,6 +1,6 @@
 # Chặng 4: Quốc tế hoá, người mới, di động
 
-> Ngày lập: 2026-10-17 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 2 xong (chuỗi giao diện đã trung lập); nên xong 3.2 (E2E) để bắt lỗi khi rút chuỗi.
 
@@ -25,6 +25,8 @@
 4. Test: mọi khoá trong `vi.json` có trong `en.json`; không có khoá thiếu (test tự động).
 
 ## Phiên 4.2 – 4.3: Rút chuỗi
+
+**Chủ dự án chốt (2026-10-17):** giữ mặc định chuyển tiếp (web tiếng Việt, desktop tiếng Anh, chưa có ô chọn) tới **cuối 4.3**. Khi đó mới đổi sang "theo ngôn ngữ trình duyệt/hệ điều hành, rơi về tiếng Anh", hiện ô "Language" trong Cài đặt, chuyển E2E sang tiếng Anh, và làm rỗng `NOT_YET_TRANSLATED` trong `packages/ui/test/i18n-catalog.test.ts`. Mẫu chuyển một plugin: `packages/plugins/src/word-count`; mẫu chuyển một panel: `packages/ui/src/panels/VaultSearch.tsx`.
 
 1. Rút toàn bộ chuỗi viết cứng ở `web/src`, `desktop/src`, `packages/ui`, `packages/plugins` vào catalog. Làm theo nhóm (khung trang, cài đặt, hộp thoại, plugin), mỗi nhóm kiểm hai ngôn ngữ.
 2. Trang `/terms`, `/privacy`, `/login`, `/register`: tiếng Anh là chính, có bản tiếng Việt theo ngôn ngữ chọn.
@@ -61,7 +63,7 @@ Chỉnh các trang sẵn có trong `docs/getting-started`, `docs/features`, `doc
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 4.1 Hạ tầng i18n | Chưa làm | | |
+| 4.1 Hạ tầng i18n | Xong (chờ lên production) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-1-i18n.md); `packages/ui/src/i18n`, `api.i18n` (draft.10), panel dùng chung + thanh định dạng + `word-count` đọc catalog; mặc định chuyển tiếp web `vi` / desktop `en` tới cuối 4.3 (chủ dự án chốt); 448 test, E2E 9/9, smoke desktop 16/16 |
 | 4.2 Rút chuỗi (phần 1) | Chưa làm | | |
 | 4.3 Rút chuỗi (phần 2) | Chưa làm | | |
 | 4.4 Người mới | Chưa làm | | |

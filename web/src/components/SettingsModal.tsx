@@ -397,16 +397,6 @@ export default function SettingsModal({
         plugins={corePlugins}
         onToggle={(id, enabled) => onToggleCorePlugin?.(id, enabled)}
         settingsTabs={corePluginSettingsTabs}
-        labels={{
-          settings: "Tuỳ chọn",
-          hideSettings: "Ẩn tuỳ chọn",
-          intro: "Plugin có sẵn của Noteriv, bật/tắt riêng cho vault này. Plugin tắt thì mã của nó không được tải.",
-          empty: "Chưa có core plugin nào.",
-          loading: "Đang tải…",
-          failed: "Không tải được",
-          enable: "Bật",
-          disable: "Tắt",
-        }}
       />
     ),
     ecosystem: renderEcosystem,

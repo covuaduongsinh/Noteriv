@@ -145,6 +145,16 @@ export class PluginRegistry<Api> {
     });
   }
 
+  /** Stop and start again every running plugin (e.g. after a language change, so text set in onload follows). */
+  restartRunning(): Promise<void> {
+    return this.enqueue(async () => {
+      for (const id of Array.from(this.running.keys())) {
+        await this.stop(id);
+        await this.start(id);
+      }
+    });
+  }
+
   /** Stop everything (vault closed or page unmounted). Does not touch the stored state. */
   dispose(): Promise<void> {
     return this.enqueue(async () => {

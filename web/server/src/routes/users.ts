@@ -27,6 +27,8 @@ const preferencesSchema = z.object({
       pdfColumnLayout: z.union([z.literal(1), z.literal(2)]).optional(),
       pdfChessboardWidth: z.union([z.literal(75), z.literal(100)]).optional(),
       autoCollapseSidebar: z.boolean().optional(),
+      // Stage 4: interface language (packages/ui/src/i18n).
+      language: z.enum(["en", "vi"]).optional(),
     })
     .optional(),
 });

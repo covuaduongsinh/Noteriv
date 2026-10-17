@@ -24,6 +24,7 @@ import {
   type CorePluginHost,
   type CorePluginHostConfig,
 } from "../src/plugins";
+import { setLocale } from "../src/i18n";
 
 beforeAll(() => {
   (globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
@@ -68,6 +69,27 @@ function def(id: string, plugin: CorePlugin): CorePluginDef<PluginApi> {
 }
 
 describe("core plugin host", () => {
+  it("gives plugins the app's language and reloads running plugins when it changes", async () => {
+    const seen: string[] = [];
+    const { host } = makeHost([
+      { ...def("words", {
+        onload(api) {
+          seen.push(api.i18n.locale);
+          api.ui.addCommand({ id: "show", name: api.i18n.t("plugins.wordCount.command"), callback: () => undefined });
+        },
+      }), defaultEnabled: true },
+    ]);
+    await host.init();
+    expect(host.getContributions().commands[0].name).toBe("Word count: show note statistics");
+    await setLocale("vi");
+    await vi.waitFor(() => expect(host.getContributions().commands[0]?.name).toBe("Đếm từ: thống kê ghi chú"));
+    expect(seen).toEqual(["en", "vi"]);
+    expect(host.getContributions().commands.map((c) => c.name)).toEqual(["Đếm từ: thống kê ghi chú"]);
+    await host.dispose();
+    await setLocale("en");
+    expect(seen).toEqual(["en", "vi"]); // no reload after dispose
+  });
+
   it("collects a plugin's contributions under namespaced keys and removes them all on disable", async () => {
     const ran = vi.fn();
     const { host } = makeHost([
