@@ -137,6 +137,8 @@ test("switching a core plugin on adds its feature", async () => {
 test("another open tab follows a core plugin switch without reloading", async () => {
   const other = await context.newPage();
   await other.goto(page.url());
+  // Open a note there explicitly: the restored tabs may not have reached the server yet.
+  await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
   await expect(other.getByText(/^\d+ từ$/).first()).toBeVisible();
 
   await page.keyboard.press("Control+Comma");
