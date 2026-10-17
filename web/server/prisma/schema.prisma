@@ -222,6 +222,9 @@ model SyncConnection {
   accountAvatarUrl String?     @map("account_avatar_url")
   lastSyncedAt   DateTime?     @map("last_synced_at")
   lastSyncStatus Json?         @map("last_sync_status")
+  /// Set while a sync of this connection runs (see runSyncJob): two syncs of one connection
+  /// would share a scratch directory and race each other's imports.
+  syncLockedAt   DateTime?     @map("sync_locked_at")
   createdAt      DateTime      @default(now()) @map("created_at")
 
   vault Vault     @relation(fields: [vaultId], references: [id], onDelete: Cascade)
