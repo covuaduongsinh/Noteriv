@@ -192,6 +192,8 @@ export default function VaultPage() {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<ApiSearchResult[] | null>(null);
+  /** Asks the sidebar to put a just-created note into rename mode. */
+  const [sidebarRenameRequest, setSidebarRenameRequest] = useState<{ id: string; name: string; nonce: number } | null>(null);
   const [pluginManagerOpen, setPluginManagerOpen] = useState(false);
   const [collabVisible, setCollabVisible] = useState(false);
   const [collabConnected, setCollabConnected] = useState(false);
@@ -677,9 +679,21 @@ export default function VaultPage() {
         // incomplete: those tabs are skipped for this session, but we must not
         // persist the shrunken list over the server's good copy.
         let transientFailure = false;
+        const inlined = state.notes ?? {};
+        const missing = new Set(state.missingNoteIds ?? []);
         const notes = await Promise.all(
           state.openTabs.map((t) =>
-            webApi.notes
+            inlined[t.noteId]
+              ? Promise.resolve<OpenTab>({
+                  noteId: inlined[t.noteId].id,
+                  path: inlined[t.noteId].path,
+                  name: inlined[t.noteId].name,
+                  content: inlined[t.noteId].content,
+                  savedContent: inlined[t.noteId].content,
+                })
+              : missing.has(t.noteId)
+              ? Promise.resolve(null)
+              : webApi.notes
               .get(vaultId, t.noteId)
               .then((note): OpenTab => ({ noteId: note.id, path: note.path, name: note.name, content: note.content, savedContent: note.content }))
               .catch((err) => {
@@ -1169,6 +1183,7 @@ export default function VaultPage() {
       const note = await createUntitledNote(vaultId, null, index?.notes ?? []);
       refreshIndex();
       openNote(note.id);
+      setSidebarRenameRequest({ id: note.id, name: note.name.replace(/\.md$/i, ""), nonce: Date.now() });
     } catch {
       setPageNotice("Không tạo được note mới. Kiểm tra kết nối hoặc quyền ghi vault rồi thử lại.");
     }
@@ -1486,6 +1501,7 @@ export default function VaultPage() {
               onFileSelect={openNote}
               onRefresh={refreshIndex}
               onNewNote={handleQuickNewNote}
+              renameRequest={sidebarRenameRequest}
             />
           ))}
 

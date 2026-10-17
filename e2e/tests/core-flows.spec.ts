@@ -65,13 +65,23 @@ test("create a vault and open it", async () => {
   await expect(page.getByTitle("Note mới")).toBeVisible();
 });
 
+/** A new note starts in rename mode: type its name right away. */
+async function nameNewNote(name: string) {
+  const input = page.locator(".sidebar-root input.sb-rename").first();
+  await expect(input).toBeFocused();
+  await input.fill(name);
+  await input.press("Enter");
+  await expect(sidebarItem(name)).toBeVisible();
+}
+
 test("write two linked notes, rename them, see the backlink", async () => {
   await page.getByTitle("Note mới").click();
   await expect(editor()).toBeVisible();
-  await renameViaContextMenu("Untitled", "First");
+  await nameNewNote("Draft");
+  await renameViaContextMenu("Draft", "First");
 
-  await page.getByTitle("Note mới").click();
-  await renameViaContextMenu("Untitled", "Second");
+  await page.getByTitle("New file").click(); // the sidebar's own "+" button
+  await nameNewNote("Second");
   await editor().click();
   const secondSaved = noteSaved("The second note");
   await page.keyboard.type("# Second\n\nThe second note.");
@@ -118,6 +128,29 @@ test("switching a core plugin on adds its feature", async () => {
   await expect(page.getByText(/^\d+ từ$/).first()).toBeVisible();
 });
 
+test("reloading restores the open tabs without a request per note", async () => {
+  // workspace-state now carries the open notes, so no per-note GET is needed to restore them.
+  const noteGets: string[] = [];
+  const onRequest = (r: { url: () => string; method: () => string }) => {
+    if (r.method() === "GET" && /\/api\/v1\/vaults\/[^/]+\/notes\/[^/?]+$/.test(r.url())) noteGets.push(r.url());
+  };
+  page.on("request", onRequest);
+  const syncLists: string[] = [];
+  const onSync = (r: { url: () => string; method: () => string }) => {
+    if (r.method() === "GET" && r.url().endsWith("/sync-connections")) syncLists.push(r.url());
+  };
+  page.on("request", onSync);
+  await page.reload();
+  await expect(page.locator(".cm-content").first()).toContainText(/Hello e2e world|The second note/);
+  await expect(page.getByText("First.md", { exact: true }).first()).toBeVisible();
+  await expect(page.getByText("Second.md", { exact: true }).first()).toBeVisible();
+  await page.waitForTimeout(1500);
+  page.off("request", onRequest);
+  page.off("request", onSync);
+  expect(noteGets, "restored tabs come from workspace-state").toHaveLength(0);
+  expect(syncLists.length, "sync connections are fetched once on open").toBeLessThanOrEqual(1);
+});
+
 test("a deleted note goes to the trash and can be restored", async () => {
   await sidebarItem("Second").click({ button: "right" });
   await page.getByText("Delete", { exact: true }).click();
@@ -126,6 +159,6 @@ test("a deleted note goes to the trash and can be restored", async () => {
   await page.getByTitle("Thêm công cụ").click();
   await page.getByText("Thùng rác", { exact: true }).click();
   await page.getByTitle("Khôi phục").first().click();
-  await page.locator(".trash-close-btn").click();
+  await page.keyboard.press("Escape"); // closes the trash panel
   await expect(sidebarItem("Second")).toBeVisible();
 });
