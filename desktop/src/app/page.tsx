@@ -494,11 +494,21 @@ export default function Home() {
   // Auto-save every 30s
   // ============================================================
 
+  // Both savers read the tabs through a ref: with `tabs` as a dependency the interval was recreated on every
+  // keystroke, so its countdown restarted and continuous typing (or a plugin edit) was never auto-saved.
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+  /** Tabs a plugin just edited (insert, replace…): saved by the 5 s loop below instead of waiting for auto-save. */
+  const quickSaveRef = useRef<Set<string>>(new Set());
+  const markPluginEdit = () => {
+    if (activeTabRef.current) quickSaveRef.current.add(activeTabRef.current);
+  };
+
   useEffect(() => {
     if (appState !== "app" || settings.autoSaveInterval <= 0) return;
     autoSaveRef.current = setInterval(async () => {
       if (!window.electronAPI) return;
-      for (const tab of tabs) {
+      for (const tab of tabsRef.current) {
         if (tab.content !== tab.savedContent) {
           const success = await window.electronAPI.writeFile(tab.filePath, tab.content);
           if (success) {
@@ -512,11 +522,12 @@ export default function Home() {
       }
     }, settings.autoSaveInterval * 1000);
     return () => { if (autoSaveRef.current) clearInterval(autoSaveRef.current); };
-  }, [appState, tabs, settings.autoSaveInterval]);
+  }, [appState, settings.autoSaveInterval]);
 
   // ============================================================
-  // Quick auto-save (every 5s) for files shown by a core plugin's file view (Board…): their edits are discrete
-  // actions (move a card), not typing, so they should not wait for the 30 s editor auto-save.
+  // Quick auto-save (every 5s) for files shown by a core plugin's file view (Board…) and for notes a plugin just
+  // edited: those are discrete actions (move a card, insert a recording), not typing, so they should not wait for
+  // the 30 s editor auto-save.
   // ============================================================
 
   /** Set further down, once the core plugins are known; read here inside the interval. */
@@ -525,8 +536,11 @@ export default function Home() {
     if (appState !== "app") return;
     const interval = setInterval(async () => {
       if (!window.electronAPI) return;
-      for (const tab of tabs) {
-        if (tab.content !== tab.savedContent && !tab.kind && fileViewForTabRef.current(tab.filePath, tab.content)) {
+      for (const tab of tabsRef.current) {
+        const quick = quickSaveRef.current.has(tab.filePath);
+        if (quick && tab.content === tab.savedContent) quickSaveRef.current.delete(tab.filePath);
+        if (tab.content !== tab.savedContent && !tab.kind && (quick || fileViewForTabRef.current(tab.filePath, tab.content))) {
+          quickSaveRef.current.delete(tab.filePath);
           const success = await window.electronAPI.writeFile(tab.filePath, tab.content);
           if (success) {
             setTabs((prev) =>
@@ -539,7 +553,7 @@ export default function Home() {
       }
     }, 5000);
     return () => clearInterval(interval);
-  }, [appState, tabs]);
+  }, [appState]);
 
   // ============================================================
   // Vault file watcher — react to external changes (e.g. MCP server)
@@ -1553,13 +1567,13 @@ export default function Home() {
       getContent: () => (activeTabRef.current ? contentRef.current : null),
       setContent: (next) => {
         const view = editorViewRef.current;
-        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } }); markPluginEdit();
       },
       insertAtCursor: (text) => {
         const view = editorViewRef.current;
         if (!view) return;
         const pos = view.state.selection.main.head;
-        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } }); markPluginEdit();
       },
       getSelection: () => {
         const view = editorViewRef.current;
@@ -1568,7 +1582,7 @@ export default function Home() {
       },
       replaceSelection: (text) => {
         const view = editorViewRef.current;
-        if (view) view.dispatch(view.state.replaceSelection(text));
+        if (view) view.dispatch(view.state.replaceSelection(text)); markPluginEdit();
       },
       getCursorPosition: () => {
         const view = editorViewRef.current;
@@ -1642,13 +1656,13 @@ export default function Home() {
       getContent: () => (activeTabRef.current ? contentRef.current : null),
       setContent: (next) => {
         const view = editorViewRef.current;
-        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } });
+        if (view) view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: next } }); markPluginEdit();
       },
       insertAtCursor: (text) => {
         const view = editorViewRef.current;
         if (!view) return;
         const pos = view.state.selection.main.head;
-        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } });
+        view.dispatch({ changes: { from: pos, insert: text }, selection: { anchor: pos + text.length } }); markPluginEdit();
       },
       getSelection: () => {
         const view = editorViewRef.current;
@@ -1657,7 +1671,7 @@ export default function Home() {
       },
       replaceSelection: (text) => {
         const view = editorViewRef.current;
-        if (view) view.dispatch(view.state.replaceSelection(text));
+        if (view) view.dispatch(view.state.replaceSelection(text)); markPluginEdit();
       },
     },
     onVaultMutated: () => setSidebarRefresh((n) => n + 1),
