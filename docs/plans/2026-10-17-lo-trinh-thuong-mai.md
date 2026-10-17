@@ -108,8 +108,8 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 |---|---|---|---|
 | 1 Hợp nhất nhánh | Xong | 2026-10-17 | Production chạy Giai đoạn 1–2, tag `v-core-plugins-2026-10-17`; nhánh đã dọn, `next` = `main` |
 | 2 Định vị lại | Xong | 2026-10-17 | PR #3 (`e8c1f7d`): README tiếng Anh, `/privacy` trung lập, `NOTICE.md`, xoá `phone/`, ẩn "cỡ bàn cờ"; bản ghi `2026-10-17-phien-chang-2.md` |
-| 3 Rà soát, hoàn thiện | Chưa làm | | |
-| 4 Quốc tế hoá, người mới | Chưa làm | | |
+| 3 Rà soát, hoàn thiện | Xong | 2026-10-17 | PR #4–#8 (merge cuối `e7af3dc`): sync không mất dữ liệu, xung đột, bảo mật, E2E trong CI, CSP desktop, `docs/qa/checklist.md` |
+| 4 Quốc tế hoá, người mới | Đang làm | 2026-10-18 | 4.1 hạ tầng i18n xong ([bản ghi](2026-10-18-phien-4-1-i18n.md)) |
 | 5 Nền tảng thương mại | Chưa làm | | |
 | 6 Thương hiệu, ra mắt | Chưa làm | | |
 
