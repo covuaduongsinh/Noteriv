@@ -68,7 +68,7 @@ export default function VaultsPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col items-center gap-6 pt-20">
+    <div className="h-screen flex flex-col items-center gap-6 pt-20 px-4">
       <div className="flex items-center justify-between w-full max-w-md">
         <h1 className="text-2xl font-semibold">Vault của bạn</h1>
         <button onClick={logout} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
