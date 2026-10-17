@@ -158,12 +158,6 @@ export default function SettingsModal({
           <option value={2}>2 cột</option>
         </select>
       </Row>
-      <Row label="PDF: cỡ bàn cờ" desc="Chiều rộng bàn cờ so với cột.">
-        <select className="st-select" value={editorSettings.pdfChessboardWidth} onChange={(e) => onEditorSettingsChange({ pdfChessboardWidth: Number(e.target.value) as 75 | 100 })}>
-          <option value={75}>75%</option>
-          <option value={100}>100%</option>
-        </select>
-      </Row>
       <Row label="Auto-save" desc="Tự động lưu sau khi dừng gõ bao lâu.">
         <select
           className="st-select"
