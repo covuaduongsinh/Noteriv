@@ -14,6 +14,8 @@ import {
   fetchCommunityTheme,
 } from "@/lib/theme-utils";
 import "@/styles/themes.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 type Tab = "installed" | "community";
 
@@ -28,6 +30,7 @@ export default function ThemePicker({
   vaultPath,
   onThemeSelect,
 }: ThemePickerProps) {
+  useLocale();
   const [customThemes, setCustomThemes] = useState<ThemeDefinition[]>([]);
   const [showImport, setShowImport] = useState(false);
   const [importJson, setImportJson] = useState("");
@@ -60,7 +63,7 @@ export default function ThemePicker({
     setCommunityError("");
     const manifest = await fetchCommunityManifest();
     if (!manifest) {
-      setCommunityError("Failed to load community themes. Check your connection.");
+      setCommunityError(t("themes.loadFailed"));
       setCommunityLoading(false);
       return;
     }
@@ -81,7 +84,7 @@ export default function ThemePicker({
     setImportError("");
     const theme = importTheme(importJson);
     if (!theme) {
-      setImportError("Invalid theme JSON. Must have id, name, and colors.");
+      setImportError(t("themes.invalid"));
       return;
     }
     if (
@@ -166,7 +169,7 @@ export default function ThemePicker({
             <span className="tp-card-author">{theme.author}</span>
           </div>
           <div className="tp-card-btns" onClick={(e) => e.stopPropagation()}>
-            <button className="tp-icon-btn" onClick={() => handleExport(theme)} title="Copy JSON">
+            <button className="tp-icon-btn" onClick={() => handleExport(theme)} title={t("themes.copyJson")}>
               {copiedId === theme.id ? (
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="var(--green, #a6e3a1)" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
               ) : (
@@ -174,7 +177,7 @@ export default function ThemePicker({
               )}
             </button>
             {isCustom && (
-              <button className="tp-icon-btn tp-icon-btn-danger" onClick={() => handleDelete(theme.id)} title="Delete">
+              <button className="tp-icon-btn tp-icon-btn-danger" onClick={() => handleDelete(theme.id)} title={t("themes.delete")}>
                 <svg width="12" height="12" viewBox="0 0 12 12" fill="none"><path d="M2 3h8M4 3V2.5a.5.5 0 01.5-.5h3a.5.5 0 01.5.5V3M3 3l.5 7a1 1 0 001 1h3a1 1 0 001-1L9 3" stroke="currentColor" strokeWidth="1" strokeLinecap="round" /></svg>
               </button>
             )}
@@ -226,7 +229,7 @@ export default function ThemePicker({
             {installed ? (
               <span className="tp-installed-tag">
                 <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                Installed
+                {t("themes.installed")}
               </span>
             ) : (
               <button
@@ -234,7 +237,7 @@ export default function ThemePicker({
                 onClick={() => handleInstallCommunity(entry)}
                 disabled={installing}
               >
-                {installing ? "..." : "Install"}
+                {installing ? "..." : t("themes.install")}
               </button>
             )}
           </div>
@@ -251,13 +254,13 @@ export default function ThemePicker({
           className={`tp-seg-btn${activeTab === "installed" ? " tp-seg-active" : ""}`}
           onClick={() => setActiveTab("installed")}
         >
-          Installed
+          {t("themes.installed")}
         </button>
         <button
           className={`tp-seg-btn${activeTab === "community" ? " tp-seg-active" : ""}`}
           onClick={() => setActiveTab("community")}
         >
-          Community
+          {t("themes.community")}
         </button>
       </div>
 
@@ -265,19 +268,19 @@ export default function ThemePicker({
       {activeTab === "installed" && (
         <div className="tp-panel">
           <div className="tp-toolbar">
-            <span className="tp-toolbar-label">Built-in</span>
+            <span className="tp-toolbar-label">{t("themes.builtIn")}</span>
             <button
               className="tp-toolbar-btn"
               onClick={() => setShowImport(!showImport)}
             >
               {showImport ? (
-                <>Cancel</>
+                <>{t("themes.cancel")}</>
               ) : (
                 <>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   </svg>
-                  Import
+                  {t("themes.import")}
                 </>
               )}
             </button>
@@ -287,14 +290,14 @@ export default function ThemePicker({
             <div className="tp-import">
               <textarea
                 className="tp-import-input"
-                placeholder="Paste theme JSON here..."
+                placeholder={t("themes.pastePlaceholder")}
                 value={importJson}
                 onChange={(e) => { setImportJson(e.target.value); setImportError(""); }}
                 rows={5}
                 spellCheck={false}
               />
               {importError && <span className="tp-import-err">{importError}</span>}
-              <button className="tp-import-go" onClick={handleImport}>Import Theme</button>
+              <button className="tp-import-go" onClick={handleImport}>{t("themes.importTheme")}</button>
             </div>
           )}
 
@@ -304,7 +307,7 @@ export default function ThemePicker({
 
           {customThemes.length > 0 && (
             <>
-              <span className="tp-toolbar-label" style={{ marginTop: 8 }}>Custom</span>
+              <span className="tp-toolbar-label" style={{ marginTop: 8 }}>{t("themes.custom")}</span>
               <div className="tp-grid">
                 {customThemes.map((theme) => renderThemeCard(theme, true))}
               </div>
@@ -331,15 +334,15 @@ export default function ThemePicker({
           {communityLoading ? (
             <div className="tp-status">
               <div className="tp-spinner" />
-              Loading community themes...
+              {t("themes.loading")}
             </div>
           ) : communityError ? (
             <div className="tp-status tp-status-err">
               <span>{communityError}</span>
-              <button className="tp-toolbar-btn" onClick={loadCommunity}>Retry</button>
+              <button className="tp-toolbar-btn" onClick={loadCommunity}>{t("themes.retry")}</button>
             </div>
           ) : filteredCommunity.length === 0 ? (
-            <div className="tp-status">No {communityFilter !== "all" ? communityFilter + " " : ""}themes found.</div>
+            <div className="tp-status">{communityFilter !== "all" ? t("themes.noneOfType", { type: communityFilter }) : t("themes.noneFound")}</div>
           ) : (
             <div className="tp-grid">
               {filteredCommunity.map(renderCommunityCard)}
@@ -356,7 +359,7 @@ export default function ThemePicker({
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor" />
             </svg>
-            Submit your theme
+            {t("themes.submit")}
           </a>
         </div>
       )}

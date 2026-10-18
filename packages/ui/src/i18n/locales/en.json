@@ -1018,6 +1018,15 @@
       "noneCommunity": "No community plugins yet.",
       "manualTitle": "Install a new plugin (paste it in)",
       "manifestPlaceholder": "manifest.json, e.g. {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}"
+    },
+    "attachments": {
+      "uploadFailed": "Upload failed — the vault's storage quota may be used up.",
+      "nearlyFull": "Nearly at the storage limit",
+      "maxSize": "Up to 25 MB per file",
+      "deleteConfirm": "Click again to delete",
+      "used": "{used} / {quota} used",
+      "clickView": "Click to view: {name}",
+      "footerView": "view"
     }
   },
   "desktop": {
@@ -1238,6 +1247,9 @@
       "submit": "Submit your plugin",
       "noManifest": "No manifest.json found in the selected folder",
       "invalidManifest": "Invalid manifest: missing required fields (id, name, main)"
+    },
+    "attachments": {
+      "savedTo": "Files are saved to the attachments/ folder"
     }
   },
   "common": {
@@ -1379,5 +1391,135 @@
     "reloadApp": "Reload page (saves first)",
     "diagnostics": "Diagnostics (server, sync, plugins)…",
     "devToolsHint": "Open browser developer tools (F12)"
+  },
+  "snippets": {
+    "loadFailed": "Failed to load community snippets. Check your connection.",
+    "title": "CSS Snippets",
+    "installed": "Installed",
+    "community": "Community",
+    "search": "Search snippets...",
+    "new": "New Snippet",
+    "namePlaceholder": "Snippet name...",
+    "create": "Create",
+    "cancel": "Cancel",
+    "empty": "No CSS snippets yet",
+    "emptyBefore": "Create your own or browse the",
+    "emptyAfter": "tab to install pre-made snippets.",
+    "edit": "Edit snippet",
+    "delete": "Delete",
+    "deleteTitle": "Delete snippet",
+    "save": "Save",
+    "all": "All",
+    "loading": "Loading community snippets...",
+    "retry": "Retry",
+    "noneFound": "No snippets found.",
+    "install": "Install",
+    "submit": "Submit your snippet",
+    "storedBefore": "Snippets are stored in",
+    "storedAfter": "in your vault",
+    "lines": {
+      "one": "{count} line",
+      "other": "{count} lines"
+    }
+  },
+  "themes": {
+    "loadFailed": "Failed to load community themes. Check your connection.",
+    "invalid": "Invalid theme JSON. Must have id, name, and colors.",
+    "copyJson": "Copy JSON",
+    "delete": "Delete",
+    "installed": "Installed",
+    "install": "Install",
+    "community": "Community",
+    "builtIn": "Built-in",
+    "cancel": "Cancel",
+    "import": "Import",
+    "pastePlaceholder": "Paste theme JSON here...",
+    "importTheme": "Import Theme",
+    "custom": "Custom",
+    "loading": "Loading community themes...",
+    "retry": "Retry",
+    "submit": "Submit your theme",
+    "noneFound": "No themes found.",
+    "noneOfType": "No {type} themes found."
+  },
+  "publish": {
+    "addNotes": "Add Notes",
+    "search": "Search notes...",
+    "clear": "Clear",
+    "addMore": "Add more notes",
+    "plusNotes": "+ Notes",
+    "preview": "Preview",
+    "copied": "Copied!",
+    "copyHtml": "Copy HTML",
+    "saveHtml": "Save as HTML",
+    "added": {
+      "one": "{count} note added",
+      "other": "{count} notes added"
+    },
+    "downloaded": "Downloaded {file}",
+    "savedTo": "Saved to {path}",
+    "saving": "Saving..."
+  },
+  "frontmatter": {
+    "add": "Add properties",
+    "title": "Properties",
+    "none": "No properties defined",
+    "clickToEdit": "Click to edit",
+    "empty": "empty",
+    "remove": "Remove property",
+    "namePlaceholder": "Property name...",
+    "addOne": "Add property"
+  },
+  "trash": {
+    "title": "Trash",
+    "empty": "Empty Trash",
+    "filter": "Filter trash...",
+    "loading": "Loading...",
+    "noMatches": "No matches",
+    "isEmpty": "Trash is empty",
+    "restore": "Restore file",
+    "deleteForever": "Delete permanently",
+    "count": {
+      "one": "{count} item",
+      "other": "{count} items"
+    },
+    "remaining": "{count}d remaining",
+    "footer": "Files are automatically removed after {days} days"
+  },
+  "attachments": {
+    "title": "Attachments",
+    "sortName": "Name",
+    "sortDate": "Date",
+    "loading": "Loading attachments...",
+    "importing": "Importing files...",
+    "dropHere": "Drop files here to add",
+    "empty": "No attachments yet",
+    "tryFilter": "Try changing the filter to see other attachment types.",
+    "delete": "Delete attachment",
+    "dragHint": {
+      "web": "Drag & drop or click to choose files",
+      "desktop": "Drag & drop files to add attachments"
+    },
+    "emptyHint": {
+      "web": "Drag & drop files above, or click the drop zone to choose them.",
+      "desktop": "Drag & drop files above, or use the audio recorder to create recordings."
+    },
+    "filter": {
+      "all": "All ({count})",
+      "image": "Images ({count})",
+      "audio": "Audio ({count})",
+      "video": "Video ({count})",
+      "pdf": "PDF ({count})",
+      "other": "Other ({count})"
+    },
+    "noneOfType": "No {type} files found",
+    "clickInsert": "Click to insert: {name}",
+    "count": {
+      "one": "{count} file",
+      "other": "{count} files"
+    },
+    "footerInsert": "insert",
+    "footerClose": "close",
+    "confirmDelete": "Delete \"{name}\"? This cannot be undone."
   }
 }

@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { generatePublishHTML } from "@/lib/publish";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface PublishPreviewProps {
   content: string;
@@ -16,6 +18,7 @@ interface VaultFile {
 }
 
 export default function PublishPreview({ content, title, vaultPath, onClose }: PublishPreviewProps) {
+  useLocale();
   const [html, setHtml] = useState("");
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -131,11 +134,11 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
           flexShrink: 0,
         }}>
           <div style={{ padding: "10px 12px", borderBottom: "1px solid #313244" }}>
-            <div style={{ color: "#a6adc8", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>Add Notes</div>
+            <div style={{ color: "#a6adc8", fontSize: 11, fontWeight: 600, marginBottom: 6 }}>{t("publish.addNotes")}</div>
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Search notes..."
+              placeholder={t("publish.search")}
               style={{
                 width: "100%", background: "#313244", border: "1px solid #45475a",
                 borderRadius: 4, padding: "4px 8px", color: "#cdd6f4", fontSize: 12,
@@ -174,11 +177,11 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
           </div>
           {selectedFiles.length > 0 && (
             <div style={{ padding: "6px 12px", borderTop: "1px solid #313244", fontSize: 11, color: "#a6adc8" }}>
-              {selectedFiles.length} note{selectedFiles.length !== 1 ? "s" : ""} added
+              {t("publish.added", { count: selectedFiles.length })}
               <button
                 onClick={() => setSelectedFiles([])}
                 style={{ marginLeft: 8, border: "none", background: "transparent", color: "#f38ba8", fontSize: 11, cursor: "pointer" }}
-              >Clear</button>
+              >{t("publish.clear")}</button>
             </div>
           )}
         </div>
@@ -193,19 +196,19 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <button
                 onClick={() => setShowPicker((s) => !s)}
-                title="Add more notes"
+                title={t("publish.addMore")}
                 style={{
                   ...btnStyle,
                   background: showPicker ? "#45475a" : undefined,
                   fontWeight: 600,
                 }}
-              >+ Notes</button>
+              >{t("publish.plusNotes")}</button>
               <div style={{ display: "flex", background: "#313244", borderRadius: 4, padding: 1 }}>
                 <button onClick={() => setTab("preview")} style={{
                   ...tabBtnStyle,
                   background: tab === "preview" ? "#45475a" : "transparent",
                   color: tab === "preview" ? "#cdd6f4" : "#585b70",
-                }}>Preview</button>
+                }}>{t("publish.preview")}</button>
                 <button onClick={() => setTab("code")} style={{
                   ...tabBtnStyle,
                   background: tab === "code" ? "#45475a" : "transparent",
@@ -218,14 +221,14 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
             </div>
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={handleCopy} style={btnStyle}>
-                {saved === "clipboard" ? "Copied!" : "Copy HTML"}
+                {saved === "clipboard" ? t("publish.copied") : t("publish.copyHtml")}
               </button>
               <button onClick={handleSave} disabled={saving} style={{
                 ...btnStyle,
                 background: "#89b4fa", color: "#1e1e2e", fontWeight: 600, border: "none",
                 opacity: saving ? 0.6 : 1,
               }}>
-                {saving ? "Saving..." : "Save as HTML"}
+                {saving ? t("publish.saving") : t("publish.saveHtml")}
               </button>
               <button onClick={onClose} style={btnStyle}>&times;</button>
             </div>
@@ -260,7 +263,7 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
               padding: "6px 16px", borderTop: "1px solid #313244",
               fontSize: 11, color: "#a6e3a1", flexShrink: 0,
             }}>
-              Saved to {saved}
+              {t("publish.savedTo", { path: saved })}
             </div>
           )}
         </div>

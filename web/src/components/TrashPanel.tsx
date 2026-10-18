@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { useEscapeClose } from "@noteriv/ui/hooks";
 import { webApi, type ApiTrashedItem } from "@/lib/webApi";
+import { formatDate as formatIntl, t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface TrashPanelProps {
   vaultId: string;
@@ -17,6 +19,7 @@ interface Row extends ApiTrashedItem {
 const TRASH_RETENTION_DAYS = 30;
 
 export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelProps) {
+  useLocale();
   useEscapeClose(onClose);
   const [rows, setRows] = useState<Row[]>([]);
   const [filter, setFilter] = useState("");
@@ -75,7 +78,7 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
 
   const formatDate = (iso: string): string => {
     try {
-      return new Date(iso).toLocaleDateString(undefined, {
+      return formatIntl(new Date(iso), {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -101,15 +104,15 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
                 strokeLinejoin="round"
               />
             </svg>
-            <h2>Thùng rác</h2>
+            <h2>{t("trash.title")}</h2>
             <span className="trash-count">
-              {rows.length} {rows.length === 1 ? "mục" : "mục"}
+              {t("trash.count", { count: rows.length })}
             </span>
           </div>
           <div className="trash-header-right">
             {rows.length > 0 && (
               <button className="trash-empty-btn" onClick={handleEmptyTrash}>
-                Xoá hết
+                {t("trash.empty")}
               </button>
             )}
             <button className="trash-close-btn" onClick={onClose}>
@@ -129,7 +132,7 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Lọc trong thùng rác…"
+            placeholder={t("trash.filter")}
             className="trash-search-input"
             autoFocus
           />
@@ -137,9 +140,9 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
 
         <div className="trash-list">
           {loading ? (
-            <div className="trash-empty-state">Đang tải…</div>
+            <div className="trash-empty-state">{t("trash.loading")}</div>
           ) : filtered.length === 0 ? (
-            <div className="trash-empty-state">{rows.length === 0 ? "Thùng rác trống" : "Không có kết quả"}</div>
+            <div className="trash-empty-state">{rows.length === 0 ? t("trash.isEmpty") : t("trash.noMatches")}</div>
           ) : (
             filtered.map((row) => (
               <div key={`${row.kind}:${row.id}`} className="trash-item">
@@ -151,18 +154,18 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
                   <div className="trash-item-meta">
                     <span className="trash-item-path">{row.path}</span>
                     <span className="trash-item-date">{formatDate(row.deletedAt)}</span>
-                    <span className="trash-item-days">còn {getDaysRemaining(row.deletedAt)} ngày</span>
+                    <span className="trash-item-days">{t("trash.remaining", { count: getDaysRemaining(row.deletedAt) })}</span>
                   </div>
                 </div>
                 <div className="trash-item-actions">
-                  <button className="trash-action-btn trash-restore-btn" onClick={() => handleRestore(row)} title="Khôi phục">
+                  <button className="trash-action-btn trash-restore-btn" onClick={() => handleRestore(row)} title={t("trash.restore")}>
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                       <path d="M2 8a6 6 0 0110.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                       <path d="M12 2v3h-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                       <path d="M14 8a6 6 0 01-10.5 4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
                     </svg>
                   </button>
-                  <button className="trash-action-btn trash-delete-btn" onClick={() => handlePermanentDelete(row)} title="Xoá vĩnh viễn">
+                  <button className="trash-action-btn trash-delete-btn" onClick={() => handlePermanentDelete(row)} title={t("trash.deleteForever")}>
                     <svg width="14" height="14" viewBox="0 0 14 14">
                       <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                     </svg>
@@ -173,7 +176,7 @@ export default function TrashPanel({ vaultId, onClose, onRestored }: TrashPanelP
           )}
         </div>
 
-        <div className="trash-footer">Mục trong thùng rác sẽ tự động bị xoá vĩnh viễn sau {TRASH_RETENTION_DAYS} ngày</div>
+        <div className="trash-footer">{t("trash.footer", { days: TRASH_RETENTION_DAYS })}</div>
       </div>
     </div>
   );

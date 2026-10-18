@@ -9,6 +9,8 @@ import {
   emptyTrash,
   type TrashItem,
 } from "@/lib/trash-utils";
+import { formatDate as formatIntl, t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface TrashPanelProps {
   vaultPath: string;
@@ -17,6 +19,7 @@ interface TrashPanelProps {
 }
 
 export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPanelProps) {
+  useLocale();
   useEscapeClose(onClose);
   const [items, setItems] = useState<TrashItem[]>([]);
   const [filter, setFilter] = useState("");
@@ -69,7 +72,7 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
 
   const formatDate = (iso: string): string => {
     try {
-      return new Date(iso).toLocaleDateString(undefined, {
+      return formatIntl(new Date(iso), {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -97,13 +100,13 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
               <path d="M3 4h10M5 4V3a1 1 0 011-1h4a1 1 0 011 1v1M6 7v5M8 7v5M10 7v5M4 4l.5 9a1 1 0 001 1h5a1 1 0 001-1L12 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <h2>Trash</h2>
-            <span className="trash-count">{items.length} {items.length === 1 ? "item" : "items"}</span>
+            <h2>{t("trash.title")}</h2>
+            <span className="trash-count">{t("trash.count", { count: items.length })}</span>
           </div>
           <div className="trash-header-right">
             {items.length > 0 && (
               <button className="trash-empty-btn" onClick={handleEmptyTrash}>
-                Empty Trash
+                {t("trash.empty")}
               </button>
             )}
             <button className="trash-close-btn" onClick={onClose}>
@@ -124,7 +127,7 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
             type="text"
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            placeholder="Filter trash..."
+            placeholder={t("trash.filter")}
             className="trash-search-input"
             autoFocus
           />
@@ -133,10 +136,10 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
         {/* List */}
         <div className="trash-list">
           {loading ? (
-            <div className="trash-empty-state">Loading...</div>
+            <div className="trash-empty-state">{t("trash.loading")}</div>
           ) : filtered.length === 0 ? (
             <div className="trash-empty-state">
-              {items.length === 0 ? "Trash is empty" : "No matches"}
+              {items.length === 0 ? t("trash.isEmpty") : t("trash.noMatches")}
             </div>
           ) : (
             filtered.map((item) => (
@@ -146,14 +149,14 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
                   <div className="trash-item-meta">
                     <span className="trash-item-path">{getRelativePath(item.originalPath)}</span>
                     <span className="trash-item-date">{formatDate(item.deletedAt)}</span>
-                    <span className="trash-item-days">{getDaysRemaining(item.deletedAt)}d remaining</span>
+                    <span className="trash-item-days">{t("trash.remaining", { count: getDaysRemaining(item.deletedAt) })}</span>
                   </div>
                 </div>
                 <div className="trash-item-actions">
                   <button
                     className="trash-action-btn trash-restore-btn"
                     onClick={() => handleRestore(item.id)}
-                    title="Restore file"
+                    title={t("trash.restore")}
                   >
                     <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                       <path d="M2 8a6 6 0 0110.5-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
@@ -164,7 +167,7 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
                   <button
                     className="trash-action-btn trash-delete-btn"
                     onClick={() => handlePermanentDelete(item.id)}
-                    title="Delete permanently"
+                    title={t("trash.deleteForever")}
                   >
                     <svg width="14" height="14" viewBox="0 0 14 14">
                       <path d="M3 3l8 8M11 3l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
@@ -177,7 +180,7 @@ export default function TrashPanel({ vaultPath, onClose, onRestored }: TrashPane
         </div>
 
         <div className="trash-footer">
-          Files are automatically removed after 30 days
+          {t("trash.footer", { days: 30 })}
         </div>
       </div>
     </div>

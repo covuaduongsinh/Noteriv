@@ -7,6 +7,8 @@ import {
   hasFrontmatter,
 } from "@noteriv/core/frontmatter-utils";
 import "../styles/frontmatter.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface FrontmatterEditorProps {
   content: string;
@@ -30,6 +32,7 @@ export default function FrontmatterEditor({
   collapsed,
   onToggleCollapse,
 }: FrontmatterEditorProps) {
+  useLocale();
   const [editingKey, setEditingKey] = useState<string | null>(null);
   const [editValue, setEditValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -149,7 +152,7 @@ export default function FrontmatterEditor({
               strokeLinecap="round"
             />
           </svg>
-          Add properties
+          {t("frontmatter.add")}
         </button>
       </div>
     );
@@ -179,7 +182,7 @@ export default function FrontmatterEditor({
             strokeLinejoin="round"
           />
         </svg>
-        <span className="fm-header-label">Properties</span>
+        <span className="fm-header-label">{t("frontmatter.title")}</span>
         <span className="fm-header-count">{existingKeys.length}</span>
       </div>
 
@@ -187,7 +190,7 @@ export default function FrontmatterEditor({
       {!collapsed && (
         <div className="fm-body">
           {existingKeys.length === 0 && !addingNew && (
-            <div className="fm-empty">No properties defined</div>
+            <div className="fm-empty">{t("frontmatter.none")}</div>
           )}
 
           {existingKeys.map((key) => (
@@ -212,10 +215,10 @@ export default function FrontmatterEditor({
                   <span
                     className="fm-property-value"
                     onClick={() => handleStartEdit(key, properties[key])}
-                    title="Click to edit"
+                    title={t("frontmatter.clickToEdit")}
                   >
                     {properties[key] || (
-                      <span className="fm-placeholder">empty</span>
+                      <span className="fm-placeholder">{t("frontmatter.empty")}</span>
                     )}
                   </span>
                 )}
@@ -223,7 +226,7 @@ export default function FrontmatterEditor({
               <button
                 className="fm-delete-btn"
                 onClick={() => handleDeleteProperty(key)}
-                title="Remove property"
+                title={t("frontmatter.remove")}
               >
                 <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                   <path
@@ -243,7 +246,7 @@ export default function FrontmatterEditor({
               <input
                 ref={newKeyInputRef}
                 className="fm-new-key-input"
-                placeholder="Property name..."
+                placeholder={t("frontmatter.namePlaceholder")}
                 value={newKeyValue}
                 onChange={(e) => {
                   setNewKeyValue(e.target.value);
@@ -298,7 +301,7 @@ export default function FrontmatterEditor({
                   strokeLinecap="round"
                 />
               </svg>
-              Add property
+              {t("frontmatter.addOne")}
             </button>
           )}
         </div>
