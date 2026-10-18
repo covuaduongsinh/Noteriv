@@ -1144,7 +1144,8 @@
       "export": "Tải xuống toàn bộ dữ liệu (JSON)",
       "deleteConfirm": "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu",
       "delete": "Xoá tài khoản",
-      "emptyHint": "Đặt tên cho vault đầu tiên ở ô bên dưới. Trong vault, bạn cũng có thể nhập một thư mục note Markdown có sẵn."
+      "emptyHint": "Đặt tên cho vault đầu tiên ở ô bên dưới. Trong vault, bạn cũng có thể nhập một thư mục note Markdown có sẵn.",
+      "unreachable": "Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại."
     },
     "invites": {
       "createFailed": "Không tạo được mã. Thử lại sau.",
@@ -1170,6 +1171,44 @@
         "revoked": "Đã thu hồi"
       },
       "noExpiryHint": "Đặt “Hết hạn sau” = 0 để mã không hết hạn."
+    },
+    "quick": {
+      "open": "Ghi nhanh",
+      "title": "Ghi nhanh",
+      "allVaults": "Tất cả vault",
+      "vault": "Vault",
+      "folder": "Thư mục",
+      "text": "Nội dung note",
+      "placeholder": "Gõ một ý, một link, một việc cần làm… Dòng đầu sẽ thành tên note.",
+      "save": "Lưu",
+      "saving": "Đang lưu…",
+      "saved": "Đã lưu vào {path} lúc {time}.",
+      "openVault": "Mở vault",
+      "failed": "Chưa lưu được. Chữ vẫn giữ trên máy này — hãy thử lại.",
+      "offline": "Bạn đang offline. Chữ vẫn giữ trên máy này — có mạng thì bấm Lưu.",
+      "noVault": "Hãy tạo một vault trước, rồi quay lại đây.",
+      "fallbackName": "Ghi nhanh {stamp}"
+    },
+    "install": {
+      "link": "Cài lên điện thoại",
+      "title": "Cài Noteriv",
+      "intro": "Đưa Noteriv ra màn hình chính để mở như một app: toàn màn hình, có biểu tượng riêng, và Ghi nhanh chỉ cách một chạm.",
+      "already": "Noteriv đã được cài và đang chạy như một app.",
+      "button": "Cài app",
+      "android": {
+        "title": "Android (Chrome)",
+        "step1": "Mở trang này bằng Chrome và đăng nhập.",
+        "step2": "Bấm menu ⋮, chọn “Cài đặt ứng dụng” (hoặc “Thêm vào màn hình chính”).",
+        "step3": "Xác nhận. Noteriv hiện trên màn hình chính; giữ lâu biểu tượng để mở Ghi nhanh."
+      },
+      "ios": {
+        "title": "iPhone và iPad (Safari)",
+        "step1": "Mở trang này bằng Safari và đăng nhập.",
+        "step2": "Bấm nút Chia sẻ (hình vuông có mũi tên), chọn “Thêm vào MH chính”.",
+        "step3": "Bấm “Thêm”. Noteriv mở toàn màn hình từ biểu tượng."
+      },
+      "quick": "Ghi nhanh (/quick) là trang nhẹ để ghi một ý trong vài giây; note vào thư mục Inbox của vault bạn chọn.",
+      "offlineNote": "App mở được khi không có mạng, nhưng đọc và sửa note offline sẽ có ở bản cập nhật sau."
     }
   },
   "desktop": {
@@ -1527,7 +1566,9 @@
       },
       "chars": {
         "other": "{count} ký tự"
-      }
+      },
+      "saveFailed": "Chưa lưu được — đang thử lại",
+      "saveFailedHint": "Lần lưu cuối chưa tới được máy chủ (mất mạng?). Chữ của bạn vẫn còn đây và sẽ tự gửi lại."
     },
     "commands": {
       "corePlugin": "Core plugin",

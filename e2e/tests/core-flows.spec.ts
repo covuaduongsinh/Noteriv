@@ -57,8 +57,9 @@ test("sign up with an invite code", async () => {
   await page.getByPlaceholder("Password (at least 8 characters)").fill(password);
   await page.locator('input[type="checkbox"]').check();
   await page.getByRole("button", { name: "Sign up" }).click();
-  // Sign-up also writes the Getting started vault before moving on, which takes a few requests more.
-  await expect(page).toHaveURL(/\/vaults$/, { timeout: 30_000 });
+  // Sign-up also writes the Getting started vault before moving on, which takes a few requests more: well under a
+  // second next to the database (CI, production), up to ~40 s through the SSH tunnel to the dev database.
+  await expect(page).toHaveURL(/\/vaults$/, { timeout: 60_000 });
 });
 
 test("a new account starts with the Getting started vault, its notes linked", async () => {
@@ -258,4 +259,64 @@ test("a deleted note goes to the trash and can be restored", async () => {
   await page.getByTitle("Restore file", { exact: true }).first().click();
   await page.keyboard.press("Escape"); // closes the trash panel
   await expect(sidebarItem("Second")).toBeVisible();
+});
+
+test("a failed save is reported and sent again once the network is back", async () => {
+  await sidebarItem("First").click();
+  const notePatch = /\/api\/v1\/vaults\/[^/]+\/notes\/[^/]+$/;
+  await page.route(notePatch, (route) => (route.request().method() === "PATCH" ? route.abort("internetdisconnected") : route.fallback()));
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type(" offline edit");
+  await expect(page.getByText("Not saved — retrying")).toBeVisible();
+  await page.unroute(notePatch);
+  const resent = noteSaved("offline edit");
+  await page.evaluate(() => window.dispatchEvent(new Event("online")));
+  await resent;
+  await expect(page.getByText("saved", { exact: true })).toBeVisible();
+});
+
+test("Quick note files the text into Inbox/ of the chosen vault", async () => {
+  const vaultUrl = page.url();
+  await page.goto("/quick");
+  await page.getByLabel("Vault").selectOption({ label: "E2E vault" });
+  await page.getByLabel("Note text").fill("Call the bank\nabout the card");
+  await page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(page.getByText(/Saved to Inbox\/Call the bank\.md/)).toBeVisible();
+  await expect(page.getByLabel("Note text")).toHaveValue("");
+  await page.goto(vaultUrl);
+  await sidebarItem("Inbox").click();
+  await expect(sidebarItem("Call the bank")).toBeVisible();
+});
+
+test("on a phone the ribbon is a bottom bar and the file list a drawer", async () => {
+  const phone = await context.newPage();
+  try {
+    await phone.setViewportSize({ width: 390, height: 844 });
+    await phone.goto(page.url());
+    const ribbon = phone.locator(".ribbon");
+    await expect(ribbon).toBeVisible();
+    const bar = (await ribbon.boundingBox())!;
+    expect(bar.y + bar.height).toBeGreaterThan(844 - 2);
+    expect(bar.width).toBeGreaterThan(380);
+    // The sidebar starts closed; the header button opens it as a drawer, opening a note closes it again.
+    const drawer = phone.locator(".sidebar-root");
+    await expect(drawer).toHaveCount(0);
+    await phone.getByTitle("Collapse sidebar", { exact: true }).click();
+    await expect(drawer).toBeVisible();
+    await drawer.locator(".sb-label").getByText("First", { exact: true }).click();
+    await expect(drawer).toHaveCount(0);
+    await expect(phone.locator(".cm-content").first()).toContainText("Hello e2e world");
+    // The note's own buttons scroll into view instead of being cut off.
+    const last = phone.getByTitle("File Recovery", { exact: true });
+    await last.scrollIntoViewIfNeeded();
+    const box = (await last.boundingBox())!;
+    expect(box.x + box.width).toBeLessThanOrEqual(390);
+    // "More tools" opens above the bottom bar.
+    await phone.getByTitle("More tools", { exact: true }).click();
+    const menu = (await phone.getByRole("menu").boundingBox())!;
+    expect(menu.y + menu.height).toBeLessThanOrEqual(bar.y + 1);
+  } finally {
+    await phone.close();
+  }
 });

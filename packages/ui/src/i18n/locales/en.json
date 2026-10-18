@@ -1173,7 +1173,8 @@
       "export": "Download all my data (JSON)",
       "deleteConfirm": "Click again to permanently delete the account and all its data",
       "delete": "Delete account",
-      "emptyHint": "Give your first vault a name below. Inside it you can also import an existing folder of Markdown notes."
+      "emptyHint": "Give your first vault a name below. Inside it you can also import an existing folder of Markdown notes.",
+      "unreachable": "Can't reach the server. Check your connection and try again."
     },
     "invites": {
       "createFailed": "Could not create the code. Try again later.",
@@ -1199,6 +1200,44 @@
         "revoked": "Revoked"
       },
       "noExpiryHint": "Set “Expires after” to 0 for a code that never expires."
+    },
+    "quick": {
+      "open": "Quick note",
+      "title": "Quick note",
+      "allVaults": "All vaults",
+      "vault": "Vault",
+      "folder": "Folder",
+      "text": "Note text",
+      "placeholder": "Type a thought, a link, a to-do… The first line becomes the note's name.",
+      "save": "Save",
+      "saving": "Saving…",
+      "saved": "Saved to {path} at {time}.",
+      "openVault": "Open the vault",
+      "failed": "Couldn't save. Your text is kept on this device — try again.",
+      "offline": "You're offline. Your text is kept on this device — save when you're back online.",
+      "noVault": "Create a vault first, then come back here.",
+      "fallbackName": "Quick note {stamp}"
+    },
+    "install": {
+      "link": "Install on your phone",
+      "title": "Install Noteriv",
+      "intro": "Put Noteriv on your home screen and it opens like an app: full screen, with its own icon, and with Quick note one tap away.",
+      "already": "Noteriv is already installed and running as an app.",
+      "button": "Install the app",
+      "android": {
+        "title": "Android (Chrome)",
+        "step1": "Open this site in Chrome and sign in.",
+        "step2": "Tap the ⋮ menu, then “Install app” (or “Add to Home screen”).",
+        "step3": "Confirm. Noteriv appears on your home screen; press and hold the icon for Quick note."
+      },
+      "ios": {
+        "title": "iPhone and iPad (Safari)",
+        "step1": "Open this site in Safari and sign in.",
+        "step2": "Tap the Share button (the square with an arrow), then “Add to Home Screen”.",
+        "step3": "Tap “Add”. Noteriv opens full screen from its icon."
+      },
+      "quick": "Quick note (/quick) is a light page for capturing a thought in seconds; notes go into the Inbox folder of the vault you pick.",
+      "offlineNote": "The app opens without a connection, but reading and editing notes offline comes in a later update."
     }
   },
   "desktop": {
@@ -1561,7 +1600,9 @@
       "chars": {
         "one": "{count} char",
         "other": "{count} chars"
-      }
+      },
+      "saveFailed": "Not saved — retrying",
+      "saveFailedHint": "The last save did not reach the server (offline?). Your text is still here and is sent again automatically."
     },
     "commands": {
       "corePlugin": "Core plugin",

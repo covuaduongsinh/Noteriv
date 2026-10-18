@@ -70,11 +70,20 @@ export default function Ribbon(props: RibbonProps) {
   const moreBtnRef = useRef<HTMLButtonElement>(null);
   const popRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ left: 44, bottom: 8 });
+  const POPOVER_WIDTH = 220;
 
   useEffect(() => {
     if (!moreOpen) return;
     const r = moreBtnRef.current?.getBoundingClientRect();
-    if (r) setPos({ left: r.right + 8, bottom: Math.max(8, window.innerHeight - r.bottom) });
+    if (r) {
+      // A rail on the left opens the menu beside the button; the phone's bottom bar opens it above.
+      const bar = r.top > window.innerHeight / 2 && r.bottom > window.innerHeight - 80 && window.matchMedia("(max-width: 600px)").matches;
+      setPos(
+        bar
+          ? { left: Math.max(8, Math.min(r.left, window.innerWidth - POPOVER_WIDTH - 8)), bottom: window.innerHeight - r.top + 8 }
+          : { left: r.right + 8, bottom: Math.max(8, window.innerHeight - r.bottom) }
+      );
+    }
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (!popRef.current?.contains(t) && !moreBtnRef.current?.contains(t)) setMoreOpen(false);
@@ -159,7 +168,7 @@ export default function Ribbon(props: RibbonProps) {
           ref={popRef}
           role="menu"
           className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] shadow-lg"
-          style={{ position: "fixed", left: pos.left, bottom: pos.bottom, zIndex: 60, minWidth: 220, padding: 4 }}
+          style={{ position: "fixed", left: pos.left, bottom: pos.bottom, zIndex: 60, minWidth: POPOVER_WIDTH, padding: 4 }}
         >
           {moreItems.map((it) => (
             <button

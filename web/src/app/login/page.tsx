@@ -7,6 +7,7 @@ import { webApi, ApiError } from "@/lib/webApi";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
+import { safeNext } from "@/lib/safe-next";
 
 export default function LoginPage() {
   useLocale();
@@ -22,7 +23,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await webApi.auth.login({ email, password });
-      router.replace("/vaults");
+      // Back to where the sign-in was asked for (e.g. /quick from the home-screen shortcut).
+      router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
       setError(err instanceof ApiError ? t("web.auth.badLogin") : t("web.auth.error"));
     } finally {
@@ -71,6 +73,10 @@ export default function LoginPage() {
           {" · "}
           <Link href="/privacy" className="hover:text-[var(--text-primary)]">
             {t("web.auth.privacy")}
+          </Link>
+          {" · "}
+          <Link href="/install" className="hover:text-[var(--text-primary)]">
+            {t("web.install.link")}
           </Link>
         </p>
         <LanguageSwitch />

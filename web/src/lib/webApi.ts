@@ -432,6 +432,9 @@ export const webApi = {
     ) => request<ApiNote>(`/vaults/${vaultId}/notes/${noteId}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (vaultId: string, noteId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/notes/${noteId}`, { method: "DELETE" }),
+    /** Quick note: files `content` into `folder` (default Inbox), named after its first line or `fallbackName`. */
+    quick: (vaultId: string, data: { content: string; folder?: string; fallbackName?: string }) =>
+      request<{ id: string; path: string }>(`/vaults/${vaultId}/quick-note`, { method: "POST", body: JSON.stringify(data) }),
     backlinks: (vaultId: string, noteId: string) =>
       request<ApiBacklink[]>(`/vaults/${vaultId}/notes/${noteId}/backlinks`),
     // D5 — File Recovery / Time Scrubber.

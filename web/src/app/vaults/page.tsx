@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { webApi, type ApiVault } from "@/lib/webApi";
+import { ApiError, webApi, type ApiVault } from "@/lib/webApi";
+import { clearCachedPages } from "@/components/ServiceWorkerRegister";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage } from "@/lib/i18n";
@@ -17,12 +18,14 @@ export default function VaultsPage() {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [unreachable, setUnreachable] = useState(false);
 
   useEffect(() => {
     webApi.vaults
       .list()
       .then(setVaults)
-      .catch(() => router.replace("/login"));
+      // Only a refused session means "sign in again"; no network (the installed app opened offline) does not.
+      .catch((err) => (err instanceof ApiError && err.status === 401 ? router.replace("/login") : setUnreachable(true)));
     webApi.auth
       .me()
       .then((u) => setIsAdmin(!!u.isAdmin))
@@ -48,6 +51,7 @@ export default function VaultsPage() {
 
   async function logout() {
     await webApi.auth.logout();
+    clearCachedPages();
     router.replace("/login");
   }
 
@@ -77,7 +81,7 @@ export default function VaultsPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col items-center gap-6 pt-20 px-4">
+    <div className="min-h-screen flex flex-col items-center gap-6 pt-20 pb-12 px-4">
       <div className="flex items-center justify-between w-full max-w-md">
         <h1 className="text-2xl font-semibold">{t("web.vaultList.title")}</h1>
         <button onClick={logout} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
@@ -86,7 +90,8 @@ export default function VaultsPage() {
       </div>
 
       <div className="w-full max-w-md flex flex-col gap-2">
-        {vaults === null && <p className="text-[var(--text-secondary)]">{t("web.vaultList.loading")}</p>}
+        {vaults === null && !unreachable && <p className="text-[var(--text-secondary)]">{t("web.vaultList.loading")}</p>}
+        {unreachable && <p className="text-[var(--text-secondary)]">{t("web.vaultList.unreachable")}</p>}
         {vaults?.length === 0 && (
           <>
             <p className="text-[var(--text-secondary)]">{t("web.vaultList.empty")}</p>
@@ -119,6 +124,15 @@ export default function VaultsPage() {
           {t("web.vaultList.create")}
         </button>
       </form>
+
+      <div className="w-full max-w-md flex gap-4 text-sm">
+        <Link href="/quick" className="text-[var(--accent)] hover:underline">
+          {t("web.quick.open")}
+        </Link>
+        <Link href="/install" className="text-[var(--accent)] hover:underline">
+          {t("web.install.link")}
+        </Link>
+      </div>
 
       <div className="w-full max-w-md flex flex-col gap-2 mt-8 pt-6 border-t border-[var(--border)]">
         <h2 className="text-sm font-medium text-[var(--text-secondary)]">{t("web.vaultList.account")}</h2>
