@@ -1,6 +1,6 @@
 # Chặng 4: Quốc tế hoá, người mới, di động
 
-> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.3 xong; 4.4 đang làm) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.4 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 2 xong (chuỗi giao diện đã trung lập); nên xong 3.2 (E2E) để bắt lỗi khi rút chuỗi.
 
@@ -98,7 +98,7 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
 | 4.1 Hạ tầng i18n | Xong, đã lên production (PR #9 merge `79318bf`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-1-i18n.md); `packages/ui/src/i18n`, `api.i18n` (draft.10), panel dùng chung + thanh định dạng + `word-count` đọc catalog; mặc định chuyển tiếp web `vi` / desktop `en` tới cuối 4.3 (chủ dự án chốt); 448 test, E2E 9/9, smoke desktop 16/16 |
 | 4.2 Rút chuỗi (phần 1: phần dùng chung, khung trang) | Xong, đã lên production (PR #10 merge `f206bac`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-2-rut-chuoi-1.md); 17 core plugin + tên plugin + panel + khung trang hai app đọc catalog; chia rút chuỗi thành 4.2–4.4 (chủ dự án chốt); 469 test, E2E 9/9, smoke desktop 16/16, JS tải đầu 211,6 KB |
 | 4.3 Rút chuỗi (phần 2: Cài đặt, PluginManager) | Xong, đã lên production (PR #11 merge `51a7329`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-3-cai-dat.md); Cài đặt hai app (kể cả đồng bộ, phím tắt, Clipper), PluginManager hai app, bảng lựa chọn; chia rút chuỗi thành 4.2–4.5 (chủ dự án chốt); 470 test, E2E 9/9, smoke desktop 16/16, JS tải đầu 223,1 KB |
-| 4.4 Rút chuỗi (phần 3: các hộp thoại còn lại) | Đang làm | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-4-hop-thoai.md) |
+| 4.4 Rút chuỗi (phần 3: các hộp thoại còn lại) | Xong, đã lên production (PR #12 merge `c99d7b8`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-4-hop-thoai.md); các hộp thoại còn lại hai app; báo cáo Chẩn đoán cố định tiếng Anh; 470 test, E2E 9/9, smoke desktop 16/16, JS tải đầu 229,5 KB |
 | 4.5 Rút chuỗi (phần 4: trang ngoài, pháp lý), đổi mặc định, ô Language | Chưa làm | | |
 | 4.6 Người mới | Chưa làm | | |
 | 4.7 PWA, Ghi nhanh, giao diện điện thoại | Chưa làm | | |
