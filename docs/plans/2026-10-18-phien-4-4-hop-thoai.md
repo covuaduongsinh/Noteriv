@@ -43,6 +43,7 @@ Phiên này dùng hai script nhỏ trong scratchpad (không commit):
 - `npm run typecheck`: sạch.
 - `npm test`: 291 + 93 + 86 = **470 test đạt**. Mọi `t("…")` mới dùng khoá viết sẵn, nên test khoá có sẵn đã bao.
 - **E2E 9/9 trên bản build production.** Bước tiếng Anh nay mở thêm Thùng rác và kiểm tiêu đề "Trash". Nút "Khôi phục" của thùng rác web giữ đúng chữ để E2E vẫn tìm được.
+- **CI lần đầu đỏ ở E2E** (test "reloading restores the open tabs…" thấy 1 tab thay vì 2). Nguyên nhân là chính bước tiếng Anh tôi thêm: tab thứ hai mở một note và sống lâu hơn trước, nên nó ghi trạng thái workspace sau cùng, đè lên trạng thái hai tab của trang chính. Trên máy tôi thứ tự ghi khác nên vẫn đạt. Sửa: trước khi kiểm, trang chính chuyển qua lại hai note để ghi lại trạng thái của nó. Sau sửa, E2E trên máy đạt 9/9 ba lần liên tiếp.
 - **Thử bằng mắt:** chụp màn hình từ spec tạm (để ở scratchpad, xoá ngay sau khi chạy, `git status` không có ảnh), ở `vi` và cờ dev `en`. Các cảnh: thanh thuộc tính, File đính kèm, theme, CSS Snippets, Thùng rác, Import, Chẩn đoán, Khôi phục file. Không còn chữ lẫn ngôn ngữ.
 - JS tải đầu web: **229,5 KB gzip** (4.3: 223,1; ngân sách ≤ 374).
 - **Smoke desktop (app Tauri thật) 16/16** sau `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle`.

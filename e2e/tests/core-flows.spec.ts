@@ -182,6 +182,10 @@ test("another open tab follows a core plugin switch without reloading", async ()
 
 test("reloading restores the open tabs without a request per note", async () => {
   // workspace-state now carries the open notes, so no per-note GET is needed to restore them.
+  // Other tabs opened earlier in this run (one note each) may have saved the workspace last: switching between the
+  // two open notes here makes this page save its own state again.
+  await sidebarItem("Second").click();
+  await sidebarItem("First").click();
   const noteGets: string[] = [];
   const onRequest = (r: { url: () => string; method: () => string }) => {
     if (r.method() === "GET" && /\/api\/v1\/vaults\/[^/]+\/notes\/[^/?]+$/.test(r.url())) noteGets.push(r.url());
