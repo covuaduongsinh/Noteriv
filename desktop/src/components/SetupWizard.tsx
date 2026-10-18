@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface SetupWizardProps {
   onComplete: (vault: Vault) => void;
@@ -9,6 +11,7 @@ interface SetupWizardProps {
 type Step = "welcome" | "name" | "location" | "github-auth" | "github-repo" | "creating";
 
 export default function SetupWizard({ onComplete }: SetupWizardProps) {
+  useLocale();
   const [step, setStep] = useState<Step>("welcome");
   const [vaultName, setVaultName] = useState("");
   const [vaultPath, setVaultPath] = useState("");
@@ -56,10 +59,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         setLoadingRepos(false);
         if (setupType === "clone") setStep("github-repo");
       } else {
-        setError(result.error || "Invalid token");
+        setError(result.error || t("desktop.setup.invalidToken"));
       }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to validate token");
+      setError(err instanceof Error ? err.message : t("desktop.setup.validateFailed"));
     } finally {
       setValidating(false);
     }
@@ -105,7 +108,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
       }
       onComplete(vault);
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : "Failed to create vault");
+      setError(err instanceof Error ? err.message : t("desktop.setup.createFailed"));
       setStep("github-auth");
       setCreating(false);
     }
@@ -166,7 +169,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             </svg>
             <span style={{ fontSize: 22, fontWeight: 700, color: "var(--accent)", letterSpacing: "-0.03em" }}>Noteriv</span>
           </div>
-          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, letterSpacing: "0.02em", textTransform: "uppercase" as const }}>Markdown notes, everywhere</p>
+          <p style={{ fontSize: 12, color: "var(--text-muted)", margin: 0, letterSpacing: "0.02em", textTransform: "uppercase" as const }}>{t("desktop.setup.tagline")}</p>
         </div>
 
         <div style={S.card}>
@@ -186,8 +189,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === "welcome" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                 <div>
-                  <h2 style={S.h2}>Create your workspace</h2>
-                  <p style={S.p}>A vault is where your notes live. Pick how you want to start.</p>
+                  <h2 style={S.h2}>{t("desktop.setup.welcomeTitle")}</h2>
+                  <p style={S.p}>{t("desktop.setup.welcomeDesc")}</p>
                 </div>
 
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -198,8 +201,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 4v12M4 10h12" stroke="var(--accent)" strokeWidth="2" strokeLinecap="round" /></svg>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>New vault</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Start fresh with an empty folder</div>
+                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{t("desktop.setup.newVault")}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("desktop.setup.newVaultDesc")}</div>
                     </div>
                   </button>
 
@@ -210,8 +213,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M3 7h5l1.5 1.5H17v8H3V7z" stroke="var(--mauve)" strokeWidth="1.6" strokeLinejoin="round" /></svg>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Open folder</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Use an existing notes folder</div>
+                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{t("desktop.setup.openFolder")}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("desktop.setup.openFolderDesc")}</div>
                     </div>
                   </button>
 
@@ -222,8 +225,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       <svg width="20" height="20" viewBox="0 0 20 20" fill="none"><path d="M10 1C5.58 1 2 4.58 2 9c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0018 9c0-4.42-3.58-8-8-8z" fill="var(--green)" /></svg>
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>Clone from GitHub</div>
-                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Pull notes from a repository</div>
+                      <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)", letterSpacing: "-0.01em" }}>{t("desktop.setup.clone")}</div>
+                      <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("desktop.setup.cloneDesc")}</div>
                     </div>
                   </button>
                 </div>
@@ -234,15 +237,15 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === "name" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                 <div>
-                  <h2 style={S.h2}>Name your vault</h2>
+                  <h2 style={S.h2}>{t("desktop.setup.nameTitle")}</h2>
                   <p style={S.p}>Something like &ldquo;Personal&rdquo;, &ldquo;Work&rdquo;, or &ldquo;Research&rdquo;.</p>
                 </div>
-                <input type="text" value={vaultName} onChange={(e) => setVaultName(e.target.value)} placeholder="My Notes" autoFocus
+                <input type="text" value={vaultName} onChange={(e) => setVaultName(e.target.value)} placeholder={t("desktop.setup.namePlaceholder")} autoFocus
                   style={S.input} onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }} onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                   onKeyDown={(e) => { if (e.key === "Enter" && canProceedFromName) setStep("location"); }} />
                 <div style={S.nav}>
-                  <button style={S.back} onClick={() => setStep("welcome")}>Back</button>
-                  <button style={{ ...S.next, ...(canProceedFromName ? {} : S.nextDisabled) }} onClick={() => setStep("location")} disabled={!canProceedFromName}>Continue</button>
+                  <button style={S.back} onClick={() => setStep("welcome")}>{t("desktop.setup.back")}</button>
+                  <button style={{ ...S.next, ...(canProceedFromName ? {} : S.nextDisabled) }} onClick={() => setStep("location")} disabled={!canProceedFromName}>{t("desktop.setup.continue")}</button>
                 </div>
               </div>
             )}
@@ -251,21 +254,21 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === "location" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                 <div>
-                  <h2 style={S.h2}>{setupType === "existing" ? "Choose your folder" : "Where to store it?"}</h2>
-                  <p style={S.p}>{setupType === "existing" ? "Select the folder with your notes." : "Pick a parent folder, or use the default."}</p>
+                  <h2 style={S.h2}>{setupType === "existing" ? t("desktop.setup.chooseFolder") : t("desktop.setup.whereToStore")}</h2>
+                  <p style={S.p}>{setupType === "existing" ? t("desktop.setup.selectFolder") : t("desktop.setup.pickParent")}</p>
                 </div>
                 <button onClick={handlePickFolder} style={{ display: "flex", alignItems: "center", gap: 14, padding: "16px 18px", background: "transparent", border: "1px dashed var(--border)", borderRadius: 12, color: "var(--text-muted)", fontSize: 13, cursor: "pointer", textAlign: "left" as const, transition: "border-color 0.2s", width: "100%" }}
                   onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--accent)"; }}
                   onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.borderColor = "var(--border)"; }}>
                   <svg width="18" height="18" viewBox="0 0 18 18" fill="none"><path d="M2 5h5l1.5 1.5H16v8H2V5z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
-                  <span style={{ color: vaultPath ? "var(--text-primary)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{vaultPath || "Click to choose folder..."}</span>
+                  <span style={{ color: vaultPath ? "var(--text-primary)" : "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{vaultPath || t("desktop.setup.clickToChoose")}</span>
                 </button>
                 {setupType !== "existing" && !vaultPath && (
-                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>Default: ~/Noteriv/{vaultName.replace(/\s+/g, "-")}</p>
+                  <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0 }}>{t("desktop.setup.defaultPath", { path: `~/Noteriv/${vaultName.replace(/\s+/g, "-")}` })}</p>
                 )}
                 <div style={S.nav}>
-                  <button style={S.back} onClick={() => setStep("name")}>Back</button>
-                  <button style={{ ...S.next, ...(canProceedFromLocation ? {} : S.nextDisabled) }} onClick={() => setStep("github-auth")} disabled={!canProceedFromLocation}>Continue</button>
+                  <button style={S.back} onClick={() => setStep("name")}>{t("desktop.setup.back")}</button>
+                  <button style={{ ...S.next, ...(canProceedFromLocation ? {} : S.nextDisabled) }} onClick={() => setStep("github-auth")} disabled={!canProceedFromLocation}>{t("desktop.setup.continue")}</button>
                 </div>
               </div>
             )}
@@ -274,8 +277,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === "github-auth" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
                 <div>
-                  <h2 style={S.h2}>Connect GitHub</h2>
-                  <p style={S.p}>{setupType === "clone" ? "Sign in to access your repos." : "Optional. You can also set up Folder or WebDAV sync later in Settings."}</p>
+                  <h2 style={S.h2}>{t("desktop.setup.connectGithub")}</h2>
+                  <p style={S.p}>{setupType === "clone" ? t("desktop.setup.signIn") : t("desktop.setup.optional")}</p>
                 </div>
 
                 {setupType !== "clone" && !enableGit && (
@@ -287,13 +290,13 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                         <GitHubIcon />
                       </div>
                       <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)" }}>Connect GitHub</div>
+                        <div style={{ fontSize: 14, fontWeight: 560, color: "var(--text-primary)" }}>{t("desktop.setup.connectGithub")}</div>
                         <div style={{ fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>Back up &amp; sync notes to a repo</div>
                       </div>
                     </button>
                     <div style={S.nav}>
-                      <button style={S.back} onClick={() => setStep("location")}>Back</button>
-                      <button style={S.next} onClick={handleCreate}>Create Vault</button>
+                      <button style={S.back} onClick={() => setStep("location")}>{t("desktop.setup.back")}</button>
+                      <button style={S.next} onClick={handleCreate}>{t("desktop.setup.createVault")}</button>
                     </div>
                   </>
                 )}
@@ -309,21 +312,21 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                           <div style={{ fontSize: 13, fontWeight: 500, color: "var(--text-primary)" }}>{ghUser.name || ghUser.username}</div>
                           <div style={{ fontSize: 11, color: "var(--green)" }}>@{ghUser.username}</div>
                         </div>
-                        <button style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer" }} onClick={() => { setGhUser(null); setToken(""); }}>Disconnect</button>
+                        <button style={{ background: "none", border: "none", color: "var(--text-muted)", fontSize: 11, cursor: "pointer" }} onClick={() => { setGhUser(null); setToken(""); }}>{t("desktop.setup.disconnect")}</button>
                       </div>
                     ) : (
                       <>
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)" }}>Personal Access Token</span>
+                          <span style={{ fontSize: 12, fontWeight: 500, color: "var(--text-secondary)" }}>{t("desktop.setup.pat")}</span>
                           <button style={{ background: "none", border: "none", color: "var(--accent)", fontSize: 12, cursor: "pointer", padding: 0 }} onClick={() => window.electronAPI?.authOpenTokenPage()}>Generate on GitHub &rarr;</button>
                         </div>
-                        <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>Select the <strong style={{ color: "var(--text-secondary)" }}>repo</strong> scope. Your token is encrypted locally.</p>
+                        <p style={{ fontSize: 11, color: "var(--text-muted)", margin: 0, lineHeight: 1.6 }}>{t("desktop.setup.scopeBefore")} <strong style={{ color: "var(--text-secondary)" }}>repo</strong> {t("desktop.setup.scopeAfter")}</p>
                         <div style={{ display: "flex", gap: 8 }}>
                           <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="ghp_xxxx..." style={{ ...S.input, fontFamily: "'JetBrains Mono', monospace", fontSize: 13, flex: 1 }}
                             onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }} onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                             onKeyDown={(e) => { if (e.key === "Enter" && token.trim()) handleValidateToken(); }} />
                           <button style={{ ...S.next, padding: "12px 20px", flexShrink: 0, ...((!token.trim() || validating) ? S.nextDisabled : {}) }} onClick={handleValidateToken} disabled={!token.trim() || validating}>
-                            {validating ? <div style={{ width: 14, height: 14, border: "2px solid var(--bg-primary)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : "Connect"}
+                            {validating ? <div style={{ width: 14, height: 14, border: "2px solid var(--bg-primary)", borderTopColor: "transparent", borderRadius: "50%", animation: "spin 0.6s linear infinite" }} /> : t("desktop.setup.connect")}
                           </button>
                         </div>
                       </>
@@ -333,8 +336,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
                         <Checkbox checked={autoSync} onChange={setAutoSync} />
                         <div>
-                          <span style={{ fontSize: 13, color: "var(--text-primary)", display: "block" }}>Auto-sync on save</span>
-                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Push when you save a file</span>
+                          <span style={{ fontSize: 13, color: "var(--text-primary)", display: "block" }}>{t("desktop.setup.autoSync")}</span>
+                          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{t("desktop.setup.autoSyncDesc")}</span>
                         </div>
                       </label>
                     )}
@@ -342,11 +345,11 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                     {error && <div style={S.error}>{error}</div>}
 
                     <div style={S.nav}>
-                      <button style={S.back} onClick={() => { if (setupType !== "clone" && !ghUser?.valid) setEnableGit(false); else setStep("location"); }}>Back</button>
+                      <button style={S.back} onClick={() => { if (setupType !== "clone" && !ghUser?.valid) setEnableGit(false); else setStep("location"); }}>{t("desktop.setup.back")}</button>
                       {ghUser?.valid ? (
-                        <button style={S.next} onClick={() => setStep("github-repo")}>{setupType === "clone" ? "Continue" : "Pick repo"}</button>
+                        <button style={S.next} onClick={() => setStep("github-repo")}>{setupType === "clone" ? t("desktop.setup.continue") : t("desktop.setup.pickRepoButton")}</button>
                       ) : setupType !== "clone" ? (
-                        <button style={S.skip} onClick={handleCreate}>Skip</button>
+                        <button style={S.skip} onClick={handleCreate}>{t("desktop.setup.skip")}</button>
                       ) : null}
                     </div>
                   </>
@@ -358,14 +361,14 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
             {step === "github-repo" && (
               <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
                 <div>
-                  <h2 style={S.h2}>{setupType === "clone" ? "Pick a repo" : "Choose a repo"}</h2>
-                  <p style={S.p}>Select an existing repo or create a new one.</p>
+                  <h2 style={S.h2}>{setupType === "clone" ? t("desktop.setup.pickRepo") : t("desktop.setup.chooseRepo")}</h2>
+                  <p style={S.p}>{t("desktop.setup.repoDesc")}</p>
                 </div>
 
                 <button style={{ ...optionStyle("var(--accent)"), ...(createNewRepo ? { borderColor: "var(--accent)", background: "color-mix(in srgb, var(--accent) 5%, transparent)" } : {}) }}
                   onClick={() => { setCreateNewRepo(true); setSelectedRepo(null); }}>
                   <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M8 3v10M3 8h10" stroke="var(--accent)" strokeWidth="1.8" strokeLinecap="round" /></svg>
-                  <span style={{ fontSize: 13, fontWeight: 560, color: "var(--text-primary)" }}>Create new repo</span>
+                  <span style={{ fontSize: 13, fontWeight: 560, color: "var(--text-primary)" }}>{t("desktop.setup.createRepo")}</span>
                 </button>
 
                 {createNewRepo && (
@@ -375,7 +378,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                       onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }} onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }} />
                     <label style={{ display: "flex", alignItems: "center", gap: 8, cursor: "pointer" }}>
                       <Checkbox checked={newRepoPrivate} onChange={setNewRepoPrivate} />
-                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>Private repo</span>
+                      <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{t("desktop.setup.privateRepo")}</span>
                     </label>
                   </div>
                 )}
@@ -391,7 +394,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                         <div style={{ fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{repo.name}</div>
                         {repo.description && <div style={{ fontSize: 10, color: "var(--text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" as const }}>{repo.description}</div>}
                       </div>
-                      {repo.private && <span style={{ fontSize: 10, color: "var(--yellow)", flexShrink: 0 }}>private</span>}
+                      {repo.private && <span style={{ fontSize: 10, color: "var(--yellow)", flexShrink: 0 }}>{t("desktop.setup.private")}</span>}
                     </button>
                   ))}
                 </div>
@@ -399,10 +402,10 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
                 {error && <div style={S.error}>{error}</div>}
 
                 <div style={S.nav}>
-                  <button style={S.back} onClick={() => setStep("github-auth")}>Back</button>
+                  <button style={S.back} onClick={() => setStep("github-auth")}>{t("desktop.setup.back")}</button>
                   <button style={{ ...S.next, ...(creating || (!createNewRepo && !selectedRepo) || (createNewRepo && !newRepoName) ? S.nextDisabled : {}) }}
                     onClick={handleCreate} disabled={creating || (!createNewRepo && !selectedRepo) || (createNewRepo && !newRepoName)}>
-                    {setupType === "clone" ? "Clone & Create" : "Create Vault"}
+                    {setupType === "clone" ? t("desktop.setup.cloneCreate") : t("desktop.setup.createVault")}
                   </button>
                 </div>
               </div>
@@ -413,7 +416,7 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "48px 0", gap: 18 }}>
                 <div style={{ width: 32, height: 32, border: "2.5px solid color-mix(in srgb, var(--accent) 20%, transparent)", borderTopColor: "var(--accent)", borderRadius: "50%", animation: "spin 0.7s linear infinite" }} />
                 <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
-                  {setupType === "clone" ? "Cloning repository..." : createNewRepo ? "Creating repo and vault..." : "Setting up your vault..."}
+                  {setupType === "clone" ? t("desktop.setup.cloning") : createNewRepo ? t("desktop.setup.creatingRepo") : t("desktop.setup.settingUp")}
                 </p>
               </div>
             )}

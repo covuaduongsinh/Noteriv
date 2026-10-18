@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface Props {
   blob: Blob;
@@ -14,6 +16,7 @@ interface Props {
  * so the preview always matches the downloaded file.
  */
 export default function PdfPreviewModal({ blob, filename, onDownload, onClose }: Props) {
+  useLocale();
   const [url, setUrl] = useState<string | null>(null);
   const frameRef = useRef<HTMLIFrameElement>(null);
 
@@ -52,28 +55,28 @@ export default function PdfPreviewModal({ blob, filename, onDownload, onClose }:
       >
         <div className="flex items-center gap-2">
           <h2 className="text-base font-semibold" style={{ flex: 1, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-            Xem trước · {filename}
+            {t("web.pdfPreview.title", { file: filename })}
           </h2>
           <button className={btn} style={{ padding: "6px 12px", background: "var(--accent)", color: "var(--bg-primary)" }} onClick={onDownload}>
-            Tải PDF
+            {t("web.pdfPreview.download")}
           </button>
           <button className={btn} style={{ padding: "6px 12px" }} onClick={print}>
-            In
+            {t("web.pdfPreview.print")}
           </button>
           <button className={btn} style={{ padding: "6px 12px" }} onClick={onClose}>
-            Đóng
+            {t("common.close")}
           </button>
         </div>
         {url && (
           <iframe
             ref={frameRef}
             src={url}
-            title={`Xem trước ${filename}`}
+            title={t("web.pdfPreview.frameTitle", { file: filename })}
             className="rounded-md border border-[var(--border)]"
             style={{ flex: 1, width: "100%", background: "#fff" }}
           />
         )}
-        <div className="text-xs text-[var(--text-muted)]">Trình duyệt không hiển thị được bản xem trước? Bấm “Tải PDF” để mở bằng ứng dụng khác.</div>
+        <div className="text-xs text-[var(--text-muted)]">{t("web.pdfPreview.hint")}</div>
       </div>
     </div>
   );

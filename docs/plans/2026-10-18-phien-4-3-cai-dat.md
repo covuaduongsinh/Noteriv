@@ -51,6 +51,13 @@ Mặc định chuyển tiếp giữ tới hết 4.5. Quy tắc giữ như 4.2: `
 - JS tải đầu web: **223,1 KB gzip** (4.2: 211,6; ngân sách ≤ 374).
 - **Smoke desktop (app Tauri thật) 16/16** sau `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle`; mục "Core plugins" và các chữ smoke dựa vào không đổi.
 
+## Lên production
+
+- PR #11 (CI xanh cả 4 job) gộp vào `main` thành `51a7329` ngày 2026-10-18.
+- Production: deploy `done`, 9 container, `/` và `/api/v1/healthz` trả 200. Không có migration.
+- Staging đã thử trước khi gộp: deploy `done`, `/`, `/login`, `/api/v1/healthz` trả 200.
+- Sau khi gộp: đưa `next` về bằng `main`, chờ bản deploy staging do lần đẩy đó xong, rồi tắt staging.
+
 ## Ghi chú kỹ thuật
 
 - **Bảng dữ liệu có nhãn** (danh sách tuỳ chọn ở cấp module): nhãn là hàm `label: () => t("…")`, gọi lúc vẽ (`o.label()`). Không gọi `t()` lúc nạp module.

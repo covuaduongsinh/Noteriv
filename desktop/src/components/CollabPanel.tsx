@@ -8,6 +8,8 @@ import {
   startCollab,
   type CollabSession,
 } from "@/lib/collab";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface CollabPanelProps {
   content: string;
@@ -16,6 +18,7 @@ interface CollabPanelProps {
 }
 
 export default function CollabPanel({ content, onContentChange, onClose }: CollabPanelProps) {
+  useLocale();
   const [roomId, setRoomId] = useState(generateRoomId());
   const [userName, setUserName] = useState(getCollabUserName());
   const [session, setSession] = useState<CollabSession | null>(null);
@@ -41,7 +44,7 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
       setStatus("connected");
     } else {
       setStatus("error");
-      setError("Could not start collaboration. Install yjs and y-webrtc: npm install yjs y-webrtc");
+      setError(t("desktop.collab.startFailed"));
     }
   }, [roomId, content, userName, onContentChange]);
 
@@ -64,7 +67,7 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
       setStatus("connected");
     } else {
       setStatus("error");
-      setError("Could not join session. Install yjs and y-webrtc: npm install yjs y-webrtc");
+      setError(t("desktop.collab.joinFailed"));
     }
   }, [joinId, userName, onContentChange]);
 
@@ -90,7 +93,7 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
         width: 420, padding: 20,
       }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <span style={{ color: "#cdd6f4", fontSize: 15, fontWeight: 600 }}>Live Collaboration</span>
+          <span style={{ color: "#cdd6f4", fontSize: 15, fontWeight: 600 }}>{t("desktop.collab.title")}</span>
           <button onClick={onClose} style={{ border: "none", background: "transparent", color: "#585b70", fontSize: 18, cursor: "pointer" }}>&times;</button>
         </div>
 
@@ -99,16 +102,16 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
             <div style={{ background: "#313244", borderRadius: 8, padding: 12, marginBottom: 12 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
                 <span style={{ width: 8, height: 8, borderRadius: "50%", background: "#a6e3a1" }} />
-                <span style={{ color: "#a6e3a1", fontSize: 12, fontWeight: 600 }}>Connected</span>
-                <span style={{ color: "#a6adc8", fontSize: 11, marginLeft: "auto" }}>{peers} peer{peers !== 1 ? "s" : ""}</span>
+                <span style={{ color: "#a6e3a1", fontSize: 12, fontWeight: 600 }}>{t("desktop.collab.connected")}</span>
+                <span style={{ color: "#a6adc8", fontSize: 11, marginLeft: "auto" }}>{t("desktop.collab.peers", { count: peers })}</span>
               </div>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                <span style={{ color: "#a6adc8", fontSize: 11 }}>Room:</span>
+                <span style={{ color: "#a6adc8", fontSize: 11 }}>{t("desktop.collab.room")}</span>
                 <code style={{ color: "#89b4fa", fontSize: 12, background: "#1e1e2e", padding: "2px 6px", borderRadius: 4, flex: 1 }}>{roomId}</code>
                 <button onClick={handleCopyRoom} style={{
                   border: "1px solid #45475a", background: "transparent", color: "#a6adc8",
                   fontSize: 10, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                }}>Copy</button>
+                }}>{t("desktop.collab.copy")}</button>
               </div>
             </div>
             <p style={{ color: "#a6adc8", fontSize: 11, marginBottom: 12 }}>
@@ -117,13 +120,13 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
             <button onClick={handleDisconnect} style={{
               width: "100%", padding: "8px", borderRadius: 6, border: "1px solid #f38ba8",
               background: "transparent", color: "#f38ba8", fontSize: 12, cursor: "pointer",
-            }}>Disconnect</button>
+            }}>{t("desktop.collab.disconnect")}</button>
           </>
         ) : (
           <>
             {/* User name */}
             <div style={{ marginBottom: 12 }}>
-              <label style={{ color: "#a6adc8", fontSize: 11, display: "block", marginBottom: 4 }}>Your name</label>
+              <label style={{ color: "#a6adc8", fontSize: 11, display: "block", marginBottom: 4 }}>{t("desktop.collab.yourName")}</label>
               <input
                 value={userName}
                 onChange={(e) => setUserName(e.target.value)}
@@ -136,13 +139,13 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
 
             {/* Start new session */}
             <div style={{ background: "#313244", borderRadius: 8, padding: 12, marginBottom: 12 }}>
-              <div style={{ color: "#cdd6f4", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Start a new session</div>
+              <div style={{ color: "#cdd6f4", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{t("desktop.collab.newSession")}</div>
               <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8 }}>
                 <code style={{ color: "#89b4fa", fontSize: 12, background: "#1e1e2e", padding: "2px 6px", borderRadius: 4, flex: 1 }}>{roomId}</code>
                 <button onClick={handleCopyRoom} style={{
                   border: "1px solid #45475a", background: "transparent", color: "#a6adc8",
                   fontSize: 10, padding: "2px 8px", borderRadius: 4, cursor: "pointer",
-                }}>Copy</button>
+                }}>{t("desktop.collab.copy")}</button>
               </div>
               <button onClick={handleStart} disabled={status === "connecting"} style={{
                 width: "100%", padding: "8px", borderRadius: 6, border: "none",
@@ -150,18 +153,18 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
                 cursor: status === "connecting" ? "wait" : "pointer",
                 opacity: status === "connecting" ? 0.6 : 1,
               }}>
-                {status === "connecting" ? "Connecting..." : "Start Session"}
+                {status === "connecting" ? t("desktop.collab.connecting") : t("desktop.collab.start")}
               </button>
             </div>
 
             {/* Join existing session */}
             <div style={{ background: "#313244", borderRadius: 8, padding: 12 }}>
-              <div style={{ color: "#cdd6f4", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>Join a session</div>
+              <div style={{ color: "#cdd6f4", fontSize: 12, fontWeight: 600, marginBottom: 8 }}>{t("desktop.collab.joinSession")}</div>
               <div style={{ display: "flex", gap: 6 }}>
                 <input
                   value={joinId}
                   onChange={(e) => setJoinId(e.target.value)}
-                  placeholder="Enter room ID..."
+                  placeholder={t("desktop.collab.roomPlaceholder")}
                   style={{
                     flex: 1, background: "#1e1e2e", border: "1px solid #45475a",
                     borderRadius: 6, padding: "6px 10px", color: "#cdd6f4", fontSize: 12, outline: "none",
@@ -172,7 +175,7 @@ export default function CollabPanel({ content, onContentChange, onClose }: Colla
                   padding: "6px 16px", borderRadius: 6, border: "none",
                   background: "#a6e3a1", color: "#1e1e2e", fontSize: 12, fontWeight: 600,
                   cursor: status === "connecting" ? "wait" : "pointer",
-                }}>Join</button>
+                }}>{t("desktop.collab.join")}</button>
               </div>
             </div>
 

@@ -11,6 +11,8 @@ import {
   type ImportProgress,
   type ImportReport,
 } from "@/lib/vault-import";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface ImportVaultProps {
   /** Existing vault to import into, or null to create a new one from the import. */
@@ -21,11 +23,12 @@ interface ImportVaultProps {
   onFinished: (vaultId: string) => void;
 }
 
-const PHASE_LABEL: Record<ImportProgress["phase"], string> = {
-  attachments: "Đang tải file đính kèm",
-  notes: "Đang nhập note",
-  finalize: "Đang cập nhật liên kết",
-  done: "Hoàn tất",
+/** Progress phase names, read when shown. */
+const PHASE_LABEL: Record<ImportProgress["phase"], () => string> = {
+  attachments: () => t("web.import.phase.attachments"),
+  notes: () => t("web.import.phase.notes"),
+  finalize: () => t("web.import.phase.finalize"),
+  done: () => t("web.import.phase.done"),
 };
 
 /**
@@ -34,6 +37,7 @@ const PHASE_LABEL: Record<ImportProgress["phase"], string> = {
  * the browser; see lib/vault-import.ts.
  */
 export default function ImportVault({ vaultId, vaultName, onClose, onFinished }: ImportVaultProps) {
+  useLocale();
   const folderInput = useRef<HTMLInputElement>(null);
   const zipInput = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
@@ -56,14 +60,14 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
     try {
       const s = kind === "zip" ? await scanZip(files[0]) : scanFolder(files);
       if (s.notes.length === 0 && s.attachments.length === 0) {
-        setError("Không tìm thấy file .md hoặc file đính kèm nào để nhập.");
+        setError(t("web.import.nothing"));
         setScan(null);
       } else {
         setScan(s);
         setNewName((n) => n || s.rootName);
       }
     } catch {
-      setError("Không đọc được nguồn đã chọn (file zip có hợp lệ không?).");
+      setError(t("web.import.readFailed"));
     } finally {
       setScanning(false);
     }
@@ -86,7 +90,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
       const rep = await runImport(target, scan, { onConflict }, setProgress, controller.signal);
       setReport(rep);
     } catch {
-      setError("Import bị gián đoạn. Bạn có thể chạy lại — những file đã nhập sẽ được bỏ qua.");
+      setError(t("web.import.interrupted"));
     } finally {
       setRunning(false);
       abortRef.current = null;
@@ -107,17 +111,16 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
         style={{ width: 520, maxWidth: "94vw", maxHeight: "90vh", overflowY: "auto", padding: 20 }}
       >
         <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
-          <h2 className="text-base font-semibold">{vaultId ? `Import vào "${vaultName ?? "vault"}"` : "Import vault mới"}</h2>
+          <h2 className="text-base font-semibold">{vaultId ? t("web.import.into", { vault: vaultName ?? "vault" }) : t("web.import.newVault")}</h2>
           <button onClick={onClose} disabled={running} className="text-[var(--text-muted)]" style={{ padding: 4 }}>
-            Đóng
+            {t("common.close")}
           </button>
         </div>
 
         {!report && (
           <>
             <p className="text-xs text-[var(--text-muted)]" style={{ marginBottom: 12 }}>
-              Chọn thư mục vault (có thể đang dùng với desktop/Obsidian) hoặc file .zip. Note .md giữ nguyên cấu trúc thư mục; ảnh,
-              PDF, audio… được tải lên làm file đính kèm và liên kết trong note được cập nhật theo.
+              {t("web.import.intro")}
             </p>
             <div className="flex gap-2" style={{ marginBottom: 12 }}>
               <button
@@ -126,7 +129,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
                 disabled={running || scanning}
                 onClick={() => folderInput.current?.click()}
               >
-                Chọn thư mục…
+                {t("web.import.pickFolder")}
               </button>
               <button
                 className="rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm"
@@ -134,7 +137,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
                 disabled={running || scanning}
                 onClick={() => zipInput.current?.click()}
               >
-                Chọn file .zip…
+                {t("web.import.pickZip")}
               </button>
             </div>
             <input
@@ -158,7 +161,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
                 e.target.value = "";
               }}
             />
-            {scanning && <div className="text-sm text-[var(--text-muted)]">Đang quét…</div>}
+            {scanning && <div className="text-sm text-[var(--text-muted)]">{t("web.import.scanning")}</div>}
           </>
         )}
 
@@ -166,12 +169,12 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
           <div style={{ marginTop: 4 }}>
             <div className="rounded-lg bg-[var(--bg-tertiary)] text-sm" style={{ padding: 12, marginBottom: 12 }}>
               <div>
-                <b>{scan.notes.length}</b> note · <b>{scan.attachments.length}</b> file đính kèm
+                {t("web.import.found", { notes: scan.notes.length, attachments: scan.attachments.length })}
                 {totalBytes > 0 && <> · {formatFileSize(totalBytes)}</>}
               </div>
               {scan.skipped.length > 0 && (
                 <details className="text-xs text-[var(--text-muted)]" style={{ marginTop: 6 }}>
-                  <summary>Bỏ qua {scan.skipped.length} file</summary>
+                  <summary>{t("web.import.skipped", { count: scan.skipped.length })}</summary>
                   <ul style={{ marginLeft: 16, listStyle: "disc", maxHeight: 120, overflowY: "auto" }}>
                     {scan.skipped.slice(0, 50).map((s) => (
                       <li key={s.path}>
@@ -185,7 +188,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
 
             {!vaultId && (
               <label className="block text-sm" style={{ marginBottom: 10 }}>
-                Tên vault mới
+                {t("web.import.newName")}
                 <input
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
@@ -198,20 +201,20 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
 
             <fieldset className="text-sm" style={{ marginBottom: 12 }} disabled={running}>
               <legend className="text-xs text-[var(--text-muted)]" style={{ marginBottom: 4 }}>
-                Nếu note đã tồn tại cùng đường dẫn
+                {t("web.import.conflict")}
               </legend>
               <label className="flex items-center gap-2">
-                <input type="radio" checked={onConflict === "skip"} onChange={() => setOnConflict("skip")} /> Giữ bản trong vault (bỏ qua)
+                <input type="radio" checked={onConflict === "skip"} onChange={() => setOnConflict("skip")} /> {t("web.import.keepExisting")}
               </label>
               <label className="flex items-center gap-2">
-                <input type="radio" checked={onConflict === "overwrite"} onChange={() => setOnConflict("overwrite")} /> Ghi đè bằng bản nhập vào
+                <input type="radio" checked={onConflict === "overwrite"} onChange={() => setOnConflict("overwrite")} /> {t("web.import.overwrite")}
               </label>
             </fieldset>
 
             {running && progress && (
               <div style={{ marginBottom: 12 }}>
                 <div className="text-xs text-[var(--text-muted)]" style={{ marginBottom: 4 }}>
-                  {PHASE_LABEL[progress.phase]} ({progress.done}/{progress.total})
+                  {PHASE_LABEL[progress.phase]()} ({progress.done}/{progress.total})
                 </div>
                 <div className="rounded-full bg-[var(--bg-tertiary)]" style={{ height: 6, overflow: "hidden" }}>
                   <div style={{ width: `${pct}%`, height: "100%", background: "var(--accent)", transition: "width .2s" }} />
@@ -226,7 +229,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
                 disabled={running}
                 onClick={start}
               >
-                {running ? "Đang nhập…" : "Bắt đầu import"}
+                {running ? t("web.import.running") : t("web.import.start")}
               </button>
               {running && (
                 <button
@@ -234,7 +237,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
                   style={{ padding: "8px 14px" }}
                   onClick={() => abortRef.current?.abort()}
                 >
-                  Dừng
+                  {t("web.import.stop")}
                 </button>
               )}
             </div>
@@ -250,16 +253,16 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
         {report && targetVaultId && (
           <div className="text-sm">
             <div className="rounded-lg bg-[var(--bg-tertiary)]" style={{ padding: 12, marginBottom: 12 }}>
-              <div style={{ fontWeight: 600, marginBottom: 4 }}>{report.cancelled ? "Đã dừng giữa chừng" : "Import xong"}</div>
+              <div style={{ fontWeight: 600, marginBottom: 4 }}>{report.cancelled ? t("web.import.stopped") : t("web.import.done")}</div>
               <div>
-                Note: {report.notesCreated} mới, {report.notesUpdated} ghi đè, {report.notesSkipped} bỏ qua
+                {t("web.import.reportNotes", { created: report.notesCreated, updated: report.notesUpdated, skipped: report.notesSkipped })}
               </div>
               <div>
-                Đính kèm: {report.attachmentsUploaded} tải lên, {report.attachmentsReused} dùng lại
+                {t("web.import.reportAttachments", { uploaded: report.attachmentsUploaded, reused: report.attachmentsReused })}
               </div>
               {report.failures.length > 0 && (
                 <details className="text-xs" style={{ marginTop: 6, color: "var(--yellow)" }}>
-                  <summary>{report.failures.length} mục lỗi</summary>
+                  <summary>{t("web.import.failures", { count: report.failures.length })}</summary>
                   <ul style={{ marginLeft: 16, listStyle: "disc", maxHeight: 140, overflowY: "auto" }}>
                     {report.failures.slice(0, 80).map((f, i) => (
                       <li key={i}>
@@ -275,7 +278,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
               style={{ padding: "8px 16px", background: "var(--accent)", color: "var(--bg-primary)" }}
               onClick={() => onFinished(targetVaultId)}
             >
-              Mở vault
+              {t("web.import.open")}
             </button>
           </div>
         )}

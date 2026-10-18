@@ -1,3 +1,5 @@
+import { t } from "@noteriv/ui/i18n";
+
 /**
  * Attachment management utilities for Noteriv.
  *
@@ -146,7 +148,7 @@ export async function importAttachment(
     const reader = new FileReader();
     reader.onloadend = () => {
       if (typeof reader.result === "string") resolve(reader.result);
-      else reject(new Error("Failed to read file"));
+      else reject(new Error(t("desktop.attachments.readFailed")));
     };
     reader.onerror = reject;
     reader.readAsDataURL(file);
@@ -154,7 +156,7 @@ export async function importAttachment(
 
   const success = await window.electronAPI.writeFile(destPath, dataUrl);
   if (!success) {
-    throw new Error(`Failed to import attachment: ${safeName}`);
+    throw new Error(t("desktop.attachments.importFailed", { name: safeName }));
   }
 
   return `attachments/${safeName}`;

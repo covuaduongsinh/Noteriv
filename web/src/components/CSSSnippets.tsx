@@ -14,6 +14,8 @@ import {
   installCommunitySnippet,
 } from "@/lib/css-snippets";
 import "@/styles/css-snippets.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 type Tab = "installed" | "community";
 
@@ -30,6 +32,7 @@ export default function CSSSnippets({
   onSnippetsChange,
   onClose,
 }: CSSSnippetsProps) {
+  useLocale();
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editContent, setEditContent] = useState("");
@@ -53,7 +56,7 @@ export default function CSSSnippets({
     setCommunityError("");
     const manifest = await fetchSnippetManifest();
     if (!manifest) {
-      setCommunityError("Failed to load community snippets. Check your connection.");
+      setCommunityError(t("snippets.loadFailed"));
       setCommunityLoading(false);
       return;
     }
@@ -170,7 +173,7 @@ export default function CSSSnippets({
     >
       <div className="snippets-modal">
         <div className="snippets-header">
-          <h2 className="snippets-title">CSS Snippets</h2>
+          <h2 className="snippets-title">{t("snippets.title")}</h2>
           <button onClick={onClose} className="snippets-close-btn">
             <svg width="14" height="14" viewBox="0 0 14 14">
               <path
@@ -189,7 +192,7 @@ export default function CSSSnippets({
             className={`cs-tab${activeTab === "installed" ? " cs-tab-active" : ""}`}
             onClick={() => setActiveTab("installed")}
           >
-            Installed
+            {t("snippets.installed")}
             {snippets.length > 0 && (
               <span className="cs-tab-count">{snippets.length}</span>
             )}
@@ -198,7 +201,7 @@ export default function CSSSnippets({
             className={`cs-tab${activeTab === "community" ? " cs-tab-active" : ""}`}
             onClick={() => setActiveTab("community")}
           >
-            Community
+            {t("snippets.community")}
           </button>
         </div>
 
@@ -209,7 +212,7 @@ export default function CSSSnippets({
               <input
                 type="text"
                 className="snippets-search"
-                placeholder="Search snippets..."
+                placeholder={t("snippets.search")}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
@@ -225,7 +228,7 @@ export default function CSSSnippets({
                     strokeLinecap="round"
                   />
                 </svg>
-                New Snippet
+                {t("snippets.new")}
               </button>
             </div>
 
@@ -234,7 +237,7 @@ export default function CSSSnippets({
                 <input
                   type="text"
                   className="snippet-new-input"
-                  placeholder="Snippet name..."
+                  placeholder={t("snippets.namePlaceholder")}
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
                   onKeyDown={(e) => {
@@ -247,7 +250,7 @@ export default function CSSSnippets({
                   autoFocus
                 />
                 <button className="snippet-create-btn" onClick={handleCreate}>
-                  Create
+                  {t("snippets.create")}
                 </button>
                 <button
                   className="snippet-cancel-btn"
@@ -256,7 +259,7 @@ export default function CSSSnippets({
                     setNewName("");
                   }}
                 >
-                  Cancel
+                  {t("snippets.cancel")}
                 </button>
               </div>
             )}
@@ -275,9 +278,9 @@ export default function CSSSnippets({
                     <path d="M4 4h16v16H4z" strokeLinecap="round" />
                     <path d="M8 8h3M8 12h8M8 16h5" strokeLinecap="round" />
                   </svg>
-                  <p className="snippet-empty-title">No CSS snippets yet</p>
+                  <p className="snippet-empty-title">{t("snippets.empty")}</p>
                   <p className="snippet-empty-desc">
-                    Create your own or browse the <button className="cs-inline-link" onClick={() => setActiveTab("community")}>Community</button> tab to install pre-made snippets.
+                    {t("snippets.emptyBefore")} <button className="cs-inline-link" onClick={() => setActiveTab("community")}>{t("snippets.community")}</button> {t("snippets.emptyAfter")}
                   </p>
                 </div>
               ) : (
@@ -296,14 +299,14 @@ export default function CSSSnippets({
                         <span className="snippet-name">{snippet.name}</span>
                         <span className="snippet-meta">
                           {snippet.filename} &middot;{" "}
-                          {snippet.content.split("\n").length} lines
+                          {t("snippets.lines", { count: snippet.content.split("\n").length })}
                         </span>
                       </div>
                       <div className="snippet-actions">
                         <button
                           className="snippet-action-btn"
                           onClick={() => handleEdit(snippet)}
-                          title="Edit snippet"
+                          title={t("snippets.edit")}
                         >
                           <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                             <path
@@ -321,20 +324,20 @@ export default function CSSSnippets({
                               className="snippet-action-btn snippet-delete-confirm"
                               onClick={() => handleDelete(snippet.id)}
                             >
-                              Delete
+                              {t("snippets.delete")}
                             </button>
                             <button
                               className="snippet-action-btn"
                               onClick={() => setConfirmDelete(null)}
                             >
-                              Cancel
+                              {t("snippets.cancel")}
                             </button>
                           </>
                         ) : (
                           <button
                             className="snippet-action-btn snippet-delete-btn"
                             onClick={() => setConfirmDelete(snippet.id)}
-                            title="Delete snippet"
+                            title={t("snippets.deleteTitle")}
                           >
                             <svg width="13" height="13" viewBox="0 0 16 16" fill="none">
                               <path
@@ -364,13 +367,13 @@ export default function CSSSnippets({
                             className="snippet-save-btn"
                             onClick={handleSaveEdit}
                           >
-                            Save
+                            {t("snippets.save")}
                           </button>
                           <button
                             className="snippet-cancel-edit-btn"
                             onClick={handleCancelEdit}
                           >
-                            Cancel
+                            {t("snippets.cancel")}
                           </button>
                         </div>
                       </div>
@@ -390,7 +393,7 @@ export default function CSSSnippets({
                 className={`cs-filter${communityFilter === "all" ? " cs-filter-on" : ""}`}
                 onClick={() => setCommunityFilter("all")}
               >
-                All
+                {t("snippets.all")}
               </button>
               {categories.map((cat) => (
                 <button
@@ -407,15 +410,15 @@ export default function CSSSnippets({
               {communityLoading ? (
                 <div className="cs-status">
                   <div className="cs-spinner" />
-                  Loading community snippets...
+                  {t("snippets.loading")}
                 </div>
               ) : communityError ? (
                 <div className="cs-status cs-status-err">
                   <span>{communityError}</span>
-                  <button className="cs-retry-btn" onClick={loadCommunity}>Retry</button>
+                  <button className="cs-retry-btn" onClick={loadCommunity}>{t("snippets.retry")}</button>
                 </div>
               ) : filteredCommunity.length === 0 ? (
-                <div className="cs-status">No snippets found.</div>
+                <div className="cs-status">{t("snippets.noneFound")}</div>
               ) : (
                 filteredCommunity.map((entry) => {
                   const installed = isInstalled(entry.id);
@@ -433,7 +436,7 @@ export default function CSSSnippets({
                         {installed ? (
                           <span className="cs-installed-tag">
                             <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                            Installed
+                            {t("snippets.installed")}
                           </span>
                         ) : (
                           <button
@@ -441,7 +444,7 @@ export default function CSSSnippets({
                             onClick={() => handleInstallCommunity(entry)}
                             disabled={installing}
                           >
-                            {installing ? "..." : "Install"}
+                            {installing ? "..." : t("snippets.install")}
                           </button>
                         )}
                       </div>
@@ -461,15 +464,15 @@ export default function CSSSnippets({
               <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                 <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor" />
               </svg>
-              Submit your snippet
+              {t("snippets.submit")}
             </a>
           </div>
         )}
 
         <div className="snippets-footer">
           <span className="snippets-footer-text">
-            Snippets are stored in{" "}
-            <code>.noteriv/snippets/</code> in your vault
+            {t("snippets.storedBefore")}{" "}
+            <code>.noteriv/snippets/</code> {t("snippets.storedAfter")}
           </span>
         </div>
       </div>

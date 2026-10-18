@@ -4,6 +4,8 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { webApi, type ApiAttachment } from "@/lib/webApi";
 import { getAttachmentType, formatFileSize, markdownLinkForAttachment, type AttachmentType } from "@/lib/attachment-utils";
 import "@/styles/attachments.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface AttachmentManagerProps {
   vaultId: string;
@@ -30,6 +32,7 @@ type SortField = "name" | "date";
  * back together from GET /vaults/:id/attachments.
  */
 export default function AttachmentManager({ vaultId, onInsert, onClose, onView, viewerOpen = false }: AttachmentManagerProps) {
+  useLocale();
   const [attachments, setAttachments] = useState<ApiAttachment[]>([]);
   const [usedBytes, setUsedBytes] = useState(0);
   const [quotaBytes, setQuotaBytes] = useState(0);
@@ -73,7 +76,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
         await load();
       } catch (err) {
         const apiErr = err as { body?: { message?: string } };
-        setError(apiErr?.body?.message ?? "Tải lên thất bại — có thể đã vượt hạn mức lưu trữ của vault.");
+        setError(apiErr?.body?.message ?? t("web.attachments.uploadFailed"));
       }
       setImporting(false);
     },
@@ -167,7 +170,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
     <div className="am-overlay" onClick={onClose}>
       <div className="am-modal" onClick={(e) => e.stopPropagation()}>
         <div className="am-header">
-          <span className="am-title">Tệp đính kèm</span>
+          <span className="am-title">{t("attachments.title")}</span>
           <button className="am-close-btn" onClick={onClose}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path d="M3 3L11 11M11 3L3 11" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -177,8 +180,8 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
 
         <div style={{ padding: "4px 14px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-            <span>{formatFileSize(usedBytes)} / {formatFileSize(quotaBytes)} đã dùng</span>
-            {usedPct > 85 && <span style={{ color: "var(--error, #e06c75)" }}>Sắp đầy hạn mức</span>}
+            <span>{t("web.attachments.used", { used: formatFileSize(usedBytes), quota: formatFileSize(quotaBytes) })}</span>
+            {usedPct > 85 && <span style={{ color: "var(--error, #e06c75)" }}>{t("web.attachments.nearlyFull")}</span>}
           </div>
           <div style={{ height: 4, borderRadius: 2, background: "var(--bg-tertiary)", overflow: "hidden" }}>
             <div
@@ -195,31 +198,31 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
 
         <div className="am-toolbar">
           <button className={`am-filter-btn${filter === "all" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("all")}>
-            Tất cả ({attachments.length})
+            {t("attachments.filter.all", { count: attachments.length })}
           </button>
           {(counts.image ?? 0) > 0 && (
             <button className={`am-filter-btn${filter === "image" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("image")}>
-              Ảnh ({counts.image})
+              {t("attachments.filter.image", { count: counts.image ?? 0 })}
             </button>
           )}
           {(counts.audio ?? 0) > 0 && (
             <button className={`am-filter-btn${filter === "audio" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("audio")}>
-              Âm thanh ({counts.audio})
+              {t("attachments.filter.audio", { count: counts.audio ?? 0 })}
             </button>
           )}
           {(counts.video ?? 0) > 0 && (
             <button className={`am-filter-btn${filter === "video" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("video")}>
-              Video ({counts.video})
+              {t("attachments.filter.video", { count: counts.video ?? 0 })}
             </button>
           )}
           {(counts.pdf ?? 0) > 0 && (
             <button className={`am-filter-btn${filter === "pdf" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("pdf")}>
-              PDF ({counts.pdf})
+              {t("attachments.filter.pdf", { count: counts.pdf ?? 0 })}
             </button>
           )}
           {(counts.other ?? 0) > 0 && (
             <button className={`am-filter-btn${filter === "other" ? " am-filter-btn-active" : ""}`} onClick={() => setFilter("other")}>
-              Khác ({counts.other})
+              {t("attachments.filter.other", { count: counts.other ?? 0 })}
             </button>
           )}
           <div className="am-toolbar-spacer" />
@@ -227,13 +230,13 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
               <path d="M2 3H10M3 6H9M4 9H8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
-            {sortBy === "name" ? "Tên" : "Ngày"}
+            {sortBy === "name" ? t("attachments.sortName") : t("attachments.sortDate")}
           </button>
         </div>
 
         <div className="am-content" onDragEnter={handleDragEnter} onDragLeave={handleDragLeave} onDragOver={handleDragOver} onDrop={handleDrop}>
           {loading ? (
-            <div className="am-loading">Đang tải...</div>
+            <div className="am-loading">{t("attachments.loading")}</div>
           ) : (
             <>
               <div className={`am-dropzone${isDragging ? " am-dropzone-active" : ""}`} onClick={() => fileInputRef.current?.click()}>
@@ -242,9 +245,9 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
                   <path d="M20 16.7V17.8C20 18.9 19.1 19.8 18 19.8H6C4.9 19.8 4 18.9 4 17.8V16.7" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
                 <span className="am-dropzone-text">
-                  {importing ? "Đang tải lên..." : isDragging ? "Thả để thêm" : "Kéo-thả hoặc bấm để chọn tệp"}
+                  {importing ? t("attachments.importing") : isDragging ? t("attachments.dropHere") : t("attachments.dragHint.web")}
                 </span>
-                <span className="am-dropzone-hint">Tối đa 25MB mỗi tệp</span>
+                <span className="am-dropzone-hint">{t("web.attachments.maxSize")}</span>
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -259,16 +262,16 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
 
               {filtered.length === 0 && !isDragging ? (
                 <div className="am-empty">
-                  <span className="am-empty-title">{filter === "all" ? "Chưa có tệp đính kèm" : `Không có tệp ${filter}`}</span>
-                  <span className="am-empty-desc">Kéo-thả tệp phía trên, hoặc bấm vào vùng kéo-thả để chọn tệp.</span>
+                  <span className="am-empty-title">{filter === "all" ? t("attachments.empty") : t("attachments.noneOfType", { type: filter })}</span>
+                  <span className="am-empty-desc">{t("attachments.emptyHint.web")}</span>
                 </div>
               ) : (
                 <>
                   {imageItems.length > 0 && (filter === "all" || filter === "image") && (
                     <div className="am-grid">
                       {imageItems.map((a) => (
-                        <div key={a.id} className="am-grid-item" onClick={() => handleInsert(a)} title={`Bấm để chèn: ${a.filename}`}>
-                          <button className="am-delete-btn" onClick={(e) => handleDeleteClick(e, a)} title={confirmingDeleteId === a.id ? "Bấm lần nữa để xoá" : "Xoá"}>
+                        <div key={a.id} className="am-grid-item" onClick={() => handleInsert(a)} title={t("attachments.clickInsert", { name: a.filename })}>
+                          <button className="am-delete-btn" onClick={(e) => handleDeleteClick(e, a)} title={confirmingDeleteId === a.id ? t("web.attachments.deleteConfirm") : t("attachments.delete")}>
                             <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                               <path d="M2 2L10 10M10 2L2 10" stroke={confirmingDeleteId === a.id ? "var(--error, #e06c75)" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" />
                             </svg>
@@ -295,7 +298,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
                             onClick={() => {
                               if (!onView?.(a)) handleInsert(a);
                             }}
-                            title={isPdf ? `Bấm để xem: ${a.filename}` : `Bấm để chèn: ${a.filename}`}
+                            title={isPdf ? t("web.attachments.clickView", { name: a.filename }) : t("attachments.clickInsert", { name: a.filename })}
                           >
                             <div className="am-list-info">
                               <span className="am-list-name">{a.filename}</span>
@@ -304,7 +307,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
                                 <span>{formatFileSize(a.size)}</span>
                               </div>
                             </div>
-                            <button className="am-delete-btn" onClick={(e) => handleDeleteClick(e, a)} title={confirmingDeleteId === a.id ? "Bấm lần nữa để xoá" : "Xoá"}>
+                            <button className="am-delete-btn" onClick={(e) => handleDeleteClick(e, a)} title={confirmingDeleteId === a.id ? t("web.attachments.deleteConfirm") : t("attachments.delete")}>
                               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                                 <path d="M2 2L10 10M10 2L2 10" stroke={confirmingDeleteId === a.id ? "var(--error, #e06c75)" : "currentColor"} strokeWidth="1.3" strokeLinecap="round" />
                               </svg>
@@ -322,11 +325,11 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
 
         <div className="am-footer">
           <span className="am-footer-count">
-            {filtered.length} tệp{filter !== "all" ? ` (${filter})` : ""}
+            {t("attachments.count", { count: filtered.length })}{filter !== "all" ? ` (${filter})` : ""}
           </span>
           <div className="am-footer-hint">
-            <span><span className="am-footer-key">Click</span> {filter === "pdf" ? "xem" : "chèn"}</span>
-            <span><span className="am-footer-key">Esc</span> đóng</span>
+            <span><span className="am-footer-key">Click</span> {filter === "pdf" ? t("web.attachments.footerView") : t("attachments.footerInsert")}</span>
+            <span><span className="am-footer-key">Esc</span> {t("attachments.footerClose")}</span>
           </div>
         </div>
       </div>

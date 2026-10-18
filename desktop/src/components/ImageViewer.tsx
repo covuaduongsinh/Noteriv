@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
@@ -14,6 +16,7 @@ const MIME: Record<string, string> = {
  * Click toggles fit-to-view vs. actual size.
  */
 export default function ImageViewer({ filePath }: { filePath: string }) {
+  useLocale();
   const [src, setSrc] = useState<string | null>(null);
   const [error, setError] = useState(false);
   const [actualSize, setActualSize] = useState(false);
@@ -55,7 +58,7 @@ export default function ImageViewer({ filePath }: { filePath: string }) {
           }
         />
       ) : (
-        <span className="text-sm text-[var(--text-muted)]">Loading…</span>
+        <span className="text-sm text-[var(--text-muted)]">{t("common.loadingShort")}</span>
       )}
     </div>
   );

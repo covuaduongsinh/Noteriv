@@ -11,6 +11,8 @@ import {
   type Attachment,
 } from "@/lib/attachment-utils";
 import "@/styles/attachments.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface AttachmentManagerProps {
   vaultPath: string;
@@ -26,6 +28,7 @@ export default function AttachmentManager({
   onInsert,
   onClose,
 }: AttachmentManagerProps) {
+  useLocale();
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
@@ -86,9 +89,7 @@ export default function AttachmentManager({
   const handleDelete = useCallback(
     async (e: React.MouseEvent, attachment: Attachment) => {
       e.stopPropagation();
-      const confirmed = window.confirm(
-        `Delete "${attachment.name}"? This cannot be undone.`,
-      );
+      const confirmed = window.confirm(t("attachments.confirmDelete", { name: attachment.name }));
       if (!confirmed) return;
 
       await deleteAttachment(attachment.path);
@@ -166,7 +167,7 @@ export default function AttachmentManager({
       <div className="am-modal" onClick={(e) => e.stopPropagation()}>
         {/* Header */}
         <div className="am-header">
-          <span className="am-title">Attachments</span>
+          <span className="am-title">{t("attachments.title")}</span>
           <button className="am-close-btn" onClick={onClose}>
             <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
               <path
@@ -185,14 +186,14 @@ export default function AttachmentManager({
             className={`am-filter-btn${filter === "all" ? " am-filter-btn-active" : ""}`}
             onClick={() => setFilter("all")}
           >
-            All ({attachments.length})
+            {t("attachments.filter.all", { count: attachments.length })}
           </button>
           {(counts.image ?? 0) > 0 && (
             <button
               className={`am-filter-btn${filter === "image" ? " am-filter-btn-active" : ""}`}
               onClick={() => setFilter("image")}
             >
-              Images ({counts.image})
+              {t("attachments.filter.image", { count: counts.image ?? 0 })}
             </button>
           )}
           {(counts.audio ?? 0) > 0 && (
@@ -200,7 +201,7 @@ export default function AttachmentManager({
               className={`am-filter-btn${filter === "audio" ? " am-filter-btn-active" : ""}`}
               onClick={() => setFilter("audio")}
             >
-              Audio ({counts.audio})
+              {t("attachments.filter.audio", { count: counts.audio ?? 0 })}
             </button>
           )}
           {(counts.video ?? 0) > 0 && (
@@ -208,7 +209,7 @@ export default function AttachmentManager({
               className={`am-filter-btn${filter === "video" ? " am-filter-btn-active" : ""}`}
               onClick={() => setFilter("video")}
             >
-              Video ({counts.video})
+              {t("attachments.filter.video", { count: counts.video ?? 0 })}
             </button>
           )}
           {(counts.pdf ?? 0) > 0 && (
@@ -216,7 +217,7 @@ export default function AttachmentManager({
               className={`am-filter-btn${filter === "pdf" ? " am-filter-btn-active" : ""}`}
               onClick={() => setFilter("pdf")}
             >
-              PDF ({counts.pdf})
+              {t("attachments.filter.pdf", { count: counts.pdf ?? 0 })}
             </button>
           )}
           {(counts.other ?? 0) > 0 && (
@@ -224,7 +225,7 @@ export default function AttachmentManager({
               className={`am-filter-btn${filter === "other" ? " am-filter-btn-active" : ""}`}
               onClick={() => setFilter("other")}
             >
-              Other ({counts.other})
+              {t("attachments.filter.other", { count: counts.other ?? 0 })}
             </button>
           )}
 
@@ -239,7 +240,7 @@ export default function AttachmentManager({
                 strokeLinecap="round"
               />
             </svg>
-            {sortBy === "name" ? "Name" : "Date"}
+            {sortBy === "name" ? t("attachments.sortName") : t("attachments.sortDate")}
           </button>
         </div>
 
@@ -253,7 +254,7 @@ export default function AttachmentManager({
           onDrop={handleDrop}
         >
           {loading ? (
-            <div className="am-loading">Loading attachments...</div>
+            <div className="am-loading">{t("attachments.loading")}</div>
           ) : (
             <>
               {/* Drag & drop zone */}
@@ -284,13 +285,13 @@ export default function AttachmentManager({
                 </svg>
                 <span className="am-dropzone-text">
                   {importing
-                    ? "Importing files..."
+                    ? t("attachments.importing")
                     : isDragging
-                      ? "Drop files here to add"
-                      : "Drag & drop files to add attachments"}
+                      ? t("attachments.dropHere")
+                      : t("attachments.dragHint.desktop")}
                 </span>
                 <span className="am-dropzone-hint">
-                  Files are saved to the attachments/ folder
+                  {t("desktop.attachments.savedTo")}
                 </span>
               </div>
 
@@ -298,13 +299,13 @@ export default function AttachmentManager({
                 <div className="am-empty">
                   <span className="am-empty-title">
                     {filter === "all"
-                      ? "No attachments yet"
-                      : `No ${filter} files found`}
+                      ? t("attachments.empty")
+                      : t("attachments.noneOfType", { type: filter })}
                   </span>
                   <span className="am-empty-desc">
                     {filter === "all"
-                      ? "Drag & drop files above, or use the audio recorder to create recordings."
-                      : "Try changing the filter to see other attachment types."}
+                      ? t("attachments.emptyHint.desktop")
+                      : t("attachments.tryFilter")}
                   </span>
                 </div>
               ) : (
@@ -317,12 +318,12 @@ export default function AttachmentManager({
                           key={a.path}
                           className="am-grid-item"
                           onClick={() => handleInsert(a)}
-                          title={`Click to insert: ${a.name}`}
+                          title={t("attachments.clickInsert", { name: a.name })}
                         >
                           <button
                             className="am-delete-btn"
                             onClick={(e) => handleDelete(e, a)}
-                            title="Delete attachment"
+                            title={t("attachments.delete")}
                           >
                             <svg
                               width="12"
@@ -360,7 +361,7 @@ export default function AttachmentManager({
                           key={a.path}
                           className="am-list-item"
                           onClick={() => handleInsert(a)}
-                          title={`Click to insert: ${a.name}`}
+                          title={t("attachments.clickInsert", { name: a.name })}
                         >
                           <div className="am-list-icon">
                             <FileTypeIcon type={a.type} />
@@ -379,7 +380,7 @@ export default function AttachmentManager({
                           <button
                             className="am-delete-btn"
                             onClick={(e) => handleDelete(e, a)}
-                            title="Delete attachment"
+                            title={t("attachments.delete")}
                           >
                             <svg
                               width="12"
@@ -408,15 +409,15 @@ export default function AttachmentManager({
         {/* Footer */}
         <div className="am-footer">
           <span className="am-footer-count">
-            {filtered.length} file{filtered.length !== 1 ? "s" : ""}
+            {t("attachments.count", { count: filtered.length })}
             {filter !== "all" ? ` (${filter})` : ""}
           </span>
           <div className="am-footer-hint">
             <span>
-              <span className="am-footer-key">Click</span> insert
+              <span className="am-footer-key">Click</span> {t("attachments.footerInsert")}
             </span>
             <span>
-              <span className="am-footer-key">Esc</span> close
+              <span className="am-footer-key">Esc</span> {t("attachments.footerClose")}
             </span>
           </div>
         </div>
@@ -475,7 +476,7 @@ function ImageThumbnail({ attachment }: { attachment: Attachment }) {
           fontSize: "11px",
         }}
       >
-        Loading...
+        {t("common.loading")}
       </div>
     );
   }
