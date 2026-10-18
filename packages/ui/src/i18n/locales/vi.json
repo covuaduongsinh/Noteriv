@@ -221,6 +221,12 @@
         "push": "Chỉ đẩy lên",
         "pull": "Chỉ kéo về"
       }
+    },
+    "language": {
+      "label": "Ngôn ngữ",
+      "desc": "Ngôn ngữ của giao diện.",
+      "autoWeb": "Theo trình duyệt",
+      "autoDesktop": "Theo hệ điều hành"
     }
   },
   "plugins": {
@@ -1094,6 +1100,73 @@
       "errorStatus": "lỗi {status}",
       "uploadFailed": "không tải lên được",
       "sendFailed": "không gửi được"
+    },
+    "auth": {
+      "badLogin": "Email hoặc mật khẩu không đúng.",
+      "error": "Có lỗi xảy ra.",
+      "loginTitle": "Đăng nhập Noteriv",
+      "password": "Mật khẩu",
+      "signingIn": "Đang đăng nhập…",
+      "signIn": "Đăng nhập",
+      "noAccount": "Chưa có tài khoản?",
+      "signUp": "Đăng ký",
+      "terms": "Điều khoản",
+      "privacy": "Quyền riêng tư",
+      "badInvite": "Mã mời không đúng, đã hết lượt, đã hết hạn hoặc đã bị thu hồi. Hãy kiểm tra lại với người gửi mã.",
+      "closed": "Hiện chưa mở đăng ký tài khoản mới.",
+      "emailTaken": "Email này đã được sử dụng.",
+      "tooMany": "Bạn thử quá nhiều lần. Vui lòng đợi một phút rồi thử lại.",
+      "registerError": "Có lỗi xảy ra. Kiểm tra lại email/mật khẩu (tối thiểu 8 ký tự).",
+      "closedTitle": "Đăng ký chưa mở",
+      "closedDesc": "Noteriv hiện chưa nhận tài khoản mới.",
+      "registerTitle": "Tạo tài khoản Noteriv",
+      "inviteCode": "Mã mời",
+      "displayName": "Tên hiển thị",
+      "newPassword": "Mật khẩu (tối thiểu 8 ký tự)",
+      "acceptBefore": "Tôi đã đọc và đồng ý với",
+      "termsOfUse": "Điều khoản sử dụng",
+      "and": "và",
+      "privacyPolicy": "Chính sách quyền riêng tư",
+      "creating": "Đang tạo…",
+      "haveAccount": "Đã có tài khoản?",
+      "language": "Ngôn ngữ"
+    },
+    "vaultList": {
+      "title": "Vault của bạn",
+      "signOut": "Đăng xuất",
+      "loading": "Đang tải…",
+      "empty": "Chưa có vault nào.",
+      "create": "Tạo",
+      "account": "Tài khoản",
+      "invites": "Quản lý mã mời (quản trị)",
+      "export": "Tải xuống toàn bộ dữ liệu (JSON)",
+      "deleteConfirm": "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu",
+      "delete": "Xoá tài khoản"
+    },
+    "invites": {
+      "createFailed": "Không tạo được mã. Thử lại sau.",
+      "title": "Mã mời đăng ký",
+      "back": "← Về danh sách vault",
+      "noteLabel": "Ghi chú (ví dụ: lớp thứ Bảy)",
+      "maxUses": "Số lượt dùng",
+      "expiresIn": "Hết hạn sau (ngày)",
+      "create": "Tạo mã",
+      "code": "Mã",
+      "note": "Ghi chú",
+      "used": "Đã dùng",
+      "expires": "Hết hạn",
+      "statusCol": "Trạng thái",
+      "empty": "Chưa có mã nào.",
+      "copied": "Đã chép",
+      "copy": "Chép mã",
+      "revoke": "Thu hồi",
+      "status": {
+        "active": "Đang dùng được",
+        "usedUp": "Hết lượt",
+        "expired": "Hết hạn",
+        "revoked": "Đã thu hồi"
+      },
+      "noExpiryHint": "Đặt “Hết hạn sau” = 0 để mã không hết hạn."
     }
   },
   "desktop": {
@@ -1681,5 +1754,9 @@
     "restore": "Khôi phục",
     "loadingPreview": "Đang tải bản xem trước...",
     "select": "Chọn một bản lưu để xem trước"
+  },
+  "files": {
+    "untitled": "Chưa đặt tên",
+    "newFolder": "Thư mục mới"
   }
 }

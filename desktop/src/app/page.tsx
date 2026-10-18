@@ -11,7 +11,7 @@ import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
-import { applyLanguage } from "@/lib/i18n";
+import { applyLanguage, languageForStoredSettings } from "@/lib/i18n";
 import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
@@ -400,7 +400,12 @@ export default function Home() {
         if (saved.hotkeys) {
           setHotkeys(mergeHotkeys(saved.hotkeys));
         }
-        merged = mergeSettings(saved);
+        // Installs from before the language setting keep their English; new installs follow the system.
+        const language = languageForStoredSettings(saved as Record<string, unknown>);
+        merged = { ...mergeSettings(saved), language };
+        if (saved.language !== language && Object.keys(saved).length > 0) {
+          void window.electronAPI.saveSettings({ ...saved, language });
+        }
         setSettings(merged);
         applySettings(merged);
         // Apply theme
@@ -1073,13 +1078,15 @@ export default function Home() {
   const handleNewFile = useCallback(async () => {
     if (!window.electronAPI || !activeVault) return;
     // Find a unique filename
-    let name = "Untitled.md";
+    // In the interface language ("Untitled", "Chưa đặt tên").
+    const base = t("files.untitled");
+    let name = `${base}.md`;
     let counter = 1;
     const existing = await window.electronAPI.readDir(activeVault.path);
     const existingNames = existing.map((e) => e.name);
     while (existingNames.includes(name)) {
       counter++;
-      name = `Untitled ${counter}.md`;
+      name = `${base} ${counter}.md`;
     }
     const filePath = `${activeVault.path}/${name}`;
     await window.electronAPI.createFile(filePath);
@@ -1091,13 +1098,14 @@ export default function Home() {
   const handleNewFolder = useCallback(async () => {
     if (!window.electronAPI || !activeVault) return;
     // Find a unique folder name
-    let name = "New Folder";
+    const folderBase = t("files.newFolder");
+    let name = folderBase;
     let counter = 1;
     const existing = await window.electronAPI.readDir(activeVault.path);
     const existingNames = existing.map((e) => e.name);
     while (existingNames.includes(name)) {
       counter++;
-      name = `New Folder ${counter}`;
+      name = `${folderBase} ${counter}`;
     }
     const dirPath = `${activeVault.path}/${name}`;
     await window.electronAPI.createDir(dirPath);

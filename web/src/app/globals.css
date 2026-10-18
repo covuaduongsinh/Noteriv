@@ -14,3 +14,8 @@
     box-sizing: border-box;
   }
 }
+
+/* Held until the page has switched to its language (web/src/lib/i18n.ts, LOCALE_BOOT_SCRIPT). */
+html.i18n-pending body {
+  visibility: hidden;
+}

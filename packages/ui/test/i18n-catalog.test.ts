@@ -18,11 +18,6 @@ const others = readdirSync(localesDir)
   .filter((f) => f.endsWith(".json") && f !== "en.json")
   .map((f) => [f.replace(/\.json$/, ""), load(f.replace(/\.json$/, ""))] as const);
 
-/**
- * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.5).
- * Must be empty when 4.5 is done.
- */
-const NOT_YET_TRANSLATED: Record<string, string[]> = { vi: [] };
 
 const texts = (entry: CatalogEntry) => (typeof entry === "string" ? [entry] : Object.values(entry));
 const names = (entry: CatalogEntry) => new Set(texts(entry).flatMap(placeholders).filter((n) => n !== "count"));
@@ -37,9 +32,9 @@ describe("i18n catalogs", () => {
       expect([...catalog.keys()].filter((k) => !en.has(k))).toEqual([]);
     });
 
+    // Since stage 4 (session 4.5) every catalog is complete: a key added in English must be translated in the same change.
     it(`${locale}: translates every English key`, () => {
-      const allowed = new Set(NOT_YET_TRANSLATED[locale] ?? []);
-      expect([...en.keys()].filter((k) => !catalog.has(k) && !allowed.has(k))).toEqual([]);
+      expect([...en.keys()].filter((k) => !catalog.has(k))).toEqual([]);
     });
 
     it(`${locale}: keeps the placeholders and the plural shape of English`, () => {

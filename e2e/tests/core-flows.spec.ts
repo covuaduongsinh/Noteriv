@@ -40,7 +40,7 @@ const noteSaved = (text: string) =>
 
 async function renameViaContextMenu(from: string, to: string) {
   await sidebarItem(from).click({ button: "right" });
-  await page.getByText("Đổi tên", { exact: true }).click();
+  await page.getByText("Rename", { exact: true }).click();
   const input = page.locator(".sidebar-root input.sb-rename").first();
   await input.fill(to);
   await input.press("Enter");
@@ -51,21 +51,21 @@ test("sign up with an invite code", async () => {
   const invite = process.env.E2E_INVITE_CODE;
   expect(invite, "global-setup seeds E2E_INVITE_CODE").toBeTruthy();
   await page.goto("/register");
-  await page.getByPlaceholder("Mã mời").fill(invite!);
-  await page.getByPlaceholder("Tên hiển thị").fill("E2E Tester");
+  await page.getByPlaceholder("Invite code").fill(invite!);
+  await page.getByPlaceholder("Display name").fill("E2E Tester");
   await page.getByPlaceholder("Email").fill(email);
-  await page.getByPlaceholder("Mật khẩu (tối thiểu 8 ký tự)").fill(password);
+  await page.getByPlaceholder("Password (at least 8 characters)").fill(password);
   await page.locator('input[type="checkbox"]').check();
-  await page.getByRole("button", { name: "Đăng ký" }).click();
+  await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page).toHaveURL(/\/vaults$/);
 });
 
 test("create a vault and open it", async () => {
-  await page.getByPlaceholder("Tên vault mới").fill("E2E vault");
-  await page.getByPlaceholder("Tên vault mới").press("Enter");
+  await page.getByPlaceholder("New vault name").fill("E2E vault");
+  await page.getByPlaceholder("New vault name").press("Enter");
   // A new vault opens straight away.
   await expect(page).toHaveURL(/\/vaults\/[0-9a-f-]{36}$/);
-  await expect(page.getByTitle("Note mới")).toBeVisible();
+  await expect(page.getByTitle("New note", { exact: true })).toBeVisible();
 });
 
 /** A new note starts in rename mode: type its name right away. */
@@ -78,12 +78,12 @@ async function nameNewNote(name: string) {
 }
 
 test("write two linked notes, rename them, see the backlink", async () => {
-  await page.getByTitle("Note mới").click();
+  await page.getByTitle("New note", { exact: true }).click();
   await expect(editor()).toBeVisible();
   await nameNewNote("Draft");
   await renameViaContextMenu("Draft", "First");
 
-  await page.getByTitle("Thêm note").click(); // the sidebar's own "+" button
+  await page.getByTitle("New file", { exact: true }).click(); // the sidebar's own "+" button
   await nameNewNote("Second");
   await editor().click();
   const secondSaved = noteSaved("The second note");
@@ -105,8 +105,8 @@ test("write two linked notes, rename them, see the backlink", async () => {
 
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
-  await page.getByTitle("Tìm trong vault").click();
-  const box = page.getByPlaceholder("Tìm trong nội dung các note…");
+  await page.getByTitle("Search in vault").click();
+  const box = page.getByPlaceholder("Search across all notes…");
   await box.fill("e2e world"); // no Enter needed to search
   const result = page.getByRole("option").filter({ hasText: "First" });
   await expect(result).toContainText("Hello e2e world");
@@ -131,34 +131,57 @@ test("switching a core plugin on adds its feature", async () => {
   await toggle.click();
   await expect(toggle).toHaveAttribute("aria-checked", "true");
   await page.keyboard.press("Escape");
-  await expect(page.getByText(/^\d+ từ$/).first()).toBeVisible();
+  await expect(page.getByText(/^\d+ words?$/).first()).toBeVisible();
 });
 
-test("the interface switches to English (developer override until the Language picker exists)", async () => {
-  // Stage 4: the web app is Vietnamese by default for now; `noteriv.locale.dev` tries another catalog.
+test("the Language setting switches the interface to Vietnamese and back to the browser's language", async () => {
   const other = await context.newPage();
   await other.goto(page.url());
-  await other.evaluate(() => localStorage.setItem("noteriv.locale.dev", "en"));
+  const prefsSaved = (check: (body: string) => boolean) =>
+    other.waitForResponse((r) => r.url().endsWith("/users/me/preferences") && r.request().method() === "PUT" && check(r.request().postData() ?? "") && r.ok());
   try {
-    await other.reload();
     await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
     await expect(other.locator("html")).toHaveAttribute("lang", "en");
-    await expect(other.getByText(/^\d+ words?$/).first()).toBeVisible(); // core plugin text
-    await expect(other.getByTitle("More tools")).toBeVisible(); // web ribbon text
-    await other.getByTitle("Search in vault").click(); // ribbon text shared with desktop
-    await expect(other.getByPlaceholder("Search across all notes…")).toBeVisible(); // shared panel text
-    await other.keyboard.press("Escape");
     await other.keyboard.press("Control+Comma");
-    await expect(other.getByText("Appearance", { exact: true }).first()).toBeVisible(); // Settings sections
-    await expect(other.getByText("Responsive sidebar", { exact: true })).toBeVisible(); // a Settings row
+    const toVi = prefsSaved((b) => b.includes('"language":"vi"'));
+    await other.getByLabel("Language", { exact: true }).selectOption("vi");
+    await expect(other.locator("html")).toHaveAttribute("lang", "vi");
+    await expect(other.getByText("Ngôn ngữ", { exact: true }).first()).toBeVisible(); // Settings re-rendered
+    await toVi;
     await other.keyboard.press("Escape");
-    await other.getByTitle("More tools").click();
-    await other.getByRole("menuitem", { name: "Trash" }).click();
-    await expect(other.getByRole("heading", { name: "Trash" })).toBeVisible(); // a dialog
+    await expect(other.getByText(/^\d+ từ$/).first()).toBeVisible(); // core plugin text
+    await expect(other.getByTitle("Tìm trong vault")).toBeVisible(); // ribbon
+    // The choice is the account's: a reload keeps it.
+    await other.reload();
+    await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
+    await expect(other.locator("html")).toHaveAttribute("lang", "vi");
+    await expect(other.getByTitle("Thêm công cụ")).toBeVisible();
+    // Back to "follow the browser" (English here).
+    await other.keyboard.press("Control+Comma");
+    const toAuto = prefsSaved((b) => !b.includes('"language"'));
+    await other.getByLabel("Ngôn ngữ", { exact: true }).selectOption("auto");
+    await expect(other.locator("html")).toHaveAttribute("lang", "en");
+    await toAuto;
     await other.keyboard.press("Escape");
   } finally {
-    await other.evaluate(() => localStorage.removeItem("noteriv.locale.dev"));
     await other.close();
+  }
+});
+
+test("a browser set to Vietnamese gets the Vietnamese interface before signing in", async ({ browser }) => {
+  const vi = await browser.newContext({ locale: "vi-VN" });
+  try {
+    const p = await vi.newPage();
+    await p.goto("/login");
+    await expect(p.getByRole("heading", { name: "Đăng nhập Noteriv" })).toBeVisible();
+    await expect(p.locator("html")).toHaveAttribute("lang", "vi");
+    // The language links switch it right there, and the choice stays on this device.
+    await p.getByRole("button", { name: "English" }).click();
+    await expect(p.getByRole("heading", { name: "Sign in to Noteriv" })).toBeVisible();
+    await p.reload();
+    await expect(p.getByRole("heading", { name: "Sign in to Noteriv" })).toBeVisible();
+  } finally {
+    await vi.close();
   }
 });
 
@@ -167,7 +190,7 @@ test("another open tab follows a core plugin switch without reloading", async ()
   await other.goto(page.url());
   // Open a note there explicitly: the restored tabs may not have reached the server yet.
   await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
-  await expect(other.getByText(/^\d+ từ$/).first()).toBeVisible();
+  await expect(other.getByText(/^\d+ words?$/).first()).toBeVisible();
 
   await page.keyboard.press("Control+Comma");
   await page.getByText("Core plugins", { exact: true }).click();
@@ -176,7 +199,7 @@ test("another open tab follows a core plugin switch without reloading", async ()
   await expect(toggle).toHaveAttribute("aria-checked", "false");
   await page.keyboard.press("Escape");
 
-  await expect(other.getByText(/^\d+ từ$/)).toHaveCount(0);
+  await expect(other.getByText(/^\d+ words?$/)).toHaveCount(0);
   await other.close();
 });
 
@@ -214,12 +237,12 @@ test("reloading restores the open tabs without a request per note", async () => 
 
 test("a deleted note goes to the trash and can be restored", async () => {
   await sidebarItem("Second").click({ button: "right" });
-  await page.getByText("Xoá", { exact: true }).click();
+  await page.getByText("Delete", { exact: true }).click();
   await expect(sidebarItem("Second")).toHaveCount(0);
 
-  await page.getByTitle("Thêm công cụ").click();
-  await page.getByText("Thùng rác", { exact: true }).click();
-  await page.getByTitle("Khôi phục", { exact: true }).first().click(); // not "Khôi phục file" (File Recovery)
+  await page.getByTitle("More tools").click();
+  await page.getByRole("menuitem", { name: "Trash" }).click();
+  await page.getByTitle("Restore file", { exact: true }).first().click();
   await page.keyboard.press("Escape"); // closes the trash panel
   await expect(sidebarItem("Second")).toBeVisible();
 });

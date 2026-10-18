@@ -35,7 +35,7 @@ export default function FileRecovery({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const fileName = (currentFile.split("/").pop() || "Untitled").replace(
+  const fileName = (currentFile.split("/").pop() || t("files.untitled")).replace(
     /\.(md|markdown)$/i,
     ""
   );

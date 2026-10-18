@@ -2,14 +2,69 @@ import type { Metadata } from "next";
 import LegalShell, { Section } from "@/components/LegalShell";
 import { CONTACT_EMAIL, OPERATOR_NAME } from "@/lib/legal";
 
-export const metadata: Metadata = { title: "Chính sách quyền riêng tư · Privacy Policy — Noteriv" };
+export const metadata: Metadata = { title: "Privacy Policy · Chính sách quyền riêng tư — Noteriv" };
 
 const who = OPERATOR_NAME || "[họ tên chủ dự án]";
 const mail = CONTACT_EMAIL || "[email liên hệ]";
 
 export default function PrivacyPage() {
   return (
-    <LegalShell title="Chính sách quyền riêng tư / Privacy Policy">
+    <LegalShell title="Privacy Policy / Chính sách quyền riêng tư">
+      <Section id="en" lang="en" title="English">
+        <p>
+          Noteriv is a browser-based Markdown note-taking app run by {who} on a personal basis. This page explains what we
+          store about you, where, for how long, and what control you have.
+        </p>
+
+        <h3>1. Data we store</h3>
+        <ul>
+          <li>Account: email, display name, a one-way hash of your password (never the password itself), the invite code you used, and when and which version of the terms you accepted.</li>
+          <li>Content you create: notes, folders, attachments, settings, plugins you install.</li>
+          <li>Sync credentials (GitHub, WebDAV) if you set them up: encrypted on the server.</li>
+          <li>Security log: events such as sign-up, sign-in, failed sign-in, vault creation/deletion, with IP address, to detect abuse.</li>
+          <li>An httpOnly sign-in cookie needed to keep your session. We use no advertising or tracking cookies and no behavioural analytics.</li>
+        </ul>
+
+        <h3>2. Where it is stored and who handles it</h3>
+        <ul>
+          <li>The app and database run on a virtual private server (VPS) that we rent and manage.</li>
+          <li>
+            Nightly backups are <strong>encrypted</strong> before being pushed to a private GitHub repository of ours. The decryption key is not on the server.
+            Database backups are kept on a rotation (roughly 7 daily, 4 weekly, 12 monthly).
+          </li>
+          <li>Monitoring services (UptimeRobot, healthchecks.io) only receive “alive/failed” signals and the site’s public address, never note content or account data.</li>
+          <li>If you enable GitHub/WebDAV sync, your vault data is sent to the service you choose.</li>
+          <li>We do not sell data or share it for advertising.</li>
+        </ul>
+
+        <h3>3. Your rights</h3>
+        <ul>
+          <li>Export: “Your vaults” page → “Download all my data (JSON)”; each vault can also be exported as .zip.</li>
+          <li>
+            Deletion: deleting a vault or “Delete account” immediately removes notes, folders, settings and <strong>attachment files</strong> from the live system.
+          </li>
+          <li>To correct information or ask about your data, write to the address in section 6.</li>
+        </ul>
+
+        <h3>4. Backup limits you should know about</h3>
+        <p>
+          Encrypted backups are not edited for each small change. After you delete your account, data in older database backups disappears as it is
+          overwritten by the rotation (up to about 12 months). <strong>Attachment files</strong> are backed up append-only, so a deleted file may remain in the
+          encrypted backup repository until we clean that repository. If you want it gone for good, write to us; we will remove it manually and confirm.
+        </p>
+
+        <h3>5. Children</h3>
+        <p>If a user is under 16, a parent or guardian, or the school or organisation that set up the account, is responsible for creating it and consenting on their behalf.</p>
+
+        <h3>6. Contact</h3>
+        <p>
+          {who} — <a href={`mailto:${mail}`}>{mail}</a>. We aim to reply within 14 days.
+        </p>
+
+        <h3>7. Changes</h3>
+        <p>If this policy changes materially we update the date at the top and notify you in the app.</p>
+      </Section>
+
       <Section id="vi" lang="vi" title="Tiếng Việt">
         <p>
           Noteriv là ứng dụng ghi chú Markdown chạy trên trình duyệt, do {who} vận hành ở quy mô cá nhân. Trang này nói rõ
@@ -67,61 +122,6 @@ export default function PrivacyPage() {
 
         <h3>7. Thay đổi</h3>
         <p>Nếu chính sách thay đổi đáng kể, chúng tôi cập nhật ngày ở đầu trang và thông báo trong ứng dụng.</p>
-      </Section>
-
-      <Section id="en" lang="en" title="English">
-        <p>
-          Noteriv is a browser-based Markdown note-taking app run by {who} on a personal basis. This page explains what we
-          store about you, where, for how long, and what control you have.
-        </p>
-
-        <h3>1. Data we store</h3>
-        <ul>
-          <li>Account: email, display name, a one-way hash of your password (never the password itself), the invite code you used, and when and which version of the terms you accepted.</li>
-          <li>Content you create: notes, folders, attachments, settings, plugins you install.</li>
-          <li>Sync credentials (GitHub, WebDAV) if you set them up: encrypted on the server.</li>
-          <li>Security log: events such as sign-up, sign-in, failed sign-in, vault creation/deletion, with IP address, to detect abuse.</li>
-          <li>An httpOnly sign-in cookie needed to keep your session. We use no advertising or tracking cookies and no behavioural analytics.</li>
-        </ul>
-
-        <h3>2. Where it is stored and who handles it</h3>
-        <ul>
-          <li>The app and database run on a virtual private server (VPS) that we rent and manage.</li>
-          <li>
-            Nightly backups are <strong>encrypted</strong> before being pushed to a private GitHub repository of ours. The decryption key is not on the server.
-            Database backups are kept on a rotation (roughly 7 daily, 4 weekly, 12 monthly).
-          </li>
-          <li>Monitoring services (UptimeRobot, healthchecks.io) only receive “alive/failed” signals and the site’s public address, never note content or account data.</li>
-          <li>If you enable GitHub/WebDAV sync, your vault data is sent to the service you choose.</li>
-          <li>We do not sell data or share it for advertising.</li>
-        </ul>
-
-        <h3>3. Your rights</h3>
-        <ul>
-          <li>Export: “Your vaults” page → “Download all my data (JSON)”; each vault can also be exported as .zip.</li>
-          <li>
-            Deletion: deleting a vault or “Delete account” immediately removes notes, folders, settings and <strong>attachment files</strong> from the live system.
-          </li>
-          <li>To correct information or ask about your data, write to the address in section 6.</li>
-        </ul>
-
-        <h3>4. Backup limits you should know about</h3>
-        <p>
-          Encrypted backups are not edited for each small change. After you delete your account, data in older database backups disappears as it is
-          overwritten by the rotation (up to about 12 months). <strong>Attachment files</strong> are backed up append-only, so a deleted file may remain in the
-          encrypted backup repository until we clean that repository. If you want it gone for good, write to us; we will remove it manually and confirm.
-        </p>
-
-        <h3>5. Children</h3>
-        <p>If a user is under 16, a parent or guardian, or the school or organisation that set up the account, is responsible for creating it and consenting on their behalf.</p>
-
-        <h3>6. Contact</h3>
-        <p>
-          {who} — <a href={`mailto:${mail}`}>{mail}</a>. We aim to reply within 14 days.
-        </p>
-
-        <h3>7. Changes</h3>
-        <p>If this policy changes materially we update the date at the top and notify you in the app.</p>
       </Section>
     </LegalShell>
   );

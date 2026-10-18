@@ -183,6 +183,7 @@ try {
   await page.keyboard.press("Control+Comma");
   await sleep(800);
   check("settings opens", await page.getByText("Core plugins", { exact: true }).first().isVisible().catch(() => false));
+  check("Language setting is offered", await page.getByLabel("Language", { exact: true }).isVisible().catch(() => false));
   await shot("6-settings");
   await page.keyboard.press("Escape");
 

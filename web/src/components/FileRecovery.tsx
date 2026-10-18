@@ -24,7 +24,7 @@ export default function FileRecovery({ vaultId, noteId, notePath, onRestore, onC
   const [loadingPreview, setLoadingPreview] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const fileName = (notePath.split("/").pop() || "Untitled").replace(/\.(md|markdown)$/i, "");
+  const fileName = (notePath.split("/").pop() || t("files.untitled")).replace(/\.(md|markdown)$/i, "");
 
   useEffect(() => {
     setLoading(true);

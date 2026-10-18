@@ -228,6 +228,12 @@
         "push": "Push only (local → folder)",
         "pull": "Pull only (folder → local)"
       }
+    },
+    "language": {
+      "label": "Language",
+      "desc": "Language of the interface.",
+      "autoWeb": "Follow the browser",
+      "autoDesktop": "Follow the system"
     }
   },
   "plugins": {
@@ -941,7 +947,7 @@
     },
     "zenExit": "Exit Zen (Esc)",
     "tabs": {
-      "newTab": "New note"
+      "newTab": "New tab"
     },
     "newVaultGithub": {
       "title": "New vault from a GitHub repo",
@@ -1123,6 +1129,73 @@
       "errorStatus": "error {status}",
       "uploadFailed": "could not upload",
       "sendFailed": "could not send"
+    },
+    "auth": {
+      "badLogin": "Wrong email or password.",
+      "error": "Something went wrong.",
+      "loginTitle": "Sign in to Noteriv",
+      "password": "Password",
+      "signingIn": "Signing in…",
+      "signIn": "Sign in",
+      "noAccount": "No account yet?",
+      "signUp": "Sign up",
+      "terms": "Terms",
+      "privacy": "Privacy",
+      "badInvite": "The invite code is wrong, used up, expired or revoked. Check with the person who sent it.",
+      "closed": "New accounts are not open yet.",
+      "emailTaken": "This email is already in use.",
+      "tooMany": "Too many attempts. Please wait a minute and try again.",
+      "registerError": "Something went wrong. Check the email and password (at least 8 characters).",
+      "closedTitle": "Sign-up is not open",
+      "closedDesc": "Noteriv is not taking new accounts yet.",
+      "registerTitle": "Create a Noteriv account",
+      "inviteCode": "Invite code",
+      "displayName": "Display name",
+      "newPassword": "Password (at least 8 characters)",
+      "acceptBefore": "I have read and agree to the",
+      "termsOfUse": "Terms of Use",
+      "and": "and the",
+      "privacyPolicy": "Privacy Policy",
+      "creating": "Creating…",
+      "haveAccount": "Already have an account?",
+      "language": "Language"
+    },
+    "vaultList": {
+      "title": "Your vaults",
+      "signOut": "Sign out",
+      "loading": "Loading…",
+      "empty": "No vaults yet.",
+      "create": "Create",
+      "account": "Account",
+      "invites": "Manage invite codes (admin)",
+      "export": "Download all my data (JSON)",
+      "deleteConfirm": "Click again to permanently delete the account and all its data",
+      "delete": "Delete account"
+    },
+    "invites": {
+      "createFailed": "Could not create the code. Try again later.",
+      "title": "Invite codes",
+      "back": "← Back to vaults",
+      "noteLabel": "Note (e.g. Saturday class)",
+      "maxUses": "Number of uses",
+      "expiresIn": "Expires after (days)",
+      "create": "Create code",
+      "code": "Code",
+      "note": "Note",
+      "used": "Used",
+      "expires": "Expires",
+      "statusCol": "Status",
+      "empty": "No codes yet.",
+      "copied": "Copied",
+      "copy": "Copy code",
+      "revoke": "Revoke",
+      "status": {
+        "active": "Active",
+        "usedUp": "Used up",
+        "expired": "Expired",
+        "revoked": "Revoked"
+      },
+      "noExpiryHint": "Set “Expires after” to 0 for a code that never expires."
     }
   },
   "desktop": {
@@ -1719,5 +1792,9 @@
     "restore": "Restore",
     "loadingPreview": "Loading preview...",
     "select": "Select a snapshot to preview"
+  },
+  "files": {
+    "untitled": "Untitled",
+    "newFolder": "New Folder"
   }
 }

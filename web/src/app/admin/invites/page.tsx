@@ -4,19 +4,23 @@ import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { webApi, type ApiInvite } from "@/lib/webApi";
+import { formatDate, t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
-const STATUS_LABEL: Record<ApiInvite["status"], string> = {
-  active: "Đang dùng được",
-  used_up: "Hết lượt",
-  expired: "Hết hạn",
-  revoked: "Đã thu hồi",
+/** Status names, read when shown. */
+const STATUS_LABEL: Record<ApiInvite["status"], () => string> = {
+  active: () => t("web.invites.status.active"),
+  used_up: () => t("web.invites.status.usedUp"),
+  expired: () => t("web.invites.status.expired"),
+  revoked: () => t("web.invites.status.revoked"),
 };
 
 function fmt(d: string | null): string {
-  return d ? new Date(d).toLocaleDateString("vi-VN") : "—";
+  return d ? formatDate(new Date(d), { dateStyle: "medium" }) : "—";
 }
 
 export default function InvitesPage() {
+  useLocale();
   const router = useRouter();
   const [invites, setInvites] = useState<ApiInvite[] | null>(null);
   const [note, setNote] = useState("");
@@ -48,7 +52,7 @@ export default function InvitesPage() {
       setNote("");
       await load();
     } catch {
-      setError("Không tạo được mã. Thử lại sau.");
+      setError(t("web.invites.createFailed"));
     } finally {
       setCreating(false);
     }
@@ -74,23 +78,23 @@ export default function InvitesPage() {
   return (
     <div className="min-h-screen flex flex-col items-center gap-6 py-16 px-4">
       <div className="flex items-center justify-between w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold">Mã mời đăng ký</h1>
+        <h1 className="text-2xl font-semibold">{t("web.invites.title")}</h1>
         <Link href="/vaults" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-          ← Về danh sách vault
+          {t("web.invites.back")}
         </Link>
       </div>
 
       <form onSubmit={create} className="w-full max-w-3xl flex flex-wrap items-end gap-3 p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
         <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)] flex-1 min-w-48">
-          Ghi chú (ví dụ: lớp thứ Bảy)
+          {t("web.invites.noteLabel")}
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} className={input} />
         </label>
         <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)] w-28">
-          Số lượt dùng
+          {t("web.invites.maxUses")}
           <input type="number" min={1} max={500} value={maxUses} onChange={(e) => setMaxUses(Math.max(1, Number(e.target.value) || 1))} className={input} />
         </label>
         <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)] w-28">
-          Hết hạn sau (ngày)
+          {t("web.invites.expiresIn")}
           <input type="number" min={0} max={365} value={days} onChange={(e) => setDays(Math.max(0, Number(e.target.value) || 0))} className={input} />
         </label>
         <button
@@ -98,21 +102,21 @@ export default function InvitesPage() {
           disabled={creating}
           className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)] font-medium disabled:opacity-50"
         >
-          Tạo mã
+          {t("web.invites.create")}
         </button>
         {error && <p className="w-full text-sm text-[var(--red)]">{error}</p>}
-        <p className="w-full text-xs text-[var(--text-secondary)]">Đặt “Hết hạn sau” = 0 để mã không hết hạn.</p>
+        <p className="w-full text-xs text-[var(--text-secondary)]">{t("web.invites.noExpiryHint")}</p>
       </form>
 
       <div className="w-full max-w-3xl overflow-x-auto rounded-xl border border-[var(--border)]">
         <table className="w-full text-sm">
           <thead className="text-left text-[var(--text-secondary)] bg-[var(--bg-secondary)]">
             <tr>
-              <th className="px-3 py-2">Mã</th>
-              <th className="px-3 py-2">Ghi chú</th>
-              <th className="px-3 py-2">Đã dùng</th>
-              <th className="px-3 py-2">Hết hạn</th>
-              <th className="px-3 py-2">Trạng thái</th>
+              <th className="px-3 py-2">{t("web.invites.code")}</th>
+              <th className="px-3 py-2">{t("web.invites.note")}</th>
+              <th className="px-3 py-2">{t("web.invites.used")}</th>
+              <th className="px-3 py-2">{t("web.invites.expires")}</th>
+              <th className="px-3 py-2">{t("web.invites.statusCol")}</th>
               <th className="px-3 py-2" />
             </tr>
           </thead>
@@ -120,14 +124,14 @@ export default function InvitesPage() {
             {invites === null && (
               <tr>
                 <td colSpan={6} className="px-3 py-4 text-[var(--text-secondary)]">
-                  Đang tải…
+                  {t("web.vaultList.loading")}
                 </td>
               </tr>
             )}
             {invites?.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-4 text-[var(--text-secondary)]">
-                  Chưa có mã nào.
+                  {t("web.invites.empty")}
                 </td>
               </tr>
             )}
@@ -139,15 +143,15 @@ export default function InvitesPage() {
                   {i.usedCount}/{i.maxUses}
                 </td>
                 <td className="px-3 py-2">{fmt(i.expiresAt)}</td>
-                <td className="px-3 py-2">{STATUS_LABEL[i.status]}</td>
+                <td className="px-3 py-2">{STATUS_LABEL[i.status]()}</td>
                 <td className="px-3 py-2 text-right whitespace-nowrap">
                   {i.status === "active" && (
                     <>
                       <button onClick={() => copy(i.code)} className="text-[var(--accent)] mr-3">
-                        {copied === i.code ? "Đã chép" : "Chép mã"}
+                        {copied === i.code ? t("web.invites.copied") : t("web.invites.copy")}
                       </button>
                       <button onClick={() => revoke(i.id)} className="text-[var(--red)]">
-                        Thu hồi
+                        {t("web.invites.revoke")}
                       </button>
                     </>
                   )}

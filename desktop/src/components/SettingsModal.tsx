@@ -27,6 +27,7 @@ import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 import { t, tOr } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { applyLanguage, AUTO_LANGUAGE } from "@/lib/i18n";
 
 type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem";
 
@@ -179,6 +180,23 @@ export default function SettingsModal({
   // Render sections
   const renderGeneral = () => (
     <div className="st-section">
+      <Row label={t("settings.language.label")} desc={t("settings.language.desc")}>
+        <select
+          className="st-select"
+          aria-label={t("settings.language.label")}
+          value={settings.language ?? AUTO_LANGUAGE}
+          onChange={(e) => {
+            const value = e.target.value === "en" || e.target.value === "vi" ? e.target.value : AUTO_LANGUAGE;
+            update({ language: value });
+            void applyLanguage(value);
+          }}
+        >
+          <option value={AUTO_LANGUAGE}>{t("settings.language.autoDesktop")}</option>
+          {/* Each language is named in itself, so it can be found whatever the current language is. */}
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </Row>
       <Row label={t("settings.autoSave.label")} desc={t("settings.autoSave.descDesktop")}>
         <select
           className="st-select"
