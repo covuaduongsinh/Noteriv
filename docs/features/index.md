@@ -5,104 +5,115 @@ order: 1
 
 # Features
 
-Noteriv ships with a full set of tools for writing, organizing, and querying your notes. Every feature works on local Markdown files inside your vault, so your data stays yours whether you sync it with Git, a cloud drive, or not at all.
+What you can do with your notes in Noteriv. Some features are [core plugins](./core-plugins.md): those marked *(core plugin, off by default)* need to be turned on first in **Settings → Core plugins**.
 
-This section covers each major feature in detail. If you are new to Noteriv, reading through this list will give you a clear picture of what is available and how the pieces fit together.
+## Linking and discovery
 
-## Linking and Discovery
+### [Wiki-links](./wiki-links.md)
 
-### [Wiki-Links](./wiki-links.md)
-
-Connect your notes with `[[double bracket]]` links. Noteriv resolves links by filename (case-insensitive), supports display text aliases and heading anchors, and provides a backlinks panel that shows every note pointing at the one you are reading.
+Connect notes with `[[double bracket]]` links, resolved by note name (case-insensitive), with aliases and heading anchors. Click a link to open the note — or create it if it does not exist yet. The **Backlinks** panel lists every note pointing at the open one.
 
 ### [Tags](./tags.md)
 
-Mark notes with `#tag` syntax anywhere in the body. Tags can be hierarchical (`#project/alpha`) and are aggregated in a dedicated tag pane with note counts, filtering, and expand/collapse controls.
-
-### [Backlinks](./wiki-links.md#backlinks-panel)
-
-The backlinks panel scans your entire vault in real time and lists every note that contains a wiki-link to the file you have open. Results are grouped by source file, with line numbers and text snippets.
-
-## Daily Workflow
-
-### [Daily Notes](./daily-notes.md)
-
-Press `Ctrl+D` to open or create today's note. Daily notes are named with the `YYYY-MM-DD.md` format and stored in a `DailyNotes/` folder if one exists, otherwise in the vault root. A calendar view shows dots on days that have daily notes.
-
-### [Templates](./templates.md)
-
-Create notes from reusable templates stored in a `Templates/` folder. Variables like `{{date}}`, `{{time}}`, and `{{title}}` are expanded on insertion. Open the template picker with `Ctrl+T`.
-
-### [Bookmarks](./bookmarks.md)
-
-Pin frequently used notes so they appear in a dedicated bookmarks panel in the sidebar. Toggle a bookmark on the current file with `Ctrl+Shift+B`.
-
-## Finding Things
+`#tags` anywhere in a note, nested with slashes (`#project/alpha`), collected in the **Tags** panel with counts.
 
 ### [Search](./search.md)
 
-Two search tools: Quick Open (`Ctrl+P`) for fuzzy filename lookup, and Vault Search (`Ctrl+Shift+F`) for full-text search across every note in the vault. Results include line numbers and highlighted matches.
+**Quick Open** (`Ctrl+K`) jumps to a note by name; **Search in vault** (`Ctrl+Shift+F`) searches the text of every note and opens a result at its line; `Ctrl+F` finds within the open note.
 
-### [Command Palette](./command-palette.md)
+### [Command palette](./command-palette.md)
 
-Press `Ctrl+Shift+P` to open a searchable list of every available command. The palette remembers recently used commands and shows keyboard shortcuts next to each entry.
+`Ctrl+Shift+P` (or `F1`) lists every command with its shortcut.
 
-## History and Recovery
+### [Bookmarks](./bookmarks.md)
 
-### [File Recovery](./file-recovery.md)
+Keep the notes you use most in the **Bookmarks** panel (`Ctrl+Shift+B` toggles the open note).
 
-Automatic local snapshots are saved before every write, up to 50 per file. A recovery screen shows a timeline of snapshots with preview and one-click restore. No external service required.
+## Daily workflow
 
-### [Note History](./note-history.md)
+### [Daily notes](./daily-notes.md)
 
-Git-based version history for individual files. View a commit timeline, read the content at any past commit, and diff between versions. Requires your vault to be a Git repository with sync enabled.
+`Ctrl+D` opens today's note in the `Daily` folder; a month calendar shows your daily notes and due tasks. *(Core plugin, on by default.)*
+
+### [Templates](./templates.md)
+
+Reusable notes in the `Templates` folder with `{{date}}`, `{{time}}`, `{{title}}` and more; insert one with `Ctrl+Alt+T` or start a new note from one. *(Core plugin, on by default.)*
+
+## History and safety
+
+### [File recovery](./file-recovery.md)
+
+The server keeps earlier versions of every note (up to 50); look through them and restore one.
+
+### [Note history](./note-history.md)
+
+A time scrubber over a note's saved versions (`Ctrl+Shift+H`), and its Git history when the vault syncs with a repository. *(Core plugin, on by default.)*
+
+### [Conflicts](./conflicts.md)
+
+If a note was changed somewhere else while you edited it, nothing is overwritten: your version is saved beside it as a conflict copy, with a banner to compare, keep or discard it.
+
+### [Offline use](./offline.md)
+
+Recently opened vaults and notes open without a connection; edits wait on the device and are sent when you are back online.
 
 ## Restructuring
 
-### [Note Composer](./note-composer.md)
+### [Note composer](./note-composer.md)
 
-Merge multiple notes into one or split a note into separate files at heading boundaries. Accessible from the command palette or the editor menu.
+Merge notes into one, or split a note into several at its headings. *(Core plugin, off by default.)*
 
-### [Multi-Select](./multi-select.md)
+### [Import and export](./import-export.md)
 
-Select multiple files in the sidebar with `Ctrl+Click` and `Shift+Click`. Right-click the selection for bulk operations: merge, delete, or drag all selected files into a folder.
+Bring in a folder or zip of Markdown notes; export a vault as a zip; download all your data.
 
-## Study and Review
+### [Attachments and trash](./attachments-and-trash.md)
+
+Images, PDFs and audio stored with the vault, and a trash to restore deleted notes.
+
+## Study and review
 
 ### [Flashcards](./flashcards.md)
 
-Spaced repetition built into the editor. Define `Q:/A:` pairs or `{{cloze}}` deletions inside your notes and review them with the SM-2 scheduling algorithm. Progress is saved locally in the vault.
+Spaced repetition over `Q:`/`A:` pairs and `{{cloze}}` deletions in your notes. *(Core plugin, on by default.)*
 
-## Querying
+## Querying and quality
 
 ### [Dataview](./dataview.md)
 
-Query your vault like a database using `dataview` code blocks. Build tables, lists, and task views filtered by tags, folders, or frontmatter fields. Results render live in the editor.
-
-## Quality
+Query your vault like a database with `dataview` code blocks: tables, lists and tasks filtered by tags, folders or frontmatter. *(Core plugin, off by default.)*
 
 ### [Lint](./lint.md)
 
-A markdown linting panel checks for broken wiki-links, empty headings, duplicate headings, unclosed code blocks, broken images, duplicate tags, and missing H1 headings. Toggle the panel with `Ctrl+Shift+L`.
+A panel of problems in the open note: broken links, empty or duplicate headings, unclosed code blocks, broken images and more. *(Core plugin, off by default.)*
 
-## Keyboard Shortcuts at a Glance
+## Working with others and other apps
+
+### [Collaboration](./collaboration.md)
+
+Edit a note together in real time with other people who have access to the vault.
+
+### [Web clipper](./web-clipper.md)
+
+Save the page you are reading in your browser to the vault's `Clippings` folder with a bookmarklet.
+
+### [Language](./language.md)
+
+English or Vietnamese interface, following your browser unless you choose.
+
+## Shortcuts at a glance
 
 | Action | Shortcut |
 |---|---|
-| Quick Open | `Ctrl+P` |
-| Command Palette | `Ctrl+Shift+P` |
-| Vault Search | `Ctrl+Shift+F` |
-| Daily Note | `Ctrl+D` |
-| Insert Template | `Ctrl+T` |
-| Toggle Bookmark | `Ctrl+Shift+B` |
-| Toggle Lint | `Ctrl+Shift+L` |
-| Save | `Ctrl+S` |
-| New File | `Ctrl+N` |
-| Graph View | `Ctrl+G` |
-| Git Sync | `Ctrl+Shift+G` |
-| Toggle Sidebar | `Ctrl+B` |
-| Toggle Outline | `Ctrl+Shift+O` |
-| Toggle View Mode | `Ctrl+E` |
-| Random Note | `Ctrl+Shift+R` |
+| Quick Open | `Ctrl+K` |
+| Command palette | `Ctrl+Shift+P` |
+| Search in vault | `Ctrl+Shift+F` |
+| New note | `Ctrl+N` |
+| Today's daily note | `Ctrl+D` |
+| Insert template | `Ctrl+Alt+T` |
+| Toggle bookmark | `Ctrl+Shift+B` |
+| Graph view | `Ctrl+G` |
+| Sync now | `Ctrl+Shift+G` |
+| Cycle Edit / View / Source | `Ctrl+E` |
 
-On macOS, replace `Ctrl` with `Cmd` throughout.
+On a Mac, use `Cmd` for `Ctrl`. All shortcuts: [Keyboard shortcuts](../getting-started/keyboard-shortcuts.md).

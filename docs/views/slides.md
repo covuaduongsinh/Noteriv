@@ -56,10 +56,10 @@ This file produces five slides. The first slide shows the title and subtitle, an
 
 ## Starting a Presentation
 
-To present a note as slides, use one of these methods:
+Slides come with the **Slides** [core plugin](../features/core-plugins.md), which is **off by default**: turn it on in **Settings → Core plugins** first. Then, with the note open:
 
-- **Editor menu**: Open the context menu (right-click in the editor or use the three-dot menu) and select "Present as Slides".
-- **Command palette**: Press `Ctrl+P` and search for "Present as Slides".
+- choose **Presentation** in the ribbon or in the note's toolbar, or
+- run **Start presentation** from the command palette (`Ctrl+Shift+P`).
 
 The presentation opens as a fullscreen overlay. The editor is hidden behind the presentation and is restored when you exit.
 

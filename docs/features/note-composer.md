@@ -9,7 +9,7 @@ Note Composer is a tool for restructuring your notes. It has two modes: merge, w
 
 ## Opening Note Composer
 
-Open Note Composer from the command palette (`Ctrl+Shift+P`, search for "Note Composer"). It opens as a modal overlay with the currently active file as the target.
+Note Composer is a [core plugin](./core-plugins.md) that is **off by default**: turn it on in **Settings → Core plugins** first. Then run **Note composer: merge / split notes** from the command palette (`Ctrl+Shift+P`). It opens with the current note as the target.
 
 ## Merge Mode
 

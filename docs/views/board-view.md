@@ -7,6 +7,8 @@ order: 3
 
 The board view transforms a Markdown file into a Kanban-style task board with draggable columns and cards. It is designed for project management, sprint planning, habit tracking, and any workflow that benefits from visual task organization -- all while keeping your data in a plain Markdown file that you can read and edit anywhere.
 
+The board comes with the **Board (Kanban)** [core plugin](../features/core-plugins.md), which is **off by default**: turn it on in **Settings → Core plugins** first.
+
 ## Activating the Board View
 
 There are two ways to tell Noteriv that a file should be displayed as a board:
@@ -74,7 +76,7 @@ Removing a column deletes its heading and all cards under it from the Markdown f
 
 ### Default Columns
 
-When you create a new board file from the file menu ("New Board"), Noteriv generates a starter file with three columns: **To Do**, **In Progress**, and **Done**.
+**New board** in the command palette creates `Board.board.md` at the root of the vault (`Board 2.board.md` and so on if taken) with three columns, **To Do**, **In Progress** and **Done**, and opens it.
 
 ```markdown
 ---
@@ -141,17 +143,17 @@ Due dates use the `@due(YYYY-MM-DD)` syntax. When present, the date is displayed
 
 Due dates also appear in the calendar view as yellow dots on the corresponding day, creating a bridge between board and calendar workflows.
 
-## Auto-Save
+## Saving
 
-The board view automatically saves changes to disk every 5 seconds while the board is open and has unsaved modifications. This ensures that drag-and-drop operations, card edits, and checkbox toggles are persisted without requiring a manual save. You can also trigger a save at any time with `Ctrl+S`.
+Every change on the board — dragging a card, editing it, ticking it — changes the note's Markdown, which saves like any note edit (`Ctrl+S` saves at once).
 
 ## Round-Trip Editing
 
 Because the board format is plain Markdown, you can switch between the board view and the standard editor at any time:
 
-1. Open the file in the board view to drag cards and toggle checkboxes.
-2. Switch to the editor to make bulk text edits, add long descriptions, or restructure the file.
-3. Switch back to the board view -- it re-parses the file on every open.
+1. In Live or View mode the note shows as a board: drag cards and toggle checkboxes.
+2. Switch to Source mode (`Ctrl+E` cycles the modes) to edit the Markdown itself — bulk edits, restructuring.
+3. Switch back: the board is rebuilt from the text.
 
 Any Markdown that the board parser does not understand (paragraphs, images, code blocks outside the column/card structure) is preserved in the frontmatter section and written back unmodified.
 
@@ -163,13 +165,13 @@ Internally, the board is represented as a `BoardData` structure:
 - **cards**: Each `BoardCard` has an `id`, `text`, `completed` boolean, `tags` array, and an optional `dueDate` string.
 - **frontmatter**: The raw YAML frontmatter string, preserved verbatim.
 
-Operations like `moveCard`, `reorderCard`, `addCard`, `removeCard`, `toggleCard`, `addColumn`, and `removeColumn` produce a new immutable copy of the board data, which is then serialized back to Markdown and written to disk.
+Operations like `moveCard`, `reorderCard`, `addCard`, `removeCard`, `toggleCard`, `addColumn`, and `removeColumn` produce a new immutable copy of the board data, which is then serialized back to Markdown and saved as the note's text.
 
 ## Keyboard Shortcuts
 
 | Shortcut | Action |
 |---|---|
-| `Ctrl+S` | Save board to disk |
+| `Ctrl+S` | Save now |
 | `Enter` | Confirm card edit |
 | `Escape` | Cancel card edit |
 

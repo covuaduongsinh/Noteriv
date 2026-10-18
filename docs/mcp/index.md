@@ -7,7 +7,7 @@ order: 1
 
 Noteriv includes an MCP (Model Context Protocol) server that gives AI assistants full access to your notes. The server exposes 22 tools for reading, writing, searching, and managing your vault, allowing AI agents like Claude, ChatGPT, and others to interact with your knowledge base directly.
 
-The MCP server is published on npm as [`noteriv-mcp`](https://www.npmjs.com/package/noteriv-mcp) and can be run with a single command. It auto-discovers your vaults from the Noteriv desktop app's configuration, so there is no manual setup required in most cases.
+The MCP server works on **vault folders on your computer**: the vaults of the [desktop app](../desktop.md), which it finds by itself, or any folder of Markdown notes you point it at — for example a Git clone of a vault you keep in sync with [Git sync](../sync/git-sync.md). It does not connect to the web app or your account. It runs from the `mcp/` folder of this repository; see [Setup](./setup.md).
 
 ## What is MCP?
 
@@ -33,7 +33,7 @@ The server reads the Noteriv desktop app's configuration file to discover your v
 
 - **macOS**: `~/Library/Application Support/Noteriv/config.json`
 - **Windows**: `%APPDATA%/Noteriv/config.json`
-- **Linux**: `~/.config/noteriv/config.json` (or `~/.config/Noteriv/config.json`)
+- **Linux**: `~/.config/Noteriv/config.json` (older installs: `~/.config/noteriv/config.json`)
 
 The configuration file contains a list of vault paths and an active vault ID. The server uses the active vault by default, and you can switch vaults at runtime using the `switch_vault` or `set_vault_path` tools.
 

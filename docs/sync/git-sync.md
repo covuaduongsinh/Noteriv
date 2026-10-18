@@ -5,216 +5,74 @@ order: 2
 
 # Git Sync
 
-Git sync is Noteriv's primary synchronization method on the desktop app. It uses the system-installed `git` binary to commit your vault changes and push them to a remote git repository — GitHub, GitLab, Gitea/Forgejo, Bitbucket, or a self-hosted server. Every edit is version-controlled, giving you a complete history of your notes that you can browse, diff, and restore at any time.
+Git sync keeps a vault in a Git repository: every sync commits your changes and brings in changes made elsewhere — on GitHub's website, in another editor, from another tool. You get the repository's full history of your notes and a copy you fully control.
 
-> **Non-GitHub remotes are newly supported and not yet thoroughly tested.** See [Other Git Remotes](#other-git-remotes) below. GitHub remains the most-tested path; if you sync to another host and hit a problem, please [open an issue](https://github.com/thejacedev/Noteriv/issues) with the host type and the exact error.
+It runs on the Noteriv server, over HTTPS, with an access token you give it. Nothing needs to be installed on your devices.
 
-## Prerequisites
+## Connecting GitHub
 
-Git sync requires:
+1. Open **Settings → Sync** and choose **+ Connect GitHub**.
+2. **Step 1** — paste a GitHub personal access token with the `repo` scope (**Create a token →** opens GitHub's token page). Choose **Verify & pick a repo**.
+3. **Step 2** — pick an existing repository from the list, or type a name and choose **Create repo** (private by default).
+4. **Step 3** — choose the branch, then **Connect**.
 
-1. **Git installed**: The `git` command must be available on your system PATH. Noteriv calls `git --version` at startup to verify this. On macOS, git ships with Xcode command-line tools. On Linux, install it via your package manager (`apt install git`, `dnf install git`). On Windows, install [Git for Windows](https://git-scm.com/download/win).
+On the **first sync**, notes already in the repository are imported into the vault; where a note exists at the same path on both sides, the vault keeps the web's content (the repository's version stays in its Git history). An empty repository gets its branch on the first sync.
 
-2. **A git repository**: Create a repository (public or private) on any git host to hold your vault. Note its HTTPS or SSH URL (e.g., `https://github.com/yourname/notes.git` or `git@gitlab.com:yourname/notes.git`).
+**New vault from GitHub…** (vault switcher or File menu) does all of this for a brand-new vault made from a repository.
 
-3. **Credentials**: For HTTPS, a personal access token with repo read/write scope (on GitHub, generate one at [github.com/settings/tokens](https://github.com/settings/tokens) with the `repo` scope). For SSH remotes, your existing SSH keys are used and no token is needed. See [Other Git Remotes](#other-git-remotes) for per-host details.
+## Connecting another Git host
 
-## Setup
+Choose **+ Other git (GitLab, Gitea…)** and fill in:
 
-### New Vault with Git
+| Field | |
+|---|---|
+| **Remote URL** | The repository's HTTPS URL, e.g. `https://gitlab.com/you/notes.git` |
+| **Username** | Leave empty for GitLab; your login for Gitea and Forgejo; your username for Bitbucket |
+| **Access token** | A token (or app password) that can read and write the repository |
+| **Branch** | The branch to sync |
 
-When creating a new vault in the setup wizard, enable the "Git sync" toggle and paste your GitHub remote URL. Noteriv will create the vault directory, run `git init`, create a `.gitignore` with sensible defaults, set the remote URL, and make an initial commit and push.
+| Host | Token to create |
+|---|---|
+| GitLab | Personal access token with `read_repository` and `write_repository` |
+| Gitea / Forgejo | Access token with repository read and write |
+| Bitbucket | App password with repository read and write |
 
-### Existing Vault
+Noteriv always connects over HTTPS with the token: an SSH address (`git@host:you/notes.git`) is turned into its HTTPS form.
 
-Open the sidebar and click "Set up Git sync" at the bottom. Enter the remote URL, toggle auto-sync if desired, and click Save. Noteriv initializes a git repository if needed, sets the remote, and the next sync cycle commits all existing files.
+## How a sync works
 
-### Cloning an Existing Repo
+At each sync Noteriv:
 
-Create a new vault in Noteriv, set the remote URL to an existing repository, and run "Pull" from the sidebar to download all remote files. Alternatively, clone the repository manually with `git clone` and open the directory as a vault.
+1. writes the vault — notes, folders and attachments — into a working copy of the repository, with links between notes and to attachments turned into relative paths;
+2. commits the changes with the **commit message template** (`{date}`, `{time}` and `{count}` are filled in);
+3. fetches the remote and merges its changes;
+4. pushes the result, and brings the repository's changes (new notes, edits, deletions) into the vault.
 
-## Sync Cycle
+**Push only (web → repo)** skips bringing changes in; **Pull only (repo → web)** never pushes.
 
-When a sync is triggered (manually or automatically), Noteriv executes the following operations in sequence. This is the core of the sync logic, implemented in `desktop/main/sync/git.js`.
+When it runs is up to you: by hand (**Sync now**, `Ctrl+Shift+G`), **Auto-sync** every 1–60 minutes, **Sync on save**, or **Pull when opening the vault**. See [Sync overview](./index.md#when-it-syncs).
 
-### 1. Fetch
+## Conflicts
 
-```
-git fetch <remote>
-```
+If Git cannot merge — the same lines of a note changed in Noteriv and in the repository — the sync stops and the connection shows **Conflict: the web and the repo both changed some files**, listing them. Choose:
 
-Downloads the latest state from the remote repository without modifying local files. This lets Noteriv know what has changed on the remote.
+- **Keep the web version** — Noteriv's version wins; or
+- **Take the repo version** — the repository's version wins.
 
-### 2. Pull with Rebase
+Click twice to confirm. Nothing is lost: the other side stays in the repository's Git history. When the repository brings in a change to a note that was edited in Noteriv in the meantime, the repository's version is saved as a [conflict copy](../features/conflicts.md) next to the note instead.
 
-```
-git pull --rebase <remote> <branch>
-```
+## History
 
-Integrates remote changes into your local branch using rebase instead of merge. Rebasing replays your local commits on top of the remote changes, resulting in a cleaner linear history without merge commits.
+With Git sync on, **Note history (git)** shows a note's commits and lets you restore any of them; see [Note history](../features/note-history.md).
 
-### 3. Stash Protection
+## Managing the connection
 
-Before pulling, Noteriv checks for uncommitted local changes:
-
-```
-git status --porcelain
-```
-
-If there are uncommitted changes, they are stashed before the pull:
-
-```
-git stash push -m "noteriv-sync-stash"
-```
-
-After the pull completes, the stash is popped:
-
-```
-git stash pop
-```
-
-This prevents pull failures due to a dirty working tree and ensures that your in-progress edits are not lost during sync.
-
-### 4. Stage All Changes
-
-```
-git add -A
-```
-
-Stages all new, modified, and deleted files. This includes everything in the vault directory except files excluded by `.gitignore`.
-
-### 5. Commit
-
-```
-git commit -m "Sync notes 2026-03-20"
-```
-
-Creates a commit with a timestamped message. If there are no staged changes (everything is already committed), this step is skipped.
-
-### 6. Push
-
-```
-git push -u <remote> <branch>
-```
-
-Pushes the commit(s) to the remote repository. The `-u` flag sets the upstream tracking reference.
-
-The complete cycle -- fetch, pull, stash/pop, add, commit, push -- is designed to be idempotent. Running it when there are no changes is a no-op (the commit step is skipped and the push has nothing new to send).
-
-## Authentication
-
-Git operations that contact the remote (fetch, pull, push) require authentication. Noteriv handles this via a temporary `GIT_ASKPASS` script:
-
-1. Before each authenticated git command, Noteriv writes a small shell script to a temp file that echoes the token.
-2. The `GIT_ASKPASS` environment variable is set to point to this script.
-3. `GIT_TERMINAL_PROMPT=0` is set to prevent interactive prompts.
-4. The git command runs with these environment variables.
-5. After the command completes (success or failure), the script file is deleted.
-
-This approach avoids storing the token in git's credential manager, in the git config, or in any file that persists after the operation. The token exists on disk only for the duration of the git command.
-
-On Windows, a `.bat` file is used instead of a shell script, with the same create-use-delete lifecycle.
-
-## Other Git Remotes
-
-> **Status: shipped, but not yet thoroughly tested.** Git sync is no longer GitHub-only — the engine runs the system `git` binary against whatever remote you configure, so any git host should work. This path has had only limited testing. If you hit a problem with a non-GitHub host, please [open an issue](https://github.com/thejacedev/Noteriv/issues) noting the host (GitLab, Gitea/Forgejo, Bitbucket, self-hosted) and the exact error.
-
-Point a vault at any remote in **Settings → Sync → Remote URL** (HTTPS or SSH).
-
-### SSH (no token needed)
-
-If your host already has your SSH keys, use the SSH remote URL and leave the credentials/token field empty:
-
-```
-git@gitlab.com:you/notes.git
-git@forgejo.example.com:you/notes.git
-```
-
-Sync runs non-interactively using your existing SSH agent/keys. Unknown host keys are accepted on first connect, so the first sync to a self-hosted server won't hang. Paired with a self-hosted or LAN remote, this keeps work notes entirely off third-party services.
-
-### HTTPS with an access token
-
-Use the HTTPS remote URL and provide an access token in **Settings → Sync → Git credentials**. The token is combined with a username to authenticate; most hosts expect a specific username:
-
-| Host | Username | Token |
-|---|---|---|
-| GitHub | *(leave blank — defaults to `oauth2`)* | Personal access token, `repo` scope |
-| GitLab | *(leave blank — `oauth2`)* | Personal access token, `read_repository` + `write_repository` |
-| Gitea / Forgejo / Codeberg | your login username | Access token |
-| Bitbucket | `x-token-auth` | Repository or workspace access token |
-| Other / self-hosted | usually your login username | Access / app token |
-
-Noteriv builds the authenticated URL as `https://<username>:<token>@host/...`. A blank username defaults to `oauth2` (works for GitHub and GitLab). The token is stored encrypted on your device and used only as the HTTPS password.
-
-> Token validation (the account avatar) and the repository picker work for GitHub only, since they use the GitHub API. For other hosts, paste the remote URL and credentials manually — they are saved without an online check.
-
-## Auto-Sync
-
-When auto-sync is enabled, Noteriv runs the full sync cycle every 5 seconds (configurable in Settings). The auto-sync timer:
-
-1. Checks if a remote is configured.
-2. Fetches the latest remote state.
-3. Pulls if the local branch is behind.
-4. Commits and pushes if there are local changes.
-
-The interval is measured from the completion of one sync to the start of the next, so slow network operations do not cause overlapping syncs.
-
-The auto-sync interval is configured in Settings > Sync > "Auto sync interval". Set it to 0 to disable interval-based auto-sync while keeping the sync-on-save behavior.
-
-## Pull on Open
-
-The "Pull on open" setting (enabled by default) triggers a `git pull` when you open a vault. This ensures you start with the latest version of your notes, especially useful if you edited on another device since your last session.
-
-## Status Indicator
-
-The sidebar displays the current branch name and a colored status dot: green (clean, up to date), yellow (uncommitted local changes), or blue (commits ahead of remote). Next to the dot, counts show the number of uncommitted changes, commits ahead, and commits behind. Status is refreshed every 30 seconds and immediately after each sync.
-
-## Commit Messages
-
-Automatic commits use the format `Sync notes YYYY-MM-DD`. The setup wizard's initial commit uses `Initial commit from Noteriv`. Custom commit messages are not currently supported through the UI.
-
-## Merge Conflicts
-
-If the same file was modified both locally and on the remote, and the changes overlap, git will insert conflict markers:
-
-```
-<<<<<<< HEAD
-Your local version of the line
-=======
-The remote version of the line
->>>>>>> origin/main
-```
-
-Noteriv does not have a visual merge conflict resolver. To fix a conflict:
-
-1. Open the affected file in the editor.
-2. Find the `<<<<<<<`, `=======`, and `>>>>>>>` markers.
-3. Edit the file to keep the content you want and remove the markers.
-4. Save the file.
-5. The next sync cycle will commit the resolved version and push it.
-
-## .gitignore
-
-When Noteriv initializes a new git repository, it creates a `.gitignore` with defaults: `.DS_Store`, `Thumbs.db`, `.trash/`, and `*.tmp`. Edit this file to add exclusions like `node_modules/`, `*.log`, or large binary files.
-
-## Security
-
-Tokens are never stored in the git config or credential helper -- only in the temporary askpass script, which is deleted immediately after each command. Each git command has a 60-second timeout (30 seconds for non-authenticated commands). Remote URLs are stored in `.noteriv/`, which is excluded from git commits.
+Each connection in **Settings → Sync** has **Sync now**, **Test connection**, **Check remote**, **Edit** (branch, direction, schedule, commit template, a new token), **Log** (recent runs) and **Delete** (click twice). Deleting a connection does not touch the repository or the vault's notes.
 
 ## Troubleshooting
 
-| Problem | Solution |
-|---|---|
-| "git: command not found" | Install git and ensure it is on your PATH. |
-| "Authentication failed" | Regenerate your token with `repo` scope. Check that the remote URL uses HTTPS. |
-| "Permission denied" | Ensure your token has write access to the repository. |
-| "Merge conflict" | Open the file, resolve the conflict markers, save, and sync again. |
-| "Sync timeout" | Check your network connection. Increase the timeout if needed. |
-| "Nothing to push" | This is normal -- it means your local and remote are already in sync. |
+- **"Could not connect"** — check the remote URL and that the token can write to the repository and has not expired; enter a new token under **Edit → Change access token**.
+- **Remote unreachable** — the Git host may be down; the next sync tries again.
+- **Notes not synced** — the connection shows how many notes are waiting; run **Sync now** and look at **Log**.
 
-## Keyboard Shortcuts
-
-| Shortcut | Action |
-|---|---|
-| `Ctrl+Shift+G` | Trigger sync now (fetch + pull + commit + push) |
-| `Ctrl+S` | Save file (triggers sync if "Auto-sync on save" is enabled) |
+> **Desktop app:** Git sync runs on your computer with your own Git installation and credentials; see [Desktop app](../desktop.md#sync).

@@ -51,11 +51,13 @@ Image syntax (`![alt](url)`) is replaced with the actual image, rendered inline 
 
 ### Links
 
-`[text](url)` links are rendered as clickable styled text. The URL portion is hidden on non-cursor lines. You can `Ctrl+Click` a link to open it in your default browser or navigate to it if it is an internal wiki-link.
+`[text](url)` links are rendered as styled text; the address is hidden on lines away from the cursor. Click a link to follow it: a web or email address opens in a new browser tab, and a relative link to a note of the vault (`[today](Daily/2026-10-19.md)`) opens that note.
 
 ### Wiki-Links
 
-`[[note name]]` wiki-links are rendered as styled internal links. They are clickable and open the referenced note in the editor. Aliases (`[[note name|display text]]`) are supported -- only the display text is shown when rendered.
+`[[note name]]` wiki-links are rendered as styled internal links. Click one to open the note; if no note of that name exists yet, it is created and opened. Rest the pointer on a link to see a preview of the note. Aliases (`[[note name|display text]]`) are supported -- only the display text is shown when rendered.
+
+To edit a link's text rather than follow it, put the cursor on its line (click beside the link, or use the arrow keys): the raw Markdown appears.
 
 ### Task Lists
 

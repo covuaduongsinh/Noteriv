@@ -33,19 +33,13 @@ Every installation of Noteriv includes these 10 themes, ready to use without any
 
 ## Switching Themes
 
-To change the active theme:
+Open the theme picker with **Themes** (ribbon → **More tools ⋯**), **Settings → Ecosystem → Themes**, or **Themes** in the command palette. It has three tabs — **Built-in**, **Community** and **Custom** — and the theme you click applies at once.
 
-1. Open **Settings** (`Ctrl+,` on desktop, or tap the gear icon on mobile).
-2. Find the **Theme** dropdown in the Appearance section.
-3. Select a theme from the list.
-
-The theme applies immediately. Both the editor and the preview update in real time.
-
-You can also switch themes from the **Command Palette** (`Ctrl+P`) by searching for "Theme" and selecting from the available options.
+The theme belongs to the vault: each vault can have its own, and it is the same on every device.
 
 ## Accent Colors
 
-Independent of the theme, you can choose an accent color that tints interactive elements like links, buttons, selected text, active tabs, and toggle switches. Noteriv provides 8 accent colors:
+Independent of the theme, you can choose an accent color that tints interactive elements like links, buttons, selected text, active tabs, and toggle switches. Besides the theme's own accent, Noteriv offers 8 accent colors:
 
 | Color | Hex Value |
 |---|---|
@@ -58,26 +52,19 @@ Independent of the theme, you can choose an accent color that tints interactive 
 | **Green** | `#a6e3a1` |
 | **Teal** | `#94e2d5` |
 
-The default accent color is Blue. Change it in Settings under the Appearance section.
+By default the accent comes from the theme (**Theme default**). Choose another in **Settings → Appearance → Accent color**.
 
 ## Community Themes
 
 Beyond the built-in themes, the Noteriv community maintains a collection of additional themes in the [NoterivThemes](https://github.com/thejacedev/NoterivThemes) GitHub repository.
 
-To install a community theme:
-
-1. Open **Settings** and navigate to the **Themes** section.
-2. Click **Browse Community Themes**.
-3. Preview and install themes directly from the community repository.
-4. Installed themes appear in the theme picker alongside the built-in options.
-
-Community themes are saved as JSON files in your vault's `.noteriv/themes/` directory. They follow the same format as custom themes (see [Custom Themes](./custom-themes.md)).
+To install one, open the theme picker's **Community** tab and choose **Install** on a theme. Installed themes appear under **Custom** and are stored with the vault.
 
 To submit your own theme to the community repository, see the repository's contributing guidelines.
 
 ## Custom Themes
 
-You can create your own themes by writing a JSON file with 16 color properties and saving it to `.noteriv/themes/` in your vault. Custom themes appear in the theme picker alongside built-in and community themes.
+You can create your own themes by writing a JSON definition with 16 color properties and adding it with **Import Theme** in the theme picker. Custom themes appear in the picker's **Custom** tab.
 
 See [Custom Themes](./custom-themes.md) for the full JSON format and a step-by-step guide.
 

@@ -1,144 +1,95 @@
 ---
 title: FAQ
-order: 90
+order: 99
 ---
 
 # Frequently Asked Questions
 
-## 1. What is Noteriv?
+## What is Noteriv?
 
-Noteriv is an open-source, cross-platform markdown note-taking application. It stores your notes as plain `.md` files on your filesystem and provides a rich editing environment with wiki-links, graph view, themes, plugins, sync, flashcards, and more. It runs on desktop (Windows, macOS, Linux) and mobile (Android, iOS).
+A Markdown note-taking app that runs in your browser, installs on your phone or computer like an app, and has a desktop app as well. Notes are linked with `[[wiki-links]]`, tagged, searched and queried, and can be kept in a Git repository or on a WebDAV server. See the [documentation home](index.md).
 
-## 2. Is Noteriv free?
+## How do I get an account?
 
-Yes. Noteriv is completely free and open-source under the MIT License. There are no paid tiers, no subscriptions, and no feature gates. Every feature is available to everyone.
+Noteriv is in a trial phase: sign-up needs an invite code. With one, choose **Sign up** on the sign-in page. See [Signing up and installing](getting-started/installation.md).
 
-## 3. Is Noteriv an Obsidian alternative?
+## Where are my notes stored?
 
-Noteriv shares several concepts with Obsidian -- local-first markdown files, wiki-links, graph view, community plugins, and themes. However, Noteriv is fully open-source (including the desktop app), has a built-in MCP server for AI assistant integration, includes real-time collaboration, and ships with a native mobile app built on React Native rather than a web wrapper. If you are looking for an open-source alternative to Obsidian with AI-native features, Noteriv is worth trying.
+On the web, in your account on the Noteriv server: each note is a Markdown text, attachments are stored as files. Vaults you open on a device are also kept on that device for [offline use](features/offline.md). In the [desktop app](desktop.md), a vault is a folder on your computer.
 
-## 4. Where are my notes stored?
+## Can I get my notes out?
 
-Your notes are stored as plain `.md` files in a folder on your filesystem called a vault. You choose the vault location when you first set up Noteriv. On desktop, vaults can be anywhere on your disk. On mobile, vaults are stored in the app's document directory. You can access your vault files with any file manager, text editor, or command-line tool.
+Always, in plain Markdown:
+- **File → Export Vault (.zip)** downloads a vault as `.md` files in folders, with attachments;
+- **Download all my data (JSON)** on the vault list downloads everything in your account;
+- [Git sync](sync/git-sync.md) keeps a continuous copy in a repository you own.
 
-## 5. What file format does Noteriv use?
+See [Import and export](features/import-export.md).
 
-Standard markdown (`.md` files) with optional YAML frontmatter. Noteriv adds extensions like wiki-links (`[[note]]`), callouts, highlights, math (KaTeX), Mermaid diagrams, dataview queries, and flashcard syntax, but the files remain valid markdown that can be opened in any text editor. Canvas files use `.canvas` (JSON), and drawings use `.drawing` (JSON).
+## Can I bring my notes from Obsidian (or another Markdown app)?
 
-## 6. What sync options are available?
+Yes: **File → Import folder / zip…** or **Import as New Vault…**. Folders, links and attachments come along. See [Import and export](features/import-export.md).
 
-Noteriv supports three sync methods:
+## Is there a mobile app?
 
-- **GitHub sync**: Uses native git on desktop and the GitHub REST API on mobile. Push and pull your vault to a GitHub repository with configurable auto-sync intervals.
-- **Folder sync**: Mirror your vault to a cloud storage folder (Dropbox, Google Drive, OneDrive, iCloud Drive). The desktop app watches for file changes and syncs bidirectionally.
-- **WebDAV sync**: Connect to a WebDAV server (Nextcloud, ownCloud, or any compatible provider) for self-hosted sync.
+Yes — install the web app on your phone from the browser (Android: **Install app** in Chrome's menu; iPhone: **Add to Home Screen** in Safari). It opens full screen, has a phone layout, and offers **Quick note** from its icon. See [Phone and tablet](mobile/index.md).
 
-All sync is optional. Noteriv works perfectly offline with local-only storage.
+## Does Noteriv work offline?
 
-## 7. Is there a mobile app?
+For what you have opened on the device: vaults and recently opened notes can be read and edited without a connection, and edits are sent when you are back online. Creating, renaming and deleting notes, settings and sync need a connection. See [Offline use](features/offline.md).
 
-Yes. The mobile app is built with React Native and Expo and runs natively on Android and iOS. It includes the markdown editor, preview, wiki-link navigation, board view, graph view, calendar, flashcards, dataview, GitHub sync, themes, and more. See the [Mobile](./mobile/) documentation for details.
+## What happens if the same note is edited in two places?
 
-## 8. What is the MCP server?
+Nothing is overwritten. Your later save is kept as a conflict copy next to the note, with a banner to compare the two, keep one or keep both. See [Conflicts](features/conflicts.md).
 
-The MCP (Model Context Protocol) server gives AI assistants like Claude, ChatGPT, and Cursor direct access to your notes. It exposes 22 tools for reading, writing, searching, and managing your vault. Install it with `npx -y noteriv-mcp` and connect it to any MCP-compatible AI assistant. See the [MCP Server](./mcp/) documentation for setup instructions.
+## What sync options are there?
 
-## 9. Can I install plugins?
+Git (GitHub, GitLab, Gitea, Forgejo, Bitbucket…) and WebDAV (Nextcloud, ownCloud…), set up in **Settings → Sync** and run by the server — automatically, on save, or by hand. Sync is optional: your notes are on every device you sign in from anyway. See [Sync](sync/index.md).
 
-Yes. Noteriv has a community plugin system. Plugins are JavaScript files that extend the app with new commands, sidebar panels, status bar items, and custom behavior. Browse and install plugins from the community repository in Settings, or create your own. Plugins are per-vault, so each vault can have different plugins enabled. See [Plugins](./plugins/) for details.
+## Can I share a vault with someone?
 
-## 10. Can I customize the theme?
+Not yet: a vault belongs to one account. [Live collaboration](features/collaboration.md) keeps a note in step between your own devices and tabs today.
 
-Yes. Noteriv ships with 10 built-in themes (8 dark, 2 light) and supports custom themes. Create a theme by writing a JSON file with 18 color properties and saving it to `.noteriv/themes/` in your vault. You can also install community themes from the [NoterivThemes](https://github.com/thejacedev/NoterivThemes) repository. For finer control, CSS snippets let you override any visual style. See [Themes](./themes/) for details.
+## Can I install plugins?
 
-## 11. Does Noteriv have Vim mode?
+Yes. Seventeen [core plugins](features/core-plugins.md) ship with the app and are switched in **Settings → Core plugins**. [Community plugins](plugins/index.md) are installed from the plugin manager and run in a sandbox with the permissions you grant.
 
-Yes. The desktop editor includes full Vim keybinding support powered by `@replit/codemirror-vim`. Enable it in Settings to get Normal, Insert, and Visual modes with the standard Vim command vocabulary. Vim mode is desktop-only because touch keyboards do not support modal editing.
+## Can I change how it looks?
 
-## 12. Does Noteriv work offline?
+Ten built-in themes, accent colours, community and custom themes, and CSS snippets. See [Themes](themes/index.md).
 
-Yes. Noteriv is local-first. All features work without an internet connection. Notes are stored on your device, and all processing (rendering, search, dataview queries, flashcard scheduling) happens locally. Internet is only needed for sync (GitHub, WebDAV) and for installing community plugins/themes.
+## Can I use it in Vietnamese?
 
-## 13. What export options are available?
+Yes. The interface follows your browser's language (English or Vietnamese); choose one in **Settings → General → Language**. See [Language](features/language.md).
 
-- **Publish HTML**: Export any note as a standalone HTML page styled with your current theme. The HTML includes all CSS inline and opens correctly in any browser.
-- **PDF export**: Export notes as PDF documents (desktop only).
-- **Slide presentation**: Present any note as a slideshow, split at horizontal rules or headings.
-- **Raw markdown**: Your notes are already plain markdown files. Copy them anywhere.
+## Does Noteriv have Vim mode?
 
-## 14. Does Noteriv support collaboration?
+Yes: **Settings → Editor → Vim mode**. See [Vim mode](editor/vim-mode.md).
 
-Yes. The desktop app supports real-time collaborative editing using Yjs and WebRTC. Multiple users can edit the same note simultaneously with live cursors and conflict-free merging. Collaboration is peer-to-peer, meaning data flows directly between participants without passing through a central server.
+## What are the keyboard shortcuts?
 
-## 15. Can I self-host the sync server?
+The essentials: `Ctrl+K` Quick Open, `Ctrl+Shift+P` command palette, `Ctrl+N` new note, `Ctrl+Shift+F` search, `Ctrl+E` editor mode, `Ctrl+,` settings (`Cmd` on a Mac). All of them, and how to change them: [Keyboard shortcuts](getting-started/keyboard-shortcuts.md).
 
-Noteriv does not require a central sync server. GitHub sync uses GitHub's infrastructure. Folder sync uses your existing cloud storage. WebDAV sync connects to any WebDAV-compatible server that you host yourself (Nextcloud, ownCloud, Apache with mod_dav, etc.). For real-time collaboration, connections are peer-to-peer via WebRTC, though a signaling server is used for the initial connection.
+## What if I delete a note by accident?
 
-## 16. What is the open-source license?
+It goes to the **Trash** (ribbon → More tools), where it can be restored for 30 days. Earlier versions of a note are kept too: **File Recovery** in the note's toolbar, or the time scrubber (`Ctrl+Shift+H`). See [Attachments and trash](features/attachments-and-trash.md) and [File recovery](features/file-recovery.md).
 
-Noteriv is released under the MIT License. You are free to use, copy, modify, merge, publish, distribute, sublicense, and sell copies of the software. The full license text is in the `LICENSE` file in the repository root.
+## What is Dataview?
 
-## 17. What are the keyboard shortcuts?
+A core plugin (off by default) that queries your notes like a database from a `dataview` code block — tables, lists and task views by folder, tag or frontmatter. See [Dataview](features/dataview.md).
 
-Noteriv has 70+ keyboard shortcuts covering file operations, navigation, editing, formatting, view controls, and features. Key shortcuts include:
+## How do flashcards work?
 
-| Shortcut | Action |
-|---|---|
-| `Ctrl+P` | Command palette / Quick open |
-| `Ctrl+S` | Save |
-| `Ctrl+B` | Bold |
-| `Ctrl+I` | Italic |
-| `Ctrl+K` | Insert link |
-| `Ctrl+Shift+L` | Cycle view mode |
-| `Ctrl+Shift+D` | Focus mode |
-| `Ctrl+Shift+E` | Zen mode |
-| `Ctrl+\` | Split editor |
-| `Ctrl+,` | Settings |
-| `Ctrl+G` | Graph view |
-| `Ctrl+Shift+F` | Vault search |
+Write `Q:` / `A:` pairs or `{{cloze}}` deletions in your notes; the Flashcards core plugin schedules reviews with the SM-2 spaced-repetition algorithm. See [Flashcards](features/flashcards.md).
 
-See the full list in [Keyboard Shortcuts](./getting-started/keyboard-shortcuts.md).
+## What is the MCP server?
 
-## 18. What is dataview?
+A small program that lets AI assistants (Claude, Cursor…) read, search and write the Markdown notes of a vault folder on your computer — a desktop-app vault, or a Git clone of a synced vault. It does not connect to the web app. See [MCP server](mcp/index.md).
 
-Dataview is a query engine that lets you treat your notes as a database. Write queries inside fenced code blocks to generate tables, lists, and task collections from your notes. Queries can filter by tag, folder, or frontmatter fields, and sort and limit results. See [Markdown Syntax - Dataview](./reference/markdown-syntax.md#dataview) for the query syntax.
+## Is Noteriv open source?
 
-## 19. How do flashcards work?
+Yes, under the MIT license. The source, including the web app, its server, the desktop app and the shared packages, is in the project's repository. See [Contributing](contributing.md).
 
-Noteriv extracts flashcards from your notes using two formats: Q:/A: pairs and {{cloze}} deletions. The review system uses the SM-2 spaced repetition algorithm to schedule cards based on your recall performance. Review data is stored in `.noteriv/flashcard-reviews.json`. Cards are collected from all notes in your vault, so you can embed study material directly in your regular notes. See [Markdown Syntax - Flashcards](./reference/markdown-syntax.md#flashcards).
+## Can I run my own Noteriv server?
 
-## 20. How can I contribute?
-
-There are many ways to contribute:
-
-- **Report bugs**: Open an issue on GitHub with steps to reproduce.
-- **Suggest features**: Open a feature request issue.
-- **Submit code**: Fork the repo, make changes, and submit a pull request.
-- **Create plugins**: Build and share plugins via the NoterivPlugins repository.
-- **Create themes**: Design themes and submit them to NoterivThemes.
-- **Create CSS snippets**: Share visual tweaks via NoterivSnippets.
-- **Improve documentation**: Fix typos, add examples, or write new guides.
-
-See [Contributing](./contributing.md) for the full guide.
-
-## Bonus Questions
-
-### Can I use Noteriv with multiple vaults?
-
-Yes. You can create and switch between as many vaults as you want. Each vault is an independent folder with its own notes, settings, plugins, themes, and sync configuration. Use the vault switcher in the sidebar (desktop) or the home screen (mobile) to change vaults.
-
-### Does Noteriv support templates?
-
-Yes. The template system lets you create reusable note templates and insert them when creating new notes or into existing notes. Templates are markdown files stored in a designated folder in your vault. Access them from the command palette ("Insert Template") or the template picker.
-
-### Can I use Noteriv as a daily journal?
-
-Absolutely. The daily notes feature creates a new note for each day in a `Daily/` folder with the filename `YYYY-MM-DD.md`. Open the calendar view to navigate between days visually, or use the command palette to jump to today's note. The MCP server also supports daily notes, so AI assistants can create and read your journal entries.
-
-### What happens if I delete a note accidentally?
-
-Noteriv uses soft delete by default. When you delete a note, it moves to `.noteriv/trash/` in your vault. You can restore it from the trash panel at any time. Additionally, if your vault is synced with git, you can recover any previous version from the git history. The file recovery system also keeps automatic snapshots in `.noteriv/snapshots/`.
-
-### Can I use Noteriv without the desktop app?
-
-Yes. The mobile app is fully standalone. You can create vaults, write notes, and use all mobile features without ever installing the desktop app. The MCP server can also be pointed at any directory containing markdown files, regardless of whether the desktop app is installed.
+The web app and its server are in the repository (`web/` and `web/server/`) and are deployed with Docker Compose (`web/infra/docker-compose.prod.yml`). There is no step-by-step self-hosting guide in English yet; the operations notes in `docs/ops/` (Vietnamese) describe deployment, backups and monitoring.

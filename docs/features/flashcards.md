@@ -57,7 +57,7 @@ This produces two flashcards from a single line.
 
 ### Starting a Review
 
-Open the flashcard review from the command palette (`Ctrl+Shift+P`, search for "Flashcard Review"). The review screen opens as a full-screen overlay.
+Choose **Flashcards** in the ribbon, or run **Flashcards: review** from the command palette. The review opens in a tab. Flashcards are a [core plugin](./core-plugins.md), on by default.
 
 ### Scanning the Vault
 
@@ -141,24 +141,7 @@ A card is due for review if:
 
 ## Progress Storage
 
-Review progress is saved in `.noteriv/flashcard-reviews.json` inside your vault:
-
-```json
-{
-  "fc-a1b2c3": {
-    "cardId": "fc-a1b2c3",
-    "ease": 2.6,
-    "interval": 6,
-    "repetitions": 2,
-    "nextReview": "2025-11-09",
-    "lastReview": "2025-11-03"
-  }
-}
-```
-
-Each card has a unique ID generated from a hash of its question text and source file path. Progress is saved immediately after each grade, so closing the review mid-session does not lose data.
-
-The `.noteriv/` directory is created automatically if it does not exist.
+Review progress (ease, interval, repetitions, next review date for each card) is saved with the vault on the server, as the Flashcards plugin's data. It is the same on every device you review on, and it is saved right after each grade, so closing a review mid-session loses nothing.
 
 ## Card Identification
 
@@ -207,4 +190,4 @@ The {{Krebs cycle}} produces {{2 ATP}} per glucose molecule.
 - **Review daily.** Spaced repetition works best with consistent daily reviews. Even 5 minutes a day is effective.
 - **Grade honestly.** The algorithm depends on accurate self-assessment. If you had to think hard, grade "OK" (3), not "Easy" (5).
 - **Keep cards atomic.** Each card should test one piece of knowledge. "What are the three branches of government?" is too broad -- make three separate cards.
-- **Add `.noteriv/` to `.gitignore`** if you do not want review progress synced across devices. Or leave it tracked if you do want cross-device consistency.
+- **Review anywhere.** Progress lives with the vault, so a review on your phone carries over to your laptop.

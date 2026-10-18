@@ -9,11 +9,11 @@ The graph view visualizes the connections between your notes as a force-directed
 
 ## Opening the Graph
 
-There are three ways to open the graph view:
-
 - **Keyboard shortcut**: Press `Ctrl+G`.
-- **Ribbon sidebar**: Click the graph icon in the left ribbon.
-- **Command palette**: Open `Ctrl+P` and search for "Graph View".
+- **Ribbon**: **Graph View**.
+- **Command palette**: Open `Ctrl+Shift+P` and run **Open graph view**.
+
+The graph comes with the **Graph view** [core plugin](../features/core-plugins.md), on by default.
 
 The graph opens as a full-screen overlay on top of the editor. Press `Escape` or click the close button to dismiss it.
 
@@ -95,12 +95,6 @@ The bottom-left corner of the graph overlay displays two counters:
 
 - **Notes**: The total number of Markdown files in the vault (displayed as nodes).
 - **Connections**: The total number of unique edges (wiki-link pairs).
-
-## Mobile
-
-On the mobile app, the graph view is implemented as a full-screen WebView rendering an HTML5 canvas. The same directed and reciprocal edge styles are used there. Tapping a node sends a message back to the React Native layer, which navigates to the corresponding note in the editor.
-
-Due to the performance constraints of mobile devices, the mobile graph filters out orphan nodes (those with zero connections) to reduce the number of rendered elements.
 
 ## Performance Notes
 

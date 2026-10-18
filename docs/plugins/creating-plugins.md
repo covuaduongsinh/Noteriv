@@ -5,19 +5,23 @@ order: 2
 
 # Creating Plugins
 
-This guide walks you through creating a Noteriv plugin from scratch, covering the plugin structure, manifest format, API methods, event handling, and a complete example.
+This guide walks you through creating a Noteriv community plugin from scratch, covering the plugin structure, manifest format, API methods, event handling, and a complete example.
+
+> The plugin API is still a draft (`0.x`) and may change before it is frozen for the community. The authoritative description — permissions, the sandbox protocol, the API of core plugins — is [`docs/plugin-api/v1.md`](../plugin-api/v1.md) (in Vietnamese).
 
 ## Plugin Structure
 
-A plugin is a folder inside `.noteriv/plugins/` containing at minimum two files:
+A plugin is two files:
 
 ```
-.noteriv/plugins/my-plugin/
+my-plugin/
   manifest.json
   main.js
 ```
 
-You can include additional files (utility modules, assets, etc.), but Noteriv only loads the entry file specified in the manifest.
+`main.js` must be self-contained (bundle any modules into it): Noteriv loads only the entry file named in the manifest.
+
+On the web, install it with the plugin manager's **Manual install** tab by pasting both files. In the desktop app, a plugin is a folder in the vault's `.noteriv/plugins/` directory.
 
 ## Manifest Format
 
@@ -39,13 +43,14 @@ The `manifest.json` file describes your plugin to Noteriv:
 
 | Field | Type | Required | Description |
 |---|---|---|---|
-| `id` | string | Yes | Unique plugin identifier. Should match the folder name. Use lowercase with hyphens. |
+| `id` | string | Yes | Unique plugin identifier, lowercase with hyphens (and the folder name on desktop). |
 | `name` | string | Yes | Human-readable display name shown in Settings. |
 | `version` | string | Yes | Semantic version of your plugin (e.g., `1.0.0`). |
 | `description` | string | Yes | Short description of what the plugin does. |
 | `author` | string | Yes | Your name or handle. |
 | `minAppVersion` | string | No | Minimum Noteriv version required. If set, the plugin will not load on older versions. |
 | `main` | string | Yes | Path to the entry JavaScript file, relative to the plugin folder. |
+| `permissions` | string[] | No | What the plugin needs: `vault:read`, `vault:write`, `editor:read`, `editor:write`, `ui:commands`, `ui:statusbar`, `ui:panel`, `markdown:render`. Shown to the user before installing; calls outside them are blocked. |
 
 ## Entry File
 
@@ -230,20 +235,6 @@ api.markdown.registerCodeBlockProcessor("shout", (source, el) => {
 
 See the Chessboard plugin example (`desktop/examples/plugins/chessboard/` in this repository) for a complete example that parses FEN and draws an SVG chess diagram.
 
-#### Mobile support
-
-The Noteriv mobile app can run `registerCodeBlockProcessor` plugins too, but needs one extra manifest field since it can't execute every installed plugin's code just to discover which languages it handles the way desktop does at startup:
-
-```json
-{
-  "codeBlockLanguages": ["my-lang"]
-}
-```
-
-Add this array to your `manifest.json` listing every language your plugin registers a processor for. Without it, the mobile app has no way to know your plugin should run for a given fence language, even if it's installed and enabled.
-
-Mobile also runs your `main.js` in a different sandbox than desktop: each code block gets its own disposable WebView (there's no `document`/DOM-safe eval inside the React Native app itself), your `onLoad` is called fresh for every block that needs it, and only a reduced API surface is available inside that WebView — `api.markdown`, a no-op `api.ui.showNotice`, and a static, read-only `api.app`. `api.vault`, `api.events`, and `api.editor` are **not** available on mobile.
-
 ### api.app
 
 Application state, plus generic per-plugin settings persistence.
@@ -251,19 +242,12 @@ Application state, plus generic per-plugin settings persistence.
 | Property / Method | Type | Description |
 |---|---|---|
 | `version` | string | The current Noteriv app version. |
-| `vaultPath` | string \| null | Absolute path to the active vault. |
+| `vaultPath` | string \| null | Absolute path to the vault folder in the desktop app; `null` on the web. |
 | `currentFile` | string \| null | Relative path to the currently open file. |
-| `loadSettings` | `() => Promise<Record<string, unknown>>` | Load this plugin's saved settings blob (desktop only — see below). Returns `{}` if nothing was saved yet. |
+| `loadSettings` | `() => Promise<Record<string, unknown>>` | Load this plugin's saved settings blob. Returns `{}` if nothing was saved yet. |
 | `saveSettings` | `(data: Record<string, unknown>) => Promise<void>` | Persist this plugin's settings blob. `data` must be JSON-serializable (no functions or DOM nodes). |
 
-`loadSettings`/`saveSettings` are stored per-plugin in
-`{vault}/.noteriv/plugin-config.json`, read/write the whole blob at once
-(there's no partial-key update — load, mutate the object, then save it
-back), and are **desktop only**: the mobile WebView sandbox exposes a
-static, read-only `api.app` with just `version`/`vaultPath`/`currentFile`
-(see "Mobile support" above), so feature-detect
-`typeof api.app.loadSettings === "function"` before using them if your
-plugin also runs on mobile.
+`loadSettings`/`saveSettings` read and write the whole blob at once (there is no partial-key update — load, change the object, then save it back). The blob is stored with the vault (on the server on the web, in `.noteriv/plugin-config.json` in the desktop app).
 
 ## Complete Example: Word Count Plugin
 
@@ -360,11 +344,10 @@ You do not need to include the prefix yourself. Use short, descriptive IDs in yo
 
 ## Testing Your Plugin
 
-1. Create your plugin folder in `.noteriv/plugins/`.
-2. Write your `manifest.json` and `main.js`.
-3. Open Settings > Plugins and toggle your plugin on.
-4. Check the browser developer console (F12 on desktop) for errors.
-5. Make changes to `main.js`, then disable and re-enable the plugin to reload.
+1. Write your `manifest.json` and `main.js`.
+2. Open the plugin manager (**Plugins** in the ribbon) → **Manual install**, paste both, and install. (Desktop app: put the folder in `.noteriv/plugins/` and enable it in the plugin manager.)
+3. Check the browser's developer console (`F12`) for errors; calls blocked for missing permissions are reported in the plugin manager.
+4. After changing `main.js`, install it again over the old version (or, on desktop, disable and re-enable the plugin).
 
 ## Publishing to the Community Repository
 

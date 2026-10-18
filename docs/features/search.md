@@ -9,7 +9,7 @@ Noteriv provides two search tools: Quick Open for finding files by name, and Vau
 
 ## Quick Open
 
-Quick Open is a fuzzy file finder. Press `Ctrl+P` (or `Cmd+P` on macOS) to open it.
+Quick Open is a fuzzy note finder. Press `Ctrl+K` (`Cmd+K` on a Mac), or choose **Quick Open** at the top of the ribbon.
 
 ### How It Works
 
@@ -42,11 +42,11 @@ Use Quick Open when you know (or approximately know) the name of the file you wa
 
 ## Vault Search
 
-Vault Search is a full-text search across every file in your vault. Press `Ctrl+Shift+F` (or `Cmd+Shift+F` on macOS) to open it.
+Vault Search is a full-text search across every file in your vault. Press `Ctrl+Shift+F` (`Cmd+Shift+F` on a Mac), or choose **Search in vault** in the ribbon. Press `Enter` (or click a result) to open the note at the matching line.
 
 ### How It Works
 
-When you type a query, Noteriv sends it to the backend, which scans every `.md` file in the vault for lines containing the query string. Matching is case-insensitive. Results are returned as a list of matches, each with the file path, line number, and the text of the matching line.
+When you type a query, Noteriv searches the text of every note in the vault on the server (or, [offline](./offline.md), nothing — search needs a connection) and lists the matching lines. Matching is case-insensitive. Results are returned as a list of matches, each with the file path, line number, and the text of the matching line.
 
 Search is debounced: Noteriv waits 200 milliseconds after you stop typing before executing the search. This prevents unnecessary work while you are still composing your query and keeps the UI responsive.
 
@@ -84,7 +84,7 @@ Use Vault Search when you need to find specific text, a phrase, or a pattern acr
 
 | | Quick Open | Vault Search |
 |---|---|---|
-| Shortcut | `Ctrl+P` | `Ctrl+Shift+F` |
+| Shortcut | `Ctrl+K` | `Ctrl+Shift+F` |
 | Searches | File names and paths | File contents (full text) |
 | Results | File entries | Lines within files |
 | Line numbers | No | Yes |
@@ -109,7 +109,7 @@ The [Command Palette](./command-palette.md) (`Ctrl+Shift+P`) also functions as a
 
 ## Tips
 
-- **Start with Quick Open.** If you know the file name, `Ctrl+P` is almost always faster than Vault Search.
+- **Start with Quick Open.** If you know the note's name, `Ctrl+K` is almost always faster than Vault Search.
 - **Use Vault Search for discovery.** When you are unsure which file contains something, or you want to see all occurrences, full-text search is the right tool.
 - **Check line numbers.** Vault Search results include line numbers, which helps you jump to the exact location once you open the file.
 - **Combine with wiki-links.** After finding a related note via search, add a `[[wiki-link]]` to it from your current note so you do not have to search for it again.

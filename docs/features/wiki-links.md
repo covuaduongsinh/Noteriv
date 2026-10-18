@@ -68,7 +68,7 @@ When Noteriv resolves a wiki-link, it follows a two-pass strategy:
 
 2. **Path match.** If the link target contains a `/` character -- for example, `[[projects/alpha]]` -- Noteriv looks for a file whose relative path ends with `projects/alpha.md`. This lets you disambiguate when two files in different folders share the same basename.
 
-If no file matches, the link is rendered as an unresolved link, styled differently so you can see at a glance that the target does not exist yet. Clicking an unresolved link will create the file for you.
+If no note matches, the link still renders like any other; clicking it creates the note (at the root of the vault, or in the folder the link names) and opens it. The [lint panel](./lint.md) lists links whose note does not exist yet.
 
 ## Embedding with `![[]]`
 
@@ -78,7 +78,7 @@ Prefixing a wiki-link with `!` turns it into an embed:
 ![[meeting-notes]]
 ```
 
-This renders the full content of `meeting-notes.md` inline in the current note, similar to a transclusion. Embeds are useful for reusing content across notes -- for example, embedding a template section or a reference table.
+In the editor an embed shows as a marked reference to the note (⇱ meeting-notes); embedded content is not displayed inline on the web yet. Embeds count as links for backlinks and the graph.
 
 Image files can also be embedded this way:
 
@@ -92,38 +92,21 @@ The backlinks panel shows every note in your vault that contains a wiki-link poi
 
 ### Opening the Panel
 
-Open the backlinks panel from the command palette (`Ctrl+Shift+P`, then search for "Toggle Backlinks") or by clicking the backlinks icon in the editor toolbar.
+Choose **Backlinks** in the open note's toolbar, or run **Toggle Backlinks** from the command palette. The panel opens on the right of the editor.
 
 ### What It Shows
 
-For each source file that links to your current note, the panel displays:
-
-- **File name.** The basename of the linking note, without the extension.
-- **Line number.** The exact line where the link appears, shown as `L12`, `L45`, etc.
-- **Snippet.** Up to 120 characters of the line containing the link, giving you context without having to open the file.
-
-Results are grouped by source file and sorted alphabetically by filename, then by line number within each file.
-
-### Scanning
-
-When you open the backlinks panel or switch to a different file, Noteriv scans every `.md` and `.markdown` file in the vault for references to the current file's basename. The scan runs in parallel with a concurrency limit to avoid blocking the UI, and self-references (the current file linking to itself) are excluded.
-
-The regex used for matching handles all wiki-link forms:
-
-- `[[filename]]`
-- `[[filename|alias]]`
-- `![[filename]]`
-- `![[filename|alias]]`
+Every note that links to the open one — with `[[note]]`, `[[note|alias]]` or `![[note]]` — once each, with its name. Self-links are left out. The list is kept up to date by the server each time a note is saved, so it covers the whole vault without scanning anything in your browser.
 
 ### Navigating
 
-Click any backlink entry to open the source file in the editor. This makes backlinks a fast way to trace the connections between your notes without manually searching.
+Click an entry to open the linking note.
 
 ## Live Rendering
 
 In live mode, wiki-links on non-cursor lines are rendered as styled clickable text. The double brackets are hidden, and only the display text (or filename if no alias is set) is visible. Placing your cursor on the line reveals the raw `[[...]]` syntax for editing.
 
-`Ctrl+Click` on a rendered wiki-link opens the linked note. A regular click places your cursor on the link for editing.
+Click a rendered wiki-link to open the linked note (or create it). To edit the link instead, put the cursor on its line — click beside the link or use the arrow keys — and the raw syntax appears. Rest the pointer on a link to preview the note.
 
 ## Tips
 

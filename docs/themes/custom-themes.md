@@ -5,7 +5,7 @@ order: 2
 
 # Custom Themes
 
-You can create your own Noteriv theme by writing a JSON file with your color definitions. Custom themes appear in the theme picker alongside the built-in themes, and they work on both desktop and mobile.
+You can create your own Noteriv theme by writing a JSON file with your color definitions. Custom themes appear in the theme picker alongside the built-in themes, on every device.
 
 ## Theme File Format
 
@@ -84,16 +84,9 @@ Every theme must define all 18 color properties. Values must be valid CSS color 
 
 ## Installing a Custom Theme
 
-Save your theme JSON file to your vault's `.noteriv/themes/` directory:
+Open the theme picker (ribbon → **More tools ⋯** → **Themes**), choose **Import Theme**, paste the JSON and choose **Import**. The theme is checked (it needs `id`, `name` and `colors`), stored with the vault, and listed under **Custom**; click it to apply it. To change it later, import it again with the same `id`.
 
-```
-your-vault/
-  .noteriv/
-    themes/
-      my-custom-theme.json
-```
-
-The filename should match the `id` field in the JSON (e.g., `my-custom-theme.json` for a theme with `"id": "my-custom-theme"`). After saving the file, the theme will appear in the Settings theme picker the next time you open Settings or reload the app.
+> **Desktop app:** you can also save the JSON file in the vault's `.noteriv/themes/` folder.
 
 ## Creating a Theme Step by Step
 
@@ -155,7 +148,7 @@ For dark themes, use lighter accent colors. For light themes, use darker accent 
 
 ### 5. Test Your Theme
 
-Switch to your theme in Settings and check these screens:
+Switch to your theme in the theme picker and check these screens:
 
 - **Editor**: Does text have enough contrast? Are code blocks readable?
 - **Preview**: Do callouts, code blocks, and math render clearly?
@@ -165,19 +158,14 @@ Switch to your theme in Settings and check these screens:
 
 ## Exporting and Sharing
 
-To share your theme with others, distribute the JSON file. They can install it by placing it in their vault's `.noteriv/themes/` directory.
-
-To submit your theme to the community repository, see the contributing guidelines at [NoterivThemes](https://github.com/thejacedev/NoterivThemes).
+To share your theme with others, give them the JSON (**Copy JSON** in the theme picker copies it); they add it with **Import Theme**. To offer it to everyone, submit it to the community theme repository (**Submit your theme** in the picker's **Community** tab).
 
 ## Importing a Theme
 
 If someone shares a theme JSON file with you:
 
-1. Copy the `.json` file to `your-vault/.noteriv/themes/`.
-2. Open Settings and select the theme from the picker.
-
-You can also import themes through the Settings UI by clicking **Import Theme** and pasting the JSON content.
+Open the theme picker, choose **Import Theme**, paste the JSON and choose **Import**, then click the theme under **Custom**.
 
 ## Deleting a Custom Theme
 
-To remove a custom theme, delete its JSON file from `.noteriv/themes/` or use the **Delete** button next to the theme in Settings. Built-in themes cannot be deleted.
+To remove a custom theme, use the **Delete** button next to it in the theme picker. Built-in themes cannot be removed.

@@ -9,7 +9,7 @@ The command palette is a searchable launcher for every action in Noteriv. Instea
 
 ## Opening the Palette
 
-Press `Ctrl+Shift+P` (or `Cmd+Shift+P` on macOS). The palette opens as a centered overlay with a text input at the top and a scrollable list of commands below.
+Press `Ctrl+Shift+P` (`Cmd+Shift+P` on a Mac) or `F1`, or choose **Command palette** in the ribbon. The palette opens as a centered overlay with a text input at the top and a scrollable list of commands below.
 
 ## Layout
 
@@ -23,7 +23,7 @@ A text field with a menu icon on the left. As you type, the command list filters
 
 When the search field is empty, the top of the command list shows a "Recent" section containing the commands you used most recently. This lets you repeat frequent actions with just two keystrokes: `Ctrl+Shift+P` then `Enter`.
 
-Recent commands are tracked per session and persist across palette opens within the same session. The most recently executed command appears first.
+Recent commands are remembered on the device. The most recently executed command appears first.
 
 ### Command List
 
@@ -49,101 +49,71 @@ The selection highlight starts at the top of the list. When you execute a comman
 
 ## Available Commands
 
-The palette includes every action registered in Noteriv. Here is a representative list, grouped by category:
+The palette lists every command of the app, plus those added by the [core plugins](./core-plugins.md) that are on and by community plugins. The built-in commands, by category (shortcuts are the defaults):
 
 ### File
 
 | Command | Shortcut |
 |---|---|
-| Save | `Ctrl+S` |
-| Save As | `Ctrl+Shift+S` |
-| New File | `Ctrl+N` |
-| New Folder | `Ctrl+Shift+N` |
-| Open File | `Ctrl+O` |
+| Save now | `Ctrl+S` |
+| New Note | `Ctrl+N` |
 | Close Tab | `Ctrl+W` |
 | Close All Tabs | `Ctrl+Shift+W` |
-| Delete File | -- |
-| Toggle Bookmark | `Ctrl+Shift+B` |
-| File Recovery | -- |
-| Export as PDF | -- |
+| Close Other Tabs | |
 | Pin/Unpin Tab | `Ctrl+Shift+T` |
-| Open Trash | -- |
-| New Canvas / Whiteboard | -- |
+| Toggle Bookmark | `Ctrl+Shift+B` |
+| Open Trash | |
+| Preview PDF / Download PDF / Print… | |
+| Import folder / zip into this vault… | |
+| Import folder / zip as a new vault… | |
+| New vault from GitHub repo… | |
+| Export vault as zip | |
 
-### Navigation
-
-| Command | Shortcut |
-|---|---|
-| Quick Open | `Ctrl+P` |
-| Command Palette | `Ctrl+Shift+P` |
-| Next Tab | `Ctrl+Tab` |
-| Previous Tab | `Ctrl+Shift+Tab` |
-| Open Daily Note | `Ctrl+D` |
-| Open Random Note | `Ctrl+Shift+R` |
-| Flashcard Review | -- |
-
-### Search
+### Navigation and search
 
 | Command | Shortcut |
 |---|---|
-| Find in File | `Ctrl+F` |
+| Quick Open | `Ctrl+K` |
+| Command Palette | `Ctrl+Shift+P` or `F1` |
 | Find in Vault | `Ctrl+Shift+F` |
+| Open Random Note | |
 
 ### View
 
 | Command | Shortcut |
 |---|---|
 | Toggle Sidebar | `Ctrl+B` |
-| Toggle View Mode | `Ctrl+E` |
-| Toggle Fullscreen | `F11` |
-| Zen Mode | `Ctrl+Shift+E` |
+| Cycle Edit/View/Source | `Ctrl+E` |
 | Settings | `Ctrl+,` |
 | Toggle Outline | `Ctrl+Shift+O` |
-| Graph View | `Ctrl+G` |
-| Toggle Backlinks | -- |
-| Toggle Tag Pane | -- |
-| Calendar View | -- |
-| Toggle Focus Mode | `Ctrl+Shift+D` |
-| Note History | -- |
-| Toggle Lint Warnings | `Ctrl+Shift+L` |
-| Split Editor | `Ctrl+\` |
-| Close Split | `Ctrl+Shift+\` |
-
-### Edit
-
-| Command | Shortcut |
-|---|---|
-| Undo | `Ctrl+Z` |
-| Redo | `Ctrl+Shift+Z` |
-| Insert Template | `Ctrl+T` |
-| Note Composer | -- |
-| Audio Recorder | -- |
-| Attachment Manager | -- |
-| Insert Dataview Query | -- |
-| Insert Table of Contents | -- |
-| New Drawing | -- |
+| Toggle Tag Pane / Toggle Backlinks / Toggle Collaboration | |
+| Split Editor / Close Split | `Ctrl+\` / `Ctrl+Shift+\` |
+| Zen Mode (hide all chrome) | `Ctrl+Shift+Z` |
+| Focus Mode (dim other lines) | |
 
 ### Formatting
 
 | Command | Shortcut |
 |---|---|
-| Bold | -- |
 | Italic | `Ctrl+I` |
-| Inline Code | `` Ctrl+` `` |
-| Strikethrough | -- |
-| Insert Link | `Ctrl+K` |
-| Insert Image | -- |
-| Horizontal Rule | -- |
-| Code Block | -- |
-| Blockquote | -- |
-| Task List | -- |
-| Insert Table | -- |
+| Inline Code | ``Ctrl+` `` |
+| Bold, Strikethrough, Insert Link, Insert Image, Blockquote, Code Block, Task List, Insert Table, Horizontal Rule | |
 
-### Sync
+### Sync and ecosystem
 
 | Command | Shortcut |
 |---|---|
 | Sync Now | `Ctrl+Shift+G` |
+| Sync Settings (Git / WebDAV) | |
+| Plugin Manager, Themes, CSS Snippets | |
+
+### Developer
+
+| Command | Shortcut |
+|---|---|
+| Reload page (saves first) | |
+| Diagnostics (server, sync, plugins)… | |
+| Open browser developer tools (F12) | |
 
 ## Filtering Behavior
 
@@ -153,17 +123,17 @@ The filter is case-insensitive and matches against three fields simultaneously:
 2. **Category** -- the group name (e.g., "File", "View").
 3. **Action** -- the internal identifier (e.g., "toggleBookmark").
 
-This means typing "sync" shows "Sync Now" (matches the label and category), and typing "pdf" shows "Export as PDF" (matches the label).
+This means typing "sync" shows "Sync Now" (matches the label and category), and typing "pdf" shows "Preview PDF" and "Download PDF".
 
 If no commands match the filter, the palette displays "No commands found".
 
 ## Customizing Shortcuts
 
-Keyboard shortcuts for commands can be customized in Settings (`Ctrl+,`). Changes are saved locally and merged over the defaults. The command palette always shows the current effective shortcut, whether it is the default or a custom one.
+Keyboard shortcuts for commands can be changed in **Settings → Shortcuts**. Your changes belong to your account and apply on every device. The command palette always shows the current effective shortcut, whether it is the default or a custom one.
 
 ## Tips
 
 - **Use the palette as a learning tool.** Browse the full list with an empty query to discover commands you did not know existed.
-- **Let recent commands work for you.** If you keep inserting templates, the "Insert Template" command will stay at the top of the recent list, making it a two-key operation.
+- **Let recent commands work for you.** If you keep inserting templates, the "Templates: insert template" command will stay at the top of the recent list, making it a two-key operation.
 - **Search by category.** Typing "format" shows all formatting commands grouped together.
 - **Pair with shortcuts.** Once you find yourself using a command frequently via the palette, note its keyboard shortcut and start using that instead for speed.
