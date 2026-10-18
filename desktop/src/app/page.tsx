@@ -2043,12 +2043,21 @@ export default function Home() {
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3">
                 <p className="text-[var(--text-muted)] text-sm">{t("desktop.noFile")}</p>
-                <button
-                  onClick={handleNewFile}
-                  className="text-xs text-[var(--accent)] hover:underline"
-                >
-                  {t("desktop.createNote")}
-                </button>
+                <p className="text-[var(--text-muted)] text-xs">{t("desktop.noFileHint")}</p>
+                <div className="flex items-center justify-center gap-4">
+                  <button
+                    onClick={handleNewFile}
+                    className="text-xs text-[var(--accent)] hover:underline"
+                  >
+                    {t("desktop.createNote")}
+                  </button>
+                  <button
+                    onClick={() => setShowQuickOpen(true)}
+                    className="text-xs text-[var(--accent)] hover:underline"
+                  >
+                    {t("desktop.quickOpenNote")}
+                  </button>
+                </div>
               </div>
             </div>
           ) : currentTab.kind === "image" ? (

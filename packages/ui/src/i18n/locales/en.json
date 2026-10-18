@@ -45,7 +45,8 @@
     "vaultSearch": {
       "placeholder": "Search across all notes…",
       "noResults": "No results found",
-      "hint": "Start typing to search across all notes"
+      "hint": "Start typing to search across all notes",
+      "noResultsHint": "Try fewer or different words, or search for a #tag."
     },
     "bookmarks": {
       "title": "Bookmarks",
@@ -1026,7 +1027,8 @@
       "install": "Install",
       "noneCommunity": "No community plugins yet.",
       "manualTitle": "Install a new plugin (paste it in)",
-      "manifestPlaceholder": "manifest.json, e.g. {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}"
+      "manifestPlaceholder": "manifest.json, e.g. {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}",
+      "browseCommunity": "Browse community plugins"
     },
     "attachments": {
       "uploadFailed": "Upload failed — the vault's storage quota may be used up.",
@@ -1170,7 +1172,8 @@
       "invites": "Manage invite codes (admin)",
       "export": "Download all my data (JSON)",
       "deleteConfirm": "Click again to permanently delete the account and all its data",
-      "delete": "Delete account"
+      "delete": "Delete account",
+      "emptyHint": "Give your first vault a name below. Inside it you can also import an existing folder of Markdown notes."
     },
     "invites": {
       "createFailed": "Could not create the code. Try again later.",
@@ -1470,7 +1473,10 @@
       "settingUp": "Setting up your vault...",
       "defaultPath": "Default: {path}",
       "scopeBefore": "Select the",
-      "scopeAfter": "scope. Your token is encrypted locally."
+      "scopeAfter": "scope. Your token is encrypted locally.",
+      "nameHint": "Something like “Personal”, “Work”, or “Research”.",
+      "sampleNotes": "Add getting-started notes",
+      "sampleNotesDesc": "A few short notes that show links, tags and plugins. Delete them whenever you like."
     },
     "collab": {
       "startFailed": "Could not start collaboration. Install yjs and y-webrtc: npm install yjs y-webrtc",
@@ -1499,7 +1505,9 @@
       "remove": "Remove vault",
       "new": "New vault",
       "confirmRemove": "Delete vault \"{name}\"? This won't delete your files."
-    }
+    },
+    "noFileHint": "Pick a note in the sidebar, or start a new one.",
+    "quickOpenNote": "Open a note"
   },
   "common": {
     "close": "Close",
@@ -1535,7 +1543,8 @@
       "newFileButton": "New file",
       "empty": "No notes yet",
       "createNote": "Create a note",
-      "resize": "Resize file navigator"
+      "resize": "Resize file navigator",
+      "emptyHint": "Write your first note, then type [[ to link it to another."
     },
     "status": {
       "mode": {

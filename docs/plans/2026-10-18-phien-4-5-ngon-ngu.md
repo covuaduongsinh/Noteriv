@@ -79,6 +79,16 @@ Migration không tự chạy khi deploy. Làm như 3.1:
 
 Staging: `prisma migrate deploy` trong container API staging.
 
+**Đã làm (2026-10-18):**
+- Staging: `prisma migrate deploy` xong, schema up to date; `/`, `/login`, `/api/v1/healthz` trả 200. CI của PR #13 xanh cả 4 job.
+- Production:
+  1. sao lưu tay `/root/noteriv-manual-backups/before-language-vi-20261018T064612Z.sql.gz` (16 MB, đủ dòng kết thúc dump);
+  2. áp migration bằng `psql -1`: trước 1 người dùng, 1 dòng tuỳ chọn, 0 có `vi`; sau 1/1 có `vi`;
+  3. gộp PR #13 (merge `9dd0844`), deploy `done`;
+  4. `migrate resolve --applied`, schema up to date;
+  5. 9 container chạy; `/`, `/login`, `/api/v1/healthz` trả 200.
+- `next` đưa về `main`, chờ staging deploy xong rồi `compose.stop`.
+
 ## Chưa làm / để sau
 
 - Plugin cộng đồng (sandbox) chưa nhận `locale`; việc của hệ sinh thái plugin.

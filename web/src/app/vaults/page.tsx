@@ -87,7 +87,12 @@ export default function VaultsPage() {
 
       <div className="w-full max-w-md flex flex-col gap-2">
         {vaults === null && <p className="text-[var(--text-secondary)]">{t("web.vaultList.loading")}</p>}
-        {vaults?.length === 0 && <p className="text-[var(--text-secondary)]">{t("web.vaultList.empty")}</p>}
+        {vaults?.length === 0 && (
+          <>
+            <p className="text-[var(--text-secondary)]">{t("web.vaultList.empty")}</p>
+            <p className="text-sm text-[var(--text-muted)]">{t("web.vaultList.emptyHint")}</p>
+          </>
+        )}
         {vaults?.map((v) => (
           <button
             key={v.id}

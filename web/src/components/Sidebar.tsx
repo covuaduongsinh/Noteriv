@@ -530,6 +530,7 @@ export default function Sidebar({
         ) : (
           <div className="sidebar-empty">
             <p>{t("shell.files.empty")}</p>
+            <p style={{ fontSize: 12, opacity: 0.75 }}>{t("shell.files.emptyHint")}</p>
             <button onClick={onNewNote}>{t("shell.files.createNote")}</button>
           </div>
         )}

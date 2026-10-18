@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { t } from "@noteriv/ui/i18n";
+import { getLocale, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { sampleVault } from "@noteriv/core/sample-vault";
+import { writeSampleVault } from "@/lib/sample-vault";
 
 interface SetupWizardProps {
   onComplete: (vault: Vault) => void;
@@ -16,6 +18,8 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
   const [vaultName, setVaultName] = useState("");
   const [vaultPath, setVaultPath] = useState("");
   const [setupType, setSetupType] = useState<"new" | "existing" | "clone">("new");
+  // Only a brand-new vault gets the "Getting started" notes; an opened or cloned folder is left as it is.
+  const [sampleNotes, setSampleNotes] = useState(true);
 
   const [enableGit, setEnableGit] = useState(false);
   const [token, setToken] = useState("");
@@ -98,6 +102,16 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
         await window.electronAPI.createDir(finalPath);
       }
       const vault = await window.electronAPI.createVault({ name: vaultName, vaultPath: finalPath, gitRemote, autoSync: enableGit ? autoSync : false });
+      // The default location starts with "~" here (the webview has no home directory); the store expands it, and the
+      // file and git commands below only accept the expanded path.
+      finalPath = vault.path;
+      if (setupType === "new" && sampleNotes) {
+        try {
+          await writeSampleVault(finalPath, sampleVault(getLocale()).files, window.electronAPI);
+        } catch {
+          /* the vault itself is fine without them */
+        }
+      }
       if (enableGit && token.trim()) await window.electronAPI.authSaveToken(vault.id, token.trim());
       if (enableGit) {
         await window.electronAPI.gitInit(finalPath);
@@ -238,11 +252,20 @@ export default function SetupWizard({ onComplete }: SetupWizardProps) {
               <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
                 <div>
                   <h2 style={S.h2}>{t("desktop.setup.nameTitle")}</h2>
-                  <p style={S.p}>Something like &ldquo;Personal&rdquo;, &ldquo;Work&rdquo;, or &ldquo;Research&rdquo;.</p>
+                  <p style={S.p}>{t("desktop.setup.nameHint")}</p>
                 </div>
                 <input type="text" value={vaultName} onChange={(e) => setVaultName(e.target.value)} placeholder={t("desktop.setup.namePlaceholder")} autoFocus
                   style={S.input} onFocus={(e) => { e.currentTarget.style.borderColor = "var(--accent)"; }} onBlur={(e) => { e.currentTarget.style.borderColor = "var(--border)"; }}
                   onKeyDown={(e) => { if (e.key === "Enter" && canProceedFromName) setStep("location"); }} />
+                {setupType === "new" && (
+                  <label style={{ display: "flex", alignItems: "flex-start", gap: 10, fontSize: 13, color: "var(--text-secondary)", cursor: "pointer" }}>
+                    <input type="checkbox" checked={sampleNotes} onChange={(e) => setSampleNotes(e.target.checked)} style={{ marginTop: 2 }} />
+                    <span>
+                      {t("desktop.setup.sampleNotes")}
+                      <span style={{ display: "block", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{t("desktop.setup.sampleNotesDesc")}</span>
+                    </span>
+                  </label>
+                )}
                 <div style={S.nav}>
                   <button style={S.back} onClick={() => setStep("welcome")}>{t("desktop.setup.back")}</button>
                   <button style={{ ...S.next, ...(canProceedFromName ? {} : S.nextDisabled) }} onClick={() => setStep("location")} disabled={!canProceedFromName}>{t("desktop.setup.continue")}</button>

@@ -207,7 +207,14 @@ export default function PluginManager({
 
         {tab === "installed" && (
           <div className="flex flex-col gap-2">
-            {installed.length === 0 && <p className="text-sm text-[var(--text-muted)]">{t("web.pluginManager.noneInstalled")}</p>}
+            {installed.length === 0 && (
+              <p className="text-sm text-[var(--text-muted)]">
+                {t("web.pluginManager.noneInstalled")}{" "}
+                <button className="text-[var(--accent)] hover:underline" onClick={() => setTab("community")}>
+                  {t("web.pluginManager.browseCommunity")}
+                </button>
+              </p>
+            )}
             {installed.map((p) => {
               const granted = (p.manifest.permissions ?? []) as string[];
               const missing = (denied[p.id] ?? []).filter((d) => !granted.includes(d));

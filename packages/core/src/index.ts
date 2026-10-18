@@ -22,3 +22,4 @@ export * from "./plugin-registry";
 export * from "./permissions";
 export * from "./note-diff";
 export * from "./conflict-copy";
+export * from "./sample-vault";
