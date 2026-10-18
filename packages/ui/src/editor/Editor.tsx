@@ -20,6 +20,7 @@ import {
 } from "../markdown";
 import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completion";
 import { vimExtension } from "./vim-mode";
+import { linkClickHandler } from "./link-click";
 import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
 
 export interface EditorProps {
@@ -35,6 +36,8 @@ export interface EditorProps {
   /** Fires when the pointer rests over a rendered `.md-wikilink` span — Phase C5 hover preview. */
   onWikilinkHover?: (target: string, x: number, y: number) => void;
   onWikilinkLeave?: () => void;
+  /** Fires when a rendered `[[wiki-link]]` is clicked; the app opens (or creates) the note it names. */
+  onWikilinkOpen?: (target: string) => void;
   /** Toggling recreates the CodeMirror instance (see createEditor's deps below) since the vim
    * keymap has to be present at state-creation time, not added after. */
   vimMode?: boolean;
@@ -57,6 +60,7 @@ export default function Editor({
   focusMode = false,
   onWikilinkHover,
   onWikilinkLeave,
+  onWikilinkOpen,
   vimMode = false,
   prefs,
   onImageDrop,
@@ -66,6 +70,8 @@ export default function Editor({
   const onChangeRef = useRef(onChange);
   const onWikilinkHoverRef = useRef(onWikilinkHover);
   const onWikilinkLeaveRef = useRef(onWikilinkLeave);
+  const onWikilinkOpenRef = useRef(onWikilinkOpen);
+  onWikilinkOpenRef.current = onWikilinkOpen;
   const onImageDropRef = useRef(onImageDrop);
   const adapterRef = useRef(adapter);
   const prefsRef = useRef(prefs);
@@ -110,6 +116,8 @@ export default function Editor({
             onChangeRef.current(update.state.doc.toString());
           }
         }),
+        // A click on a rendered link opens it (to edit the link text, put the cursor beside it).
+        linkClickHandler(() => onWikilinkOpenRef.current, () => onWikilinkLeaveRef.current?.()),
         EditorView.domEventHandlers({
           mouseover(event) {
             const el = (event.target as HTMLElement).closest(".md-wikilink");

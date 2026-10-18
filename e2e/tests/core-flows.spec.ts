@@ -117,6 +117,26 @@ test("write two linked notes, rename them, see the backlink", async () => {
   await expect(page.locator(".bl-panel .bl-list")).toContainText("First");
 });
 
+test("clicking a wiki-link opens the note, or creates it when it does not exist yet", async () => {
+  await sidebarItem("First").click();
+  await editor().click();
+  await page.keyboard.press("Control+Home"); // off the link's line, so the link renders
+  await page.locator(".cm-content .md-wikilink", { hasText: "Second" }).first().click();
+  await expect(page.locator(".tab-active")).toContainText("Second");
+  await expect(editor()).toContainText("The second note");
+
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const saved = noteSaved("[[Third idea]]");
+  await page.keyboard.type("\n\nSee [[Third idea");
+  await page.keyboard.press("Escape");
+  await saved;
+  await page.keyboard.press("Control+Home");
+  await page.locator(".cm-content .md-wikilink", { hasText: "Third idea" }).first().click();
+  await expect(sidebarItem("Third idea")).toBeVisible();
+  await expect(page.locator(".tab-active")).toContainText("Third idea");
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();
