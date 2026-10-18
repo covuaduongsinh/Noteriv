@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { PluginApi, ViewFactory } from "@noteriv/plugin-api";
 import graph, { loadLinkGraph, VIEW_TYPE as GRAPH_VIEW } from "../src/graph";
 import slides, { VIEW_TYPE as SLIDES_VIEW } from "../src/slides";
@@ -21,6 +22,7 @@ function fakeApi(opts: { content?: string | null; git?: boolean; platform?: "web
   const handlers = new Map<string, Set<(...a: unknown[]) => void>>();
   const api = {
     app: { platform, vaultPath: null, currentFile: content === null ? null : "A.md" },
+    i18n: platformI18n(platform),
     vault: {
       list: async (dir?: string) => {
         const base = dir ? `${dir}/` : "";

@@ -3,8 +3,8 @@ import { isLocale, setLocale, type Locale } from "@noteriv/ui/i18n";
 /**
  * Language of the desktop app.
  *
- * Until every screen reads its text from the catalogs (Stage 4, end of session 4.3), the app stays English by
- * default and ignores the OS language. At the end of 4.3 the default becomes the OS language with English as the
+ * Until every screen reads its text from the catalogs (Stage 4, end of session 4.4), the app stays English by
+ * default and ignores the OS language. At the end of 4.4 the default becomes the OS language with English as the
  * fallback, and Settings gets a Language picker. Other catalogs load on demand.
  */
 export const TRANSITION_DEFAULT_LOCALE: Locale = "en";

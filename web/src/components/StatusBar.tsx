@@ -2,6 +2,8 @@
 
 import type { ViewMode } from "@/lib/webApi";
 import type { PluginStatusItem } from "@noteriv/ui/plugins/sandbox";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface StatusBarProps {
   viewMode: ViewMode;
@@ -18,11 +20,6 @@ interface StatusBarProps {
   coreItems?: React.ReactNode;
 }
 
-const VIEW_MODE_LABEL: Record<ViewMode, string> = {
-  live: "Edit",
-  view: "View",
-  source: "Source",
-};
 
 /**
  * Bottom status bar — ported from the inline block in desktop's
@@ -50,23 +47,24 @@ export default function StatusBar({
   onPluginItemClick,
   coreItems,
 }: StatusBarProps) {
+  useLocale();
   return (
     <div className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] select-none shrink-0">
       <div className="flex items-center gap-3 min-w-0">
-        <span>{VIEW_MODE_LABEL[viewMode]}</span>
+        <span>{t(`shell.status.mode.${viewMode}`)}</span>
         {vaultName && <span>{vaultName}</span>}
         {notePath && <span className="truncate max-w-md">{notePath}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {notePath && (
           <span className={dirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}>
-            {dirty ? "unsaved" : "saved"}
+            {dirty ? t("shell.status.unsaved") : t("shell.status.saved")}
           </span>
         )}
         {notePath && (
           <>
-            <span>{content.split("\n").length} lines</span>
-            <span>{content.length} chars</span>
+            <span>{t("shell.status.lines", { count: content.split("\n").length })}</span>
+            <span>{t("shell.status.chars", { count: content.length })}</span>
           </>
         )}
         {syncSummary && (
@@ -74,7 +72,7 @@ export default function StatusBar({
             onClick={onOpenSync}
             className="hover:text-[var(--text-primary)]"
             style={syncTone === "error" ? { color: "var(--red)" } : syncTone === "warn" ? { color: "var(--yellow)" } : undefined}
-            title="Mở Settings > Sync"
+            title={t("web.status.openSync")}
           >
             {syncSummary}
           </button>

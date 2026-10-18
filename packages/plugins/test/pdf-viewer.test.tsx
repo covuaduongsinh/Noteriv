@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { AttachmentViewer, PluginApi } from "@noteriv/plugin-api";
 import pdfViewer, {
   annotationsToMarkdown,
@@ -64,6 +65,7 @@ function fakeApi(platform: "web" | "desktop", existing: string[] = []) {
   const files = new Set(existing);
   const raw = {
     app: { platform },
+    i18n: platformI18n(platform),
     vault: {
       exists: vi.fn(async (p: string) => files.has(p)),
       write: vi.fn(async (p: string, _c: string) => void files.add(p)),

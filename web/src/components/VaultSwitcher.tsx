@@ -4,6 +4,8 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { VaultChevronIcon, PlusIcon, RenameIcon, TrashIcon } from "@/components/icons";
 import { webApi, type ApiVault } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface VaultSwitcherProps {
   vaults: ApiVault[];
@@ -14,6 +16,7 @@ interface VaultSwitcherProps {
 }
 
 export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, onImportNewVault, onNewFromGithub }: VaultSwitcherProps) {
+  useLocale();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -43,7 +46,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
     };
   }, [open]);
 
-  const displayName = activeVault?.name || "No Vault";
+  const displayName = activeVault?.name || t("web.vaults.noVault");
 
   async function submitCreateVault(e: React.FormEvent) {
     e.preventDefault();
@@ -64,7 +67,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
       await webApi.vaults.update(vault.id, { name });
       onVaultsChanged?.();
     } catch {
-      setActionError("Không đổi tên được vault.");
+      setActionError(t("web.vaults.renameFailed"));
     }
   }
 
@@ -79,7 +82,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
       onVaultsChanged?.();
       if (vault.id === activeVault?.id) router.push("/vaults");
     } catch {
-      setActionError("Không xoá được vault (chỉ chủ sở hữu mới xoá được).");
+      setActionError(t("web.vaults.deleteFailed"));
     }
   }
 
@@ -92,7 +95,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
 
       {open && (
         <div className="vault-dropdown">
-          <div className="vault-dropdown-header">Vaults</div>
+          <div className="vault-dropdown-header">{t("web.vaults.title")}</div>
 
           <div className="vault-list">
             {vaults.map((vault) => {
@@ -128,7 +131,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
                   <div className="vault-item-actions" onClick={(e) => e.stopPropagation()}>
                     <button
                       className="vault-action-btn"
-                      title="Đổi tên vault"
+                      title={t("web.vaults.rename")}
                       onClick={() => {
                         setRenameValue(vault.name);
                         setRenamingId(vault.id);
@@ -138,7 +141,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
                     </button>
                     <button
                       className="vault-action-btn vault-delete"
-                      title={armedDeleteId === vault.id ? "Bấm lần nữa để xoá vĩnh viễn" : "Xoá vault"}
+                      title={armedDeleteId === vault.id ? t("web.vaults.confirmDelete") : t("web.vaults.delete")}
                       onClick={() => deleteVault(vault)}
                       onBlur={() => setArmedDeleteId((id) => (id === vault.id ? null : id))}
                       style={armedDeleteId === vault.id ? { color: "var(--red)", opacity: 1 } : undefined}
@@ -161,7 +164,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
                   onChange={(e) => setNewVaultName(e.target.value)}
                   onBlur={() => { if (!newVaultName.trim()) setCreating(false); }}
                   onKeyDown={(e) => e.key === "Escape" && setCreating(false)}
-                  placeholder="Tên vault mới"
+                  placeholder={t("web.vaults.newPlaceholder")}
                   className="w-full text-sm px-2 py-1 rounded-md bg-[var(--bg-tertiary)] outline-none ring-1 ring-[var(--accent)]"
                 />
               </form>

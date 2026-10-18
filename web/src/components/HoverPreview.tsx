@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useRef } from "react";
 import { webApi, type VaultIndex } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface HoverPreviewProps {
   /** Raw `[[target]]` text from the wikilink the pointer is resting over. */
@@ -28,6 +30,7 @@ function resolveTarget(target: string, index: VaultIndex | null) {
 }
 
 export default function HoverPreview({ target, vaultId, index, position, onDismiss }: HoverPreviewProps) {
+  useLocale();
   const [content, setContent] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -88,11 +91,11 @@ export default function HoverPreview({ target, vaultId, index, position, onDismi
       </div>
       <div className="hp-body">
         {loading ? (
-          <div className="hp-loading">Đang tải…</div>
+          <div className="hp-loading">{t("web.hoverPreview.loading")}</div>
         ) : preview ? (
           <pre className="hp-preview-text">{preview}</pre>
         ) : (
-          <div className="hp-not-found">{resolvedNote ? "Không tải được nội dung" : "Không tìm thấy note"}</div>
+          <div className="hp-not-found">{resolvedNote ? t("web.hoverPreview.readFailed") : t("web.hoverPreview.notFound")}</div>
         )}
       </div>
     </div>

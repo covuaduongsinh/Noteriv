@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import ContextMenu, { ContextMenuItem } from "./ContextMenu";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface FileEntry {
   name: string;
@@ -328,6 +330,7 @@ export default function Sidebar({
   refreshTrigger,
   onTrashFile,
 }: SidebarProps) {
+  useLocale();
   const [entries, setEntries] = useState<FileEntry[]>([]);
   const [contextMenu, setContextMenu] = useState<ContextMenuState>(null);
   const [renamingPath, setRenamingPath] = useState<string | null>(null);
@@ -681,17 +684,17 @@ export default function Sidebar({
       setSelectedFiles((prev) => new Set([...prev, entry.path]));
     }
 
-    items.push({ label: "New File", onClick: () => handleNewFileIn(targetDir) });
-    items.push({ label: "New Folder", onClick: () => handleNewFolderIn(targetDir) });
+    items.push({ label: t("shell.files.newFile"), onClick: () => handleNewFileIn(targetDir) });
+    items.push({ label: t("shell.files.newFolder"), onClick: () => handleNewFolderIn(targetDir) });
 
     if (hasMultiSelect) {
       items.push({ label: "", separator: true, onClick: () => {} });
       items.push({
-        label: `Merge ${totalSelected} Notes`,
+        label: t("desktop.files.mergeNotes", { count: totalSelected }),
         onClick: handleMergeNotes,
       });
       items.push({
-        label: `Delete ${totalSelected} Files`,
+        label: t("desktop.files.deleteFiles", { count: totalSelected }),
         danger: true,
         onClick: handleDeleteSelected,
       });
@@ -700,11 +703,11 @@ export default function Sidebar({
     if (!isVaultRoot) {
       items.push({ label: "", separator: true, onClick: () => {} });
       if (!hasMultiSelect) {
-        items.push({ label: "Rename", onClick: () => startRename(entry) });
+        items.push({ label: t("shell.files.rename"), onClick: () => startRename(entry) });
       }
       if (!hasMultiSelect) {
         items.push({
-          label: "Delete",
+          label: t("shell.files.delete"),
           danger: true,
           onClick: () => handleDelete(entry),
         });
@@ -712,11 +715,11 @@ export default function Sidebar({
     }
     items.push({ label: "", separator: true, onClick: () => {} });
     items.push({
-      label: entry.isDirectory ? "Open Folder Location" : "Open File Location",
+      label: entry.isDirectory ? t("desktop.files.openFolderLocation") : t("desktop.files.openFileLocation"),
       onClick: () => window.electronAPI.openPath(entry.isDirectory ? entry.path : contextMenu.parentDir),
     });
     items.push({
-      label: entry.isDirectory ? "Copy Folder Path" : "Copy File Path",
+      label: entry.isDirectory ? t("desktop.files.copyFolderPath") : t("desktop.files.copyFilePath"),
       onClick: () => navigator.clipboard.writeText(entry.path),
     });
     return items;
@@ -760,12 +763,12 @@ export default function Sidebar({
           <div className="sidebar-header">
             <span className="sidebar-title" title={vault.path}>{vault.name}</span>
             <div className="sidebar-actions">
-              <button onClick={onNewFile} className="sidebar-btn" title="New file">
+              <button onClick={onNewFile} className="sidebar-btn" title={t("shell.files.newFileButton")}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path d="M8 3v10M3 8h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                 </svg>
               </button>
-              <button onClick={onCollapse} className="sidebar-btn" title="Close sidebar (Ctrl+B)">
+              <button onClick={onCollapse} className="sidebar-btn" title={t("desktop.files.closeSidebar")}>
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path d="M10.5 3.5L6 8l4.5 4.5" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
@@ -817,8 +820,8 @@ export default function Sidebar({
               ))
             ) : (
               <div className="sidebar-empty">
-                <p>No notes yet</p>
-                <button onClick={onNewFile}>Create a note</button>
+                <p>{t("shell.files.empty")}</p>
+                <button onClick={onNewFile}>{t("shell.files.createNote")}</button>
               </div>
             )}
             {dropIndicator?.type === "between" && vault && dropIndicator.dirPath === vault.path && dropIndicator.index === sorted.length && (
@@ -829,7 +832,7 @@ export default function Sidebar({
         </>
       ) : (
         <div className="flex-1 flex items-center justify-center p-6">
-          <p className="text-sm text-[var(--text-muted)] text-center">No vault selected</p>
+          <p className="text-sm text-[var(--text-muted)] text-center">{t("desktop.files.noVault")}</p>
         </div>
       )}
 
@@ -844,7 +847,7 @@ export default function Sidebar({
       <div
         className="sidebar-resize-handle"
         role="separator"
-        aria-label="Resize file navigator"
+        aria-label={t("shell.files.resize")}
         aria-orientation="vertical"
         tabIndex={0}
         onPointerDown={handleResizeStart}

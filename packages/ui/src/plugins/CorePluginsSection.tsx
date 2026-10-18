@@ -19,6 +19,24 @@ export interface CorePluginsLabels {
   hideSettings: string;
 }
 
+/** Catalog group of a core plugin: `word-count` → `plugins.wordCount` (its `name` and `description` live there). */
+export function corePluginGroup(id: string): string {
+  return `plugins.${id.replace(/-(\w)/g, (_, c: string) => c.toUpperCase())}`;
+}
+
+/** The plugin's name and description in the current language; a name given by the app wins. */
+function describe(p: CorePluginInfo) {
+  const group = corePluginGroup(p.id);
+  return { name: p.name ?? t(`${group}.name`), description: p.description ?? t(`${group}.description`) };
+}
+
+/** The failure line: a save failure keeps the plugin running, a load failure stopped it. */
+function errorText(p: CorePluginInfo, failed: string): string {
+  if (!p.error) return "";
+  if (p.errorKind === "save") return t("settings.corePlugins.saveFailed", { detail: p.error });
+  return p.status === "error" ? `${failed}: ${p.error}` : p.error;
+}
+
 const defaultLabels = (): CorePluginsLabels => ({
   intro: t("settings.corePlugins.intro"),
   empty: t("settings.corePlugins.empty"),
@@ -51,19 +69,19 @@ export default function CorePluginsSection({ plugins, onToggle, settingsTabs = [
       {plugins.length === 0 && <div className="st-row-desc">{text.empty}</div>}
       {plugins.map((p) => {
         const on = p.enabled;
+        const { name, description } = describe(p);
         const tabs = on ? settingsTabs.filter((t) => t.pluginId === p.id) : [];
         const open = openId === p.id && tabs.length > 0;
         return (
           <div key={p.id} data-core-plugin={p.id}>
           <div className="st-row">
             <div className="st-row-info">
-              <span className="st-row-label">{p.name}</span>
-              <span className="st-row-desc">{p.description}</span>
+              <span className="st-row-label">{name}</span>
+              <span className="st-row-desc">{description}</span>
               {p.status === "loading" && <span className="st-row-desc">{text.loading}</span>}
               {p.error && (
                 <span className="st-row-desc" style={{ color: "var(--red, #f38ba8)" }}>
-                  {p.status === "error" ? `${text.failed}: ` : ""}
-                  {p.error}
+                  {errorText(p, text.failed)}
                 </span>
               )}
             </div>
@@ -72,7 +90,7 @@ export default function CorePluginsSection({ plugins, onToggle, settingsTabs = [
                 type="button"
                 role="switch"
                 aria-checked={on}
-                aria-label={`${on ? text.disable : text.enable} ${p.name}`}
+                aria-label={`${on ? text.disable : text.enable} ${name}`}
                 className={`st-toggle${on ? " st-toggle-on" : ""}`}
                 disabled={p.status === "loading"}
                 onClick={() => onToggle(p.id, !on)}

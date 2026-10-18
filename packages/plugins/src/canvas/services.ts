@@ -25,6 +25,31 @@ export interface CanvasLabels {
   uploading: string;
   noImages: string;
   loading: string;
+  /** Default name of a new group. */
+  group: string;
+  // Toolbar
+  select: string;
+  addText: string;
+  addSticky: string;
+  addImage: string;
+  addFile: string;
+  addGroup: string;
+  draw: string;
+  zoomIn: string;
+  zoomOut: string;
+  resetZoom: string;
+  zoomToFit: string;
+  deleteSelected: string;
+  /** Right-click menu. */
+  menu: {
+    duplicate: string;
+    stickyColor: string;
+    color: string;
+    delete: string;
+    addText: string;
+    addSticky: string;
+    addImage: string;
+  };
 }
 
 export function pluginCanvasServices(api: PluginApi): CanvasServices {

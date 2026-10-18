@@ -583,8 +583,8 @@ export default function VaultPage() {
       } catch (err) {
         setPageNotice(
           err instanceof ApiError && err.status === 404
-            ? "Note không còn tồn tại (có thể đã bị xoá hoặc nằm trong Trash)."
-            : "Không mở được note, vui lòng thử lại."
+            ? t("web.notice.noteMissing")
+            : t("web.notice.openFailed")
         );
         return;
       }
@@ -738,7 +738,7 @@ export default function VaultPage() {
         const restoredTabs = notes.filter((t): t is OpenTab => t !== null);
         if (transientFailure) {
           restoreIncompleteRef.current = true;
-          setPageNotice("Không khôi phục được một số tab do lỗi kết nối; tải lại trang để thử lại.");
+          setPageNotice(t("web.notice.tabsNotRestored"));
         }
         savedWorkspaceRef.current = JSON.stringify({
           openTabs: state.openTabs.map((t) => ({ noteId: t.noteId, path: t.path, name: t.name })),
@@ -888,14 +888,14 @@ export default function VaultPage() {
 
   const syncSummaryText =
     syncConnections.length === 0
-      ? "Git: chưa kết nối"
+      ? t("web.sync.notConnected")
       : syncConnections.some((c) => c.lastSyncStatus?.status === "conflict")
-      ? "sync: xung đột"
+      ? t("web.sync.conflict")
       : syncConnections.some((c) => c.lastSyncStatus?.status === "error")
-      ? "sync: lỗi"
+      ? t("web.sync.error")
       : syncConnections[0].lastSyncedAt
-      ? `sync: ${new Date(syncConnections[0].lastSyncedAt).toLocaleTimeString()}`
-      : "sync: chưa chạy";
+      ? t("web.sync.at", { time: new Date(syncConnections[0].lastSyncedAt).toLocaleTimeString() })
+      : t("web.sync.never");
   const syncTone: "muted" | "warn" | "error" =
     syncConnections.some((c) => c.lastSyncStatus?.status === "error" || c.lastSyncStatus?.status === "conflict")
       ? "error"
@@ -1058,7 +1058,7 @@ export default function VaultPage() {
         break;
       case "devToolsHint":
         // A web page cannot open the browser's DevTools itself.
-        setPageNotice("Nhấn F12 (hoặc Ctrl+Shift+I) để mở công cụ nhà phát triển của trình duyệt.");
+        setPageNotice(t("web.notice.devTools"));
         break;
       case "reloadApp":
         handleReloadApp();
@@ -1150,27 +1150,28 @@ export default function VaultPage() {
   // Download a real PDF (rendered by the server); progress and failures are reported in the page notice.
   async function handleExportPDF() {
     if (!activeTab) return;
-    setPageNotice("Đang tạo PDF…");
+    setPageNotice(t("web.notice.pdfCreating"));
     try {
       await (await loadPdfExport()).downloadPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions());
-      setPageNotice("Đã tải PDF.");
-      setTimeout(() => setPageNotice((n) => (n === "Đã tải PDF." ? null : n)), 3000);
+      const done = t("web.notice.pdfDone");
+      setPageNotice(done);
+      setTimeout(() => setPageNotice((n) => (n === done ? null : n)), 3000);
     } catch (err) {
       const message = (err as { body?: { message?: string } } | null)?.body?.message;
-      setPageNotice(message ?? "Không tạo được PDF. Bạn có thể dùng File → In… rồi chọn Save as PDF.");
+      setPageNotice(message ?? t("web.notice.pdfFailed"));
     }
   }
 
   // Render the same PDF as "Tải PDF" but show it in a modal first; the user downloads from there.
   async function handlePreviewPDF() {
     if (!activeTab) return;
-    setPageNotice("Đang tạo bản xem trước…");
+    setPageNotice(t("web.notice.previewCreating"));
     try {
       setPdfPreview(await (await loadPdfExport()).renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
       setPageNotice(null);
     } catch (err) {
       const message = (err as { body?: { message?: string } } | null)?.body?.message;
-      setPageNotice(message ?? "Không tạo được bản xem trước PDF.");
+      setPageNotice(message ?? t("web.notice.previewFailed"));
     }
   }
 
@@ -1218,7 +1219,7 @@ export default function VaultPage() {
       openNote(note.id);
       setSidebarRenameRequest({ id: note.id, name: note.name.replace(/\.md$/i, ""), nonce: Date.now() });
     } catch {
-      setPageNotice("Không tạo được note mới. Kiểm tra kết nối hoặc quyền ghi vault rồi thử lại.");
+      setPageNotice(t("web.notice.newNoteFailed"));
     }
   }
 
@@ -1458,7 +1459,7 @@ export default function VaultPage() {
                   <div className="sidebar-header">
                     <span className="sidebar-title">{panel.title}</span>
                     <div className="sidebar-actions">
-                      <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title="Đóng panel">
+                      <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title={t("shell.closePanel")}>
                         <CloseIcon size={12} />
                       </button>
                     </div>
@@ -1532,7 +1533,7 @@ export default function VaultPage() {
                           <div className="h-full flex flex-col">
                             <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] text-xs text-[var(--text-secondary)]">
                               <span className="truncate">{splitTab.path}</span>
-                              <button onClick={handleCloseSplit} className="titlebar-btn" title="Close split">
+                              <button onClick={handleCloseSplit} className="titlebar-btn" title={t("shell.closeSplit")}>
                                 <CloseIcon size={11} />
                               </button>
                             </div>
@@ -1586,7 +1587,6 @@ export default function VaultPage() {
                   panels={corePlugins.contributions.sidebarPanels}
                   open={corePluginHost.openPanels}
                   onClose={corePluginHost.togglePanel}
-                  closeLabel="Đóng"
                 />
               </div>
               {!zenMode && (
@@ -1607,9 +1607,9 @@ export default function VaultPage() {
             </>
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center gap-2 text-[var(--text-muted)]">
-              <span>Chọn hoặc tạo một note để bắt đầu</span>
+              <span>{t("web.empty.title")}</span>
               <button onClick={() => setQuickOpenVisible(true)} className="text-sm hover:text-[var(--text-primary)]">
-                Quick open (⌘K)
+                {t("web.empty.quickOpen")}
               </button>
               <div className="mt-4 flex flex-wrap justify-center gap-3">
                 <button
@@ -1617,32 +1617,32 @@ export default function VaultPage() {
                   style={{ padding: "12px 16px" }}
                   className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
                 >
-                  <div className="font-medium">Tạo note mới</div>
-                  <div className="text-xs text-[var(--text-muted)]">Bắt đầu viết ngay</div>
+                  <div className="font-medium">{t("web.empty.newNote")}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{t("web.empty.newNoteHint")}</div>
                 </button>
                 <button
                   onClick={() => openSettings("sync")}
                   style={{ padding: "12px 16px" }}
                   className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
                 >
-                  <div className="font-medium">Kết nối GitHub / WebDAV</div>
-                  <div className="text-xs text-[var(--text-muted)]">Đồng bộ vault với repo của bạn</div>
+                  <div className="font-medium">{t("web.empty.connect")}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{t("web.empty.connectHint")}</div>
                 </button>
                 <button
                   onClick={() => setImportMode("current")}
                   style={{ padding: "12px 16px" }}
                   className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
                 >
-                  <div className="font-medium">Import thư mục / zip</div>
-                  <div className="text-xs text-[var(--text-muted)]">Đưa vault có sẵn lên web</div>
+                  <div className="font-medium">{t("web.empty.import")}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{t("web.empty.importHint")}</div>
                 </button>
                 <button
                   onClick={() => setPluginManagerOpen(true)}
                   style={{ padding: "12px 16px" }}
                   className="rounded-lg bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm text-[var(--text-primary)] text-left"
                 >
-                  <div className="font-medium">Cài plugin</div>
-                  <div className="text-xs text-[var(--text-muted)]">Mở rộng bằng plugin cộng đồng</div>
+                  <div className="font-medium">{t("web.empty.plugins")}</div>
+                  <div className="text-xs text-[var(--text-muted)]">{t("web.empty.pluginsHint")}</div>
                 </button>
               </div>
             </div>
@@ -1707,13 +1707,13 @@ export default function VaultPage() {
               label: c.name,
               // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
               keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
-              category: "Core plugin",
+              category: t("shell.commands.corePlugin"),
             })),
             ...pluginHost.commands.map((c) => ({
               action: `plugin:${c.pluginDbId}:${c.id}`,
               label: c.name,
               keys: "",
-              category: `Plugin · ${c.pluginId}`,
+              category: t("shell.commands.plugin", { id: c.pluginId }),
             })),
           ]}
           platform={platform}
@@ -1902,7 +1902,7 @@ export default function VaultPage() {
           className="fixed top-2 right-3 z-40 text-xs rounded-md bg-[var(--bg-tertiary)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
           style={{ padding: "4px 10px", opacity: 0.7 }}
         >
-          Thoát Zen (Esc)
+          {t("web.zenExit")}
         </button>
       )}
 

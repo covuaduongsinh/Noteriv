@@ -2,6 +2,7 @@ import type { CodeBlockProcessor, CorePlugin, PluginApi, VaultApi } from "@noter
 import type { NoteData } from "@noteriv/core/dataview";
 import { scanVault } from "../shared/vault";
 import { renderResult } from "./render";
+import { pluginT } from "../shared/i18n";
 
 /** Marks a block still being drawn; export waits for it to go (see core `PENDING_ATTRIBUTE`). */
 const PENDING = "data-nrv-pending";
@@ -11,10 +12,13 @@ export const SCAN_TTL_MS = 5000;
 
 export const QUERY_TEMPLATE = '```dataview\nTABLE file.name, file.tags FROM "" SORT BY file.modified DESC LIMIT 10\n```';
 
-const TEXT: Record<"web" | "desktop", { insert: string }> = {
-  web: { insert: "Dataview: chèn truy vấn" },
-  desktop: { insert: "Insert Dataview query" },
-};
+/** Text shown inside a query block while it runs or when it fails. */
+export interface DataviewText {
+  running: string;
+  error: (message: string) => string;
+}
+
+const ENGLISH: DataviewText = { running: "Running query...", error: (message) => `Error: ${message}` };
 
 /**
  * Every note as a query sees it, read through the plugin API (one request per note on web). One scan is shared for
@@ -51,7 +55,11 @@ export function createNoteSource(vault: VaultApi) {
   };
 }
 
-export function createDataviewProcessor(source: { get(): Promise<NoteData[]> }, onOpen: (path: string) => void): CodeBlockProcessor {
+export function createDataviewProcessor(
+  source: { get(): Promise<NoteData[]> },
+  onOpen: (path: string) => void,
+  text: DataviewText = ENGLISH
+): CodeBlockProcessor {
   return (query, el) => {
     let cancelled = false;
     const container = document.createElement("div");
@@ -63,7 +71,7 @@ export function createDataviewProcessor(source: { get(): Promise<NoteData[]> }, 
     header.textContent = "DATAVIEW";
     const status = document.createElement("div");
     status.style.cssText = "color:var(--text-secondary);font-size:12px";
-    status.textContent = "Running query...";
+    status.textContent = text.running;
     container.append(header, status);
     container.setAttribute(PENDING, "");
     el.appendChild(container);
@@ -79,7 +87,7 @@ export function createDataviewProcessor(source: { get(): Promise<NoteData[]> }, 
         renderResult(container, executeQuery(parsed, notes), onOpen);
       } catch (err) {
         if (cancelled) return;
-        status.textContent = `Error: ${err instanceof Error ? err.message : String(err)}`;
+        status.textContent = text.error(err instanceof Error ? err.message : String(err));
         status.style.color = "var(--red)";
       }
       container.removeAttribute(PENDING);
@@ -94,17 +102,21 @@ export function createDataviewProcessor(source: { get(): Promise<NoteData[]> }, 
 /** Dataview: ```dataview queries (TABLE / LIST / TASK over the vault's notes) and a command to insert one. */
 const dataview: CorePlugin = {
   onload(api: PluginApi) {
+    const t = pluginT(api, "dataview");
     const source = createNoteSource(api.vault);
     const invalidate = () => source.invalidate();
     api.events.on("vault-change", invalidate);
     api.events.on("file-save", invalidate);
     api.markdown.registerCodeBlockProcessor(
       "dataview",
-      createDataviewProcessor(source, (path) => void api.workspace.openFile(path))
+      createDataviewProcessor(source, (path) => void api.workspace.openFile(path), {
+        running: t("running"),
+        error: (message) => t("error", { message }),
+      })
     );
     api.ui.addCommand({
       id: "insert",
-      name: TEXT[api.app.platform].insert,
+      name: t("insert"),
       callback: () => api.editor.insertAtCursor(QUERY_TEMPLATE),
     });
   },

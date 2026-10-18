@@ -176,7 +176,7 @@ export function VaultInsights({ api, labels }: { api: PluginApi; labels: Insight
           {points.map((p, i) =>
             i % (points.length > 12 ? 2 : 1) !== 0 && i !== points.length - 1 ? null : (
               <text key={p.month} x={padL + i * xStep} y={chartH - 4} fontSize={9} fill="var(--text-muted)" textAnchor="middle">
-                {p.label.split(" ")[0]}
+                {labels.months[parseInt(p.month.slice(5, 7), 10) - 1] ?? p.label.split(" ")[0]}
               </text>
             )
           )}

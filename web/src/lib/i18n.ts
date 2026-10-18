@@ -4,9 +4,9 @@ import vi from "@noteriv/ui/i18n/locales/vi.json";
 /**
  * Language of the web app.
  *
- * Until every web screen reads its text from the catalogs (Stage 4, end of session 4.3), the app stays Vietnamese by
+ * Until every web screen reads its text from the catalogs (Stage 4, end of session 4.4), the app stays Vietnamese by
  * default and ignores the browser's language, so production never mixes two languages. The Vietnamese catalog is
- * therefore bundled (it is what the first paint shows). At the end of 4.3 the default becomes the browser's
+ * therefore bundled (it is what the first paint shows). At the end of 4.4 the default becomes the browser's
  * language with English as the fallback, and Settings gets a Language picker.
  *
  * Importing this module sets the language, on the server and in the browser alike, so a page that shows catalog

@@ -609,8 +609,10 @@ export default function Home() {
         const conflictCopies = await window.electronAPI.gitSync(activeVault.path, msg, activeVault.id);
         if (Array.isArray(conflictCopies) && conflictCopies.length > 0) {
           setSyncConflictNotice(
-            `Sync kept both versions of ${conflictCopies.length} note${conflictCopies.length > 1 ? "s" : ""} edited here and on the remote. ` +
-              `The remote version is saved next to it as "(conflict …)": ${conflictCopies.slice(0, 3).join(", ")}${conflictCopies.length > 3 ? ", …" : ""}`
+            t("desktop.syncConflicts", {
+              count: conflictCopies.length,
+              files: `${conflictCopies.slice(0, 3).join(", ")}${conflictCopies.length > 3 ? ", …" : ""}`,
+            })
           );
         }
       }
@@ -967,28 +969,28 @@ export default function Home() {
     const currentFileMode = fileViewModes[activeTab];
     const items: ContextMenuItem[] = [
       {
-        label: `Default Mode: Live${currentFileMode === "live" ? " ✓" : ""}`,
+        label: `${t("desktop.editorMenu.defaultLive")}${currentFileMode === "live" ? " ✓" : ""}`,
         onClick: () => {
           setFileViewModes((prev) => ({ ...prev, [activeTab]: "live" }));
           setViewMode("live");
         },
       },
       {
-        label: `Default Mode: Source${currentFileMode === "source" ? " ✓" : ""}`,
+        label: `${t("desktop.editorMenu.defaultSource")}${currentFileMode === "source" ? " ✓" : ""}`,
         onClick: () => {
           setFileViewModes((prev) => ({ ...prev, [activeTab]: "source" }));
           setViewMode("source");
         },
       },
       {
-        label: `Default Mode: View${currentFileMode === "view" ? " ✓" : ""}`,
+        label: `${t("desktop.editorMenu.defaultView")}${currentFileMode === "view" ? " ✓" : ""}`,
         onClick: () => {
           setFileViewModes((prev) => ({ ...prev, [activeTab]: "view" }));
           setViewMode("view");
         },
       },
       {
-        label: "Clear Default Mode",
+        label: t("desktop.editorMenu.clearDefault"),
         onClick: () => {
           setFileViewModes((prev) => {
             const next = { ...prev };
@@ -999,16 +1001,16 @@ export default function Home() {
       },
       { label: "", separator: true, onClick: () => {} },
       {
-        label: "Open in Split",
+        label: t("shell.tabs.openInSplit"),
         onClick: () => handleSplitRight(activeTab),
       },
       { label: "", separator: true, onClick: () => {} },
       {
-        label: focusMode ? "Exit Focus Mode" : "Focus Mode",
+        label: focusMode ? t("desktop.editorMenu.exitFocusMode") : t("desktop.editorMenu.focusMode"),
         onClick: () => setFocusMode((f) => !f),
       },
       {
-        label: zenMode ? "Exit Zen Mode" : "Zen Mode",
+        label: zenMode ? t("desktop.editorMenu.exitZenMode") : t("desktop.editorMenu.zenMode"),
         onClick: () => setZenMode((z) => !z),
       },
     ];
@@ -1773,7 +1775,7 @@ export default function Home() {
       <div className="flex items-center justify-center h-screen bg-[var(--bg-primary)]">
         <div className="flex flex-col items-center gap-3">
           <div className="w-8 h-8 border-2 border-[var(--accent)] border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-[var(--text-muted)]">Loading...</span>
+          <span className="text-sm text-[var(--text-muted)]">{t("common.loading")}</span>
         </div>
       </div>
     );
@@ -1843,25 +1845,25 @@ export default function Home() {
         {!zenMode && (
           <div className="ribbon">
             <div className="ribbon-top">
-              <button className="ribbon-btn" title="Quick Open" onClick={() => setShowQuickOpen(true)}>
+              <button className="ribbon-btn" title={t("shell.ribbon.quickOpen")} onClick={() => setShowQuickOpen(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="7" cy="7" r="4.5" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M10.5 10.5L14 14" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="New note" onClick={handleNewFile}>
+              <button className="ribbon-btn" title={t("shell.ribbon.newNote")} onClick={handleNewFile}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M4 2h5l3 3v9H4V2z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
                   <path d="M8 6v4M6 8h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Command palette" onClick={() => setShowCommandPalette(true)}>
+              <button className="ribbon-btn" title={t("shell.ribbon.commandPalette")} onClick={() => setShowCommandPalette(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M4 5l4 3-4 3" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
                   <path d="M9 11h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
-              <button className="ribbon-btn" title="Search in vault" onClick={() => setShowVaultSearch(true)}>
+              <button className="ribbon-btn" title={t("shell.ribbon.search")} onClick={() => setShowVaultSearch(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <path d="M3 4h10M3 8h7M3 12h5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                   <circle cx="12" cy="11" r="2.5" stroke="currentColor" strokeWidth="1.2" />
@@ -1897,7 +1899,7 @@ export default function Home() {
                     </button>
                   );
                 })}
-              <button className="ribbon-btn" title="Settings" onClick={() => setShowSettings(true)}>
+              <button className="ribbon-btn" title={t("shell.ribbon.settings")} onClick={() => setShowSettings(true)}>
                 <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
                   <circle cx="8" cy="8" r="2.5" stroke="currentColor" strokeWidth="1.2" />
                   <path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.05 3.05l1.41 1.41M11.54 11.54l1.41 1.41M3.05 12.95l1.41-1.41M11.54 4.46l1.41-1.41" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -1911,7 +1913,7 @@ export default function Home() {
             <div className="sidebar-header">
               <span className="sidebar-title">{activeSidebarPanel.title}</span>
               <div className="sidebar-actions">
-                <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title="Close panel">
+                <button onClick={() => setActivePluginPanel(null)} className="sidebar-btn" title={t("shell.closePanel")}>
                   ×
                 </button>
               </div>
@@ -1998,7 +2000,7 @@ export default function Home() {
                       <button
                         onClick={handleCloseSplit}
                         className="p-0.5 rounded hover:bg-[var(--bg-hover)] text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                        title="Close split"
+                        title={t("shell.closeSplit")}
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -2032,12 +2034,12 @@ export default function Home() {
           ) : !currentTab ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center space-y-3">
-                <p className="text-[var(--text-muted)] text-sm">No file open</p>
+                <p className="text-[var(--text-muted)] text-sm">{t("desktop.noFile")}</p>
                 <button
                   onClick={handleNewFile}
                   className="text-xs text-[var(--accent)] hover:underline"
                 >
-                  Create a new note
+                  {t("desktop.createNote")}
                 </button>
               </div>
             </div>
@@ -2051,7 +2053,7 @@ export default function Home() {
                 <CorePluginAttachmentViewer viewer={viewer} target={file.target} name={file.name} onClose={() => closeTab(currentTab.filePath)} />
               ) : (
                 <div className="flex items-center justify-center h-full text-sm text-[var(--text-muted)]">
-                  Turn on the PDF viewer core plugin (Settings → Core plugins) to read this file.
+                  {t("desktop.pdfPluginOff")}
                 </div>
               );
             })()
@@ -2111,7 +2113,7 @@ export default function Home() {
       {!zenMode && (
         <div className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] select-none shrink-0">
           <div className="flex items-center gap-3">
-            <span>{viewMode === "live" ? "Edit" : viewMode === "view" ? "View" : "Source"}</span>
+            <span>{t(`shell.status.mode.${viewMode}`)}</span>
             {activeVault && <span>{activeVault.name}</span>}
             {activeTab && (
               <span className="truncate max-w-md">
@@ -2122,26 +2124,34 @@ export default function Home() {
           <div className="flex items-center gap-3">
             {currentTab && (
               <span className={isDirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}>
-                {isDirty ? "unsaved" : "saved"}
+                {isDirty ? t("shell.status.unsaved") : t("shell.status.saved")}
               </span>
             )}
             {(activeVault?.gitRemote || settings.extraSyncProvider !== "none") && (
               <button
                 onClick={() => performSync()}
                 className={`statusbar-sync${syncStatus === "syncing" ? " syncing" : ""}${syncStatus === "error" ? " sync-error" : ""}`}
-                title={lastSyncTime ? `Last synced: ${lastSyncTime.toLocaleTimeString()}` : "Click to sync"}
+                title={lastSyncTime ? t("desktop.status.lastSynced", { time: lastSyncTime.toLocaleTimeString() }) : t("desktop.status.clickToSync")}
               >
                 <svg width="10" height="10" viewBox="0 0 16 16" fill="none" className={syncStatus === "syncing" ? "spin" : ""}>
                   <path d="M2 8a6 6 0 0110.5-4M14 8a6 6 0 01-10.5 4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                   <path d="M12 2v3h-3M4 14v-3h3" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
                 </svg>
-                {syncStatus === "syncing" ? "syncing" : syncStatus === "error" ? "sync failed" : gitChanges > 0 ? `${gitChanges} changes` : lastSyncTime ? `synced ${lastSyncTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}` : "sync"}
+                {syncStatus === "syncing"
+                  ? t("desktop.status.syncing")
+                  : syncStatus === "error"
+                  ? t("desktop.status.syncFailed")
+                  : gitChanges > 0
+                  ? t("desktop.status.changes", { count: gitChanges })
+                  : lastSyncTime
+                  ? t("desktop.status.synced", { time: lastSyncTime.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) })
+                  : t("desktop.status.sync")}
               </button>
             )}
             {currentTab && !currentTab.kind && (
               <>
-                <span>{content.split("\n").length} lines</span>
-                <span>{content.length} chars</span>
+                <span>{t("shell.status.lines", { count: content.split("\n").length })}</span>
+                <span>{t("shell.status.chars", { count: content.length })}</span>
               </>
             )}
             {!currentTab?.kind && (
@@ -2211,12 +2221,12 @@ export default function Home() {
             label: c.name,
             // Palette shortcut text uses Ctrl; formatHotkey shows it as ⌘ on macOS.
             keys: c.hotkey?.replace(/\bMod\b/, "Ctrl") ?? "",
-            category: "Core plugin",
+            category: t("shell.commands.corePlugin"),
           })).concat(sandboxHost.commands.map((c) => ({
             action: `plugin:${c.pluginDbId}:${c.id}`,
             label: c.name,
             keys: "",
-            category: `Plugin · ${c.pluginId}`,
+            category: t("shell.commands.plugin", { id: c.pluginId }),
           })))}
           onExecute={(action) => {
             if (action.startsWith("core:")) corePlugins.contributions.commands.find((c) => `core:${c.key}` === action)?.run();

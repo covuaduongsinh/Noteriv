@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { CodeBlockProcessor, PluginApi } from "@noteriv/plugin-api";
 import mermaidPlugin, { renderMermaid, setMermaidLoader } from "../src/mermaid";
 import dataview, { createDataviewProcessor, createNoteSource, QUERY_TEMPLATE, SCAN_TTL_MS } from "../src/dataview";
@@ -14,8 +15,8 @@ async function settled(el: HTMLElement) {
 describe("mermaid plugin", () => {
   it("registers the mermaid language", async () => {
     const registerCodeBlockProcessor = vi.fn();
-    await mermaidPlugin.onload({ markdown: { registerCodeBlockProcessor } } as unknown as PluginApi);
-    expect(registerCodeBlockProcessor).toHaveBeenCalledWith("mermaid", renderMermaid);
+    await mermaidPlugin.onload({ markdown: { registerCodeBlockProcessor }, i18n: platformI18n("web") } as unknown as PluginApi);
+    expect(registerCodeBlockProcessor).toHaveBeenCalledWith("mermaid", expect.any(Function));
   });
 
   it("marks the block pending, then shows the SVG mermaid produced (strict security)", async () => {
@@ -131,6 +132,7 @@ describe("dataview plugin", () => {
     const handlers = new Map<string, () => void>();
     const raw = {
       app: { platform: "web" },
+      i18n: platformI18n("web"),
       vault,
       markdown: { registerCodeBlockProcessor: vi.fn() },
       events: { on: (e: string, h: () => void) => void handlers.set(e, h) },

@@ -3,6 +3,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { flattenMessages, isPluralForms, placeholders, type CatalogEntry, type Messages } from "../src/i18n/translate";
+import { corePluginGroup } from "../src/plugins/CorePluginsSection";
 
 // The English catalog is the reference: every other catalog must translate every key, with the same placeholders,
 // and every key the code asks for by name must exist. These checks keep a missing or misspelt key from reaching a
@@ -18,8 +19,8 @@ const others = readdirSync(localesDir)
   .map((f) => [f.replace(/\.json$/, ""), load(f.replace(/\.json$/, ""))] as const);
 
 /**
- * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.3).
- * Must be empty when 4.3 is done.
+ * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.4).
+ * Must be empty when 4.4 is done.
  */
 const NOT_YET_TRANSLATED: Record<string, string[]> = { vi: [] };
 
@@ -77,5 +78,41 @@ describe("i18n catalogs", () => {
     }
     expect(missing).toEqual([]);
     expect(used).toBeGreaterThan(0);
+  });
+
+  it("labels every hotkey action and category of both apps, and every web menu entry", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const table = readFileSync(join(root, app, "src", "lib", "hotkeys.ts"), "utf8");
+      const rows = Array.from(table.matchAll(/\{ action: "(\w+)", label: "[^"]*", keys: "[^"]*", category: "(\w+)" \}/g));
+      expect(rows.length, app).toBeGreaterThan(30);
+      for (const [, action, category] of rows) {
+        for (const key of [`hotkeys.${action}`, `hotkeys.category.${category.toLowerCase()}`]) {
+          if (!en.has(key)) missing.push(`${app}: ${key}`);
+        }
+      }
+    }
+    const menu = readFileSync(join(root, "web", "src", "components", "AppMenu.tsx"), "utf8");
+    for (const [, action] of menu.matchAll(/\{ action: "(\w+)" \}/g)) {
+      if (!en.has(`web.menu.items.${action}`)) missing.push(`web menu: ${action}`);
+    }
+    for (const [, title] of menu.matchAll(/title: "(\w+)",/g)) {
+      if (!en.has(`web.menu.${title}`)) missing.push(`web menu section: ${title}`);
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("names and describes every core plugin the apps ship", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const list = readFileSync(join(root, app, "src", "lib", "core-plugins.ts"), "utf8");
+      const ids = Array.from(list.matchAll(/\bid: "([\w-]+)"/g), (m) => m[1]);
+      expect(ids.length, app).toBeGreaterThan(10);
+      for (const id of ids) {
+        const group = corePluginGroup(id);
+        for (const key of [`${group}.name`, `${group}.description`]) if (!en.has(key)) missing.push(`${app}: ${key}`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });

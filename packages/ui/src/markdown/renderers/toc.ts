@@ -1,5 +1,6 @@
 import { Decoration, WidgetType, EditorView } from "@codemirror/view";
 import { extractHeadings } from "@noteriv/core/toc-utils";
+import { t } from "../../i18n";
 
 class TocWidget extends WidgetType {
   constructor(readonly headings: { level: number; text: string; line: number }[]) {
@@ -13,13 +14,13 @@ class TocWidget extends WidgetType {
 
     const title = document.createElement("div");
     title.style.cssText = "font-size:11px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:8px";
-    title.textContent = "Table of Contents";
+    title.textContent = t("editor.toc.title");
     container.appendChild(title);
 
     if (this.headings.length === 0) {
       const empty = document.createElement("div");
       empty.style.cssText = "color:var(--text-muted);font-size:12px";
-      empty.textContent = "No headings found";
+      empty.textContent = t("editor.toc.empty");
       container.appendChild(empty);
       return container;
     }

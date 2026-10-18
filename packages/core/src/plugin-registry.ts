@@ -17,8 +17,9 @@ export interface CorePluginModule<Api> {
 export interface CorePluginDef<Api> {
   /** Stable id, also the key in the stored state. */
   id: string;
-  name: string;
-  description: string;
+  /** Shown in Settings. Optional: the apps take it from their i18n catalog by id (core has no catalog). */
+  name?: string;
+  description?: string;
   /** Used until the user chooses; absent means off. */
   defaultEnabled?: boolean;
   /** Dynamic import of the plugin module (default export, or the module itself). */
@@ -41,13 +42,18 @@ export type CorePluginStatus = "disabled" | "loading" | "enabled" | "error";
 
 export interface CorePluginInfo {
   id: string;
-  name: string;
-  description: string;
+  name?: string;
+  description?: string;
   /** What the user (or default) asked for. `status` says whether it is actually running. */
   enabled: boolean;
   status: CorePluginStatus;
+  /** Technical detail of the last failure (the error's own message), for the UI to show after its own text. */
   error?: string;
+  /** What failed: loading the plugin, or saving the on/off choice (the plugin may still be running). */
+  errorKind?: CorePluginErrorKind;
 }
+
+export type CorePluginErrorKind = "load" | "save";
 
 export interface PluginRegistryOptions<Api> {
   plugins: CorePluginDef<Api>[];
@@ -71,7 +77,7 @@ function isModule<Api>(m: unknown): m is CorePluginModule<Api> {
 export class PluginRegistry<Api> {
   private readonly defs = new Map<string, CorePluginDef<Api>>();
   private readonly running = new Map<string, Running<Api>>();
-  private readonly status = new Map<string, { status: CorePluginStatus; error?: string }>();
+  private readonly status = new Map<string, { status: CorePluginStatus; error?: string; errorKind?: CorePluginErrorKind }>();
   private readonly listeners = new Set<() => void>();
   private state: Record<string, boolean> = {};
   private snapshot: CorePluginInfo[] = [];
@@ -121,13 +127,13 @@ export class PluginRegistry<Api> {
       try {
         await this.options.store.save(this.state);
       } catch (err) {
-        saveError = `Không lưu được lựa chọn: ${errorMessage(err)}`;
+        saveError = errorMessage(err);
       }
       if (enabled) await this.start(id);
       else await this.stop(id);
       // Keep running with the in-memory choice, but let the UI say the choice may not stick.
       const after = this.status.get(id)!;
-      if (saveError && !after.error) this.setStatus(id, after.status, saveError);
+      if (saveError && !after.error) this.setStatus(id, after.status, saveError, "save");
     });
   }
 
@@ -175,8 +181,8 @@ export class PluginRegistry<Api> {
     return next;
   }
 
-  private setStatus(id: string, status: CorePluginStatus, error?: string) {
-    this.status.set(id, { status, error });
+  private setStatus(id: string, status: CorePluginStatus, error?: string, errorKind?: CorePluginErrorKind) {
+    this.status.set(id, { status, error, errorKind: error ? errorKind : undefined });
     this.rebuild();
   }
 
@@ -185,11 +191,11 @@ export class PluginRegistry<Api> {
       const s = this.status.get(def.id)!;
       return {
         id: def.id,
-        name: def.name,
-        description: def.description,
+        ...(def.name !== undefined ? { name: def.name } : {}),
+        ...(def.description !== undefined ? { description: def.description } : {}),
         enabled: this.isEnabled(def.id),
         status: s.status,
-        ...(s.error ? { error: s.error } : {}),
+        ...(s.error ? { error: s.error, errorKind: s.errorKind } : {}),
       };
     });
     if (this.disposed) return;
@@ -207,7 +213,7 @@ export class PluginRegistry<Api> {
     try {
       const loaded = await def.load();
       const module = "default" in loaded && isModule<Api>(loaded.default) ? loaded.default : loaded;
-      if (!isModule<Api>(module)) throw new Error("Module không có onload()");
+      if (!isModule<Api>(module)) throw new Error("Module has no onload()");
       context = this.options.createContext(id);
       await module.onload(context.api);
       this.running.set(id, { module, context });
@@ -218,7 +224,7 @@ export class PluginRegistry<Api> {
       } catch {
         /* nothing more to do */
       }
-      this.setStatus(id, "error", errorMessage(err));
+      this.setStatus(id, "error", errorMessage(err), "load");
     }
   }
 

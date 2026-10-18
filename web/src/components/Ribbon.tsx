@@ -18,6 +18,8 @@ import {
   CommandIcon,
   MoreIcon,
 } from "@/components/icons";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface RibbonProps {
   onQuickOpen: () => void;
@@ -57,6 +59,7 @@ const ACTIVE_STYLE = { color: "var(--accent)", background: "rgba(137,180,250,0.1
  * Now the everyday ones stay on the rail like desktop's and the rest live in the "⋯" popover.
  */
 export default function Ribbon(props: RibbonProps) {
+  useLocale();
   const {
     onQuickOpen, onNewNote, onCommandPalette, onSearch, onSettings,
     onOutline, onTags, onBookmarks, onSync, onPlugins, syncAttention, pluginPanels = [], activePluginPanel = null,
@@ -86,34 +89,34 @@ export default function Ribbon(props: RibbonProps) {
   }, [moreOpen]);
 
   const moreItems: { label: string; icon: React.ReactNode; run: () => void }[] = [
-    { label: "File đính kèm", icon: <AttachmentIcon />, run: props.onAttachments },
-    { label: "Themes", icon: <ThemeIcon />, run: props.onThemes },
-    { label: "CSS Snippets", icon: <SnippetsIcon />, run: props.onSnippets },
-    { label: "Thùng rác", icon: <TrashIcon size={16} />, run: props.onTrash },
+    { label: t("web.ribbon.attachments"), icon: <AttachmentIcon />, run: props.onAttachments },
+    { label: t("web.ribbon.themes"), icon: <ThemeIcon />, run: props.onThemes },
+    { label: t("web.ribbon.snippets"), icon: <SnippetsIcon />, run: props.onSnippets },
+    { label: t("web.ribbon.trash"), icon: <TrashIcon size={16} />, run: props.onTrash },
   ];
 
   return (
     <div className="ribbon">
       <div className="ribbon-top" style={{ overflowY: "auto", scrollbarWidth: "none", minHeight: 0 }}>
-        <button className="ribbon-btn" title="Quick Open (Ctrl+K)" onClick={onQuickOpen}>
+        <button className="ribbon-btn" title={t("web.ribbon.quickOpen")} onClick={onQuickOpen}>
           <QuickOpenIcon />
         </button>
-        <button className="ribbon-btn" title="Note mới" onClick={onNewNote}>
+        <button className="ribbon-btn" title={t("shell.ribbon.newNote")} onClick={onNewNote}>
           <NewNoteIcon />
         </button>
-        <button className="ribbon-btn" title="Command palette (Ctrl+Shift+P hoặc F1)" onClick={onCommandPalette}>
+        <button className="ribbon-btn" title={t("web.ribbon.commandPalette")} onClick={onCommandPalette}>
           <CommandIcon />
         </button>
-        <button className="ribbon-btn" title="Tìm trong vault" onClick={onSearch}>
+        <button className="ribbon-btn" title={t("shell.ribbon.search")} onClick={onSearch}>
           <SearchIcon />
         </button>
-        <button className="ribbon-btn" title="Outline" onClick={onOutline} style={outlineActive ? ACTIVE_STYLE : undefined}>
+        <button className="ribbon-btn" title={t("web.ribbon.outline")} onClick={onOutline} style={outlineActive ? ACTIVE_STYLE : undefined}>
           <OutlineIcon />
         </button>
-        <button className="ribbon-btn" title="Tags" onClick={onTags} style={tagsActive ? ACTIVE_STYLE : undefined}>
+        <button className="ribbon-btn" title={t("web.ribbon.tags")} onClick={onTags} style={tagsActive ? ACTIVE_STYLE : undefined}>
           <TagIcon />
         </button>
-        <button className="ribbon-btn" title="Bookmarks" onClick={onBookmarks} style={bookmarksActive ? ACTIVE_STYLE : undefined}>
+        <button className="ribbon-btn" title={t("web.ribbon.bookmarks")} onClick={onBookmarks} style={bookmarksActive ? ACTIVE_STYLE : undefined}>
           <BookmarkIcon />
         </button>
         {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
@@ -134,19 +137,19 @@ export default function Ribbon(props: RibbonProps) {
         <button
           ref={moreBtnRef}
           className="ribbon-btn"
-          title="Thêm công cụ"
+          title={t("web.ribbon.more")}
           onClick={() => setMoreOpen((v) => !v)}
           style={moreOpen ? ACTIVE_STYLE : undefined}
         >
           <MoreIcon />
         </button>
-        <button className="ribbon-btn" title="Đồng bộ Git / WebDAV" onClick={onSync} style={syncAttention ? { color: "var(--yellow)" } : undefined}>
+        <button className="ribbon-btn" title={t("web.ribbon.sync")} onClick={onSync} style={syncAttention ? { color: "var(--yellow)" } : undefined}>
           <SyncIcon />
         </button>
-        <button className="ribbon-btn" title="Plugins" onClick={onPlugins}>
+        <button className="ribbon-btn" title={t("web.ribbon.plugins")} onClick={onPlugins}>
           <PluginIcon />
         </button>
-        <button className="ribbon-btn" title="Settings (Ctrl+,)" onClick={onSettings}>
+        <button className="ribbon-btn" title={t("shell.settingsHotkey")} onClick={onSettings}>
           <SettingsIcon />
         </button>
       </div>

@@ -82,6 +82,14 @@ export function t(key: string, params?: Params): string {
   return translate(key, params);
 }
 
+/**
+ * `t(key)` when the catalogs have the key, otherwise `fallback`: for text that may come from outside them (an app's
+ * hotkey table naming an action the catalog does not know).
+ */
+export function tOr(key: string, fallback: string, params?: Params): string {
+  return catalogs.get("en")!.has(key) ? translate(key, params) : fallback;
+}
+
 export function formatNumber(value: number, options?: Intl.NumberFormatOptions): string {
   return new Intl.NumberFormat(current, options).format(value);
 }

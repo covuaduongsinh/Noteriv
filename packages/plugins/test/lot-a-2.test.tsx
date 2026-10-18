@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { PluginApi } from "@noteriv/plugin-api";
 import { lintMarkdown } from "@noteriv/core/markdown-lint";
 import markdownLint, { groupWarnings, PANEL_ID } from "../src/markdown-lint";
@@ -13,6 +14,7 @@ function fakeApi(content: string | null, platform: "web" | "desktop" = "web") {
   const handlers = new Map<string, Set<(...a: unknown[]) => void>>();
   const api = {
     app: { platform, vaultPath: null, currentFile: content === null ? null : "a.md" },
+    i18n: platformI18n(platform),
     vault: { list: async () => [{ path: "Other.md", name: "Other.md", isDir: false }] },
     editor: { getContent: () => content, setCursor: vi.fn() },
     events: {

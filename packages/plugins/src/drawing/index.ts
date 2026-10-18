@@ -3,15 +3,35 @@ import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
 import { createEmptyDrawing, isDrawingContent, isDrawingFile, serializeDrawing } from "@noteriv/core/drawing-utils";
 import { reactFileView } from "../shared/react-view";
 import { createKindFile } from "../shared/new-file";
-import { DrawingView } from "./DrawingView";
+import { DrawingView, type DrawingLabels } from "./DrawingView";
+import { pluginT } from "../shared/i18n";
 
 export const FILE_VIEW_ID = "drawing";
 
-// Web speaks Vietnamese, desktop English (same convention as the other core plugins).
-const TEXT: Record<"web" | "desktop", { create: string; failed: string }> = {
-  web: { create: "Drawing: tạo bản vẽ mới", failed: "Không tạo được bản vẽ mới." },
-  desktop: { create: "New drawing", failed: "Could not create a new drawing." },
-};
+function labelsFor(api: PluginApi): DrawingLabels & { create: string; failed: string } {
+  const t = pluginT(api, "drawing");
+  return {
+    create: t("create"),
+    failed: t("failed"),
+    tools: {
+      select: t("tool.select"),
+      pencil: t("tool.pencil"),
+      rectangle: t("tool.rectangle"),
+      ellipse: t("tool.ellipse"),
+      line: t("tool.line"),
+      arrow: t("tool.arrow"),
+      text: t("tool.text"),
+      eraser: t("tool.eraser"),
+    },
+    pickColor: t("pickColor"),
+    fillOn: t("fillOn"),
+    fillOff: t("fillOff"),
+    resetView: t("resetView"),
+    clear: t("clear"),
+    confirmClear: t("confirmClear"),
+    saving: t("saving"),
+  };
+}
 
 /** A drawing: a `.drawing` file (desktop) or a note with `drawing: true` frontmatter (web). */
 export function isDrawing(file: { path: string; content: string }): boolean {
@@ -21,8 +41,8 @@ export function isDrawing(file: { path: string; content: string }): boolean {
 /** Drawing: freehand sketches and shapes, shown in place of the editor. */
 const drawing: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
-    api.ui.registerFileView(reactFileView(FILE_VIEW_ID, isDrawing, ({ content, onChange }) => createElement(DrawingView, { content, onChange })));
+    const t = labelsFor(api);
+    api.ui.registerFileView(reactFileView(FILE_VIEW_ID, isDrawing, ({ content, onChange }) => createElement(DrawingView, { content, onChange, labels: t })));
     api.ui.addCommand({
       id: "new",
       name: t.create,

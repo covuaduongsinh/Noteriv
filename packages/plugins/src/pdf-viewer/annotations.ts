@@ -17,8 +17,25 @@ export interface PDFAnnotation {
   created: number;
 }
 
+/** Headings and page references of the exported note, in the user's language. */
+export interface AnnotationsMarkdownText {
+  title: (file: string) => string;
+  highlights: string;
+  underlines: string;
+  notes: string;
+  page: (page: number) => string;
+}
+
+const ENGLISH_MARKDOWN: AnnotationsMarkdownText = {
+  title: (file) => `Annotations: ${file}`,
+  highlights: "Highlights",
+  underlines: "Underlines",
+  notes: "Notes",
+  page: (page) => `page ${page}`,
+};
+
 /** Generate a markdown note from a PDF's filename + its annotations */
-export function annotationsToMarkdown(fileName: string, anns: PDFAnnotation[]): string {
+export function annotationsToMarkdown(fileName: string, anns: PDFAnnotation[], text: AnnotationsMarkdownText = ENGLISH_MARKDOWN): string {
   const sorted = [...anns].sort((a, b) => a.page - b.page || a.created - b.created);
 
   const highlights = sorted.filter((a) => a.type === "highlight");
@@ -26,14 +43,14 @@ export function annotationsToMarkdown(fileName: string, anns: PDFAnnotation[]): 
   const underlines = sorted.filter((a) => a.type === "underline");
 
   const lines: string[] = [];
-  lines.push(`# Annotations: ${fileName}`);
+  lines.push(`# ${text.title(fileName)}`);
   lines.push("");
 
   if (highlights.length > 0) {
-    lines.push("## Highlights");
+    lines.push(`## ${text.highlights}`);
     lines.push("");
     for (const h of highlights) {
-      lines.push(`> ${h.text} — (page ${h.page})`);
+      lines.push(`> ${h.text} — (${text.page(h.page)})`);
       if (h.comment) {
         lines.push("");
         lines.push(h.comment);
@@ -43,10 +60,10 @@ export function annotationsToMarkdown(fileName: string, anns: PDFAnnotation[]): 
   }
 
   if (underlines.length > 0) {
-    lines.push("## Underlines");
+    lines.push(`## ${text.underlines}`);
     lines.push("");
     for (const u of underlines) {
-      lines.push(`> ${u.text} — (page ${u.page})`);
+      lines.push(`> ${u.text} — (${text.page(u.page)})`);
       if (u.comment) {
         lines.push("");
         lines.push(u.comment);
@@ -56,10 +73,10 @@ export function annotationsToMarkdown(fileName: string, anns: PDFAnnotation[]): 
   }
 
   if (notes.length > 0) {
-    lines.push("## Notes");
+    lines.push(`## ${text.notes}`);
     lines.push("");
     for (const n of notes) {
-      lines.push(`- ${n.text || n.comment} (page ${n.page})`);
+      lines.push(`- ${n.text || n.comment} (${text.page(n.page)})`);
       if (n.text && n.comment) {
         lines.push(`  ${n.comment}`);
       }

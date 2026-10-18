@@ -2,15 +2,27 @@ import { createElement } from "react";
 import { createRoot } from "react-dom/client";
 import type { CorePlugin, FileView, PluginApi, VaultApi } from "@noteriv/plugin-api";
 import { createBoardContent, isBoardContent, isBoardFile } from "@noteriv/core/board-utils";
-import { BoardView } from "./BoardView";
+import { BoardView, type BoardLabels } from "./BoardView";
+import { pluginT } from "../shared/i18n";
 
 export const FILE_VIEW_ID = "board";
 
-// Web speaks Vietnamese, desktop English (same convention as the other core plugins).
-const TEXT: Record<"web" | "desktop", { create: string; failed: string }> = {
-  web: { create: "Board: tạo board mới", failed: "Không tạo được board mới." },
-  desktop: { create: "New board", failed: "Could not create a new board." },
-};
+function labelsFor(api: PluginApi): BoardLabels & { create: string; failed: string } {
+  const t = pluginT(api, "board");
+  return {
+    create: t("create"),
+    failed: t("failed"),
+    addCard: t("addCard"),
+    deleteColumn: t("deleteColumn"),
+    confirmDeleteColumn: (title, count) => t("confirmDeleteColumn", { title, count }),
+    cardPlaceholder: t("cardPlaceholder"),
+    addCardButton: t("addCardButton"),
+    columnPlaceholder: t("columnPlaceholder"),
+    add: t("add"),
+    cancel: t("cancel"),
+    addColumn: t("addColumn"),
+  };
+}
 
 /** A board shows for `*.board.md` files and for notes whose frontmatter says `board: true` (both apps, since 2.4b). */
 export function isBoard(file: { path: string; content: string }): boolean {
@@ -25,7 +37,7 @@ export async function newBoardPath(vault: VaultApi): Promise<string> {
   }
 }
 
-const boardView: FileView = {
+const boardView = (labels: BoardLabels): FileView => ({
   id: FILE_VIEW_ID,
   match: isBoard,
   mount(container, ctx) {
@@ -35,7 +47,7 @@ const boardView: FileView = {
       content = next;
       ctx.setContent(next);
     };
-    const render = () => root.render(createElement(BoardView, { content, onChange }));
+    const render = () => root.render(createElement(BoardView, { content, onChange, labels }));
     render();
     return {
       update(next) {
@@ -46,13 +58,13 @@ const boardView: FileView = {
       destroy: () => void setTimeout(() => root.unmount(), 0),
     };
   },
-};
+});
 
 /** Board: Kanban boards stored as markdown, shown in place of the editor. */
 const board: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
-    api.ui.registerFileView(boardView);
+    const t = labelsFor(api);
+    api.ui.registerFileView(boardView(t));
     api.ui.addCommand({
       id: "new",
       name: t.create,

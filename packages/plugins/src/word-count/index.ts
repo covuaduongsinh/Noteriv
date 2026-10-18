@@ -1,4 +1,5 @@
 import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import { pluginT } from "../shared/i18n";
 import { countText, type TextStats } from "./count";
 
 export { countText, type TextStats };
@@ -10,7 +11,7 @@ const ICON =
 const wordCount: CorePlugin = {
   onload(api: PluginApi) {
     // Text lives in the shared catalog under plugins.wordCount (packages/ui/src/i18n/locales).
-    const t = (key: string, params?: Record<string, string | number>) => api.i18n.t(`plugins.wordCount.${key}`, params);
+    const t = pluginT(api, "wordCount");
     const stats = (s: TextStats) => ({ count: s.words, characters: s.characters, minutes: s.readingMinutes });
 
     const update = (content?: unknown) => {

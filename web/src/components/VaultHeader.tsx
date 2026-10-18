@@ -5,6 +5,8 @@ import VaultSwitcher from "@/components/VaultSwitcher";
 import AppMenu, { type PluginMenuCommand } from "@/components/AppMenu";
 import type { HotkeyAction, HotkeyBinding } from "@/lib/hotkeys";
 import type { ApiVault, ViewMode } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface VaultHeaderProps {
   vault: ApiVault | null;
@@ -53,13 +55,14 @@ export default function VaultHeader({
   onImportNewVault,
   onNewFromGithub,
 }: VaultHeaderProps) {
+  useLocale();
   const displayedPath = activeNotePath || vault?.name || "Noteriv";
 
   return (
     <div className="titlebar">
       <div className="titlebar-controls">
         <div className="titlebar-section" style={{ paddingLeft: 8 }}>
-          <button onClick={onToggleSidebar} className="titlebar-btn" title="Thu gọn sidebar">
+          <button onClick={onToggleSidebar} className="titlebar-btn" title={t("web.header.collapseSidebar")}>
             <SidebarToggleIcon collapsed={sidebarCollapsed} />
           </button>
           <div className="titlebar-divider" />
@@ -83,19 +86,19 @@ export default function VaultHeader({
                 onClick={() => onViewModeChange("live")}
                 className={`view-toggle-btn ${viewMode === "live" ? "vt-active" : ""}`}
               >
-                Edit
+                {t("shell.status.mode.live")}
               </button>
               <button
                 onClick={() => onViewModeChange("view")}
                 className={`view-toggle-btn ${viewMode === "view" ? "vt-active" : ""}`}
               >
-                View
+                {t("shell.status.mode.view")}
               </button>
               <button
                 onClick={() => onViewModeChange("source")}
                 className={`view-toggle-btn ${viewMode === "source" ? "vt-active" : ""}`}
               >
-                Source
+                {t("shell.status.mode.source")}
               </button>
             </div>
           )}

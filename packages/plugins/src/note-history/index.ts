@@ -2,7 +2,7 @@ import { createElement } from "react";
 import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
 import { reactView } from "../shared/react-view";
 import { GitHistory } from "./GitHistory";
-import { TEXT } from "./labels";
+import { labelsFor } from "./labels";
 import { TimeScrubber } from "./TimeScrubber";
 
 export const GIT_VIEW = "note-history-git";
@@ -22,7 +22,7 @@ const SOURCES_TTL_MS = 60_000;
 /** Note history: git versions of the open note (diff, restore) and the snapshot Time scrubber. */
 const noteHistory: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
+    const t = labelsFor(api);
     // What the open view shows, captured when it opens.
     let target = { path: "", content: "" };
 
