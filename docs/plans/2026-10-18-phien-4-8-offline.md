@@ -100,3 +100,11 @@
 - Tạo, đổi tên, xoá note khi offline: chủ dự án chốt chưa làm.
 - Tải trước cả vault để đọc offline: chủ dự án chốt chưa làm.
 - Collab không kiểm tra phiên bản: collab server ghi song song với client như trước.
+
+## Lên production (2026-10-18)
+
+- Không có migration. CI của PR #16 xanh cả 4 job, kể cả E2E mới và `desktop-frontend`.
+- Staging: `/`, `/login`, `/vaults`, `/quick`, `/api/v1/healthz` trả 200; PATCH note chưa đăng nhập trả 401.
+- Gộp PR #16 (merge `6832ef5`), deploy production `done`; các đường dẫn trên trả 200; 9 container chạy.
+- `next` đưa về `main`, chờ staging deploy xong rồi `compose.stop`.
+- Smoke desktop vẫn chưa chạy (xem mục Kiểm chứng). Nên chạy ở phiên sau khi máy đủ bộ nhớ.
