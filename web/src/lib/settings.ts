@@ -7,6 +7,8 @@
  * to desktop's stylesheet, see docs/plans/2026-10-13-noteriv-web-ui-parity.md).
  */
 
+import { t } from "@noteriv/ui/i18n";
+
 export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "JetBrains Mono", value: '"JetBrains Mono", "Fira Code", "Cascadia Code", monospace' },
   { name: "Fira Code", value: '"Fira Code", "JetBrains Mono", monospace' },
@@ -14,11 +16,12 @@ export const EDITOR_FONTS: { name: string; value: string }[] = [
   { name: "System Monospace", value: "ui-monospace, Menlo, Consolas, monospace" },
 ];
 
-export const AUTO_SAVE_OPTIONS: { label: string; value: number }[] = [
-  { label: "500ms (gần như tức thì)", value: 500 },
-  { label: "800ms (mặc định)", value: 800 },
-  { label: "2 giây", value: 2000 },
-  { label: "5 giây", value: 5000 },
+/** `label` is read when the menu renders, so it follows the current language. */
+export const AUTO_SAVE_OPTIONS: { label: () => string; value: number }[] = [
+  { label: () => t("settings.autoSave.instant"), value: 500 },
+  { label: () => t("settings.autoSave.default"), value: 800 },
+  { label: () => t("settings.duration.seconds", { count: 2 }), value: 2000 },
+  { label: () => t("settings.duration.seconds", { count: 5 }), value: 5000 },
 ];
 
 export const DEFAULT_EDITOR_SETTINGS = {
@@ -41,16 +44,17 @@ export const DEFAULT_EDITOR_SETTINGS = {
   language: undefined as "en" | "vi" | undefined,
 };
 
-export const ACCENT_COLORS: { name: string; value: string }[] = [
-  { name: "Mặc định theo theme", value: "" },
-  { name: "Blue", value: "#89b4fa" },
-  { name: "Lavender", value: "#b4befe" },
-  { name: "Mauve", value: "#cba6f7" },
-  { name: "Pink", value: "#f38ba8" },
-  { name: "Peach", value: "#fab387" },
-  { name: "Yellow", value: "#f9e2af" },
-  { name: "Green", value: "#a6e3a1" },
-  { name: "Teal", value: "#94e2d5" },
+/** `name` is a stable id (also the React key); `label` is the shown name in the current language. */
+export const ACCENT_COLORS: { name: string; value: string; label: () => string }[] = [
+  { name: "theme", value: "", label: () => t("settings.accent.themeDefault") },
+  { name: "blue", value: "#89b4fa", label: () => t("settings.accent.blue") },
+  { name: "lavender", value: "#b4befe", label: () => t("settings.accent.lavender") },
+  { name: "mauve", value: "#cba6f7", label: () => t("settings.accent.mauve") },
+  { name: "pink", value: "#f38ba8", label: () => t("settings.accent.pink") },
+  { name: "peach", value: "#fab387", label: () => t("settings.accent.peach") },
+  { name: "yellow", value: "#f9e2af", label: () => t("settings.accent.yellow") },
+  { name: "green", value: "#a6e3a1", label: () => t("settings.accent.green") },
+  { name: "teal", value: "#94e2d5", label: () => t("settings.accent.teal") },
 ];
 
 export const TAB_SIZES = [2, 4, 8];

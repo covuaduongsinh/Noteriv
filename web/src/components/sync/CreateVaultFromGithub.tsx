@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { webApi } from "@/lib/webApi";
 import { GithubWizard } from "@/components/sync/SyncSection";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 /**
  * "New vault from a GitHub repo" — the web counterpart of the desktop setup
@@ -17,6 +19,7 @@ export default function CreateVaultFromGithub({
   onClose: () => void;
   onCreated: (vaultId: string) => void;
 }) {
+  useLocale();
   const [vaultId, setVaultId] = useState<string | null>(null);
   const [error, setError] = useState("");
   const finishedRef = useRef(false);
@@ -34,7 +37,7 @@ export default function CreateVaultFromGithub({
         vaultRef.current = v.id;
         setVaultId(v.id);
       })
-      .catch(() => setError("Không tạo được vault mới."));
+      .catch(() => setError(t("web.newVaultGithub.createFailed")));
     return () => {
       cancelled = true;
       // Wizard abandoned before a repo was connected: don't leave an empty vault behind.
@@ -53,10 +56,10 @@ export default function CreateVaultFromGithub({
         style={{ width: 560, maxWidth: "94vw", maxHeight: "90vh", overflowY: "auto", padding: 20 }}
       >
         <h2 className="text-base font-semibold" style={{ marginBottom: 12 }}>
-          Tạo vault từ GitHub
+          {t("web.newVaultGithub.title")}
         </h2>
         {error && <div style={{ color: "var(--red)" }}>{error}</div>}
-        {!vaultId && !error && <div className="text-sm text-[var(--text-muted)]">Đang chuẩn bị…</div>}
+        {!vaultId && !error && <div className="text-sm text-[var(--text-muted)]">{t("web.newVaultGithub.preparing")}</div>}
         {vaultId && (
           <GithubWizard
             vaultId={vaultId}

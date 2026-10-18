@@ -102,6 +102,20 @@ describe("i18n catalogs", () => {
     expect(missing).toEqual([]);
   });
 
+  it("names every Settings section of both apps and every sync direction and status the web shows", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const modal = readFileSync(join(root, app, "src", "components", "SettingsModal.tsx"), "utf8");
+      const list = /const SECTIONS: \w+\[\] = \[([^\]]+)\]/.exec(modal)?.[1] ?? "";
+      const ids = Array.from(list.matchAll(/"(\w+)"/g), (m) => m[1]);
+      expect(ids.length, app).toBeGreaterThan(5);
+      for (const id of ids) if (!en.has(`settings.sections.${id}`)) missing.push(`${app}: settings.sections.${id}`);
+    }
+    for (const d of ["both", "push", "pull"]) if (!en.has(`web.sync.direction.${d}`)) missing.push(`web.sync.direction.${d}`);
+    for (const s of ["queued", "running", "success", "error", "conflict"]) if (!en.has(`web.sync.status.${s}`)) missing.push(`web.sync.status.${s}`);
+    expect(missing).toEqual([]);
+  });
+
   it("names and describes every core plugin the apps ship", () => {
     const missing: string[] = [];
     for (const app of ["web", "desktop"]) {

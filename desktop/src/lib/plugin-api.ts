@@ -13,6 +13,7 @@
 import type { PluginPermission } from "@noteriv/plugin-api";
 import { inferPermissions } from "@noteriv/core/permissions";
 import type { SandboxPluginRecord } from "@noteriv/ui/plugins/sandbox";
+import { t } from "@noteriv/ui/i18n";
 
 /** Shown to plugins as `api.app.version`; manifests compare `minAppVersion` against it (chessboard needs 1.3.0). */
 export const PLUGIN_APP_VERSION = "1.3.0";
@@ -158,10 +159,10 @@ export class DesktopPluginStore {
   /** Copy a plugin folder (top-level files) into the vault. Returns its manifest; the plugin starts disabled. */
   async installFromFolder(sourcePath: string): Promise<PluginManifest> {
     const manifestRaw = await window.electronAPI.readFile(`${sourcePath}/manifest.json`);
-    if (!manifestRaw) throw new Error("No manifest.json found in the selected folder");
+    if (!manifestRaw) throw new Error(t("desktop.pluginManager.noManifest"));
     const manifest = JSON.parse(manifestRaw) as PluginManifest;
     if (!manifest.id || !manifest.name || !manifest.main) {
-      throw new Error("Invalid manifest: missing required fields (id, name, main)");
+      throw new Error(t("desktop.pluginManager.invalidManifest"));
     }
     const destDir = `${this.vaultPath}/${PLUGINS_DIR}/${manifest.id}`;
     await window.electronAPI.createDir(`${this.vaultPath}/.noteriv`);

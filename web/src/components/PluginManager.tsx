@@ -9,17 +9,23 @@ import {
   type CommunityPluginEntry,
   type CommunityPluginManifest,
 } from "@/lib/plugin-community";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
-const PERMISSION_LABELS: Record<string, string> = {
-  "vault:read": "Đọc note trong vault",
-  "vault:write": "Tạo/sửa/xoá note trong vault",
-  "editor:read": "Đọc nội dung đang mở",
-  "editor:write": "Sửa nội dung đang mở",
-  "ui:commands": "Thêm lệnh vào giao diện",
-  "ui:statusbar": "Hiện thông tin trên thanh trạng thái",
-  "ui:panel": "Thêm panel bên cạnh và tab trong Settings",
-  "markdown:render": "Hiển thị nội dung đặc biệt trong note (code block)",
+/** Permission ids (stored in manifests, never translated) and their text in the current language. */
+const PERMISSION_LABELS: Record<string, () => string> = {
+  "vault:read": () => t("web.pluginManager.permission.vaultRead"),
+  "vault:write": () => t("web.pluginManager.permission.vaultWrite"),
+  "editor:read": () => t("web.pluginManager.permission.editorRead"),
+  "editor:write": () => t("web.pluginManager.permission.editorWrite"),
+  "ui:commands": () => t("web.pluginManager.permission.uiCommands"),
+  "ui:statusbar": () => t("web.pluginManager.permission.uiStatusbar"),
+  "ui:panel": () => t("web.pluginManager.permission.uiPanel"),
+  "markdown:render": () => t("web.pluginManager.permission.markdownRender"),
 };
+
+/** A permission's text, or the id itself for one this version does not know. */
+const permissionLabel = (id: string) => PERMISSION_LABELS[id]?.() ?? id;
 
 export default function PluginManager({
   vaultId,
@@ -35,6 +41,7 @@ export default function PluginManager({
   onChanged: () => void;
   onClose: () => void;
 }) {
+  useLocale();
   const [manifestJson, setManifestJson] = useState("");
   const [mainJs, setMainJs] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -57,7 +64,7 @@ export default function PluginManager({
     setCommunityError(null);
     fetchCommunityPluginManifest()
       .then((m) => {
-        if (!m) setCommunityError("Không tải được danh sách plugin cộng đồng (repo có thể chưa sẵn sàng).");
+        if (!m) setCommunityError(t("web.pluginManager.communityLoadFailed"));
         setCommunityManifest(m);
       })
       .finally(() => setCommunityLoading(false));
@@ -74,12 +81,12 @@ export default function PluginManager({
     try {
       const source = await fetchCommunityPluginSource(entry);
       if (!source) {
-        setCommunityError(`Không tải được "${entry.name}" — thiếu manifest.json hoặc main.js trong repo.`);
+        setCommunityError(t("web.pluginManager.sourceMissing", { name: entry.name }));
         return;
       }
       setPendingInstall({ entry, source });
     } catch {
-      setCommunityError(`Cài "${entry.name}" thất bại.`);
+      setCommunityError(t("web.pluginManager.installFailed", { name: entry.name }));
     } finally {
       setInstallingId(null);
     }
@@ -95,7 +102,7 @@ export default function PluginManager({
       onInstalled?.();
       onChanged();
     } catch {
-      setCommunityError(`Cài "${entry.name}" thất bại.`);
+      setCommunityError(t("web.pluginManager.installFailed", { name: entry.name }));
     } finally {
       setInstallingId(null);
     }
@@ -108,11 +115,11 @@ export default function PluginManager({
     try {
       manifest = JSON.parse(manifestJson);
     } catch {
-      setError("manifest.json không hợp lệ (phải là JSON).");
+      setError(t("web.pluginManager.manifestInvalid"));
       return;
     }
     if (!mainJs.trim()) {
-      setError("Thiếu mã nguồn main.js.");
+      setError(t("web.pluginManager.mainJsMissing"));
       return;
     }
     // Desktop-style manifests have no `permissions`. Without this step the plugin would install
@@ -148,17 +155,17 @@ export default function PluginManager({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
       <div className="w-[640px] max-h-[80vh] overflow-y-auto rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)] p-5 flex flex-col gap-4">
         <div className="flex items-center justify-between">
-          <h2 className="text-lg font-semibold">Plugins</h2>
+          <h2 className="text-lg font-semibold">{t("web.pluginManager.title")}</h2>
           <button onClick={onClose} className="text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-            Đóng
+            {t("web.pluginManager.close")}
           </button>
         </div>
 
         <div className="flex gap-1 border-b border-[var(--border)]">
           {([
-            ["installed", "Đã cài"],
-            ["community", "Cộng đồng"],
-            ["manual", "Cài thủ công"],
+            ["installed", t("web.pluginManager.tabs.installed")],
+            ["community", t("web.pluginManager.tabs.community")],
+            ["manual", t("web.pluginManager.tabs.manual")],
           ] as const).map(([key, label]) => (
             <button
               key={key}
@@ -172,12 +179,13 @@ export default function PluginManager({
 
         {pendingInstall && (
           <div className="flex flex-col gap-2 px-3 py-2 rounded-lg border border-[var(--border)] bg-[var(--bg-tertiary)]">
-            <div className="text-sm font-medium">Cài "{pendingInstall.entry.name}"?</div>
+            <div className="text-sm font-medium">{t("web.pluginManager.confirmTitle", { name: pendingInstall.entry.name })}</div>
             <div className="text-xs text-[var(--text-muted)]">
-              Plugin này sẽ được cấp quyền:{" "}
-              {((pendingInstall.source.manifest.permissions as string[] | undefined) ?? [])
-                .map((p) => PERMISSION_LABELS[p] ?? p)
-                .join(", ") || "không có quyền nào"}
+              {t("web.pluginManager.grants", {
+                permissions:
+                  ((pendingInstall.source.manifest.permissions as string[] | undefined) ?? []).map(permissionLabel).join(", ") ||
+                  t("web.pluginManager.noPermissions"),
+              })}
             </div>
             <div className="flex gap-2">
               <button
@@ -185,13 +193,13 @@ export default function PluginManager({
                 disabled={installingId === pendingInstall.entry.id}
                 className="text-xs px-2 py-1 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] hover:opacity-80 disabled:opacity-50"
               >
-                Xác nhận cài
+                {t("web.pluginManager.confirm")}
               </button>
               <button
                 onClick={() => setPendingInstall(null)}
                 className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80"
               >
-                Huỷ
+                {t("web.pluginManager.cancel")}
               </button>
             </div>
           </div>
@@ -199,7 +207,7 @@ export default function PluginManager({
 
         {tab === "installed" && (
           <div className="flex flex-col gap-2">
-            {installed.length === 0 && <p className="text-sm text-[var(--text-muted)]">Chưa cài plugin nào.</p>}
+            {installed.length === 0 && <p className="text-sm text-[var(--text-muted)]">{t("web.pluginManager.noneInstalled")}</p>}
             {installed.map((p) => {
               const granted = (p.manifest.permissions ?? []) as string[];
               const missing = (denied[p.id] ?? []).filter((d) => !granted.includes(d));
@@ -214,15 +222,15 @@ export default function PluginManager({
                         {p.manifest.name} <span className="text-[var(--text-muted)]">v{p.manifest.version}</span>
                       </div>
                       <div className="text-xs text-[var(--text-muted)]">
-                        {granted.map((perm) => PERMISSION_LABELS[perm] ?? perm).join(", ") || "Chưa được cấp quyền nào"}
+                        {granted.map(permissionLabel).join(", ") || t("web.pluginManager.noneGranted")}
                       </div>
                     </div>
                     <div className="flex gap-2">
                       <button onClick={() => toggle(p)} className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80">
-                        {p.enabled ? "Tắt" : "Bật"}
+                        {p.enabled ? t("web.pluginManager.disable") : t("web.pluginManager.enable")}
                       </button>
                       <button onClick={() => remove(p)} className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] text-[var(--red)] hover:opacity-80">
-                        Gỡ
+                        {t("web.pluginManager.uninstall")}
                       </button>
                     </div>
                   </div>
@@ -231,18 +239,18 @@ export default function PluginManager({
                     <div className="flex flex-col gap-1 text-xs" style={{ color: "var(--yellow)" }}>
                       {missing.length > 0 && (
                         <span>
-                          Plugin đã thử dùng nhưng bị chặn vì thiếu quyền: {missing.map((m) => PERMISSION_LABELS[m] ?? m).join(", ")}.
+                          {t("web.pluginManager.blocked", { permissions: missing.map(permissionLabel).join(", ") })}
                         </span>
                       )}
                       {missing.length === 0 && canGrantFromCode && (
-                        <span>Mã plugin có dùng API cần thêm quyền; plugin có thể không hoạt động đầy đủ.</span>
+                        <span>{t("web.pluginManager.needsMore")}</span>
                       )}
                       <div>
                         <button
                           onClick={() => setPermissions(p, Array.from(new Set([...granted, ...missing, ...fromCode])))}
                           className="text-xs px-2 py-1 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] hover:opacity-80"
                         >
-                          Cấp quyền cần thiết
+                          {t("web.pluginManager.grantNeeded")}
                         </button>
                       </div>
                     </div>
@@ -251,21 +259,21 @@ export default function PluginManager({
                   {excess.length > 0 && (
                     <div className="flex flex-col gap-1 text-xs text-[var(--text-muted)]">
                       <span>
-                        Quyền mà mã plugin không dùng đến: {excess.map((x) => PERMISSION_LABELS[x] ?? x).join(", ")}.
+                        {t("web.pluginManager.unused", { permissions: excess.map(permissionLabel).join(", ") })}
                       </span>
                       <div>
                         <button
                           onClick={() => setPermissions(p, granted.filter((g) => fromCode.includes(g)))}
                           className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80"
                         >
-                          Chỉ giữ quyền cần thiết
+                          {t("web.pluginManager.keepNeeded")}
                         </button>
                       </div>
                     </div>
                   )}
 
                   <details className="text-xs text-[var(--text-muted)]">
-                    <summary className="cursor-pointer">Chỉnh quyền</summary>
+                    <summary className="cursor-pointer">{t("web.pluginManager.editPermissions")}</summary>
                     <div className="flex flex-col gap-1 pt-1">
                       {Object.entries(PERMISSION_LABELS).map(([perm, label]) => (
                         <label key={perm} className="flex items-center gap-2 cursor-pointer">
@@ -276,7 +284,7 @@ export default function PluginManager({
                               setPermissions(p, e.target.checked ? [...granted, perm] : granted.filter((g) => g !== perm))
                             }
                           />
-                          {label}
+                          {label()}
                         </label>
                       ))}
                     </div>
@@ -289,7 +297,7 @@ export default function PluginManager({
 
         {tab === "community" && (
           <div className="flex flex-col gap-2">
-            {communityLoading && <p className="text-sm text-[var(--text-muted)]">Đang tải danh sách…</p>}
+            {communityLoading && <p className="text-sm text-[var(--text-muted)]">{t("web.pluginManager.loadingList")}</p>}
             {communityError && <p className="text-xs text-[var(--red)]">{communityError}</p>}
             {communityManifest?.plugins.map((entry) => (
               <div key={entry.id} className="flex items-center justify-between px-3 py-2 rounded-lg bg-[var(--bg-tertiary)]">
@@ -304,23 +312,23 @@ export default function PluginManager({
                   disabled={installingId === entry.id || installedIds.has(entry.id)}
                   className="text-xs px-2 py-1 rounded-md bg-[var(--bg-hover)] hover:opacity-80 disabled:opacity-50"
                 >
-                  {installedIds.has(entry.id) ? "Đã cài" : installingId === entry.id ? "Đang cài…" : "Cài đặt"}
+                  {installedIds.has(entry.id) ? t("web.pluginManager.installed") : installingId === entry.id ? t("web.pluginManager.installing") : t("web.pluginManager.install")}
                 </button>
               </div>
             ))}
             {communityManifest && communityManifest.plugins.length === 0 && (
-              <p className="text-sm text-[var(--text-muted)]">Chưa có plugin cộng đồng nào.</p>
+              <p className="text-sm text-[var(--text-muted)]">{t("web.pluginManager.noneCommunity")}</p>
             )}
           </div>
         )}
 
         {tab === "manual" && (
           <form onSubmit={install} className="flex flex-col gap-2 pt-2">
-            <h3 className="text-sm font-medium text-[var(--text-secondary)]">Cài plugin mới (dán thủ công)</h3>
+            <h3 className="text-sm font-medium text-[var(--text-secondary)]">{t("web.pluginManager.manualTitle")}</h3>
             <textarea
               value={manifestJson}
               onChange={(e) => setManifestJson(e.target.value)}
-              placeholder='manifest.json, vd: {"id":"hello","name":"Hello","version":"1.0.0","description":"","author":"","main":"main.js","permissions":["ui:commands"]}'
+              placeholder={t("web.pluginManager.manifestPlaceholder")}
               className="h-20 text-xs font-mono px-2 py-1.5 rounded-md bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
             />
             <textarea
@@ -335,7 +343,7 @@ export default function PluginManager({
               disabled={installing}
               className="self-start px-3 py-1.5 rounded-md bg-[var(--accent)] text-[var(--bg-primary)] text-sm font-medium disabled:opacity-50"
             >
-              {installing ? "Đang cài…" : "Cài đặt"}
+              {installing ? t("web.pluginManager.installing") : t("web.pluginManager.install")}
             </button>
           </form>
         )}

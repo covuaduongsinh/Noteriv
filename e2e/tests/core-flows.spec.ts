@@ -147,6 +147,11 @@ test("the interface switches to English (developer override until the Language p
     await expect(other.getByTitle("More tools")).toBeVisible(); // web ribbon text
     await other.getByTitle("Search in vault").click(); // ribbon text shared with desktop
     await expect(other.getByPlaceholder("Search across all notes…")).toBeVisible(); // shared panel text
+    await other.keyboard.press("Escape");
+    await other.keyboard.press("Control+Comma");
+    await expect(other.getByText("Appearance", { exact: true }).first()).toBeVisible(); // Settings sections
+    await expect(other.getByText("Responsive sidebar", { exact: true })).toBeVisible(); // a Settings row
+    await other.keyboard.press("Escape");
   } finally {
     await other.evaluate(() => localStorage.removeItem("noteriv.locale.dev"));
     await other.close();
