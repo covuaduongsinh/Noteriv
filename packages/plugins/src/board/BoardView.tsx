@@ -12,9 +12,23 @@ import {
   type BoardCard,
 } from "@noteriv/core/board-utils";
 
+/** Visible text; the plugin builds it from the i18n catalog. */
+export interface BoardLabels {
+  addCard: string;
+  deleteColumn: string;
+  confirmDeleteColumn: (title: string, count: number) => string;
+  cardPlaceholder: string;
+  addCardButton: string;
+  columnPlaceholder: string;
+  add: string;
+  cancel: string;
+  addColumn: string;
+}
+
 export interface BoardViewProps {
   content: string;
   onChange: (newContent: string) => void;
+  labels: BoardLabels;
 }
 
 const TAG_COLORS: Record<string, string> = {
@@ -51,7 +65,7 @@ interface DragState {
 }
 
 /** Kanban board over a board note: columns are `## headings`, cards are `- [ ]` items (see core board-utils). */
-export function BoardView({ content, onChange }: BoardViewProps) {
+export function BoardView({ content, onChange, labels }: BoardViewProps) {
   const [board, setBoard] = useState<BoardData>(() => parseBoard(content));
   const [dragCard, setDragCard] = useState<{ cardId: string; colId: string } | null>(null);
   const [dropTarget, setDropTarget] = useState<{ colId: string; index: number } | null>(null);
@@ -226,10 +240,10 @@ export function BoardView({ content, onChange }: BoardViewProps) {
   const handleRemoveColumn = useCallback((colId: string) => {
     const col = board.columns.find((c) => c.id === colId);
     if (col && col.cards.length > 0) {
-      if (!confirm(`Delete "${col.title}" and its ${col.cards.length} cards?`)) return;
+      if (!confirm(labels.confirmDeleteColumn(col.title, col.cards.length))) return;
     }
     emitChange(removeColumn(board, colId));
-  }, [board, emitChange]);
+  }, [board, emitChange, labels]);
 
   useEffect(() => {
     if (addingToCol && newCardInputRef.current) newCardInputRef.current.focus();
@@ -280,12 +294,12 @@ export function BoardView({ content, onChange }: BoardViewProps) {
               <button
                 onClick={() => setAddingToCol(col.id)}
                 style={iconBtnStyle}
-                title="Add card"
+                title={labels.addCard}
               >+</button>
               <button
                 onClick={() => handleRemoveColumn(col.id)}
                 style={{ ...iconBtnStyle, color: "var(--red)" }}
-                title="Delete column"
+                title={labels.deleteColumn}
               >&times;</button>
             </div>
           </div>
@@ -411,7 +425,7 @@ export function BoardView({ content, onChange }: BoardViewProps) {
                     if (e.key === "Escape") setAddingToCol(null);
                   }}
                   onBlur={() => { if (!newCardText.trim()) setAddingToCol(null); }}
-                  placeholder="Card text..."
+                  placeholder={labels.cardPlaceholder}
                   style={{
                     width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border)",
                     borderRadius: 4, padding: "6px 8px", color: "var(--text-primary)", fontSize: 12,
@@ -438,7 +452,7 @@ export function BoardView({ content, onChange }: BoardViewProps) {
                 cursor: "pointer",
                 textAlign: "left",
               }}
-            >+ Add card</button>
+            >{labels.addCardButton}</button>
           )}
         </div>
       ))}
@@ -533,7 +547,7 @@ export function BoardView({ content, onChange }: BoardViewProps) {
                 if (e.key === "Escape") setAddingColumn(false);
               }}
               autoFocus
-              placeholder="Column title..."
+              placeholder={labels.columnPlaceholder}
               style={{
                 width: "100%", background: "var(--bg-primary)", border: "1px solid var(--border)",
                 borderRadius: 4, padding: "6px 8px", color: "var(--text-primary)", fontSize: 13,
@@ -547,14 +561,14 @@ export function BoardView({ content, onChange }: BoardViewProps) {
                   padding: "4px 12px", borderRadius: 4, border: "none",
                   background: "var(--accent)", color: "var(--bg-primary)", fontSize: 12, fontWeight: 600, cursor: "pointer",
                 }}
-              >Add</button>
+              >{labels.add}</button>
               <button
                 onClick={() => setAddingColumn(false)}
                 style={{
                   padding: "4px 12px", borderRadius: 4, border: "1px solid var(--border)",
                   background: "transparent", color: "var(--text-secondary)", fontSize: 12, cursor: "pointer",
                 }}
-              >Cancel</button>
+              >{labels.cancel}</button>
             </div>
           </div>
         ) : (
@@ -566,7 +580,7 @@ export function BoardView({ content, onChange }: BoardViewProps) {
               color: "var(--text-muted)", fontSize: 13, cursor: "pointer",
               textAlign: "center",
             }}
-          >+ Add column</button>
+          >{labels.addColumn}</button>
         )}
       </div>
     </div>

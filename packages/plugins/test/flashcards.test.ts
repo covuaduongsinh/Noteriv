@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { PluginApi, VaultEntry } from "@noteriv/plugin-api";
 import flashcards, {
   VIEW_TYPE,
@@ -107,6 +108,7 @@ describe("flashcards plugin", () => {
   it("registers the review view, a command and a ribbon button that open it", async () => {
     const api = {
       app: { platform: "web", vaultPath: null },
+      i18n: platformI18n("web"),
       ui: { registerView: vi.fn(), addCommand: vi.fn(), addRibbonIcon: vi.fn() },
       workspace: { openView: vi.fn(async () => true) },
     };

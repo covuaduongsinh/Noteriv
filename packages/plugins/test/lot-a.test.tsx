@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { PluginApi, VaultEntry } from "@noteriv/plugin-api";
 import calendar, { collectCalendarData, openDailyNote, VIEW_TYPE as CALENDAR_VIEW } from "../src/calendar";
 import templates, { freeNotePath, getTemplateVariables, processTemplate, VIEW_TYPES } from "../src/templates";
@@ -28,6 +29,7 @@ function fakeApi(files: Record<string, string>, opts: { platform?: "web" | "desk
   };
   const api = {
     app: { platform: opts.platform ?? "web", vaultPath: null, currentFile: opts.currentFile ?? null },
+    i18n: platformI18n(opts.platform ?? "web"),
     vault: {
       list,
       read: async (p: string) => notes.get(p) ?? null,

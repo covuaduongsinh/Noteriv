@@ -175,8 +175,8 @@ describe("PluginRegistry", () => {
       memoryStore({ x: true, y: true })
     );
     await registry.init();
-    expect(registry.list()[0]).toMatchObject({ status: "error", error: "chunk failed" });
-    expect(registry.list()[1].status).toBe("error");
+    expect(registry.list()[0]).toMatchObject({ status: "error", error: "chunk failed", errorKind: "load" });
+    expect(registry.list()[1]).toMatchObject({ status: "error", error: "Module has no onload()", errorKind: "load" });
   });
 
   it("serialises a quick enable then disable so the plugin ends up stopped and disposed once", async () => {
@@ -211,7 +211,8 @@ describe("PluginRegistry", () => {
     expect(registry.list()[0].status).toBe("enabled");
     await registry.setEnabled("b", true);
     expect(registry.list()[1]).toMatchObject({ status: "enabled" });
-    expect(registry.list()[1].error).toMatch(/Không lưu được/);
+    // The UI says "could not save" in the user's language; the registry only gives the kind and the detail.
+    expect(registry.list()[1]).toMatchObject({ errorKind: "save", error: "offline" });
   });
 
   it("notifies subscribers, with a stable snapshot between changes", async () => {

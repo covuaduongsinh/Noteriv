@@ -1,5 +1,6 @@
 import { createElement } from "react";
 import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import { pluginT } from "../shared/i18n";
 import { reactView } from "../shared/react-view";
 import { GraphView, type GraphLabels } from "./GraphView";
 
@@ -7,39 +8,24 @@ export { loadLinkGraph } from "./GraphView";
 
 export const VIEW_TYPE = "graph";
 
-// Web speaks Vietnamese, desktop English (same convention as the other core plugins).
-const TEXT: Record<"web" | "desktop", GraphLabels & { command: string; title: string }> = {
-  web: {
-    command: "Mở graph view",
-    title: "Graph view",
-    filter: "Lọc note...",
-    close: "Đóng",
-    zoomIn: "Phóng to",
-    zoomOut: "Thu nhỏ",
-    building: "Đang dựng graph...",
-    notes: "note",
-    connections: "liên kết",
-    connectionCount: (n) => `${n} liên kết`,
-    oneWay: "một chiều",
-    reciprocal: "hai chiều",
-    legend: "Chú thích chiều liên kết",
-  },
-  desktop: {
-    command: "Open graph view",
-    title: "Graph View",
-    filter: "Filter nodes...",
-    close: "Close",
-    zoomIn: "Zoom in",
-    zoomOut: "Zoom out",
-    building: "Building graph...",
-    notes: "notes",
-    connections: "connections",
-    connectionCount: (n) => `${n} connection${n !== 1 ? "s" : ""}`,
-    oneWay: "one-way",
-    reciprocal: "reciprocal",
-    legend: "Link direction legend",
-  },
-};
+function labelsFor(api: PluginApi): GraphLabels & { command: string; title: string } {
+  const t = pluginT(api, "graph");
+  return {
+    command: t("command"),
+    title: t("title"),
+    filter: t("filter"),
+    close: t("close"),
+    zoomIn: t("zoomIn"),
+    zoomOut: t("zoomOut"),
+    building: t("building"),
+    notes: t("notes"),
+    connections: t("connections"),
+    connectionCount: (count) => t("connectionCount", { count }),
+    oneWay: t("oneWay"),
+    reciprocal: t("reciprocal"),
+    legend: t("legend"),
+  };
+}
 
 const ICON =
   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="4" cy="8" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="4" r="2" stroke="currentColor" stroke-width="1.2"/><circle cx="12" cy="12" r="2" stroke="currentColor" stroke-width="1.2"/><path d="M6 7.2l4-2.4M6 8.8l4 2.4" stroke="currentColor" stroke-width="1.2"/></svg>';
@@ -47,7 +33,7 @@ const ICON =
 /** Graph view: every note and the wiki-links between them, as a force-directed canvas. */
 const graph: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
+    const t = labelsFor(api);
     api.ui.registerView(
       VIEW_TYPE,
       reactView(() =>

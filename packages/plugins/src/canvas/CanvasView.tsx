@@ -193,7 +193,8 @@ function FileNodeView({ node, selected, preview, noteName, onPointerDown, onDoub
   );
 }
 
-function GroupNodeView({ node, selected, editingLabel, onPointerDown, onDoubleClick, onLabelChange, onLabelBlur, onResizePointerDown, onContextMenu }: {
+function GroupNodeView({ node, selected, editingLabel, defaultLabel, onPointerDown, onDoubleClick, onLabelChange, onLabelBlur, onResizePointerDown, onContextMenu }: {
+  defaultLabel: string;
   node: CanvasNode; selected: boolean; editingLabel: boolean;
   onPointerDown: (id: string, e: React.PointerEvent) => void; onDoubleClick: (id: string) => void;
   onLabelChange: (id: string, label: string) => void; onLabelBlur: () => void;
@@ -213,7 +214,7 @@ function GroupNodeView({ node, selected, editingLabel, onPointerDown, onDoubleCl
         {editingLabel ? (
           <input ref={inputRef} value={node.label || ""} onChange={(e) => onLabelChange(node.id, e.target.value)} onBlur={onLabelBlur}
             onKeyDown={(e) => { if (e.key === "Enter") onLabelBlur(); }} onPointerDown={(e) => e.stopPropagation()} />
-        ) : (node.label || "Group")}
+        ) : (node.label || defaultLabel)}
       </div>
       {selected && (
         <>
@@ -438,7 +439,8 @@ function ImagePicker({ services, labels, onSelect, onClose }: { services: Canvas
   );
 }
 
-function CanvasContextMenu({ x, y, nodeId, nodeType, nodeColor, onDelete, onColorChange, onStickyColorChange, onDuplicate, onAddTextNode, onAddStickyNote, onAddImage, onClose }: {
+function CanvasContextMenu({ x, y, nodeId, nodeType, nodeColor, labels, onDelete, onColorChange, onStickyColorChange, onDuplicate, onAddTextNode, onAddStickyNote, onAddImage, onClose }: {
+  labels: CanvasLabels["menu"];
   x: number; y: number; nodeId: string | null; nodeType?: string; nodeColor?: string;
   onDelete: () => void; onColorChange: (color: string) => void; onStickyColorChange: (color: string) => void;
   onDuplicate: () => void; onAddTextNode: () => void; onAddStickyNote: () => void; onAddImage: () => void; onClose: () => void;
@@ -453,11 +455,11 @@ function CanvasContextMenu({ x, y, nodeId, nodeType, nodeColor, onDelete, onColo
     <div className="canvas-context-menu" style={{ left: x, top: y }} onClick={(e) => e.stopPropagation()}>
       {nodeId && (
         <>
-          <button className="canvas-context-item" onClick={onDuplicate}>Duplicate</button>
+          <button className="canvas-context-item" onClick={onDuplicate}>{labels.duplicate}</button>
           <div className="canvas-context-divider" />
           {nodeType === "sticky" ? (
             <>
-              <div style={{ padding: "4px 10px", fontSize: 11, color: "var(--text-muted)" }}>Sticky Color</div>
+              <div style={{ padding: "4px 10px", fontSize: 11, color: "var(--text-muted)" }}>{labels.stickyColor}</div>
               <div className="canvas-context-submenu">
                 {Object.entries(STICKY_COLORS).map(([name, hex]) => (
                   <div key={name} className={`canvas-sticky-color-dot${nodeColor === name ? " active" : ""}`} style={{ background: hex }} onClick={() => onStickyColorChange(name)} />
@@ -466,7 +468,7 @@ function CanvasContextMenu({ x, y, nodeId, nodeType, nodeColor, onDelete, onColo
             </>
           ) : nodeType !== "drawing" ? (
             <>
-              <div style={{ padding: "4px 10px", fontSize: 11, color: "var(--text-muted)" }}>Color</div>
+              <div style={{ padding: "4px 10px", fontSize: 11, color: "var(--text-muted)" }}>{labels.color}</div>
               <div className="canvas-context-submenu">
                 {NODE_COLORS.map((c) => (
                   <div key={c || "none"} className={`canvas-color-dot${nodeColor === c ? " active" : ""}`}
@@ -477,14 +479,14 @@ function CanvasContextMenu({ x, y, nodeId, nodeType, nodeColor, onDelete, onColo
             </>
           ) : null}
           <div className="canvas-context-divider" />
-          <button className="canvas-context-item danger" onClick={onDelete}>Delete</button>
+          <button className="canvas-context-item danger" onClick={onDelete}>{labels.delete}</button>
         </>
       )}
       {!nodeId && (
         <>
-          <button className="canvas-context-item" onClick={onAddTextNode}>Add Text Node</button>
-          <button className="canvas-context-item" onClick={onAddStickyNote}>Add Sticky Note</button>
-          <button className="canvas-context-item" onClick={onAddImage}>Add Image</button>
+          <button className="canvas-context-item" onClick={onAddTextNode}>{labels.addText}</button>
+          <button className="canvas-context-item" onClick={onAddStickyNote}>{labels.addSticky}</button>
+          <button className="canvas-context-item" onClick={onAddImage}>{labels.addImage}</button>
         </>
       )}
     </div>
@@ -1053,7 +1055,7 @@ export function CanvasView({ content, onChange, services, labels }: CanvasViewPr
   const addGroupNode = useCallback(() => {
     const cx = (-panX + viewportSize.w / 2) / zoom;
     const cy = (-panY + viewportSize.h / 2) / zoom;
-    const node = createGroupNode(cx - 200, cy - 150, 400, 300, "Group");
+    const node = createGroupNode(cx - 200, cy - 150, 400, 300, labels.group);
     updateCanvas((prev) => ({ ...prev, nodes: [...prev.nodes, node] }));
     setSelectedNodeIds(new Set([node.id]));
   }, [panX, panY, zoom, viewportSize, updateCanvas]);
@@ -1168,7 +1170,7 @@ export function CanvasView({ content, onChange, services, labels }: CanvasViewPr
                 onAnchorPointerDown={handleAnchorPointerDown} onResizePointerDown={handleResizePointerDown} onContextMenu={handleNodeContextMenu} />;
             }
             if (node.type === "group") {
-              return <GroupNodeView key={node.id} node={node} selected={isSelected} editingLabel={editingNodeId === node.id}
+              return <GroupNodeView key={node.id} node={node} selected={isSelected} editingLabel={editingNodeId === node.id} defaultLabel={labels.group}
                 onPointerDown={handleNodePointerDown} onDoubleClick={handleNodeDoubleClick} onLabelChange={handleLabelChange}
                 onLabelBlur={handleEditBlur} onResizePointerDown={handleResizePointerDown} onContextMenu={handleNodeContextMenu} />;
             }
@@ -1197,27 +1199,27 @@ export function CanvasView({ content, onChange, services, labels }: CanvasViewPr
       </div>
 
       <div className="canvas-toolbar">
-        <button className={`canvas-toolbar-btn${activeTool === "select" ? " active" : ""}`} onClick={() => setActiveTool("select")} title="Select (V)">
+        <button className={`canvas-toolbar-btn${activeTool === "select" ? " active" : ""}`} onClick={() => setActiveTool("select")} title={labels.select}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 2l8 6-3.5.5L10 13l-2-1-2.5-4.5L3 10V2z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /></svg>
         </button>
         <div className="canvas-toolbar-divider" />
-        <button className={`canvas-toolbar-btn${activeTool === "text" ? " active" : ""}`} onClick={() => { setActiveTool("select"); addTextNode(); }} title="Add text node">
+        <button className={`canvas-toolbar-btn${activeTool === "text" ? " active" : ""}`} onClick={() => { setActiveTool("select"); addTextNode(); }} title={labels.addText}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 3h10M8 3v10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
         </button>
-        <button className={`canvas-toolbar-btn${activeTool === "sticky" ? " active" : ""}`} onClick={() => { setActiveTool("select"); addStickyNode(); }} title="Add sticky note">
+        <button className={`canvas-toolbar-btn${activeTool === "sticky" ? " active" : ""}`} onClick={() => { setActiveTool("select"); addStickyNode(); }} title={labels.addSticky}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="1.5" stroke="currentColor" strokeWidth="1.3" fill="rgba(249,226,175,0.3)" /><path d="M5 6h6M5 9h4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
         </button>
-        <button className={`canvas-toolbar-btn${activeTool === "image" ? " active" : ""}`} onClick={() => { addImageNode(); }} title="Add image">
+        <button className={`canvas-toolbar-btn${activeTool === "image" ? " active" : ""}`} onClick={() => { addImageNode(); }} title={labels.addImage}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.2" /><circle cx="5" cy="6" r="1.5" stroke="currentColor" strokeWidth="1" /><path d="M1 11l4-3 3 2 3-4 4 5" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" /></svg>
         </button>
-        <button className="canvas-toolbar-btn" onClick={() => setShowFilePicker(true)} title="Add file node">
+        <button className="canvas-toolbar-btn" onClick={() => setShowFilePicker(true)} title={labels.addFile}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M4 1h5l4 4v9a1 1 0 01-1 1H4a1 1 0 01-1-1V2a1 1 0 011-1z" stroke="currentColor" strokeWidth="1.3" /><path d="M9 1v4h4" stroke="currentColor" strokeWidth="1.3" /></svg>
         </button>
-        <button className="canvas-toolbar-btn" onClick={addGroupNode} title="Add group">
+        <button className="canvas-toolbar-btn" onClick={addGroupNode} title={labels.addGroup}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="12" height="12" rx="2" stroke="currentColor" strokeWidth="1.3" strokeDasharray="3 2" /></svg>
         </button>
         <div className="canvas-toolbar-divider" />
-        <button className={`canvas-toolbar-btn${activeTool === "draw" ? " active" : ""}`} onClick={() => setActiveTool(activeTool === "draw" ? "select" : "draw")} title="Draw (D)">
+        <button className={`canvas-toolbar-btn${activeTool === "draw" ? " active" : ""}`} onClick={() => setActiveTool(activeTool === "draw" ? "select" : "draw")} title={labels.draw}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2.5 13.5l1-4L11 2l2.5 2.5-7.5 7.5-4 1z" stroke="currentColor" strokeWidth="1.3" strokeLinejoin="round" /><path d="M9.5 3.5l2.5 2.5" stroke="currentColor" strokeWidth="1.3" /></svg>
         </button>
         {activeTool === "draw" && (
@@ -1231,18 +1233,18 @@ export function CanvasView({ content, onChange, services, labels }: CanvasViewPr
           </>
         )}
         <div className="canvas-toolbar-divider" />
-        <button className="canvas-toolbar-btn" onClick={zoomOut} title="Zoom out">
+        <button className="canvas-toolbar-btn" onClick={zoomOut} title={labels.zoomOut}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.3" /><path d="M5 7h4M11 11l3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </button>
-        <span className="canvas-toolbar-zoom" onClick={resetZoom} title="Reset zoom">{Math.round(zoom * 100)}%</span>
-        <button className="canvas-toolbar-btn" onClick={zoomIn} title="Zoom in">
+        <span className="canvas-toolbar-zoom" onClick={resetZoom} title={labels.resetZoom}>{Math.round(zoom * 100)}%</span>
+        <button className="canvas-toolbar-btn" onClick={zoomIn} title={labels.zoomIn}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="5" stroke="currentColor" strokeWidth="1.3" /><path d="M5 7h4M7 5v4M11 11l3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </button>
-        <button className="canvas-toolbar-btn" onClick={zoomToFit} title="Zoom to fit">
+        <button className="canvas-toolbar-btn" onClick={zoomToFit} title={labels.zoomToFit}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 6V3a1 1 0 011-1h3M10 2h3a1 1 0 011 1v3M14 10v3a1 1 0 01-1 1h-3M6 14H3a1 1 0 01-1-1v-3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" /></svg>
         </button>
         <div className="canvas-toolbar-divider" />
-        <button className="canvas-toolbar-btn" onClick={deleteSelected} disabled={selectedNodeIds.size === 0 && !selectedEdgeId} title="Delete selected">
+        <button className="canvas-toolbar-btn" onClick={deleteSelected} disabled={selectedNodeIds.size === 0 && !selectedEdgeId} title={labels.deleteSelected}>
           <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M3 4h10M6 4V3a1 1 0 011-1h2a1 1 0 011 1v1M5 4v9a1 1 0 001 1h4a1 1 0 001-1V4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" /></svg>
         </button>
       </div>
@@ -1256,7 +1258,7 @@ export function CanvasView({ content, onChange, services, labels }: CanvasViewPr
           onAddTextNode={() => { const world = screenToWorld(contextMenu.x, contextMenu.y); addTextNode(world.x, world.y); setContextMenu(null); }}
           onAddStickyNote={() => { const world = screenToWorld(contextMenu.x, contextMenu.y); addStickyNode(world.x, world.y); setContextMenu(null); }}
           onAddImage={() => { const world = screenToWorld(contextMenu.x, contextMenu.y); addImageNode(world.x, world.y); setContextMenu(null); }}
-          onClose={() => setContextMenu(null)} />
+          onClose={() => setContextMenu(null)} labels={labels.menu} />
       )}
 
       {showFilePicker && <FilePicker notes={filePickerNotes} labels={labels} onSelect={handleFilePickerSelect} onClose={() => setShowFilePicker(false)} />}

@@ -1,4 +1,5 @@
 import type { CodeBlockProcessor, CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import { pluginT } from "../shared/i18n";
 
 /** Marks a block still being drawn; export waits for it to go (see core `PENDING_ATTRIBUTE`). */
 const PENDING = "data-nrv-pending";
@@ -49,8 +50,16 @@ function themeVariables() {
 
 let counter = 0;
 
+/** Text shown in a diagram block while it renders or when it fails. */
+export interface MermaidText {
+  rendering: string;
+  error: string;
+}
+
+const ENGLISH: MermaidText = { rendering: "Rendering diagram...", error: "Diagram Error" };
+
 /** Renders a ```mermaid block as a diagram (same look as before it became a plugin: `.mermaid-*` in app.css). */
-export const renderMermaid: CodeBlockProcessor = (source, el) => {
+export const createMermaidRenderer = (text: MermaidText): CodeBlockProcessor => (source, el) => {
   let cancelled = false;
   const container = document.createElement("div");
   container.className = "mermaid-widget";
@@ -58,7 +67,7 @@ export const renderMermaid: CodeBlockProcessor = (source, el) => {
   const inner = document.createElement("div");
   inner.className = "mermaid-widget-inner";
   inner.setAttribute(PENDING, "");
-  inner.innerHTML = '<div class="mermaid-loading"><div class="mermaid-loading-spinner"></div>Rendering diagram...</div>';
+  inner.innerHTML = `<div class="mermaid-loading"><div class="mermaid-loading-spinner"></div>${escapeHtml(text.rendering)}</div>`;
   container.appendChild(inner);
   el.appendChild(container);
 
@@ -82,7 +91,7 @@ export const renderMermaid: CodeBlockProcessor = (source, el) => {
     } catch (err) {
       if (cancelled) return;
       const message = err instanceof Error ? err.message : String(err);
-      inner.innerHTML = `<div class="mermaid-error"><div class="mermaid-error-title">&#9888; Diagram Error</div><div class="mermaid-error-message">${escapeHtml(message)}</div></div>`;
+      inner.innerHTML = `<div class="mermaid-error"><div class="mermaid-error-title">&#9888; ${escapeHtml(text.error)}</div><div class="mermaid-error-message">${escapeHtml(message)}</div></div>`;
     }
     inner.removeAttribute(PENDING);
   })();
@@ -95,8 +104,12 @@ export const renderMermaid: CodeBlockProcessor = (source, el) => {
 /** Mermaid: diagrams from ```mermaid code blocks, in the editor, the reading view and PDF export. */
 const mermaidPlugin: CorePlugin = {
   onload(api: PluginApi) {
-    api.markdown.registerCodeBlockProcessor("mermaid", renderMermaid);
+    const t = pluginT(api, "mermaid");
+    api.markdown.registerCodeBlockProcessor("mermaid", createMermaidRenderer({ rendering: t("rendering"), error: t("error") }));
   },
 };
+
+/** The English renderer (tests and callers outside a plugin host). */
+export const renderMermaid = createMermaidRenderer(ENGLISH);
 
 export default mermaidPlugin;

@@ -5,115 +5,82 @@ import { settingsKeyStateStore, type CorePluginHostConfig } from "@noteriv/ui/pl
 
 /**
  * Core plugins shipped with the web app. `load` must stay a dynamic import(): it is what keeps a disabled plugin's
- * code out of the page bundle (Next splits it into its own chunk).
+ * code out of the page bundle (Next splits it into its own chunk). Names and descriptions are in the i18n catalog
+ * (`plugins.<camelCaseId>.name` / `.description`, shared with desktop).
  */
 export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
   {
     id: "word-count",
-    name: "Đếm từ",
-    description: "Hiện số từ của ghi chú đang mở trên thanh trạng thái; lệnh và nút ribbon xem thống kê (Ctrl+Alt+W).",
     load: () => import("@noteriv/plugins/word-count"),
   },
   {
     id: "flashcards",
-    name: "Flashcards",
-    description: "Ôn tập ngắt quãng (SM-2) từ các cặp dòng Q:/A: và {{cloze}} trong ghi chú; mở bằng nút ribbon hoặc bảng lệnh.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/flashcards"),
   },
   {
     id: "calendar",
-    name: "Lịch và daily notes",
-    description: "Lịch tháng với daily note và việc đến hạn; mở daily note hôm nay bằng Ctrl+D hoặc nút ribbon.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/calendar"),
   },
   {
     id: "templates",
-    name: "Templates",
-    description: "Tạo note mới từ template hoặc chèn template vào note đang mở (Ctrl+Alt+T). Template là các note trong thư mục Templates.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/templates"),
   },
   {
     id: "note-composer",
-    name: "Note composer",
-    description: "Gộp nhiều note vào note đang mở, hoặc tách note đang mở thành nhiều note theo heading.",
     load: () => import("@noteriv/plugins/note-composer"),
   },
   {
     id: "vault-insights",
-    name: "Vault insights",
-    description: "Thống kê vault: biểu đồ hoạt động, note kết nối nhiều và note mồ côi, tag phổ biến, tăng trưởng, sức khoẻ vault.",
     load: () => import("@noteriv/plugins/vault-insights"),
   },
   {
     id: "markdown-lint",
-    name: "Markdown lint",
-    description: "Panel bên phải liệt kê vấn đề của note đang mở (link hỏng, heading…); bấm một mục để nhảy tới dòng. Ctrl+Shift+L.",
     load: () => import("@noteriv/plugins/markdown-lint"),
   },
   {
     id: "audio-recorder",
-    name: "Ghi âm",
-    description: "Ghi âm từ microphone, lưu thành file đính kèm và chèn link vào note đang mở.",
     load: () => import("@noteriv/plugins/audio-recorder"),
   },
   {
     id: "graph",
-    name: "Graph view",
-    description: "Sơ đồ mọi note và wiki-link giữa chúng; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/graph"),
   },
   {
     id: "slides",
-    name: "Trình chiếu",
-    description: "Trình chiếu note đang mở toàn màn hình, mỗi đoạn ngăn bởi --- là một trang; có ghi chú người trình bày và tổng quan.",
     load: () => import("@noteriv/plugins/slides"),
   },
   {
     id: "note-history",
-    name: "Lịch sử note",
-    description: "Time scrubber xem lại các bản lưu tự động của note (Ctrl+Shift+H) và lịch sử git khi vault có đồng bộ git; khôi phục phiên bản cũ.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/note-history"),
   },
   {
     id: "board",
-    name: "Board (Kanban)",
-    description: "Hiện file .board.md hoặc note có frontmatter board: true thành bảng Kanban (cột là heading ##, thẻ là - [ ]); lệnh tạo board mới.",
     load: () => import("@noteriv/plugins/board"),
   },
   {
     id: "mermaid",
-    name: "Mermaid",
-    description: "Vẽ sơ đồ từ khối ```mermaid trong editor, chế độ đọc và khi xuất PDF. Thư viện chỉ tải khi gặp sơ đồ đầu tiên.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/mermaid"),
   },
   {
     id: "dataview",
-    name: "Dataview",
-    description: "Truy vấn note bằng khối ```dataview (TABLE / LIST / TASK, lọc theo thư mục, tag, frontmatter); lệnh chèn truy vấn mẫu.",
     load: () => import("@noteriv/plugins/dataview"),
   },
   {
     id: "canvas",
-    name: "Canvas",
-    description: "Bảng tự do gồm khối chữ, note, giấy nhớ, ảnh và nhóm nối bằng mũi tên; mở note có frontmatter canvas: true. Lệnh tạo canvas mới.",
     load: () => import("@noteriv/plugins/canvas"),
   },
   {
     id: "drawing",
-    name: "Drawing",
-    description: "Vẽ tay, hình, chữ và tẩy; mở note có frontmatter drawing: true. Lệnh tạo bản vẽ mới.",
     load: () => import("@noteriv/plugins/drawing"),
   },
   {
     id: "pdf-viewer",
-    name: "Đọc PDF",
-    description: "Đọc PDF đính kèm (bấm PDF trong hộp Attachments) và chú thích: tô sáng, gạch chân, ghi chú; xuất chú thích ra note.",
     defaultEnabled: true,
     load: () => import("@noteriv/plugins/pdf-viewer"),
   },

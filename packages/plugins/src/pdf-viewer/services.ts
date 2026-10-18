@@ -1,6 +1,6 @@
 import type { PluginApi } from "@noteriv/plugin-api";
 import { folderOf } from "../shared/vault";
-import { annotationsToMarkdown, readStoredAnnotations, toStoredAnnotations, type PDFAnnotation } from "./annotations";
+import { annotationsToMarkdown, readStoredAnnotations, toStoredAnnotations, type AnnotationsMarkdownText, type PDFAnnotation } from "./annotations";
 
 /** The part of pdf.js the viewer uses. */
 export interface PdfJs {
@@ -46,6 +46,8 @@ export interface PdfLabels {
   empty: string;
   pageShort: string;
   exportFailed: string;
+  /** The exported note. */
+  markdown: AnnotationsMarkdownText;
 }
 
 /**
@@ -94,7 +96,7 @@ export function pluginPdfServices(api: PluginApi, labels: PdfLabels, onExported:
         // Desktop: beside the PDF when it is in the vault. Web: attachments have no folder, so the vault root.
         const inVault = platform === "desktop" && !/^([a-zA-Z]:[\\/]|\/)/.test(target);
         const path = await exportPath(api, inVault ? folderOf(target) : "", name);
-        await api.vault.write(path, annotationsToMarkdown(name, anns));
+        await api.vault.write(path, annotationsToMarkdown(name, anns, labels.markdown));
         await api.workspace.openFile(path);
         onExported();
       } catch (e) {

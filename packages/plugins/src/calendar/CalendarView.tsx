@@ -23,6 +23,8 @@ export interface CalendarLabels {
   createDaily: string;
   loading: string;
   close: string;
+  previousMonth: string;
+  nextMonth: string;
 }
 
 /** What the calendar shows, computed once per opening from a single vault scan. */
@@ -126,7 +128,7 @@ export function CalendarView({ api, labels }: { api: PluginApi; labels: Calendar
     >
       <div style={{ flex: 1, padding: 20 }}>
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-          <button onClick={() => shift(-1)} style={navBtn} aria-label="previous month">&lt;</button>
+          <button onClick={() => shift(-1)} style={navBtn} aria-label={labels.previousMonth}>&lt;</button>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <span style={{ color: "var(--text-primary)", fontSize: 18, fontWeight: 600 }}>
               {labels.months[month]} {year}
@@ -143,7 +145,7 @@ export function CalendarView({ api, labels }: { api: PluginApi; labels: Calendar
               {labels.today}
             </button>
           </div>
-          <button onClick={() => shift(1)} style={navBtn} aria-label="next month">&gt;</button>
+          <button onClick={() => shift(1)} style={navBtn} aria-label={labels.nextMonth}>&gt;</button>
         </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(7, 1fr)", gap: 2, marginBottom: 4 }}>

@@ -13,9 +13,22 @@ import {
 } from "@noteriv/core/drawing-utils";
 import { splitFrontmatter } from "@noteriv/core/frontmatter-utils";
 
+/** Visible text; the plugin builds it from the i18n catalog. */
+export interface DrawingLabels {
+  tools: Record<Tool, string>;
+  pickColor: string;
+  fillOn: string;
+  fillOff: string;
+  resetView: string;
+  clear: string;
+  confirmClear: string;
+  saving: string;
+}
+
 interface DrawingViewProps {
   content: string;
   onChange: (content: string) => void;
+  labels: DrawingLabels;
 }
 
 type Tool = "select" | "pencil" | "rectangle" | "ellipse" | "line" | "arrow" | "text" | "eraser";
@@ -55,7 +68,7 @@ function uid() { return `el-${Date.now()}-${_uid++}`; }
 const AUTOSAVE_DEBOUNCE_MS = 600;
 const ERASER_RADIUS = 12;
 
-export function DrawingView({ content, onChange }: DrawingViewProps) {
+export function DrawingView({ content, onChange, labels }: DrawingViewProps) {
   // React state for toolbar re-renders only
   const [, forceRender] = useState(0);
   const rerender = () => forceRender((n) => n + 1);
@@ -619,14 +632,14 @@ export function DrawingView({ content, onChange }: DrawingViewProps) {
   const presetColors = ["#cdd6f4", "#89b4fa", "#a6e3a1", "#f9e2af", "#f38ba8", "#cba6f7", "#fab387", "#94e2d5", "#f5c2e7", "#585b70", "#ffffff", "#000000"];
 
   const tools: { id: Tool; label: string; icon: string }[] = [
-    { id: "select", label: "Select (V)", icon: "M4 2l8 12-3-1-3 5-2-1 3-5-3 1z" },
-    { id: "pencil", label: "Pencil (P)", icon: "M3 13l1.5-4L12 2l2 2-7.5 7.5L3 13zM9.5 4.5l2 2" },
-    { id: "rectangle", label: "Rectangle (R)", icon: "M3 3h10v10H3z" },
-    { id: "ellipse", label: "Ellipse (O)", icon: "M8 3a5 5 0 100 10 5 5 0 000-10z" },
-    { id: "line", label: "Line (L)", icon: "M2 14L14 2" },
-    { id: "arrow", label: "Arrow (A)", icon: "M2 14L14 2M14 2v5M14 2h-5" },
-    { id: "text", label: "Text (T)", icon: "M3 3h10M8 3v10" },
-    { id: "eraser", label: "Eraser (E)", icon: "M7 14l7-7-4-4-7 7 2 2zM10 11l3-3" },
+    { id: "select", label: labels.tools.select, icon: "M4 2l8 12-3-1-3 5-2-1 3-5-3 1z" },
+    { id: "pencil", label: labels.tools.pencil, icon: "M3 13l1.5-4L12 2l2 2-7.5 7.5L3 13zM9.5 4.5l2 2" },
+    { id: "rectangle", label: labels.tools.rectangle, icon: "M3 3h10v10H3z" },
+    { id: "ellipse", label: labels.tools.ellipse, icon: "M8 3a5 5 0 100 10 5 5 0 000-10z" },
+    { id: "line", label: labels.tools.line, icon: "M2 14L14 2" },
+    { id: "arrow", label: labels.tools.arrow, icon: "M2 14L14 2M14 2v5M14 2h-5" },
+    { id: "text", label: labels.tools.text, icon: "M3 3h10M8 3v10" },
+    { id: "eraser", label: labels.tools.eraser, icon: "M7 14l7-7-4-4-7 7 2 2zM10 11l3-3" },
   ];
 
   const cursor = s.spaceDown || s.panning ? "grab" : (
@@ -673,7 +686,7 @@ export function DrawingView({ content, onChange }: DrawingViewProps) {
               type="color"
               value={s.stroke}
               onChange={(e) => setStroke(e.target.value)}
-              title="Pick any color"
+              title={labels.pickColor}
               style={{
                 position: "absolute", inset: 0, width: 24, height: 24,
                 border: "none", padding: 0, cursor: "pointer",
@@ -712,17 +725,17 @@ export function DrawingView({ content, onChange }: DrawingViewProps) {
         <div style={{ flex: 1 }} />
 
         <button onClick={toggleFill} style={{ ...btnStyle, background: s.fill !== "transparent" ? "#45475a" : undefined }}>
-          Fill {s.fill !== "transparent" ? "On" : "Off"}
+          {s.fill !== "transparent" ? labels.fillOn : labels.fillOff}
         </button>
-        <button onClick={resetView} style={btnStyle} title="Ctrl+0">Reset View</button>
+        <button onClick={resetView} style={btnStyle} title="Ctrl+0">{labels.resetView}</button>
         <button
           onClick={clearAll}
           onBlur={() => setConfirmingClear(false)}
           style={{ ...btnStyle, background: confirmingClear ? "#f38ba8" : undefined, color: confirmingClear ? "#1e1e2e" : undefined }}
         >
-          {confirmingClear ? "Confirm clear?" : "Clear"}
+          {confirmingClear ? labels.confirmClear : labels.clear}
         </button>
-        {s.dirty && <span style={{ color: "#f9e2af", fontSize: 11 }}>Saving…</span>}
+        {s.dirty && <span style={{ color: "#f9e2af", fontSize: 11 }}>{labels.saving}</span>}
       </div>
 
       <div style={{ flex: 1, position: "relative", overflow: "hidden" }}>

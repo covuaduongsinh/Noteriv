@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { aggregateTags } from "@noteriv/core/tag-utils";
 import type { NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 interface TagPaneProps {
   adapter: VaultAdapter | null;
@@ -129,8 +131,8 @@ function TagTreeItem({
         }}
         title={
           node.fullTag
-            ? `${node.fullTag} (${node.count} note${node.count !== 1 ? "s" : ""})`
-            : `${node.segment} group (${totalCount} total)`
+            ? t("panels.tags.tagTitle", { tag: node.fullTag, count: node.count })
+            : t("panels.tags.groupTitle", { segment: node.segment, count: totalCount })
         }
       >
         {hasChildren && (
@@ -187,6 +189,7 @@ function TagTreeItem({
 }
 
 export default function TagPane({ adapter, onTagClick, onNoteSelect, visible }: TagPaneProps) {
+  useLocale();
   const [tags, setTags] = useState<TagInfo[]>([]);
   const [loading, setLoading] = useState(false);
   const [filter, setFilter] = useState("");
@@ -262,21 +265,21 @@ export default function TagPane({ adapter, onTagClick, onNoteSelect, visible }: 
     <div className="tag-pane">
       <div className="tag-pane-header">
         <span className="tag-pane-title">
-          Tags
+          {t("panels.tags.title")}
           {totalTagCount > 0 && <span className="tag-pane-total">{totalTagCount}</span>}
         </span>
         <div className="tag-pane-actions">
-          <button className="tag-pane-btn" onClick={handleExpandAll} title="Expand all">
+          <button className="tag-pane-btn" onClick={handleExpandAll} title={t("panels.tags.expandAll")}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M4 6l4 4 4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button className="tag-pane-btn" onClick={handleCollapseAll} title="Collapse all">
+          <button className="tag-pane-btn" onClick={handleCollapseAll} title={t("panels.tags.collapseAll")}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <path d="M4 10l4-4 4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
           </button>
-          <button className="tag-pane-btn" onClick={loadTags} title="Refresh tags" disabled={loading}>
+          <button className="tag-pane-btn" onClick={loadTags} title={t("panels.tags.refresh")} disabled={loading}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none" className={loading ? "tag-pane-spin" : ""}>
               <path d="M14 8A6 6 0 114 3.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
               <path d="M14 3v5h-5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
@@ -293,13 +296,13 @@ export default function TagPane({ adapter, onTagClick, onNoteSelect, visible }: 
         <input
           ref={filterInputRef}
           type="text"
-          placeholder="Filter tags..."
+          placeholder={t("panels.tags.filter")}
           value={filter}
           onChange={(e) => setFilter(e.target.value)}
           className="tag-filter-input"
         />
         {filter && (
-          <button className="tag-filter-clear" onClick={() => setFilter("")} title="Clear filter">
+          <button className="tag-filter-clear" onClick={() => setFilter("")} title={t("panels.tags.clearFilter")}>
             <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
               <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
             </svg>
@@ -310,11 +313,11 @@ export default function TagPane({ adapter, onTagClick, onNoteSelect, visible }: 
       <div className="tag-pane-content">
         {loading && tags.length === 0 ? (
           <div className="tag-pane-empty">
-            <span className="tag-pane-loading">Scanning tags...</span>
+            <span className="tag-pane-loading">{t("panels.tags.scanning")}</span>
           </div>
         ) : sortedRootNodes.length === 0 ? (
           <div className="tag-pane-empty">
-            <span>{filter ? "No tags match the filter" : "No tags found in vault"}</span>
+            <span>{filter ? t("panels.tags.noMatch") : t("panels.tags.empty")}</span>
           </div>
         ) : (
           sortedRootNodes.map((node) => (

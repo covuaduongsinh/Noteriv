@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from "react";
 import type { HostPanel } from "./core-plugin-host";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 /**
  * Sidebar panels of core plugins (`ui.addSidebarPanel`), shown as columns on the right of the editor next to
@@ -12,13 +14,14 @@ export function CorePluginSidePanels({
   panels,
   open,
   onClose,
-  closeLabel = "Close",
+  closeLabel,
 }: {
   panels: HostPanel[];
   open: string[];
   onClose: (key: string) => void;
   closeLabel?: string;
 }) {
+  useLocale();
   const shown = open.map((k) => panels.find((p) => p.key === k)).filter((p): p is HostPanel => !!p);
   return (
     <>
@@ -26,7 +29,7 @@ export function CorePluginSidePanels({
         <aside key={p.key} className="core-panel" data-core-panel={p.key}>
           <div className="core-panel-header">
             <span className="core-panel-title">{p.title}</span>
-            <button className="core-panel-close" title={closeLabel} aria-label={closeLabel} onClick={() => onClose(p.key)}>
+            <button className="core-panel-close" title={closeLabel ?? t("common.close")} aria-label={closeLabel ?? t("common.close")} onClick={() => onClose(p.key)}>
               ×
             </button>
           </div>

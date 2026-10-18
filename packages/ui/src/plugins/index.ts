@@ -15,7 +15,7 @@ export {
 } from "./core-plugin-host";
 export { useCorePlugins, useCorePluginHotkeys } from "./use-core-plugins";
 export { matchesHotkey, parseHotkey, isMacPlatform } from "./hotkey";
-export { default as CorePluginsSection, type CorePluginsSectionProps, type CorePluginsLabels } from "./CorePluginsSection";
+export { default as CorePluginsSection, corePluginGroup, type CorePluginsSectionProps, type CorePluginsLabels } from "./CorePluginsSection";
 export { CorePluginRibbonButtons, CorePluginStatusItems, CorePluginNoteToolbarButtons } from "./CorePluginButtons";
 export { CorePluginViewOverlay } from "./CorePluginViewOverlay";
 export { CorePluginSidePanels } from "./CorePluginSidePanels";

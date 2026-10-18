@@ -22,6 +22,14 @@
         "table": "Bảng",
         "rule": "Kẻ"
       }
+    },
+    "codeBlock": {
+      "copy": "Sao chép",
+      "copied": "Đã chép!"
+    },
+    "toc": {
+      "title": "Mục lục",
+      "empty": "Không có heading nào"
     }
   },
   "panels": {
@@ -58,6 +66,34 @@
       "legendThis": "chỉ có trong bản này",
       "identical": "Hai bản giống hệt nhau.",
       "working": "Đang xử lý…"
+    },
+    "tags": {
+      "title": "Tags",
+      "expandAll": "Mở hết",
+      "collapseAll": "Thu gọn hết",
+      "refresh": "Làm mới tag",
+      "filter": "Lọc tag...",
+      "clearFilter": "Xoá bộ lọc",
+      "scanning": "Đang quét tag...",
+      "noMatch": "Không có tag khớp bộ lọc",
+      "empty": "Vault chưa có tag nào",
+      "tagTitle": {
+        "other": "{tag} ({count} note)"
+      },
+      "groupTitle": "Nhóm {segment} ({count} tổng)"
+    },
+    "backlinks": {
+      "title": "Backlinks",
+      "count": {
+        "other": "{count} liên kết"
+      },
+      "scanning": "Đang quét vault...",
+      "empty": "Chưa có note nào link tới note này.",
+      "line": "Dòng {line}"
+    },
+    "outline": {
+      "title": "Dàn ý",
+      "empty": "Không có heading nào"
     }
   },
   "settings": {
@@ -69,7 +105,8 @@
       "enable": "Bật",
       "disable": "Tắt",
       "settings": "Tuỳ chọn",
-      "hideSettings": "Ẩn tuỳ chọn"
+      "hideSettings": "Ẩn tuỳ chọn",
+      "saveFailed": "Không lưu được lựa chọn: {detail}"
     }
   },
   "plugins": {
@@ -87,7 +124,401 @@
       "notice": {
         "other": "{count} từ · {characters} ký tự · khoảng {minutes} phút đọc"
       },
-      "noNote": "Chưa mở ghi chú nào."
+      "noNote": "Chưa mở ghi chú nào.",
+      "name": "Đếm từ",
+      "description": "Hiện số từ của ghi chú đang mở trên thanh trạng thái; lệnh và nút ribbon xem thống kê (Ctrl+Alt+W)."
+    },
+    "flashcards": {
+      "name": "Flashcards",
+      "description": "Ôn tập ngắt quãng (SM-2) từ các cặp dòng Q:/A: và {{cloze}} trong ghi chú; mở bằng nút ribbon hoặc bảng lệnh.",
+      "command": "Flashcards: ôn tập",
+      "ribbon": "Flashcards",
+      "title": "Ôn tập flashcard",
+      "cards": {
+        "other": "{count} thẻ"
+      },
+      "due": "{count} cần ôn",
+      "done": "{count} đã ôn",
+      "scanning": "Đang tìm flashcard trong vault…",
+      "caughtUp": "Đã ôn hết!",
+      "noCards": "Chưa có flashcard. Thêm cặp dòng Q:/A: hoặc {{cloze}} vào ghi chú.",
+      "comeBack": {
+        "other": "Đã ôn {count} thẻ. Mai quay lại ôn tiếp."
+      },
+      "showAnswer": "Xem đáp án (Space)",
+      "close": "Đóng",
+      "grade": {
+        "again": "Lại",
+        "hard": "Khó",
+        "ok": "Tạm",
+        "good": "Tốt",
+        "easy": "Dễ"
+      }
+    },
+    "templates": {
+      "name": "Templates",
+      "description": "Tạo note mới từ template hoặc chèn template vào note đang mở. Template là các note trong thư mục Templates.",
+      "create": "Templates: tạo note từ template",
+      "insert": "Templates: chèn template vào note",
+      "search": "Tìm template…",
+      "emptyTitle": "Chưa có template nào",
+      "emptyFolder": "Tạo một thư mục \"{folder}\" ở gốc vault và thêm note vào đó để dùng làm template.",
+      "emptyVariables": "Dùng biến như {{date}}, {{title}}, {{time}} để chèn nội dung động.",
+      "noMatch": "Không có template khớp",
+      "preview": "Xem trước",
+      "previewEmpty": "Chọn một template để xem trước",
+      "enterCreate": "tạo note",
+      "enterInsert": "chèn",
+      "close": "đóng",
+      "move": "di chuyển",
+      "count": {
+        "other": "{count} template"
+      },
+      "noNote": "Hãy mở một ghi chú trước khi chèn template."
+    },
+    "noteComposer": {
+      "name": "Note composer",
+      "description": "Gộp nhiều note vào note đang mở, hoặc tách note đang mở thành nhiều note theo heading.",
+      "command": "Note composer: gộp / tách note",
+      "title": "Note Composer",
+      "merge": "Gộp",
+      "split": "Tách",
+      "noNote": "Chưa chọn note",
+      "searchMerge": "Tìm note để gộp…",
+      "selected": "{count} đã chọn",
+      "noNotes": "Không tìm thấy note",
+      "addHeadings": "Thêm tên file làm tiêu đề (h2) giữa các note gộp",
+      "deleteAfter": {
+        "web": "Chuyển note nguồn vào thùng rác sau khi gộp",
+        "desktop": "Xoá file nguồn sau khi gộp"
+      },
+      "splitBy": "Tách theo:",
+      "noHeadings": "Không tìm thấy heading {level} nào để tách",
+      "exists": "đã có, sẽ bỏ qua",
+      "cancel": "Huỷ",
+      "merging": "Đang gộp…",
+      "mergeN": {
+        "other": "Gộp {count} note"
+      },
+      "splitting": "Đang tách…",
+      "splitN": {
+        "other": "Tách thành {count} note"
+      },
+      "skipped": {
+        "other": "Bỏ qua {count} phần vì đã có note cùng tên."
+      }
+    },
+    "calendar": {
+      "name": "Lịch và daily notes",
+      "description": "Lịch tháng với daily note và việc đến hạn; mở daily note hôm nay bằng Ctrl+D hoặc nút ribbon.",
+      "openCalendar": "Lịch: mở lịch",
+      "todayNote": "Daily note hôm nay",
+      "ribbonCalendar": "Lịch",
+      "ribbonDaily": "Daily note hôm nay",
+      "months": "Tháng 1,Tháng 2,Tháng 3,Tháng 4,Tháng 5,Tháng 6,Tháng 7,Tháng 8,Tháng 9,Tháng 10,Tháng 11,Tháng 12",
+      "weekdays": "CN,T2,T3,T4,T5,T6,T7",
+      "today": "Hôm nay",
+      "dailyNote": "Daily note",
+      "dueTasks": "Việc đến hạn",
+      "notes": "Ghi chú",
+      "tasksDue": "Việc đến hạn",
+      "nothing": "Không có ghi chú hay việc nào trong ngày này.",
+      "createDaily": "Tạo daily note",
+      "loading": "Đang đọc vault…",
+      "close": "Đóng",
+      "previousMonth": "Tháng trước",
+      "nextMonth": "Tháng sau"
+    },
+    "vaultInsights": {
+      "name": "Vault insights",
+      "description": "Thống kê vault: biểu đồ hoạt động, note kết nối nhiều và note mồ côi, tag phổ biến, tăng trưởng, sức khoẻ vault.",
+      "command": "Vault insights: thống kê vault",
+      "title": "Vault Insights",
+      "close": "Đóng",
+      "loading": "Đang phân tích vault…",
+      "activity": "Hoạt động ghi chú",
+      "heatTip": {
+        "other": "{date}: {count} note sửa đổi"
+      },
+      "less": "Ít",
+      "more": "Nhiều",
+      "overview": "Tổng quan",
+      "notes": "Notes",
+      "words": "Từ",
+      "tags": "Tags",
+      "links": "Links",
+      "avgWords": "TB từ/note",
+      "streak": "Chuỗi ngày viết liên tục",
+      "current": "Hiện tại",
+      "longest": "Dài nhất",
+      "last": "Gần nhất: {date}",
+      "hubs": "Note kết nối nhiều nhất",
+      "noHubs": "Chưa có note nào kết nối",
+      "inOut": "{incoming} vào / {outgoing} ra",
+      "orphans": "Note mồ côi (không link)",
+      "noOrphans": "Không có note mồ côi",
+      "topTags": "Tag phổ biến",
+      "noTags": "Chưa có tag nào",
+      "growth": "Tăng trưởng theo thời gian",
+      "noData": "Chưa có dữ liệu",
+      "health": "Sức khoẻ vault",
+      "withBacklinks": "Có backlink",
+      "withTags": "Có tag",
+      "withFrontmatter": "Có frontmatter",
+      "overall": "Sức khoẻ tổng thể",
+      "undated": {
+        "other": "{count} note không có ngày tháng nên không có trong biểu đồ."
+      },
+      "dayLabels": ",T2,,T4,,T6,",
+      "months": "Th1,Th2,Th3,Th4,Th5,Th6,Th7,Th8,Th9,Th10,Th11,Th12"
+    },
+    "markdownLint": {
+      "name": "Markdown lint",
+      "description": "Panel bên phải liệt kê vấn đề của note đang mở (link hỏng, heading…); bấm một mục để nhảy tới dòng. Ctrl+Shift+L.",
+      "title": "Lint",
+      "command": "Lint: bật/tắt panel",
+      "errors": {
+        "other": "{count} lỗi"
+      },
+      "warnings": {
+        "other": "{count} cảnh báo"
+      },
+      "infos": "{count} gợi ý",
+      "ok": "Không có vấn đề",
+      "none": "Không tìm thấy vấn đề nào",
+      "noNote": "Chưa mở ghi chú.",
+      "groupErrors": "Lỗi",
+      "groupWarnings": "Cảnh báo",
+      "groupInfos": "Gợi ý",
+      "line": "dòng {line}"
+    },
+    "audioRecorder": {
+      "name": "Ghi âm",
+      "description": "Ghi âm từ microphone, lưu thành file đính kèm và chèn link vào note đang mở.",
+      "command": "Ghi âm: ghi và chèn vào note",
+      "title": "Ghi âm",
+      "close": "Đóng",
+      "idle": "Sẵn sàng ghi âm",
+      "requesting": "Đang xin quyền microphone...",
+      "recording": "Đang ghi âm...",
+      "recorded": "Đã ghi xong",
+      "saving": "Đang lưu...",
+      "start": "Bắt đầu ghi âm",
+      "stop": "Dừng ghi âm",
+      "discard": "Huỷ",
+      "save": "Lưu bản ghi",
+      "denied": "Quyền truy cập microphone bị từ chối. Vui lòng cho phép và thử lại.",
+      "noMic": "Không thể truy cập microphone: {message}",
+      "saveFailed": {
+        "web": "Lưu bản ghi âm thất bại — có thể đã vượt hạn mức lưu trữ của vault.",
+        "desktop": "Lưu bản ghi âm thất bại."
+      },
+      "savedNoNote": "Đã lưu bản ghi ({time}). Mở một ghi chú để chèn link."
+    },
+    "graph": {
+      "name": "Graph view",
+      "description": "Sơ đồ mọi note và wiki-link giữa chúng; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
+      "command": "Mở graph view",
+      "title": "Graph view",
+      "filter": "Lọc note...",
+      "close": "Đóng",
+      "zoomIn": "Phóng to",
+      "zoomOut": "Thu nhỏ",
+      "building": "Đang dựng graph...",
+      "notes": "note",
+      "connections": "liên kết",
+      "connectionCount": {
+        "other": "{count} liên kết"
+      },
+      "oneWay": "một chiều",
+      "reciprocal": "hai chiều",
+      "legend": "Chú thích chiều liên kết"
+    },
+    "slides": {
+      "name": "Trình chiếu",
+      "description": "Trình chiếu note đang mở toàn màn hình, mỗi đoạn ngăn bởi --- là một trang; có ghi chú người trình bày và tổng quan.",
+      "command": "Trình chiếu note hiện tại",
+      "title": "Trình chiếu",
+      "noNote": "Mở một ghi chú để trình chiếu.",
+      "exit": "Thoát",
+      "notes": "Ghi chú",
+      "overview": "Tổng quan",
+      "print": "In",
+      "speakerNotes": "Ghi chú người trình bày",
+      "overviewTitle": {
+        "other": "Tổng quan ({count} trang)"
+      },
+      "closeOverview": "Đóng tổng quan",
+      "separatorHint": "Dùng --- trên một dòng riêng để tách trang"
+    },
+    "noteHistory": {
+      "name": "Lịch sử note",
+      "description": "Time scrubber xem lại các bản lưu tự động của note (Ctrl+Shift+H) và lịch sử git khi vault có đồng bộ git; khôi phục phiên bản cũ.",
+      "gitCommand": "Lịch sử git của note",
+      "scrubberCommand": "Time scrubber: xem lại các phiên bản của note",
+      "gitTitle": "Lịch sử note (git)",
+      "scrubberTitle": "Time scrubber",
+      "noNote": "Mở một ghi chú để xem lịch sử.",
+      "close": "Đóng",
+      "restore": "Khôi phục phiên bản này",
+      "restoreHint": "Thay nội dung hiện tại bằng phiên bản này",
+      "restored": "Đã khôi phục phiên bản cũ.",
+      "loadingHistory": "Đang tải lịch sử...",
+      "loadingVersion": "Đang tải phiên bản...",
+      "gitEmpty": "Không có lịch sử git cho note này.",
+      "gitEmptyHint": {
+        "web": "Cần một kết nối đồng bộ git đã chạy ít nhất một lần và note này đã được commit.",
+        "desktop": "Hãy chắc rằng vault là một repository git và đã có commit."
+      },
+      "oldest": "Cũ nhất",
+      "latest": "Mới nhất",
+      "commits": "Commit",
+      "noMessage": "(không có mô tả)",
+      "changesFrom": "Thay đổi từ {hash} tới hiện tại",
+      "loadingSnapshots": "Đang tải các bản lưu...",
+      "scrubberEmpty": "Note này chưa có bản lưu nào",
+      "scrubberEmptyHint": {
+        "web": "Bản lưu được tạo tự động khoảng 10 phút một lần khi note thay đổi. Cứ tiếp tục viết, dòng thời gian sẽ hiện ở đây.",
+        "desktop": "Mỗi lần lưu là một bản lưu. Cứ tiếp tục viết, dòng thời gian sẽ hiện ở đây."
+      },
+      "now": "Hiện tại (chưa lưu)",
+      "isCurrent": "Đây là phiên bản hiện tại",
+      "play": "Phát (Space)",
+      "pause": "Dừng (Space)",
+      "keysHint": "← → từng bước · Space phát/dừng · Esc đóng",
+      "ago": {
+        "justNow": "vừa xong",
+        "seconds": "{count} giây trước",
+        "minutes": "{count} phút trước",
+        "hours": "{count} giờ trước",
+        "days": "{count} ngày trước"
+      }
+    },
+    "pdfViewer": {
+      "name": "Đọc PDF",
+      "description": "Đọc PDF đính kèm (bấm PDF trong hộp Attachments) và chú thích: tô sáng, gạch chân, ghi chú; xuất chú thích ra note.",
+      "loading": "Đang tải PDF...",
+      "loadFailed": "Không tải được PDF",
+      "openFailed": "Không mở được tệp PDF",
+      "previousPage": "Trang trước",
+      "nextPage": "Trang sau",
+      "zoomIn": "Phóng to",
+      "zoomOut": "Thu nhỏ",
+      "fitWidth": "Vừa chiều rộng",
+      "fitPage": "Vừa trang",
+      "select": "Công cụ chọn",
+      "highlight": "Tô sáng",
+      "note": "Ghi chú",
+      "underline": "Gạch chân",
+      "toggleSidebar": "Hiện/ẩn danh sách chú thích",
+      "export": "Xuất chú thích ra note",
+      "close": "Đóng",
+      "notePlaceholder": "Nhập ghi chú...",
+      "commentPlaceholder": "Thêm nhận xét...",
+      "addNote": "Thêm ghi chú",
+      "cancel": "Huỷ",
+      "save": "Lưu",
+      "delete": "Xoá",
+      "annotations": "Chú thích",
+      "empty": "Chưa có chú thích. Dùng công cụ tô sáng, ghi chú hoặc gạch chân.",
+      "pageShort": "tr.",
+      "exportFailed": "Không xuất được chú thích.",
+      "markdown": {
+        "title": "Chú thích: {file}",
+        "highlights": "Tô sáng",
+        "underlines": "Gạch chân",
+        "notes": "Ghi chú",
+        "page": "trang {page}"
+      }
+    },
+    "board": {
+      "name": "Board (Kanban)",
+      "description": "Hiện file .board.md hoặc note có frontmatter board: true thành bảng Kanban (cột là heading ##, thẻ là - [ ]); lệnh tạo board mới.",
+      "create": "Board: tạo board mới",
+      "failed": "Không tạo được board mới.",
+      "addCard": "Thêm thẻ",
+      "deleteColumn": "Xoá cột",
+      "confirmDeleteColumn": {
+        "other": "Xoá cột \"{title}\" cùng {count} thẻ của nó?"
+      },
+      "cardPlaceholder": "Nội dung thẻ...",
+      "addCardButton": "+ Thêm thẻ",
+      "columnPlaceholder": "Tên cột...",
+      "add": "Thêm",
+      "cancel": "Huỷ",
+      "addColumn": "+ Thêm cột"
+    },
+    "canvas": {
+      "name": "Canvas",
+      "description": "Bảng tự do gồm khối chữ, note, giấy nhớ, ảnh và nhóm nối bằng mũi tên; mở note có frontmatter canvas: true. Lệnh tạo canvas mới.",
+      "create": "Canvas: tạo canvas mới",
+      "failed": "Không tạo được canvas mới.",
+      "searchNotes": "Tìm note...",
+      "noMatchingNotes": "Không có note phù hợp",
+      "noteNotFound": "(không tìm thấy note)",
+      "pickImage": "Chọn ảnh",
+      "upload": "Tải ảnh lên…",
+      "uploading": "Đang tải lên…",
+      "noImages": "Chưa có ảnh nào trong vault. Tải ảnh lên bằng nút bên trên.",
+      "loading": "Đang tải…",
+      "group": "Nhóm",
+      "select": "Chọn (V)",
+      "addText": "Thêm khối chữ",
+      "addSticky": "Thêm giấy nhớ",
+      "addImage": "Thêm ảnh",
+      "addFile": "Thêm khối note",
+      "addGroup": "Thêm nhóm",
+      "draw": "Vẽ (D)",
+      "zoomIn": "Phóng to",
+      "zoomOut": "Thu nhỏ",
+      "resetZoom": "Về 100%",
+      "zoomToFit": "Vừa màn hình",
+      "deleteSelected": "Xoá mục đã chọn",
+      "menu": {
+        "duplicate": "Nhân bản",
+        "stickyColor": "Màu giấy nhớ",
+        "color": "Màu",
+        "delete": "Xoá",
+        "addText": "Thêm khối chữ",
+        "addSticky": "Thêm giấy nhớ",
+        "addImage": "Thêm ảnh"
+      }
+    },
+    "drawing": {
+      "name": "Drawing",
+      "description": "Vẽ tay, hình, chữ và tẩy; mở note có frontmatter drawing: true. Lệnh tạo bản vẽ mới.",
+      "create": "Drawing: tạo bản vẽ mới",
+      "failed": "Không tạo được bản vẽ mới.",
+      "tool": {
+        "select": "Chọn (V)",
+        "pencil": "Bút chì (P)",
+        "rectangle": "Hình chữ nhật (R)",
+        "ellipse": "Hình elip (O)",
+        "line": "Đường thẳng (L)",
+        "arrow": "Mũi tên (A)",
+        "text": "Chữ (T)",
+        "eraser": "Tẩy (E)"
+      },
+      "pickColor": "Chọn màu bất kỳ",
+      "fillOn": "Tô nền: bật",
+      "fillOff": "Tô nền: tắt",
+      "resetView": "Đặt lại khung nhìn",
+      "clear": "Xoá hết",
+      "confirmClear": "Chắc chắn xoá hết?",
+      "saving": "Đang lưu…"
+    },
+    "dataview": {
+      "name": "Dataview",
+      "description": "Truy vấn note bằng khối ```dataview (TABLE / LIST / TASK, lọc theo thư mục, tag, frontmatter); lệnh chèn truy vấn mẫu.",
+      "insert": "Dataview: chèn truy vấn",
+      "running": "Đang chạy truy vấn...",
+      "error": "Lỗi: {message}"
+    },
+    "mermaid": {
+      "name": "Mermaid",
+      "description": "Vẽ sơ đồ từ khối ```mermaid trong editor, chế độ đọc và khi xuất PDF. Thư viện chỉ tải khi gặp sơ đồ đầu tiên.",
+      "rendering": "Đang vẽ sơ đồ...",
+      "error": "Lỗi sơ đồ"
     }
   },
   "web": {
@@ -103,5 +534,8 @@
       "placeholder": "Gõ để tìm file...",
       "empty": "Không tìm thấy file nào"
     }
+  },
+  "common": {
+    "close": "Đóng"
   }
 }

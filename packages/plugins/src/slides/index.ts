@@ -1,39 +1,27 @@
 import { createElement } from "react";
 import type { CorePlugin, PluginApi } from "@noteriv/plugin-api";
+import { pluginT } from "../shared/i18n";
 import { reactView } from "../shared/react-view";
 import { SlidePresentation, type SlideLabels } from "./SlidePresentation";
 
 export const VIEW_TYPE = "slides";
 
-// Web speaks Vietnamese, desktop English (same convention as the other core plugins).
-const TEXT: Record<"web" | "desktop", SlideLabels & { command: string; title: string; noNote: string }> = {
-  web: {
-    command: "Trình chiếu note hiện tại",
-    title: "Trình chiếu",
-    noNote: "Mở một ghi chú để trình chiếu.",
-    exit: "Thoát",
-    notes: "Ghi chú",
-    overview: "Tổng quan",
-    print: "In",
-    speakerNotes: "Ghi chú người trình bày",
-    overviewTitle: (n) => `Tổng quan (${n} trang)`,
-    closeOverview: "Đóng tổng quan",
-    separatorHint: "Dùng --- trên một dòng riêng để tách trang",
-  },
-  desktop: {
-    command: "Start presentation",
-    title: "Presentation",
-    noNote: "Open a note to present it.",
-    exit: "Exit",
-    notes: "Notes",
-    overview: "Overview",
-    print: "Print",
-    speakerNotes: "Speaker Notes",
-    overviewTitle: (n) => `Slide Overview (${n} slides)`,
-    closeOverview: "Close Overview",
-    separatorHint: "Use --- on its own line to separate slides",
-  },
-};
+function labelsFor(api: PluginApi): SlideLabels & { command: string; title: string; noNote: string } {
+  const t = pluginT(api, "slides");
+  return {
+    command: t("command"),
+    title: t("title"),
+    noNote: t("noNote"),
+    exit: t("exit"),
+    notes: t("notes"),
+    overview: t("overview"),
+    print: t("print"),
+    speakerNotes: t("speakerNotes"),
+    overviewTitle: (count) => t("overviewTitle", { count }),
+    closeOverview: t("closeOverview"),
+    separatorHint: t("separatorHint"),
+  };
+}
 
 const ICON =
   '<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1.5" y="2.5" width="13" height="9" rx="1" stroke="currentColor" stroke-width="1.2"/><path d="M8 11.5V14M5.5 14h5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>';
@@ -41,7 +29,7 @@ const ICON =
 /** Slides: present the open note full screen, one slide per `---` section. */
 const slides: CorePlugin = {
   onload(api: PluginApi) {
-    const t = TEXT[api.app.platform];
+    const t = labelsFor(api);
     // The note as it was when the presentation started; the view is not live.
     let content = "";
     api.ui.registerView(

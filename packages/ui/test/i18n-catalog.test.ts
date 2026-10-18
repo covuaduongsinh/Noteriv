@@ -3,6 +3,7 @@ import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { flattenMessages, isPluralForms, placeholders, type CatalogEntry, type Messages } from "../src/i18n/translate";
+import { corePluginGroup } from "../src/plugins/CorePluginsSection";
 
 // The English catalog is the reference: every other catalog must translate every key, with the same placeholders,
 // and every key the code asks for by name must exist. These checks keep a missing or misspelt key from reaching a
@@ -77,5 +78,19 @@ describe("i18n catalogs", () => {
     }
     expect(missing).toEqual([]);
     expect(used).toBeGreaterThan(0);
+  });
+
+  it("names and describes every core plugin the apps ship", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const list = readFileSync(join(root, app, "src", "lib", "core-plugins.ts"), "utf8");
+      const ids = Array.from(list.matchAll(/\bid: "([\w-]+)"/g), (m) => m[1]);
+      expect(ids.length, app).toBeGreaterThan(10);
+      for (const id of ids) {
+        const group = corePluginGroup(id);
+        for (const key of [`${group}.name`, `${group}.description`]) if (!en.has(key)) missing.push(`${app}: ${key}`);
+      }
+    }
+    expect(missing).toEqual([]);
   });
 });

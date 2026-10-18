@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { FileView, FileViewInstance, PluginApi } from "@noteriv/plugin-api";
 import { createBoardContent, parseBoard } from "@noteriv/core/board-utils";
 import board, { FILE_VIEW_ID, isBoard, newBoardPath } from "../src/board";
@@ -12,6 +13,7 @@ function fakeApi(existing: string[] = []) {
   const files = new Set(existing);
   const api = {
     app: { platform: "web", vaultPath: null, currentFile: null },
+    i18n: platformI18n("web"),
     vault: {
       exists: vi.fn(async (p: string) => files.has(p)),
       write: vi.fn(async (p: string) => void files.add(p)),

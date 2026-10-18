@@ -2,6 +2,8 @@
 
 import { useState, useEffect, useMemo, useCallback } from "react";
 import type { NoteBacklink, NoteRef, VaultAdapter } from "@noteriv/core/vault-adapter";
+import { t } from "../i18n";
+import { useLocale } from "../i18n/react";
 
 interface BacklinksPanelProps {
   adapter: VaultAdapter;
@@ -19,6 +21,7 @@ interface BacklinkGroup {
 }
 
 export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }: BacklinksPanelProps) {
+  useLocale();
   const [backlinks, setBacklinks] = useState<NoteBacklink[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -60,14 +63,14 @@ export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }:
   return (
     <div className="bl-panel">
       <div className="bl-header">
-        <span className="bl-title">Backlinks</span>
+        <span className="bl-title">{t("panels.backlinks.title")}</span>
         <div className="bl-header-right">
           {!loading && (
             <span className="bl-count">
-              {backlinks.length} {backlinks.length === 1 ? "link" : "links"}
+              {t("panels.backlinks.count", { count: backlinks.length })}
             </span>
           )}
-          <button onClick={onClose} className="bl-close" title="Close">
+          <button onClick={onClose} className="bl-close" title={t("common.close")}>
             <svg width="12" height="12" viewBox="0 0 12 12">
               <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
             </svg>
@@ -79,10 +82,10 @@ export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }:
         {loading ? (
           <div className="bl-loading">
             <div className="bl-spinner" />
-            <span>Scanning vault...</span>
+            <span>{t("panels.backlinks.scanning")}</span>
           </div>
         ) : backlinks.length === 0 ? (
-          <div className="bl-empty">No backlinks found for this note.</div>
+          <div className="bl-empty">{t("panels.backlinks.empty")}</div>
         ) : (
           groups.map(({ ref, links }) => (
             <div key={ref.id} className="bl-group">
@@ -106,7 +109,7 @@ export default function BacklinksPanel({ adapter, noteId, onNoteOpen, onClose }:
                       key={`${ref.id}:${bl.line}:${idx}`}
                       className="bl-snippet"
                       onClick={() => handleBacklinkClick(ref.id)}
-                      title={`Line ${bl.line}`}
+                      title={t("panels.backlinks.line", { line: bl.line })}
                     >
                       <span className="bl-line-num">L{bl.line}</span>
                       <span className="bl-snippet-text">{bl.snippet}</span>

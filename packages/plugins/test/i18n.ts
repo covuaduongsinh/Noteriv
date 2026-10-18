@@ -12,6 +12,11 @@ function catalog(locale: Locale) {
   return flattenMessages(JSON.parse(readFileSync(join(localesDir, `${locale}.json`), "utf8")) as Messages);
 }
 
+/** The language each app shows during the stage-4 transition: web Vietnamese, desktop English. */
+export function platformI18n(platform: "web" | "desktop"): I18nApi {
+  return testI18n(platform === "web" ? "vi" : "en");
+}
+
 /** `api.i18n` as the host builds it, for `locale`; a missing key throws instead of showing the key. */
 export function testI18n(locale: Locale = "en"): I18nApi {
   const t = createTranslator(locale, catalog(locale), catalog("en"), (key) => {

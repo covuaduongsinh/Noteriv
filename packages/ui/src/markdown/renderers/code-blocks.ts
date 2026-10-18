@@ -7,6 +7,7 @@ import {
   type CodeBlockProcessor,
   type CodeBlockProcessorContext,
 } from "@noteriv/core/markdown-code-block-registry";
+import { t } from "../../i18n";
 
 // Simple token-based syntax highlighting
 // Each language defines regex patterns with associated CSS classes
@@ -244,16 +245,17 @@ class CodeBlockWidget extends WidgetType {
 
     const copyBtn = document.createElement("button");
     copyBtn.className = "md-codeblock-copy";
-    copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.3"/></svg><span>Copy</span>';
+    copyBtn.innerHTML = '<svg width="12" height="12" viewBox="0 0 16 16" fill="none"><rect x="5" y="5" width="9" height="9" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M11 5V3.5A1.5 1.5 0 009.5 2h-6A1.5 1.5 0 002 3.5v6A1.5 1.5 0 003.5 11H5" stroke="currentColor" stroke-width="1.3"/></svg><span></span>';
+    copyBtn.querySelector("span")!.textContent = t("editor.codeBlock.copy");
     copyBtn.addEventListener("mousedown", (e) => {
       e.preventDefault();
       e.stopPropagation();
       navigator.clipboard.writeText(this.code).then(() => {
         const span = copyBtn.querySelector("span")!;
-        span.textContent = "Copied!";
+        span.textContent = t("editor.codeBlock.copied");
         copyBtn.classList.add("copied");
         setTimeout(() => {
-          span.textContent = "Copy";
+          span.textContent = t("editor.codeBlock.copy");
           copyBtn.classList.remove("copied");
         }, 1500);
       });

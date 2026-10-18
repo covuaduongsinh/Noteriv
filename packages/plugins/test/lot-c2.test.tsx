@@ -1,5 +1,6 @@
 import { act } from "react";
 import { beforeAll, describe, expect, it, vi } from "vitest";
+import { platformI18n } from "./i18n";
 import type { FileView, FileViewInstance, PluginApi } from "@noteriv/plugin-api";
 import { parseCanvas, serializeCanvas } from "@noteriv/core/canvas-utils";
 import { createEmptyDrawing, parseDrawing, serializeDrawing } from "@noteriv/core/drawing-utils";
@@ -24,6 +25,7 @@ function fakeApi(platform: "web" | "desktop", existing: string[] = [], notes: Re
   const files = new Set(existing);
   const raw = {
     app: { platform, vaultPath: null, currentFile: null },
+    i18n: platformI18n(platform),
     vault: {
       exists: vi.fn(async (p: string) => files.has(p)),
       write: vi.fn(async (p: string, _content: string) => void files.add(p)),
@@ -100,7 +102,7 @@ describe("canvas plugin", () => {
     expect(v.el.textContent).toContain("Alpha");
     expect(v.el.textContent).toContain("Alpha body text");
 
-    const addText = v.el.querySelector<HTMLButtonElement>('button[title="Add text node"]')!;
+    const addText = v.el.querySelector<HTMLButtonElement>('button[title="Thêm khối chữ"]')!;
     await act(async () => addText.click());
     await wait(600);
     expect(v.setContent).toHaveBeenCalled();
@@ -181,7 +183,7 @@ describe("drawing plugin", () => {
     const fm = "---\ndrawing: true\n---\n";
     const start = { ...createEmptyDrawing(), elements: [{ id: "e1", type: "rectangle", x: 0, y: 0, width: 10, height: 10 }] };
     const v = await mount(view, "S.md", fm + serializeDrawing(start as never));
-    const clear = () => [...v.el.querySelectorAll("button")].find((b) => /clear/i.test(b.textContent ?? ""))!;
+    const clear = () => [...v.el.querySelectorAll("button")].find((b) => /xoá hết/i.test(b.textContent ?? ""))!;
     await act(async () => clear().click());
     await act(async () => clear().click());
     await wait(800);
