@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "@noteriv/ui/styles/katex.css";
 import "./globals.css";
 import LocaleSync from "@/components/LocaleSync";
+import { DEFAULT_LOCALE, LOCALE_BOOT_SCRIPT } from "@/lib/i18n";
 
 export const metadata: Metadata = {
   title: "Noteriv",
@@ -9,9 +10,13 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
-  // `lang` is the default language (web/src/lib/i18n.ts); the i18n module updates it when the language changes.
+  // The server renders the default language; the head script sets `lang` (and holds the paint) when the browser or
+  // the user's choice says otherwise, hence suppressHydrationWarning. The i18n module keeps `lang` up to date after.
   return (
-    <html lang="vi">
+    <html lang={DEFAULT_LOCALE} suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: LOCALE_BOOT_SCRIPT }} />
+      </head>
       <body>
         <LocaleSync />
         {children}

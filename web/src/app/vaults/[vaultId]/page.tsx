@@ -8,7 +8,7 @@ import SplitPane from "@/components/SplitPane";
 import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch } from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
-import { applyLanguage } from "@/lib/i18n";
+import { applyLanguage, storedLanguage } from "@/lib/i18n";
 import CollabPanel from "@/components/CollabPanel";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -804,9 +804,12 @@ export default function VaultPage() {
       .get()
       .then((prefs) => {
         const bindings = mergeHotkeys(prefs.hotkeys);
-        const settings = { ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings };
+        const loaded = { ...DEFAULT_EDITOR_SETTINGS, ...prefs.editorSettings };
+        savedPreferencesRef.current = JSON.stringify({ hotkeys: hotkeysToOverrideMap(bindings), editorSettings: loaded });
+        // A language picked on this device before the account had one (login page) becomes the account's choice:
+        // it differs from what was loaded, so the next preferences save stores it.
+        const settings = { ...loaded, language: loaded.language ?? storedLanguage() };
         applyLanguage(settings.language);
-        savedPreferencesRef.current = JSON.stringify({ hotkeys: hotkeysToOverrideMap(bindings), editorSettings: settings });
         setHotkeyBindings(bindings);
         setEditorSettingsState(settings);
       })

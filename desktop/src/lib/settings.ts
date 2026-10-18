@@ -21,7 +21,7 @@ export interface AppSettings {
   sidebarCollapseWidth: number;
   pdfColumnLayout: 1 | 2;       // number of print columns for PDF export
   pdfChessboardWidth: 75 | 100; // chessboard width as % of column width; no UI in the general product, the chess edition plugin will expose it
-  language?: "en" | "vi"; // interface language; unset = the app default (src/lib/i18n.ts)
+  language?: "en" | "vi" | "auto"; // interface language; "auto" follows the system (src/lib/i18n.ts)
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {

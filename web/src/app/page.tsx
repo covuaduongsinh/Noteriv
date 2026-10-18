@@ -3,8 +3,11 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { webApi } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 export default function HomePage() {
+  useLocale();
   const router = useRouter();
 
   useEffect(() => {
@@ -16,7 +19,7 @@ export default function HomePage() {
 
   return (
     <div className="h-screen flex items-center justify-center text-[var(--text-secondary)]">
-      Loading…
+      {t("common.loadingShort")}
     </div>
   );
 }

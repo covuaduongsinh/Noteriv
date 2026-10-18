@@ -4,6 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { webApi, ApiError, type RegistrationMode } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
+import LanguageSwitch from "@/components/LanguageSwitch";
 
 function errorCode(err: unknown): string | null {
   if (err instanceof ApiError && err.body && typeof err.body === "object" && "error" in err.body) {
@@ -13,6 +16,7 @@ function errorCode(err: unknown): string | null {
 }
 
 export default function RegisterPage() {
+  useLocale();
   const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,15 +52,15 @@ export default function RegisterPage() {
     } catch (err) {
       const code = errorCode(err);
       if (code === "invalid_invite") {
-        setError("Mã mời không đúng, đã hết lượt, đã hết hạn hoặc đã bị thu hồi. Hãy kiểm tra lại với người gửi mã.");
+        setError(t("web.auth.badInvite"));
       } else if (code === "registration_closed") {
-        setError("Hiện chưa mở đăng ký tài khoản mới.");
+        setError(t("web.auth.closed"));
       } else if (err instanceof ApiError && err.status === 409) {
-        setError("Email này đã được sử dụng.");
+        setError(t("web.auth.emailTaken"));
       } else if (err instanceof ApiError && err.status === 429) {
-        setError("Bạn thử quá nhiều lần. Vui lòng đợi một phút rồi thử lại.");
+        setError(t("web.auth.tooMany"));
       } else {
-        setError("Có lỗi xảy ra. Kiểm tra lại email/mật khẩu (tối thiểu 8 ký tự).");
+        setError(t("web.auth.registerError"));
       }
     } finally {
       setLoading(false);
@@ -67,10 +71,10 @@ export default function RegisterPage() {
     return (
       <div className="h-screen flex items-center justify-center">
         <div className="w-80 flex flex-col gap-3 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
-          <h1 className="text-xl font-semibold mb-2">Đăng ký chưa mở</h1>
-          <p className="text-sm text-[var(--text-secondary)]">Noteriv hiện chưa nhận tài khoản mới.</p>
+          <h1 className="text-xl font-semibold mb-2">{t("web.auth.closedTitle")}</h1>
+          <p className="text-sm text-[var(--text-secondary)]">{t("web.auth.closedDesc")}</p>
           <Link href="/login" className="text-sm text-[var(--accent)]">
-            Đăng nhập
+            {t("web.auth.signIn")}
           </Link>
         </div>
       </div>
@@ -80,11 +84,11 @@ export default function RegisterPage() {
   return (
     <div className="h-screen flex items-center justify-center">
       <form onSubmit={onSubmit} className="w-80 flex flex-col gap-3 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
-        <h1 className="text-xl font-semibold mb-2">Tạo tài khoản Noteriv</h1>
+        <h1 className="text-xl font-semibold mb-2">{t("web.auth.registerTitle")}</h1>
         {mode !== "open" && (
           <input
             type="text"
-            placeholder="Mã mời"
+            placeholder={t("web.auth.inviteCode")}
             value={inviteCode}
             onChange={(e) => setInviteCode(e.target.value)}
             required
@@ -96,7 +100,7 @@ export default function RegisterPage() {
         )}
         <input
           type="text"
-          placeholder="Tên hiển thị"
+          placeholder={t("web.auth.displayName")}
           value={displayName}
           onChange={(e) => setDisplayName(e.target.value)}
           required
@@ -112,7 +116,7 @@ export default function RegisterPage() {
         />
         <input
           type="password"
-          placeholder="Mật khẩu (tối thiểu 8 ký tự)"
+          placeholder={t("web.auth.newPassword")}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           required
@@ -128,13 +132,13 @@ export default function RegisterPage() {
             className="mt-1"
           />
           <span>
-            Tôi đã đọc và đồng ý với{" "}
+            {t("web.auth.acceptBefore")}{" "}
             <Link href="/terms" target="_blank" className="text-[var(--accent)]">
-              Điều khoản sử dụng
+              {t("web.auth.termsOfUse")}
             </Link>{" "}
-            và{" "}
+            {t("web.auth.and")}{" "}
             <Link href="/privacy" target="_blank" className="text-[var(--accent)]">
-              Chính sách quyền riêng tư
+              {t("web.auth.privacyPolicy")}
             </Link>
             .
           </span>
@@ -145,14 +149,15 @@ export default function RegisterPage() {
           disabled={loading || !acceptTerms || mode === null}
           className="px-3 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)] font-medium disabled:opacity-50"
         >
-          {loading ? "Đang tạo…" : "Đăng ký"}
+          {loading ? t("web.auth.creating") : t("web.auth.signUp")}
         </button>
         <p className="text-sm text-[var(--text-secondary)] text-center">
-          Đã có tài khoản?{" "}
+          {t("web.auth.haveAccount")}{" "}
           <Link href="/login" className="text-[var(--accent)]">
-            Đăng nhập
+            {t("web.auth.signIn")}
           </Link>
         </p>
+        <LanguageSwitch />
       </form>
     </div>
   );

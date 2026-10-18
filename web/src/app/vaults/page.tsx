@@ -4,8 +4,12 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { webApi, type ApiVault } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
+import { applyLanguage } from "@/lib/i18n";
 
 export default function VaultsPage() {
+  useLocale();
   const router = useRouter();
   const [vaults, setVaults] = useState<ApiVault[] | null>(null);
   const [newName, setNewName] = useState("");
@@ -22,6 +26,11 @@ export default function VaultsPage() {
     webApi.auth
       .me()
       .then((u) => setIsAdmin(!!u.isAdmin))
+      .catch(() => undefined);
+    // The account's language, so this page (and the next ones) shows it even on a device that never opened a vault.
+    webApi.preferences
+      .get()
+      .then((prefs) => applyLanguage((prefs.editorSettings as { language?: unknown } | undefined)?.language))
       .catch(() => undefined);
   }, [router]);
 
@@ -70,15 +79,15 @@ export default function VaultsPage() {
   return (
     <div className="h-screen flex flex-col items-center gap-6 pt-20 px-4">
       <div className="flex items-center justify-between w-full max-w-md">
-        <h1 className="text-2xl font-semibold">Vault của bạn</h1>
+        <h1 className="text-2xl font-semibold">{t("web.vaultList.title")}</h1>
         <button onClick={logout} className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-          Đăng xuất
+          {t("web.vaultList.signOut")}
         </button>
       </div>
 
       <div className="w-full max-w-md flex flex-col gap-2">
-        {vaults === null && <p className="text-[var(--text-secondary)]">Đang tải…</p>}
-        {vaults?.length === 0 && <p className="text-[var(--text-secondary)]">Chưa có vault nào.</p>}
+        {vaults === null && <p className="text-[var(--text-secondary)]">{t("web.vaultList.loading")}</p>}
+        {vaults?.length === 0 && <p className="text-[var(--text-secondary)]">{t("web.vaultList.empty")}</p>}
         {vaults?.map((v) => (
           <button
             key={v.id}
@@ -94,7 +103,7 @@ export default function VaultsPage() {
         <input
           value={newName}
           onChange={(e) => setNewName(e.target.value)}
-          placeholder="Tên vault mới"
+          placeholder={t("web.vaults.newPlaceholder")}
           className="flex-1 px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
         />
         <button
@@ -102,25 +111,25 @@ export default function VaultsPage() {
           disabled={creating}
           className="px-4 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)] font-medium disabled:opacity-50"
         >
-          Tạo
+          {t("web.vaultList.create")}
         </button>
       </form>
 
       <div className="w-full max-w-md flex flex-col gap-2 mt-8 pt-6 border-t border-[var(--border)]">
-        <h2 className="text-sm font-medium text-[var(--text-secondary)]">Tài khoản</h2>
+        <h2 className="text-sm font-medium text-[var(--text-secondary)]">{t("web.vaultList.account")}</h2>
         {isAdmin && (
           <Link
             href="/admin/invites"
             className="px-3 py-2 rounded-lg text-sm text-[var(--accent)] hover:bg-[var(--bg-secondary)]"
           >
-            Quản lý mã mời (quản trị)
+            {t("web.vaultList.invites")}
           </Link>
         )}
         <button
           onClick={exportData}
           className="text-left px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
         >
-          Tải xuống toàn bộ dữ liệu (JSON)
+          {t("web.vaultList.export")}
         </button>
         <button
           onClick={deleteAccount}
@@ -128,15 +137,15 @@ export default function VaultsPage() {
           disabled={deletingAccount}
           className="text-left px-3 py-2 rounded-lg text-sm text-[var(--red)] hover:bg-[var(--bg-secondary)] disabled:opacity-50"
         >
-          {confirmDelete ? "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu" : "Xoá tài khoản"}
+          {confirmDelete ? t("web.vaultList.deleteConfirm") : t("web.vaultList.delete")}
         </button>
         <p className="px-3 text-xs text-[var(--text-secondary)]">
           <Link href="/terms" className="hover:text-[var(--text-primary)]">
-            Điều khoản sử dụng
+            {t("web.auth.termsOfUse")}
           </Link>
           {" · "}
           <Link href="/privacy" className="hover:text-[var(--text-primary)]">
-            Chính sách quyền riêng tư
+            {t("web.auth.privacyPolicy")}
           </Link>
         </p>
       </div>

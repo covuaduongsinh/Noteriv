@@ -19,6 +19,7 @@ import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
 import { t, tOr } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { applyAutomaticLanguage, applyLanguage } from "@/lib/i18n";
 
 type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper";
 /** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
@@ -39,6 +40,8 @@ export interface EditorSettings {
   pdfColumnLayout: 1 | 2;
   pdfChessboardWidth: 75 | 100;
   autoCollapseSidebar: boolean;
+  /** Interface language; unset follows the browser (web/src/lib/i18n.ts). */
+  language?: "en" | "vi";
 }
 
 interface SettingsModalProps {
@@ -145,6 +148,28 @@ export default function SettingsModal({
 
   const renderGeneral = () => (
     <div className="st-section">
+      <Row label={t("settings.language.label")} desc={t("settings.language.desc")}>
+        <select
+          className="st-select"
+          aria-label={t("settings.language.label")}
+          value={editorSettings.language ?? "auto"}
+          onChange={(e) => {
+            const value = e.target.value;
+            if (value === "en" || value === "vi") {
+              onEditorSettingsChange({ language: value });
+              applyLanguage(value);
+            } else {
+              onEditorSettingsChange({ language: undefined });
+              applyAutomaticLanguage();
+            }
+          }}
+        >
+          <option value="auto">{t("settings.language.autoWeb")}</option>
+          {/* Each language is named in itself, so it can be found whatever the current language is. */}
+          <option value="en">English</option>
+          <option value="vi">Tiếng Việt</option>
+        </select>
+      </Row>
       <Row label={t("settings.autoCollapse.label")} desc={t("settings.autoCollapse.desc")}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={editorSettings.autoCollapseSidebar} onChange={(e) => onEditorSettingsChange({ autoCollapseSidebar: e.target.checked })} />

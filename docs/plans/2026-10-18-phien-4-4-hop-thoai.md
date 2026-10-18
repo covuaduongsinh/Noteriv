@@ -48,6 +48,13 @@ Phiên này dùng hai script nhỏ trong scratchpad (không commit):
 - JS tải đầu web: **229,5 KB gzip** (4.3: 223,1; ngân sách ≤ 374).
 - **Smoke desktop (app Tauri thật) 16/16** sau `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle`.
 
+## Lên production
+
+- PR #12 (CI xanh cả 4 job sau bản sửa test) gộp vào `main` thành `c99d7b8` ngày 2026-10-18.
+- Production: deploy `done`, 9 container, `/` và `/api/v1/healthz` trả 200. Không có migration.
+- Staging đã thử trước khi gộp: deploy `done`, `/`, `/login`, `/api/v1/healthz` trả 200.
+- Sau khi gộp: đưa `next` về bằng `main`, chờ bản deploy staging do lần đẩy đó xong, rồi tắt staging.
+
 ## Chưa làm / để sau
 
 - 4.5:

@@ -1,4 +1,8 @@
 import { webApi, ApiError, type ApiNote } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+
+/** The name of a new note in the interface language ("Untitled", "Chưa đặt tên"). */
+const untitled = () => t("files.untitled");
 
 /** "Untitled.md", "Untitled 2.md", … — the first name not already used in `folderId` according to the index. */
 export function nextUntitledName(
@@ -6,12 +10,13 @@ export function nextUntitledName(
   folderId: string | null,
   start = 1
 ): string {
+  const base = untitled();
   const taken = new Set(notes.filter((n) => n.folderId === folderId).map((n) => n.name.toLowerCase()));
   for (let i = start; i < start + 500; i++) {
-    const name = i === 1 ? "Untitled.md" : `Untitled ${i}.md`;
+    const name = i === 1 ? `${base}.md` : `${base} ${i}.md`;
     if (!taken.has(name.toLowerCase())) return name;
   }
-  return `Untitled ${Date.now()}.md`;
+  return `${base} ${Date.now()}.md`;
 }
 
 /**
@@ -31,7 +36,7 @@ export async function createUntitledNote(
       return await webApi.notes.create(vaultId, { name, folderId, content });
     } catch (err) {
       if (err instanceof ApiError && err.status === 409) {
-        const m = name.match(/^Untitled (\d+)\.md$/);
+        const m = / (\d+)\.md$/.exec(name);
         attempt = m ? Number(m[1]) + 1 : 2;
         continue;
       }

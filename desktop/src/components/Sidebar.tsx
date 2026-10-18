@@ -634,11 +634,12 @@ export default function Sidebar({
 
   const handleNewFileIn = useCallback(async (dirPath: string) => {
     if (!window.electronAPI) return;
-    let name = "Untitled.md";
+    const base = t("files.untitled"); // in the interface language
+    let name = `${base}.md`;
     let counter = 1;
     const existing = await window.electronAPI.readDir(dirPath);
     const existingNames = existing.map((e) => e.name);
-    while (existingNames.includes(name)) { counter++; name = `Untitled ${counter}.md`; }
+    while (existingNames.includes(name)) { counter++; name = `${base} ${counter}.md`; }
     const filePath = `${dirPath}/${name}`;
     await window.electronAPI.createFile(filePath);
     if (vault && dirPath !== vault.path && !expandedFolders.includes(dirPath)) {
@@ -652,11 +653,12 @@ export default function Sidebar({
 
   const handleNewFolderIn = useCallback(async (dirPath: string) => {
     if (!window.electronAPI) return;
-    let name = "New Folder";
+    const base = t("files.newFolder");
+    let name = base;
     let counter = 1;
     const existing = await window.electronAPI.readDir(dirPath);
     const existingNames = existing.map((e) => e.name);
-    while (existingNames.includes(name)) { counter++; name = `New Folder ${counter}`; }
+    while (existingNames.includes(name)) { counter++; name = `${base} ${counter}`; }
     const folderPath = `${dirPath}/${name}`;
     await window.electronAPI.createDir(folderPath);
     if (vault && dirPath !== vault.path && !expandedFolders.includes(dirPath)) {

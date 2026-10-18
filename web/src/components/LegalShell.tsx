@@ -2,7 +2,10 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONTACT_EMAIL, LAST_UPDATED, OPERATOR_NAME, isDraft } from "@/lib/legal";
 
-/** Common frame for the legal pages: draft banner, Vietnamese / English jump links, cross links. */
+/**
+ * Common frame for the legal pages: draft banner, English / Vietnamese jump links, cross links. The texts are written
+ * by hand in both languages (English first) rather than kept in the i18n catalogs: a legal text is reviewed as a whole.
+ */
 export default function LegalShell({ title, children }: { title: string; children: ReactNode }) {
   return (
     <div className="min-h-screen flex justify-center px-4 py-12">
@@ -12,11 +15,11 @@ export default function LegalShell({ title, children }: { title: string; childre
             ← Noteriv
           </Link>
           <nav className="flex gap-4">
-            <a href="#vi" className="hover:text-[var(--text-primary)]">
-              Tiếng Việt
-            </a>
             <a href="#en" className="hover:text-[var(--text-primary)]">
               English
+            </a>
+            <a href="#vi" className="hover:text-[var(--text-primary)]">
+              Tiếng Việt
             </a>
             <Link href="/terms" className="hover:text-[var(--text-primary)]">
               Terms
@@ -29,16 +32,16 @@ export default function LegalShell({ title, children }: { title: string; childre
 
         {isDraft && (
           <div className="rounded-lg border border-[var(--border)] bg-[var(--bg-secondary)] px-4 py-3 text-sm">
-            <strong>Bản nháp / Draft.</strong> Nội dung chưa được chủ dự án duyệt và chưa điền thông tin chủ thể vận hành. Đây
-            không phải tư vấn pháp lý. / Not yet reviewed or completed by the operator. This is not legal advice.
+            <strong>Draft / Bản nháp.</strong> Not yet reviewed or completed by the operator. This is not legal advice. / Nội dung
+            chưa được chủ dự án duyệt và chưa điền thông tin chủ thể vận hành. Đây không phải tư vấn pháp lý.
           </div>
         )}
 
         <h1 className="text-3xl font-semibold">{title}</h1>
         <p className="text-sm text-[var(--text-secondary)]">
-          Cập nhật / Last updated: {LAST_UPDATED}. Chủ thể vận hành / Operator: {OPERATOR_NAME || "[họ tên chủ dự án]"}
+          Last updated / Cập nhật: {LAST_UPDATED}. Operator / Chủ thể vận hành: {OPERATOR_NAME || "[operator name]"}
           {" · "}
-          {CONTACT_EMAIL || "[email liên hệ]"}
+          {CONTACT_EMAIL || "[contact email]"}
         </p>
 
         {children}

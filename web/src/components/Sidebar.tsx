@@ -400,10 +400,11 @@ export default function Sidebar({
   }
 
   async function handleNewFolderIn(parentId: string | null) {
-    // "New Folder", "New Folder 2", … — creating the same name twice is a 409 on the server.
+    // "New Folder", "New Folder 2", … (in the interface language) — creating the same name twice is a 409 on the server.
     const siblings = new Set((index?.folders ?? []).filter((f) => f.parentId === parentId).map((f) => f.name.toLowerCase()));
-    let name = "New Folder";
-    for (let i = 2; siblings.has(name.toLowerCase()); i++) name = `New Folder ${i}`;
+    const base = t("files.newFolder");
+    let name = base;
+    for (let i = 2; siblings.has(name.toLowerCase()); i++) name = `${base} ${i}`;
     try {
       const folder = await webApi.folders.create(vaultId, { name, parentId });
       if (parentId) setExpandedFolders((prev) => new Set(prev).add(parentId));
