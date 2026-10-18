@@ -57,7 +57,20 @@ test("sign up with an invite code", async () => {
   await page.getByPlaceholder("Password (at least 8 characters)").fill(password);
   await page.locator('input[type="checkbox"]').check();
   await page.getByRole("button", { name: "Sign up" }).click();
-  await expect(page).toHaveURL(/\/vaults$/);
+  // Sign-up also writes the Getting started vault before moving on, which takes a few requests more.
+  await expect(page).toHaveURL(/\/vaults$/, { timeout: 30_000 });
+});
+
+test("a new account starts with the Getting started vault, its notes linked", async () => {
+  await page.getByRole("button", { name: /^Getting started/ }).click();
+  await expect(page).toHaveURL(/\/vaults\/[0-9a-f-]{36}$/);
+  await expect(sidebarItem("Links and backlinks")).toBeVisible();
+  await sidebarItem("Welcome").click();
+  await page.getByTitle("Backlinks", { exact: true }).click();
+  // The links between sample notes resolve: every other note links back to Welcome.
+  await expect(page.locator(".bl-panel .bl-list")).toContainText("Links and backlinks");
+  await page.getByTitle("Backlinks", { exact: true }).click();
+  await page.goto("/vaults");
 });
 
 test("create a vault and open it", async () => {
@@ -99,7 +112,7 @@ test("write two linked notes, rename them, see the backlink", async () => {
   await firstSaved;
 
   await sidebarItem("Second").click();
-  await page.getByTitle("Backlinks").click();
+  await page.getByTitle("Backlinks", { exact: true }).click();
   await expect(page.locator(".bl-panel .bl-list")).toContainText("First");
 });
 

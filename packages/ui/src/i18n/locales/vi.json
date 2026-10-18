@@ -45,7 +45,8 @@
     "vaultSearch": {
       "placeholder": "Tìm trong nội dung các note…",
       "noResults": "Không có kết quả",
-      "hint": "Gõ để tìm trong toàn bộ vault"
+      "hint": "Gõ để tìm trong toàn bộ vault",
+      "noResultsHint": "Thử ít từ hơn hoặc từ khác, hoặc tìm theo #thẻ."
     },
     "bookmarks": {
       "title": "Bookmarks",
@@ -999,7 +1000,8 @@
       "install": "Cài đặt",
       "noneCommunity": "Chưa có plugin cộng đồng nào.",
       "manualTitle": "Cài plugin mới (dán thủ công)",
-      "manifestPlaceholder": "manifest.json, vd: {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}"
+      "manifestPlaceholder": "manifest.json, vd: {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}",
+      "browseCommunity": "Xem plugin cộng đồng"
     },
     "attachments": {
       "uploadFailed": "Tải lên thất bại — có thể đã vượt hạn mức lưu trữ của vault.",
@@ -1141,7 +1143,8 @@
       "invites": "Quản lý mã mời (quản trị)",
       "export": "Tải xuống toàn bộ dữ liệu (JSON)",
       "deleteConfirm": "Bấm lần nữa để xoá vĩnh viễn tài khoản + toàn bộ dữ liệu",
-      "delete": "Xoá tài khoản"
+      "delete": "Xoá tài khoản",
+      "emptyHint": "Đặt tên cho vault đầu tiên ở ô bên dưới. Trong vault, bạn cũng có thể nhập một thư mục note Markdown có sẵn."
     },
     "invites": {
       "createFailed": "Không tạo được mã. Thử lại sau.",
@@ -1439,7 +1442,10 @@
       "settingUp": "Đang thiết lập vault...",
       "defaultPath": "Mặc định: {path}",
       "scopeBefore": "Chọn quyền",
-      "scopeAfter": ". Token của bạn được mã hoá trên máy."
+      "scopeAfter": ". Token của bạn được mã hoá trên máy.",
+      "nameHint": "Chẳng hạn “Cá nhân”, “Công việc” hay “Nghiên cứu”.",
+      "sampleNotes": "Thêm các note hướng dẫn",
+      "sampleNotesDesc": "Vài note ngắn giới thiệu liên kết, thẻ và plugin. Xoá lúc nào cũng được."
     },
     "collab": {
       "startFailed": "Không bắt đầu được cộng tác. Cài yjs và y-webrtc: npm install yjs y-webrtc",
@@ -1467,7 +1473,9 @@
       "remove": "Gỡ vault",
       "new": "Vault mới",
       "confirmRemove": "Gỡ vault \"{name}\"? File của bạn vẫn còn nguyên."
-    }
+    },
+    "noFileHint": "Chọn một note ở thanh bên, hoặc tạo note mới.",
+    "quickOpenNote": "Mở một note"
   },
   "common": {
     "close": "Đóng",
@@ -1503,7 +1511,8 @@
       "newFileButton": "Thêm note",
       "empty": "Chưa có note nào",
       "createNote": "Tạo một note",
-      "resize": "Kéo để đổi độ rộng cây thư mục"
+      "resize": "Kéo để đổi độ rộng cây thư mục",
+      "emptyHint": "Viết note đầu tiên, rồi gõ [[ để liên kết tới note khác."
     },
     "status": {
       "mode": {

@@ -8,12 +8,15 @@ import { useLocale } from "../i18n/react";
 export interface VaultSearchLabels {
   placeholder: string;
   noResults: string;
+  /** Shown under `noResults`: what to try instead. */
+  noResultsHint: string;
   hint: string;
 }
 
 const defaultLabels = (): VaultSearchLabels => ({
   placeholder: t("panels.vaultSearch.placeholder"),
   noResults: t("panels.vaultSearch.noResults"),
+  noResultsHint: t("panels.vaultSearch.noResultsHint"),
   hint: t("panels.vaultSearch.hint"),
 });
 
@@ -170,7 +173,12 @@ export default function VaultSearch({ adapter, onOpen, onClose, labels, debounce
               <div className="search-result-text">{highlight(r.text)}</div>
             </button>
           ))}
-          {!searching && query.trim() && rows.length === 0 && <div className="palette-empty">{text.noResults}</div>}
+          {!searching && query.trim() && rows.length === 0 && (
+            <div className="palette-empty">
+              {text.noResults}
+              <div style={{ fontSize: "0.85em", opacity: 0.75, marginTop: 4 }}>{text.noResultsHint}</div>
+            </div>
+          )}
           {!query.trim() && <div className="palette-empty">{text.hint}</div>}
         </div>
       </div>

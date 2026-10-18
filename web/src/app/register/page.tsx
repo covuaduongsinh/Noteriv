@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { webApi, ApiError, type RegistrationMode } from "@/lib/webApi";
-import { t } from "@noteriv/ui/i18n";
+import { getLocale, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
 
@@ -48,6 +48,14 @@ export default function RegisterPage() {
         acceptTerms: true,
         ...(mode === "invite" ? { inviteCode: inviteCode.trim() } : {}),
       });
+      // A new account starts with the "Getting started" vault in the language it signed up in. Best effort: the
+      // account exists already, so a failure here only means an empty vault list.
+      try {
+        const { createSampleVault } = await import("@/lib/sample-vault");
+        await createSampleVault(getLocale());
+      } catch {
+        /* the user can create a vault themselves */
+      }
       router.replace("/vaults");
     } catch (err) {
       const code = errorCode(err);
