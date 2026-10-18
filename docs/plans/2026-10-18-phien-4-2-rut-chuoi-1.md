@@ -70,6 +70,13 @@ Khung trang web gồm:
 - JS tải đầu web: **211,6 KB gzip** (4.1: 200,5; ngân sách ≤ 374). Catalog `vi` nạp sẵn trên web nên tăng theo số chuỗi.
 - **Smoke desktop (app Tauri thật) 16/16:** `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle` (4 phút), rồi `node e2e/desktop/smoke.mjs`. Desktop vẫn hiện đúng chữ tiếng Anh cũ: word count, tìm kiếm, khung xung đột, "Core plugins".
 
+## Lên production
+
+- PR #10 (CI xanh cả 4 job) gộp vào `main` thành `f206bac` ngày 2026-10-18.
+- Deploy production `done`; 9 container; `/` và `/api/v1/healthz` trả 200. Không có migration.
+- Staging đã được thử: deploy `done`, `/`, `/login`, `/api/v1/healthz` trả 200.
+- Sau đó `next` được đưa về bằng `main`, chờ bản deploy staging do lần đẩy đó kích hoạt xong, rồi tắt staging.
+
 ## Ghi chú kỹ thuật
 
 - **Mẫu chuyển một plugin:** `labelsFor(api)` trong `index.ts` (hoặc `labels.ts`), gọi trong `onload`. Hàm nhãn có tham số (`cards: (count) => t("cards", { count })`) chỉ gọi `t` khi hiện chữ, nên test quét mã nguồn để bắt khoá thiếu.
