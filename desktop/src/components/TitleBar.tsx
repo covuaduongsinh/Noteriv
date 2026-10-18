@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import VaultSwitcher from "./VaultSwitcher";
 import ContextMenu, { ContextMenuItem } from "./ContextMenu";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface Tab {
   filePath: string;
@@ -68,6 +70,7 @@ export default function TitleBar({
   onCopyPath,
   onSplitRight,
 }: TitleBarProps) {
+  useLocale();
   const [isMaximized, setIsMaximized] = useState(false);
   const [platform, setPlatform] = useState("linux");
   const [dragIdx, setDragIdx] = useState<number | null>(null);
@@ -140,40 +143,40 @@ export default function TitleBar({
     const isPinned = pinnedTabs.has(fp);
     const items: ContextMenuItem[] = [
       {
-        label: isPinned ? "Unpin Tab" : "Pin Tab",
+        label: isPinned ? t("shell.tabs.unpin") : t("shell.tabs.pin"),
         onClick: () => onTogglePin(fp),
       },
       { label: "", separator: true, onClick: () => {} },
       {
-        label: "Close Tab",
+        label: t("shell.tabs.close"),
         onClick: () => onTabClose(fp),
       },
       {
-        label: "Close Other Tabs",
+        label: t("shell.tabs.closeOthers"),
         onClick: () => {
           onTabSelect(fp);
           onCloseOtherTabs?.();
         },
       },
       {
-        label: "Close Tabs to the Right",
+        label: t("shell.tabs.closeRight"),
         onClick: () => onCloseTabsToRight?.(fp),
       },
       {
-        label: "Close All Tabs",
+        label: t("shell.tabs.closeAll"),
         onClick: () => onCloseAllTabs?.(),
       },
       { label: "", separator: true, onClick: () => {} },
       {
-        label: "Open in Split",
+        label: t("shell.tabs.openInSplit"),
         onClick: () => onSplitRight?.(fp),
       },
       {
-        label: "Reveal in Sidebar",
+        label: t("shell.tabs.revealInSidebar"),
         onClick: () => onRevealInSidebar?.(fp),
       },
       {
-        label: "Copy File Path",
+        label: t("shell.tabs.copyFilePath"),
         onClick: () => {
           onCopyPath?.(fp);
         },
@@ -189,15 +192,15 @@ export default function TitleBar({
         {/* macOS traffic lights */}
         {isMac && (
           <div className="mac-controls">
-            <button onClick={handleClose} className="mac-dot mac-close" title="Close" />
-            <button onClick={handleMinimize} className="mac-dot mac-min" title="Minimize" />
-            <button onClick={handleMaximize} className="mac-dot mac-max" title="Maximize" />
+            <button onClick={handleClose} className="mac-dot mac-close" title={t("desktop.window.close")} />
+            <button onClick={handleMinimize} className="mac-dot mac-min" title={t("desktop.window.minimize")} />
+            <button onClick={handleMaximize} className="mac-dot mac-max" title={t("desktop.window.maximize")} />
           </div>
         )}
 
         {/* Left: sidebar toggle + vault switcher */}
         <div className="titlebar-section" style={{ paddingLeft: isMac ? 0 : 8 }}>
-          <button onClick={onToggleSidebar} className="titlebar-btn" title="Toggle Sidebar (Ctrl+B)">
+          <button onClick={onToggleSidebar} className="titlebar-btn" title={t("shell.toggleSidebar")}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <rect x="1" y="2" width="5" height="12" rx="1" stroke="currentColor" strokeWidth="1.2" fill={sidebarCollapsed ? "none" : "rgba(137,180,250,0.12)"} />
               <rect x="7" y="2" width="8" height="12" rx="1" stroke="currentColor" strokeWidth="1.2" />
@@ -253,7 +256,7 @@ export default function TitleBar({
           </div>
           )}
 
-          <button onClick={onOpenSettings} className="titlebar-btn" title="Settings (Ctrl+,)">
+          <button onClick={onOpenSettings} className="titlebar-btn" title={t("shell.settingsHotkey")}>
             <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
               <circle cx="8" cy="8" r="2" stroke="currentColor" strokeWidth="1.2" />
               <path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -263,17 +266,17 @@ export default function TitleBar({
           {/* Windows/Linux window controls */}
           {!isMac && !isWindows && (
             <div className="win-controls">
-              <button onClick={handleMinimize} className="win-btn" title="Minimize">
+              <button onClick={handleMinimize} className="win-btn" title={t("desktop.window.minimize")}>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" strokeWidth="1.2" /></svg>
               </button>
-              <button onClick={handleMaximize} className="win-btn" title="Maximize">
+              <button onClick={handleMaximize} className="win-btn" title={t("desktop.window.maximize")}>
                 {isMaximized ? (
                   <svg width="12" height="12" viewBox="0 0 12 12"><rect x="3" y="1" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" /><rect x="1" y="3" width="8" height="8" rx="1" stroke="currentColor" strokeWidth="1.2" fill="var(--bg-secondary)" /></svg>
                 ) : (
                   <svg width="12" height="12" viewBox="0 0 12 12"><rect x="1.5" y="1.5" width="9" height="9" rx="1" stroke="currentColor" strokeWidth="1.2" fill="none" /></svg>
                 )}
               </button>
-              <button onClick={handleClose} className="win-btn win-btn-close" title="Close">
+              <button onClick={handleClose} className="win-btn win-btn-close" title={t("desktop.window.close")}>
                 <svg width="12" height="12" viewBox="0 0 12 12"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" strokeWidth="1.2" /></svg>
               </button>
             </div>
@@ -323,7 +326,7 @@ export default function TitleBar({
         })}
 
         {/* New tab */}
-        <button onClick={onNewFile} className="tab-new" title="New File">
+        <button onClick={onNewFile} className="tab-new" title={t("shell.tabs.newFile")}>
           <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
         </button>
       </div>
@@ -341,7 +344,7 @@ export default function TitleBar({
         <ContextMenu
           x={pathContextMenu.x}
           y={pathContextMenu.y}
-          items={[{ label: "Copy Path", onClick: () => onCopyPath?.(displayedPath) }]}
+          items={[{ label: t("shell.files.copyPath"), onClick: () => onCopyPath?.(displayedPath) }]}
           onClose={() => setPathContextMenu(null)}
         />
       )}

@@ -40,7 +40,7 @@ const noteSaved = (text: string) =>
 
 async function renameViaContextMenu(from: string, to: string) {
   await sidebarItem(from).click({ button: "right" });
-  await page.getByText("Rename", { exact: true }).click();
+  await page.getByText("Đổi tên", { exact: true }).click();
   const input = page.locator(".sidebar-root input.sb-rename").first();
   await input.fill(to);
   await input.press("Enter");
@@ -83,7 +83,7 @@ test("write two linked notes, rename them, see the backlink", async () => {
   await nameNewNote("Draft");
   await renameViaContextMenu("Draft", "First");
 
-  await page.getByTitle("New file").click(); // the sidebar's own "+" button
+  await page.getByTitle("Thêm note").click(); // the sidebar's own "+" button
   await nameNewNote("Second");
   await editor().click();
   const secondSaved = noteSaved("The second note");
@@ -144,7 +144,8 @@ test("the interface switches to English (developer override until the Language p
     await other.locator(".sidebar-root .sb-label").getByText("First", { exact: true }).click();
     await expect(other.locator("html")).toHaveAttribute("lang", "en");
     await expect(other.getByText(/^\d+ words?$/).first()).toBeVisible(); // core plugin text
-    await other.getByTitle("Tìm trong vault").click(); // (the ribbon is not in the catalog yet)
+    await expect(other.getByTitle("More tools")).toBeVisible(); // web ribbon text
+    await other.getByTitle("Search in vault").click(); // ribbon text shared with desktop
     await expect(other.getByPlaceholder("Search across all notes…")).toBeVisible(); // shared panel text
   } finally {
     await other.evaluate(() => localStorage.removeItem("noteriv.locale.dev"));
@@ -200,7 +201,7 @@ test("reloading restores the open tabs without a request per note", async () => 
 
 test("a deleted note goes to the trash and can be restored", async () => {
   await sidebarItem("Second").click({ button: "right" });
-  await page.getByText("Delete", { exact: true }).click();
+  await page.getByText("Xoá", { exact: true }).click();
   await expect(sidebarItem("Second")).toHaveCount(0);
 
   await page.getByTitle("Thêm công cụ").click();

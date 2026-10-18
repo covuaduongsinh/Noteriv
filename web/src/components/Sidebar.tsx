@@ -5,6 +5,8 @@ import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
 import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
 import { createUntitledNote } from "@/lib/note-names";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 const DND_TYPE = "application/x-noteriv-node";
 interface DragPayload {
@@ -276,6 +278,7 @@ export default function Sidebar({
   renameRequest,
   onRenameRequestHandled,
 }: SidebarProps) {
+  useLocale();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
   const [renaming, setRenaming] = useState<{ id: string; type: TreeNode["type"]; name: string } | null>(null);
   const renamingId = renaming?.id ?? null;
@@ -324,10 +327,10 @@ export default function Sidebar({
       const status = err instanceof ApiError ? err.status : 0;
       setMoveError(
         status === 409
-          ? "Đã có mục cùng tên ở thư mục đích."
+          ? t("web.files.nameTaken")
           : status === 400
-          ? "Không thể di chuyển thư mục vào chính nó."
-          : "Không di chuyển được."
+          ? t("web.files.moveIntoSelf")
+          : t("web.files.moveFailed")
       );
       setTimeout(() => setMoveError(""), 4000);
     }
@@ -366,7 +369,7 @@ export default function Sidebar({
       onRefresh();
     } catch (err) {
       const status = err instanceof ApiError ? err.status : 0;
-      showActionError(status === 409 ? `Đã có mục tên "${value}" ở đây.` : "Không đổi tên được.");
+      showActionError(status === 409 ? t("web.files.renameTaken", { name: value }) : t("web.files.renameFailed"));
     }
   }
 
@@ -392,7 +395,7 @@ export default function Sidebar({
       onFileSelect(note.id);
       startRename({ type: "note", id: note.id, name: note.name.replace(/\.md$/i, ""), path: note.path });
     } catch {
-      showActionError("Không tạo được note mới.");
+      showActionError(t("web.files.newNoteFailed"));
     }
   }
 
@@ -407,7 +410,7 @@ export default function Sidebar({
       onRefresh();
       startRename({ type: "folder", id: folder.id, name: folder.name, children: [] });
     } catch {
-      showActionError("Không tạo được thư mục mới.");
+      showActionError(t("web.files.newFolderFailed"));
     }
   }
 
@@ -427,16 +430,16 @@ export default function Sidebar({
     const { node } = contextMenu;
     const targetFolderId = node ? (node.type === "folder" ? node.id : null) : null;
     const items: ContextMenuItem[] = [
-      { label: "New File", onClick: () => handleNewFileIn(targetFolderId) },
-      { label: "New Folder", onClick: () => handleNewFolderIn(targetFolderId) },
+      { label: t("shell.files.newFile"), onClick: () => handleNewFileIn(targetFolderId) },
+      { label: t("shell.files.newFolder"), onClick: () => handleNewFolderIn(targetFolderId) },
     ];
     if (node) {
       items.push({ label: "", separator: true, onClick: () => {} });
-      items.push({ label: "Rename", onClick: () => startRename(node) });
-      items.push({ label: "Delete", danger: true, onClick: () => handleDelete(node) });
+      items.push({ label: t("shell.files.rename"), onClick: () => startRename(node) });
+      items.push({ label: t("shell.files.delete"), danger: true, onClick: () => handleDelete(node) });
       if (node.type === "note") {
         items.push({ label: "", separator: true, onClick: () => {} });
-        items.push({ label: "Copy Path", onClick: () => navigator.clipboard.writeText(node.path) });
+        items.push({ label: t("shell.files.copyPath"), onClick: () => navigator.clipboard.writeText(node.path) });
       }
     }
     return items;
@@ -474,7 +477,7 @@ export default function Sidebar({
           {vaultName}
         </span>
         <div className="sidebar-actions">
-          <button onClick={() => handleNewFileIn(null)} className="sidebar-btn" title="New file">
+          <button onClick={() => handleNewFileIn(null)} className="sidebar-btn" title={t("shell.files.newFileButton")}>
             <PlusIcon size={14} />
           </button>
         </div>
@@ -525,8 +528,8 @@ export default function Sidebar({
           ))
         ) : (
           <div className="sidebar-empty">
-            <p>No notes yet</p>
-            <button onClick={onNewNote}>Create a note</button>
+            <p>{t("shell.files.empty")}</p>
+            <button onClick={onNewNote}>{t("shell.files.createNote")}</button>
           </div>
         )}
       </div>
@@ -538,7 +541,7 @@ export default function Sidebar({
       <div
         className="sidebar-resize-handle"
         role="separator"
-        aria-label="Resize file navigator"
+        aria-label={t("shell.files.resize")}
         aria-orientation="vertical"
         tabIndex={0}
         onPointerDown={handleResizeStart}

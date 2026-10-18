@@ -1,6 +1,8 @@
 "use client";
 
 import type { CollabPeer } from "@/lib/collab";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface CollabPanelProps {
   connected: boolean;
@@ -16,10 +18,11 @@ interface CollabPanelProps {
  * room — so this is now a pure presence display, not a join flow.
  */
 export default function CollabPanel({ connected, peers, onClose }: CollabPanelProps) {
+  useLocale();
   return (
     <div className="w-72 border-l border-[var(--border)] overflow-y-auto p-3">
       <div className="flex items-center justify-between mb-3">
-        <span className="text-sm font-semibold">Collaboration</span>
+        <span className="text-sm font-semibold">{t("web.collab.title")}</span>
         <button onClick={onClose} className="text-[var(--text-muted)] hover:text-[var(--text-primary)]">
           ×
         </button>
@@ -31,12 +34,12 @@ export default function CollabPanel({ connected, peers, onClose }: CollabPanelPr
           style={{ background: connected ? "var(--green)" : "var(--text-muted)" }}
         />
         <span className={connected ? "text-[var(--green)]" : "text-[var(--text-muted)]"}>
-          {connected ? "Đang đồng bộ trực tiếp" : "Đang kết nối…"}
+          {connected ? t("web.collab.live") : t("web.collab.connecting")}
         </span>
       </div>
 
       <div className="text-xs text-[var(--text-muted)] mb-2">
-        {peers.length === 0 ? "Chưa có ai khác đang mở note này." : `${peers.length} người khác đang xem`}
+        {peers.length === 0 ? t("web.collab.alone") : t("web.collab.peers", { count: peers.length })}
       </div>
 
       <div className="flex flex-col gap-1.5">

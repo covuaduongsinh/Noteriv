@@ -80,6 +80,28 @@ describe("i18n catalogs", () => {
     expect(used).toBeGreaterThan(0);
   });
 
+  it("labels every hotkey action and category of both apps, and every web menu entry", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const table = readFileSync(join(root, app, "src", "lib", "hotkeys.ts"), "utf8");
+      const rows = Array.from(table.matchAll(/\{ action: "(\w+)", label: "[^"]*", keys: "[^"]*", category: "(\w+)" \}/g));
+      expect(rows.length, app).toBeGreaterThan(30);
+      for (const [, action, category] of rows) {
+        for (const key of [`hotkeys.${action}`, `hotkeys.category.${category.toLowerCase()}`]) {
+          if (!en.has(key)) missing.push(`${app}: ${key}`);
+        }
+      }
+    }
+    const menu = readFileSync(join(root, "web", "src", "components", "AppMenu.tsx"), "utf8");
+    for (const [, action] of menu.matchAll(/\{ action: "(\w+)" \}/g)) {
+      if (!en.has(`web.menu.items.${action}`)) missing.push(`web menu: ${action}`);
+    }
+    for (const [, title] of menu.matchAll(/title: "(\w+)",/g)) {
+      if (!en.has(`web.menu.${title}`)) missing.push(`web menu section: ${title}`);
+    }
+    expect(missing).toEqual([]);
+  });
+
   it("names and describes every core plugin the apps ship", () => {
     const missing: string[] = [];
     for (const app of ["web", "desktop"]) {

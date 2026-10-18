@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import { formatHotkey, type HotkeyAction, type HotkeyBinding } from "@/lib/hotkeys";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
+/** A menu entry; its text is `web.menu.items.<action>` in the i18n catalog. */
 interface MenuEntry {
   action: HotkeyAction;
-  label: string;
 }
 
+/** `title` is the catalog key under `web.menu`. */
 type MenuSection = { title: string; entries: (MenuEntry | "sep")[] };
 
 /**
@@ -18,71 +21,71 @@ type MenuSection = { title: string; entries: (MenuEntry | "sep")[] };
  */
 const SECTIONS: MenuSection[] = [
   {
-    title: "File",
+    title: "file",
     entries: [
-      { action: "newNote", label: "New Note" },
+      { action: "newNote" },
       "sep",
-      { action: "save", label: "Save" },
-      { action: "previewPDF", label: "Xem trước PDF" },
-      { action: "exportPDF", label: "Tải PDF" },
-      { action: "printNote", label: "In…" },
+      { action: "save" },
+      { action: "previewPDF" },
+      { action: "exportPDF" },
+      { action: "printNote" },
       "sep",
-      { action: "importVault", label: "Import folder / zip…" },
-      { action: "importNewVault", label: "Import as New Vault…" },
-      { action: "newVaultFromGithub", label: "New Vault from GitHub…" },
-      { action: "exportVault", label: "Export Vault (.zip)" },
+      { action: "importVault" },
+      { action: "importNewVault" },
+      { action: "newVaultFromGithub" },
+      { action: "exportVault" },
       "sep",
-      { action: "openTrash", label: "Trash" },
-      { action: "closeTab", label: "Close Tab" },
+      { action: "openTrash" },
+      { action: "closeTab" },
     ],
   },
   {
-    title: "Edit",
+    title: "edit",
     entries: [
-      { action: "findInVault", label: "Find in Vault" },
+      { action: "findInVault" },
       "sep",
-      { action: "toggleBold", label: "Bold" },
-      { action: "toggleItalic", label: "Italic" },
-      { action: "toggleCode", label: "Inline Code" },
-      { action: "insertLink", label: "Insert Link" },
+      { action: "toggleBold" },
+      { action: "toggleItalic" },
+      { action: "toggleCode" },
+      { action: "insertLink" },
     ],
   },
   {
-    title: "View",
+    title: "view",
     entries: [
-      { action: "toggleSidebar", label: "Toggle Sidebar" },
-      { action: "toggleViewMode", label: "Cycle Edit / View / Source" },
-      { action: "splitEditor", label: "Split Editor" },
-      { action: "zenMode", label: "Zen Mode" },
-      { action: "focusMode", label: "Focus Mode" },
+      { action: "toggleSidebar" },
+      { action: "toggleViewMode" },
+      { action: "splitEditor" },
+      { action: "zenMode" },
+      { action: "focusMode" },
       "sep",
-      { action: "toggleOutline", label: "Outline" },
-      { action: "toggleTags", label: "Tags" },
-      { action: "toggleBacklinks", label: "Backlinks" },
+      { action: "toggleOutline" },
+      { action: "toggleTags" },
+      { action: "toggleBacklinks" },
       "sep",
-      { action: "randomNote", label: "Random Note" },
-      { action: "commandPalette", label: "Command Palette" },
+      { action: "randomNote" },
+      { action: "commandPalette" },
     ],
   },
   {
-    title: "Settings",
+    title: "settings",
     entries: [
-      { action: "settings", label: "Preferences…" },
-      { action: "gitSync", label: "Sync Now" },
-      { action: "syncSettings", label: "Sync Settings (Git / WebDAV)…" },
+      { action: "settings" },
+      { action: "gitSync" },
+      { action: "syncSettings" },
       "sep",
-      { action: "pluginManager", label: "Plugins…" },
-      { action: "themePicker", label: "Themes…" },
-      { action: "cssSnippets", label: "CSS Snippets…" },
+      { action: "pluginManager" },
+      { action: "themePicker" },
+      { action: "cssSnippets" },
     ],
   },
   {
-    title: "Developer",
+    title: "developer",
     entries: [
-      { action: "devToolsHint", label: "Toggle Developer Tools (F12)" },
-      { action: "reloadApp", label: "Reload Window" },
+      { action: "devToolsHint" },
+      { action: "reloadApp" },
       "sep",
-      { action: "diagnostics", label: "Diagnostics…" },
+      { action: "diagnostics" },
     ],
   },
 ];
@@ -105,6 +108,7 @@ interface AppMenuProps {
 type RenderedSection = { title: string; items: ({ key: string; label: string; keys: string; run: () => void } | "sep")[] };
 
 export default function AppMenu({ hotkeys, platform, onExecute, pluginCommands = [] }: AppMenuProps) {
+  useLocale();
   const [openIdx, setOpenIdx] = useState<number | null>(null);
   const rootRef = useRef<HTMLDivElement>(null);
 
@@ -128,14 +132,16 @@ export default function AppMenu({ hotkeys, platform, onExecute, pluginCommands =
 
   // App sections, then (when any core plugin contributes commands) a "Plugin" section after View.
   const sections: RenderedSection[] = SECTIONS.map((s) => ({
-    title: s.title,
-    items: s.entries.map((e) => (e === "sep" ? e : { key: e.action, label: e.label, keys: keysFor(e.action), run: () => onExecute(e.action) })),
+    title: t(`web.menu.${s.title}`),
+    items: s.entries.map((e) =>
+      e === "sep" ? e : { key: e.action, label: t(`web.menu.items.${e.action}`), keys: keysFor(e.action), run: () => onExecute(e.action) }
+    ),
   }));
   if (pluginCommands.length > 0) {
     const items = [...pluginCommands]
       .sort((a, b) => a.name.localeCompare(b.name))
       .map((c) => ({ key: c.key, label: c.name, keys: (c.hotkey ?? "").replace(/^Mod\+/, "Ctrl+"), run: c.run }));
-    sections.splice(3, 0, { title: "Plugin", items });
+    sections.splice(3, 0, { title: t("web.menu.plugin"), items });
   }
 
   return (

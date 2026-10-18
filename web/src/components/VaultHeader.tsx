@@ -5,6 +5,8 @@ import VaultSwitcher from "@/components/VaultSwitcher";
 import AppMenu, { type PluginMenuCommand } from "@/components/AppMenu";
 import type { HotkeyAction, HotkeyBinding } from "@/lib/hotkeys";
 import type { ApiVault, ViewMode } from "@/lib/webApi";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface VaultHeaderProps {
   vault: ApiVault | null;
@@ -53,13 +55,14 @@ export default function VaultHeader({
   onImportNewVault,
   onNewFromGithub,
 }: VaultHeaderProps) {
+  useLocale();
   const displayedPath = activeNotePath || vault?.name || "Noteriv";
 
   return (
     <div className="titlebar">
       <div className="titlebar-controls">
         <div className="titlebar-section" style={{ paddingLeft: 8 }}>
-          <button onClick={onToggleSidebar} className="titlebar-btn" title="Thu gọn sidebar">
+          <button onClick={onToggleSidebar} className="titlebar-btn" title={t("web.header.collapseSidebar")}>
             <SidebarToggleIcon collapsed={sidebarCollapsed} />
           </button>
           <div className="titlebar-divider" />

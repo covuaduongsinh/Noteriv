@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { formatHotkey } from "./format-hotkey";
-import { t } from "../i18n";
+import { t, tOr } from "../i18n";
 import { useLocale } from "../i18n/react";
 
 /** A palette row: a built-in action, or a plugin command ("plugin:<dbId>:<cmdId>"). */
@@ -43,9 +43,22 @@ export interface CommandPaletteProps<A extends string = string> {
  * (Ctrl/Cmd+K), which switches notes.
  */
 export default function CommandPalette<A extends string = string>({ hotkeys: builtIn, extraItems = [], platform, recentActions = [], onExecute, onRecent, onClose, labels }: CommandPaletteProps<A>) {
-  useLocale();
+  const locale = useLocale();
   const text = { ...defaultLabels(), ...labels };
-  const hotkeys: PaletteItem<string>[] = useMemo(() => [...builtIn, ...extraItems], [builtIn, extraItems]);
+  // The apps' hotkey tables name actions and English categories; their text comes from the catalog
+  // (`hotkeys.<action>`, `hotkeys.category.<category>`), the table's own text when the catalog lacks it.
+  const hotkeys: PaletteItem<string>[] = useMemo(
+    () => [
+      ...builtIn.map((h) => ({
+        ...h,
+        label: tOr(`hotkeys.${h.action}`, h.label),
+        category: tOr(`hotkeys.category.${h.category.toLowerCase()}`, h.category),
+      })),
+      ...extraItems,
+    ],
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- the locale changes the text
+    [builtIn, extraItems, locale]
+  );
   const [query, setQuery] = useState("");
   const [selectedIdx, setSelectedIdx] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);

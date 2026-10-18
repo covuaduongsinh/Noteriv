@@ -541,6 +541,149 @@
   "web": {
     "bookmarks": {
       "hint": "Click the bookmark icon in the note toolbar to add one."
+    },
+    "ribbon": {
+      "quickOpen": "Quick Open (Ctrl+K)",
+      "commandPalette": "Command palette (Ctrl+Shift+P or F1)",
+      "outline": "Outline",
+      "tags": "Tags",
+      "bookmarks": "Bookmarks",
+      "more": "More tools",
+      "sync": "Git / WebDAV sync",
+      "plugins": "Plugins",
+      "attachments": "Attachments",
+      "themes": "Themes",
+      "snippets": "CSS Snippets",
+      "trash": "Trash"
+    },
+    "menu": {
+      "file": "File",
+      "edit": "Edit",
+      "view": "View",
+      "plugin": "Plugin",
+      "settings": "Settings",
+      "developer": "Developer",
+      "items": {
+        "newNote": "New Note",
+        "save": "Save",
+        "previewPDF": "Preview PDF",
+        "exportPDF": "Download PDF",
+        "printNote": "Print…",
+        "importVault": "Import folder / zip…",
+        "importNewVault": "Import as New Vault…",
+        "newVaultFromGithub": "New Vault from GitHub…",
+        "exportVault": "Export Vault (.zip)",
+        "openTrash": "Trash",
+        "closeTab": "Close Tab",
+        "findInVault": "Find in Vault",
+        "toggleBold": "Bold",
+        "toggleItalic": "Italic",
+        "toggleCode": "Inline Code",
+        "insertLink": "Insert Link",
+        "toggleSidebar": "Toggle Sidebar",
+        "toggleViewMode": "Cycle Edit / View / Source",
+        "splitEditor": "Split Editor",
+        "zenMode": "Zen Mode",
+        "focusMode": "Focus Mode",
+        "toggleOutline": "Outline",
+        "toggleTags": "Tags",
+        "toggleBacklinks": "Backlinks",
+        "randomNote": "Random Note",
+        "commandPalette": "Command Palette",
+        "settings": "Preferences…",
+        "gitSync": "Sync Now",
+        "syncSettings": "Sync Settings (Git / WebDAV)…",
+        "pluginManager": "Plugins…",
+        "themePicker": "Themes…",
+        "cssSnippets": "CSS Snippets…",
+        "devToolsHint": "Toggle Developer Tools (F12)",
+        "reloadApp": "Reload Window",
+        "diagnostics": "Diagnostics…"
+      }
+    },
+    "noteToolbar": {
+      "bookmark": "Bookmark this note",
+      "unbookmark": "Remove bookmark",
+      "backlinks": "Backlinks",
+      "collab": "Collaboration",
+      "exportPDF": "Download PDF",
+      "publish": "Publish preview (static HTML)",
+      "fileRecovery": "File Recovery"
+    },
+    "header": {
+      "collapseSidebar": "Collapse sidebar"
+    },
+    "status": {
+      "openSync": "Open Settings > Sync"
+    },
+    "sync": {
+      "notConnected": "Git: not connected",
+      "conflict": "sync: conflict",
+      "error": "sync: error",
+      "at": "sync: {time}",
+      "never": "sync: not run yet"
+    },
+    "vaults": {
+      "title": "Vaults",
+      "noVault": "No Vault",
+      "rename": "Rename vault",
+      "delete": "Delete vault",
+      "confirmDelete": "Click again to delete permanently",
+      "newPlaceholder": "New vault name",
+      "renameFailed": "Could not rename the vault.",
+      "deleteFailed": "Could not delete the vault (only its owner can)."
+    },
+    "hoverPreview": {
+      "loading": "Loading…",
+      "readFailed": "Could not load the content",
+      "notFound": "Note not found"
+    },
+    "collab": {
+      "title": "Collaboration",
+      "live": "Syncing live",
+      "connecting": "Connecting…",
+      "alone": "Nobody else has this note open.",
+      "peers": {
+        "one": "{count} other person is viewing",
+        "other": "{count} other people are viewing"
+      }
+    },
+    "files": {
+      "nameTaken": "An item with that name is already in the target folder.",
+      "moveIntoSelf": "A folder cannot be moved into itself.",
+      "moveFailed": "Could not move it.",
+      "renameTaken": "There is already an item named \"{name}\" here.",
+      "renameFailed": "Could not rename it.",
+      "newNoteFailed": "Could not create a new note.",
+      "newFolderFailed": "Could not create a new folder."
+    },
+    "notice": {
+      "noteMissing": "This note no longer exists (it may have been deleted or be in the Trash).",
+      "openFailed": "Could not open the note, please try again.",
+      "tabsNotRestored": "Some tabs could not be restored because of a connection error; reload the page to try again.",
+      "devTools": "Press F12 (or Ctrl+Shift+I) to open the browser's developer tools.",
+      "pdfCreating": "Creating PDF…",
+      "pdfDone": "PDF downloaded.",
+      "pdfFailed": "Could not create the PDF. You can use File → Print… and choose Save as PDF.",
+      "previewCreating": "Creating preview…",
+      "previewFailed": "Could not create the PDF preview.",
+      "newNoteFailed": "Could not create a new note. Check the connection or your write access to the vault and try again."
+    },
+    "empty": {
+      "title": "Pick or create a note to start",
+      "newNote": "Create a new note",
+      "newNoteHint": "Start writing right away",
+      "connect": "Connect GitHub / WebDAV",
+      "connectHint": "Sync the vault with your repository",
+      "import": "Import a folder / zip",
+      "importHint": "Bring an existing vault to the web",
+      "plugins": "Install plugins",
+      "pluginsHint": "Extend it with community plugins",
+      "quickOpen": "Quick open (⌘K)"
+    },
+    "zenExit": "Exit Zen (Esc)",
+    "tabs": {
+      "newTab": "New note"
     }
   },
   "desktop": {
@@ -550,9 +693,184 @@
     "quickOpen": {
       "placeholder": "Type to search files...",
       "empty": "No files found"
+    },
+    "files": {
+      "mergeNotes": "Merge {count} Notes",
+      "deleteFiles": "Delete {count} Files",
+      "openFolderLocation": "Open Folder Location",
+      "openFileLocation": "Open File Location",
+      "copyFolderPath": "Copy Folder Path",
+      "copyFilePath": "Copy File Path",
+      "closeSidebar": "Close sidebar (Ctrl+B)",
+      "noVault": "No vault selected"
+    },
+    "window": {
+      "close": "Close",
+      "minimize": "Minimize",
+      "maximize": "Maximize"
+    },
+    "editorMenu": {
+      "defaultLive": "Default Mode: Live",
+      "defaultSource": "Default Mode: Source",
+      "defaultView": "Default Mode: View",
+      "clearDefault": "Clear Default Mode",
+      "focusMode": "Focus Mode",
+      "exitFocusMode": "Exit Focus Mode",
+      "zenMode": "Zen Mode",
+      "exitZenMode": "Exit Zen Mode"
+    },
+    "status": {
+      "syncing": "syncing",
+      "syncFailed": "sync failed",
+      "changes": {
+        "one": "{count} change",
+        "other": "{count} changes"
+      },
+      "synced": "synced {time}",
+      "sync": "sync",
+      "lastSynced": "Last synced: {time}",
+      "clickToSync": "Click to sync"
+    },
+    "noFile": "No file open",
+    "createNote": "Create a new note",
+    "pdfPluginOff": "Turn on the PDF viewer core plugin (Settings → Core plugins) to read this file.",
+    "syncConflicts": {
+      "one": "Sync kept both versions of {count} note edited here and on the remote. The remote version is saved next to it as \"(conflict …)\": {files}",
+      "other": "Sync kept both versions of {count} notes edited here and on the remote. The remote version is saved next to it as \"(conflict …)\": {files}"
     }
   },
   "common": {
-    "close": "Close"
+    "close": "Close",
+    "loading": "Loading..."
+  },
+  "shell": {
+    "ribbon": {
+      "quickOpen": "Quick Open",
+      "newNote": "New note",
+      "commandPalette": "Command palette",
+      "search": "Search in vault",
+      "settings": "Settings"
+    },
+    "tabs": {
+      "pin": "Pin Tab",
+      "unpin": "Unpin Tab",
+      "close": "Close Tab",
+      "closeOthers": "Close Other Tabs",
+      "closeRight": "Close Tabs to the Right",
+      "closeAll": "Close All Tabs",
+      "openInSplit": "Open in Split",
+      "revealInSidebar": "Reveal in Sidebar",
+      "copyFilePath": "Copy File Path",
+      "newFile": "New File"
+    },
+    "files": {
+      "newFile": "New File",
+      "newFolder": "New Folder",
+      "rename": "Rename",
+      "delete": "Delete",
+      "copyPath": "Copy Path",
+      "newFileButton": "New file",
+      "empty": "No notes yet",
+      "createNote": "Create a note",
+      "resize": "Resize file navigator"
+    },
+    "status": {
+      "mode": {
+        "live": "Edit",
+        "view": "View",
+        "source": "Source"
+      },
+      "saved": "saved",
+      "unsaved": "unsaved",
+      "lines": "{count} lines",
+      "chars": "{count} chars"
+    },
+    "commands": {
+      "corePlugin": "Core plugin",
+      "plugin": "Plugin · {id}"
+    },
+    "closePanel": "Close panel",
+    "closeSplit": "Close split",
+    "toggleSidebar": "Toggle Sidebar (Ctrl+B)",
+    "settingsHotkey": "Settings (Ctrl+,)"
+  },
+  "hotkeys": {
+    "category": {
+      "file": "File",
+      "navigation": "Navigation",
+      "search": "Search",
+      "view": "View",
+      "edit": "Edit",
+      "formatting": "Formatting",
+      "sync": "Sync",
+      "ecosystem": "Ecosystem",
+      "developer": "Developer"
+    },
+    "save": "Save",
+    "saveAs": "Save As",
+    "newFile": "New File",
+    "newNote": "New Note",
+    "newFolder": "New Folder",
+    "openFile": "Open File",
+    "closeTab": "Close Tab",
+    "closeAllTabs": "Close All Tabs",
+    "closeOtherTabs": "Close Other Tabs",
+    "deleteFile": "Delete File",
+    "nextTab": "Next Tab",
+    "prevTab": "Previous Tab",
+    "togglePinTab": "Pin/Unpin Tab",
+    "quickOpen": "Quick Open",
+    "commandPalette": "Command Palette",
+    "findInFile": "Find in File",
+    "findInVault": "Find in Vault",
+    "toggleSidebar": "Toggle Sidebar",
+    "toggleViewMode": "Toggle View Mode",
+    "toggleFullscreen": "Toggle Fullscreen",
+    "zenMode": "Zen Mode",
+    "focusMode": "Toggle Focus Mode",
+    "settings": "Settings",
+    "undo": "Undo",
+    "redo": "Redo",
+    "toggleBold": "Bold",
+    "toggleItalic": "Italic",
+    "toggleCode": "Inline Code",
+    "toggleStrikethrough": "Strikethrough",
+    "insertLink": "Insert Link",
+    "insertImage": "Insert Image",
+    "insertHorizontalRule": "Horizontal Rule",
+    "insertCodeBlock": "Code Block",
+    "insertBlockquote": "Blockquote",
+    "insertTaskList": "Task List",
+    "insertTable": "Insert Table",
+    "gitSync": "Sync Now",
+    "syncSettings": "Sync Settings (Git / WebDAV)",
+    "toggleOutline": "Toggle Outline",
+    "toggleBacklinks": "Toggle Backlinks",
+    "toggleTags": "Toggle Tag Pane",
+    "toggleCollab": "Toggle Collaboration",
+    "toggleBookmark": "Toggle Bookmark",
+    "randomNote": "Open Random Note",
+    "fileRecovery": "File Recovery",
+    "exportPDF": "Export as PDF",
+    "previewPDF": "Preview PDF",
+    "printNote": "Print… (the browser's print dialog)",
+    "attachments": "Attachment Manager",
+    "pluginManager": "Plugin Manager",
+    "cssSnippets": "CSS Snippets",
+    "themePicker": "Themes",
+    "insertToc": "Insert Table of Contents",
+    "updateToc": "Update Table of Contents",
+    "publishNote": "Publish Note as HTML",
+    "startCollab": "Live Collaboration",
+    "openTrash": "Open Trash",
+    "splitEditor": "Split Editor",
+    "closeSplit": "Close Split",
+    "importVault": "Import folder / zip into this vault…",
+    "importNewVault": "Import folder / zip as a new vault…",
+    "newVaultFromGithub": "New vault from GitHub repo…",
+    "exportVault": "Export vault as zip",
+    "reloadApp": "Reload page (saves first)",
+    "diagnostics": "Diagnostics (server, sync, plugins)…",
+    "devToolsHint": "Open browser developer tools (F12)"
   }
 }

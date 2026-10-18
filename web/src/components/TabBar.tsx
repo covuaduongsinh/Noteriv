@@ -2,6 +2,8 @@
 
 import { useState, useCallback } from "react";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 export interface TabBarTab {
   noteId: string;
@@ -45,6 +47,7 @@ export default function TabBar({
   onSplitRight,
   onNewTab,
 }: TabBarProps) {
+  useLocale();
   const [dragIdx, setDragIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
   const [tabContextMenu, setTabContextMenu] = useState<{ x: number; y: number; noteId: string } | null>(null);
@@ -84,14 +87,14 @@ export default function TabBar({
     const id = tabContextMenu.noteId;
     const isPinned = pinnedTabIds.has(id);
     return [
-      { label: isPinned ? "Unpin Tab" : "Pin Tab", onClick: () => onTogglePin(id) },
+      { label: isPinned ? t("shell.tabs.unpin") : t("shell.tabs.pin"), onClick: () => onTogglePin(id) },
       { label: "", separator: true, onClick: () => {} },
-      { label: "Close Tab", onClick: () => onTabClose(id) },
-      { label: "Close Other Tabs", onClick: () => onCloseOtherTabs(id) },
-      { label: "Close Tabs to the Right", onClick: () => onCloseTabsToRight(id) },
-      { label: "Close All Tabs", onClick: () => onCloseAllTabs() },
+      { label: t("shell.tabs.close"), onClick: () => onTabClose(id) },
+      { label: t("shell.tabs.closeOthers"), onClick: () => onCloseOtherTabs(id) },
+      { label: t("shell.tabs.closeRight"), onClick: () => onCloseTabsToRight(id) },
+      { label: t("shell.tabs.closeAll"), onClick: () => onCloseAllTabs() },
       { label: "", separator: true, onClick: () => {} },
-      { label: "Open in Split", onClick: () => onSplitRight(id) },
+      { label: t("shell.tabs.openInSplit"), onClick: () => onSplitRight(id) },
     ];
   }, [tabContextMenu, pinnedTabIds, onTogglePin, onTabClose, onCloseOtherTabs, onCloseTabsToRight, onCloseAllTabs, onSplitRight]);
 
@@ -143,7 +146,7 @@ export default function TabBar({
         );
       })}
 
-      <button onClick={onNewTab} className="tab-new" title="New note">
+      <button onClick={onNewTab} className="tab-new" title={t("web.tabs.newTab")}>
         <svg width="12" height="12" viewBox="0 0 12 12"><path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" /></svg>
       </button>
 

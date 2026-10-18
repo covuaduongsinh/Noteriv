@@ -2,6 +2,8 @@
 
 import type { ReactNode } from "react";
 import { BacklinksIcon, CollabIcon, ExportIcon, BookmarkIcon, PublishIcon, HistoryIcon } from "@/components/icons";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface NoteToolbarProps {
   notePath: string;
@@ -43,13 +45,14 @@ export default function NoteToolbar({
   onFileRecovery,
   pluginButtons,
 }: NoteToolbarProps) {
+  useLocale();
   return (
     <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
       <span className="truncate">{notePath}</span>
       <div className="flex items-center gap-1">
         <button
           onClick={onToggleBookmark}
-          title={bookmarked ? "Bỏ bookmark" : "Bookmark note này"}
+          title={bookmarked ? t("web.noteToolbar.unbookmark") : t("web.noteToolbar.bookmark")}
           className="titlebar-btn"
           style={bookmarked ? { color: "var(--accent)" } : undefined}
         >
@@ -57,7 +60,7 @@ export default function NoteToolbar({
         </button>
         <button
           onClick={onToggleBacklinks}
-          title="Backlinks"
+          title={t("web.noteToolbar.backlinks")}
           className="titlebar-btn"
           style={backlinksVisible ? { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } : undefined}
         >
@@ -65,20 +68,20 @@ export default function NoteToolbar({
         </button>
         <button
           onClick={onToggleCollab}
-          title="Collaboration"
+          title={t("web.noteToolbar.collab")}
           className="titlebar-btn"
           style={collabVisible ? { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } : undefined}
         >
           <CollabIcon />
           {collabVisible && collabPeerCount > 0 && <span className="ml-1 text-xs">{collabPeerCount}</span>}
         </button>
-        <button onClick={onExportPDF} title="Tải PDF" className="titlebar-btn">
+        <button onClick={onExportPDF} title={t("web.noteToolbar.exportPDF")} className="titlebar-btn">
           <ExportIcon />
         </button>
-        <button onClick={onPublish} title="Publish preview (static HTML)" className="titlebar-btn">
+        <button onClick={onPublish} title={t("web.noteToolbar.publish")} className="titlebar-btn">
           <PublishIcon />
         </button>
-        <button onClick={onFileRecovery} title="File Recovery" className="titlebar-btn">
+        <button onClick={onFileRecovery} title={t("web.noteToolbar.fileRecovery")} className="titlebar-btn">
           <HistoryIcon />
         </button>
         {pluginButtons}
