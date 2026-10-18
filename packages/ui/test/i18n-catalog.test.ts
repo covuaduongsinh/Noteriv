@@ -19,8 +19,8 @@ const others = readdirSync(localesDir)
   .map((f) => [f.replace(/\.json$/, ""), load(f.replace(/\.json$/, ""))] as const);
 
 /**
- * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.4).
- * Must be empty when 4.4 is done.
+ * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.5).
+ * Must be empty when 4.5 is done.
  */
 const NOT_YET_TRANSLATED: Record<string, string[]> = { vi: [] };
 

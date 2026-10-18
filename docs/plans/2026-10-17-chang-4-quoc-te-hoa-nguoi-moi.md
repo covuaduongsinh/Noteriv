@@ -1,6 +1,6 @@
 # Chặng 4: Quốc tế hoá, người mới, di động
 
-> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1, 4.2 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1, 4.2 xong; 4.3 đang làm) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 2 xong (chuỗi giao diện đã trung lập); nên xong 3.2 (E2E) để bắt lỗi khi rút chuỗi.
 
@@ -24,7 +24,7 @@
 3. Chọn ngôn ngữ: theo `UserPreference` (web) / cấu hình app (desktop); mặc định theo ngôn ngữ trình duyệt/hệ điều hành, rơi về `en`. `<html lang>` theo ngôn ngữ đang dùng.
 4. Test: mọi khoá trong `vi.json` có trong `en.json`; không có khoá thiếu (test tự động).
 
-## Phiên 4.2 – 4.4: Rút chuỗi
+## Phiên 4.2 – 4.5: Rút chuỗi
 
 **Chủ dự án chốt (2026-10-17):** giữ mặc định chuyển tiếp (web tiếng Việt, desktop tiếng Anh, chưa có ô chọn) tới khi rút xong mọi chuỗi. Khi đó mới:
 - đổi sang "theo ngôn ngữ trình duyệt/hệ điều hành, rơi về tiếng Anh";
@@ -32,7 +32,7 @@
 - chuyển E2E sang tiếng Anh;
 - làm rỗng `NOT_YET_TRANSLATED` trong `packages/ui/test/i18n-catalog.test.ts`.
 
-**Chủ dự án chốt (2026-10-18):** phần rút chuỗi chia làm ba phiên thay vì hai (khoảng 1.000 chuỗi), nên các phiên sau lùi một số.
+**Chủ dự án chốt (2026-10-18):** phần rút chuỗi chia làm ba phiên thay vì hai (khoảng 1.000 chuỗi); sau kiểm kê 4.3 (khoảng 850 chuỗi), chia thêm một lần nữa thành bốn phiên. Các phiên sau lùi số theo.
 
 **Mẫu cần theo:**
 - chuyển một plugin: `packages/plugins/src/calendar` (`labelsFor(api)` + `pluginT`);
@@ -48,23 +48,24 @@
    - panel Tags/Backlinks/Outline.
 
    Cùng với đó là khung trang vault của hai app: ribbon, menu, tab, sidebar, thanh trạng thái, nhãn phím tắt trong bảng lệnh.
-2. **4.3:** Cài đặt hai app (kể cả tab Phím tắt), PluginManager và các hộp thoại:
-   - web: `SyncSection`, `DiagnosticsModal`, `ImportVault`, `AttachmentManager`, `ClipperSection`, `TrashPanel`, `CSSSnippets`, `ThemePicker`, `PublishPreview`, `FileRecovery`, `FrontmatterEditor`;
-   - desktop: các cửa sổ phụ tương ứng và `SetupWizard`.
-3. **4.4:**
+2. **4.3 (xong):** Cài đặt hai app (mọi mục, kể cả tab Phím tắt, đồng bộ, Clipper), PluginManager hai app, các bảng lựa chọn.
+3. **4.4:** các hộp thoại còn lại:
+   - web: `DiagnosticsModal`, `ImportVault` (cùng `lib/vault-import.ts`), `AttachmentManager`, `TrashPanel`, `CSSSnippets`, `ThemePicker` (cùng mô tả theme trong `theme-utils.ts`), `PublishPreview`, `FileRecovery`, `FrontmatterEditor`, `PdfPreviewModal`;
+   - desktop: các bản tương ứng, `SetupWizard`, `CollabPanel`, `VaultSwitcher`, `ImageViewer`, lỗi của `attachment-utils.ts`.
+4. **4.5:**
    - trang `/vaults`, `/admin/invites`, `/login`, `/register`;
    - `/terms`, `/privacy`: tiếng Anh là chính, có bản tiếng Việt;
    - ngày giờ và số theo ngôn ngữ (`Intl`);
    - quyết định tên mặc định "Untitled"/"New Folder";
    - rồi **đổi mặc định** và hiện ô Language.
 
-## Phiên 4.5: Trải nghiệm người mới
+## Phiên 4.6: Trải nghiệm người mới
 
 1. Vault mẫu **"Getting started"** tạo khi đăng ký (theo ngôn ngữ người dùng): vài note giới thiệu wikilink, backlink, tag, plugin, đồng bộ.
 2. Trạng thái rỗng có hướng dẫn (vault trống, chưa có kết quả tìm, chưa có plugin).
 3. Rà lại mặc định bật/tắt của core plugin cho người dùng chung (danh sách hiện tại: `docs/plugin-api/v1.md` mục 9).
 
-## Phiên 4.6: PWA, Ghi nhanh, giao diện điện thoại
+## Phiên 4.7: PWA, Ghi nhanh, giao diện điện thoại
 
 Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-dong-chia-se.md`), bỏ phần cờ:
 
@@ -77,7 +78,7 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
    - ribbon thành thanh dưới.
 5. Hướng dẫn "Cài lên điện thoại" (Android Chrome, iOS Safari).
 
-## Phiên 4.7: Tài liệu người dùng tiếng Anh
+## Phiên 4.8: Tài liệu người dùng tiếng Anh
 
 - Chỉnh các trang sẵn có trong `docs/getting-started`, `docs/features`, `docs/editor`, `docs/sync`, `docs/plugins`, `docs/themes`, `docs/views` cho đúng bản web hiện tại (nhiều trang viết cho desktop của upstream).
 - Viết lại hoặc bỏ `docs/mobile` (viết cho app React Native, không còn).
@@ -96,8 +97,9 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
 |---|---|---|---|
 | 4.1 Hạ tầng i18n | Xong, đã lên production (PR #9 merge `79318bf`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-1-i18n.md); `packages/ui/src/i18n`, `api.i18n` (draft.10), panel dùng chung + thanh định dạng + `word-count` đọc catalog; mặc định chuyển tiếp web `vi` / desktop `en` tới cuối 4.3 (chủ dự án chốt); 448 test, E2E 9/9, smoke desktop 16/16 |
 | 4.2 Rút chuỗi (phần 1: phần dùng chung, khung trang) | Xong, đã lên production (PR #10 merge `f206bac`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-2-rut-chuoi-1.md); 17 core plugin + tên plugin + panel + khung trang hai app đọc catalog; chia rút chuỗi thành 4.2–4.4 (chủ dự án chốt); 469 test, E2E 9/9, smoke desktop 16/16, JS tải đầu 211,6 KB |
-| 4.3 Rút chuỗi (phần 2: Cài đặt, hộp thoại) | Chưa làm | | |
-| 4.4 Rút chuỗi (phần 3: trang ngoài, pháp lý), đổi mặc định, ô Language | Chưa làm | | |
-| 4.5 Người mới | Chưa làm | | |
-| 4.6 PWA, Ghi nhanh, giao diện điện thoại | Chưa làm | | |
-| 4.7 Tài liệu tiếng Anh | Chưa làm | | |
+| 4.3 Rút chuỗi (phần 2: Cài đặt, PluginManager) | Đang làm | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-3-cai-dat.md) |
+| 4.4 Rút chuỗi (phần 3: các hộp thoại còn lại) | Chưa làm | | |
+| 4.5 Rút chuỗi (phần 4: trang ngoài, pháp lý), đổi mặc định, ô Language | Chưa làm | | |
+| 4.6 Người mới | Chưa làm | | |
+| 4.7 PWA, Ghi nhanh, giao diện điện thoại | Chưa làm | | |
+| 4.8 Tài liệu tiếng Anh | Chưa làm | | |
