@@ -12,6 +12,8 @@ import {
   type SyncDirection,
   type SyncProviderType,
 } from "@/lib/webApi";
+import { formatDate, t, tOr } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 /**
  * Sync tab. Parity with desktop's Sync settings (docs/plans/2026-10-14-noteriv-web-desktop-parity-v2.md
@@ -28,11 +30,7 @@ interface JobView {
 }
 
 const INTERVALS = [1, 5, 10, 30, 60];
-const DIRECTION_LABEL: Record<SyncDirection, string> = {
-  both: "Hai chiều",
-  push: "Chỉ đẩy lên (web → repo)",
-  pull: "Chỉ kéo về (repo → web)",
-};
+const DIRECTIONS: SyncDirection[] = ["both", "push", "pull"];
 
 /** Extract the hostname from an https or SSH git remote URL. */
 function gitRemoteHost(url: string): string {
@@ -66,11 +64,14 @@ function tokenPageUrl(host: string): string | null {
   return null;
 }
 
+/** Dates in sync status and the run log, in the current language. */
+const DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "short" };
+
 function describeError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     const body = err.body as { message?: string; error?: string } | null;
     if (body?.message) return body.message;
-    if (body?.error === "forbidden") return "Bạn không có quyền thực hiện thao tác này.";
+    if (body?.error === "forbidden") return t("web.sync.forbidden");
   }
   return fallback;
 }
@@ -109,23 +110,23 @@ function OptionsFields({
   return (
     <>
       {isGit && (
-        <Row label="Hướng đồng bộ">
+        <Row label={t("web.sync.direction.label")}>
           <select
             className="st-text-input"
             value={value.direction}
             onChange={(e) => onChange({ direction: e.target.value as SyncDirection })}
           >
-            {(Object.keys(DIRECTION_LABEL) as SyncDirection[]).map((d) => (
+            {DIRECTIONS.map((d) => (
               <option key={d} value={d}>
-                {DIRECTION_LABEL[d]}
+                {t(`web.sync.direction.${d}`)}
               </option>
             ))}
           </select>
         </Row>
       )}
-      <Row label="Tự động đồng bộ" desc="Chạy nền theo chu kỳ, không cần bấm nút.">
+      <Row label={t("web.sync.auto.label")} desc={t("web.sync.auto.desc")}>
         <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <Toggle checked={value.autoSync} onChange={(v) => onChange({ autoSync: v })} label="Bật" />
+          <Toggle checked={value.autoSync} onChange={(v) => onChange({ autoSync: v })} label={t("web.sync.on")} />
           <select
             className="st-text-input"
             disabled={!value.autoSync}
@@ -134,7 +135,7 @@ function OptionsFields({
           >
             {INTERVALS.map((m) => (
               <option key={m} value={m}>
-                mỗi {m} phút
+                {t("web.sync.every", { count: m })}
               </option>
             ))}
           </select>
@@ -142,13 +143,13 @@ function OptionsFields({
       </Row>
       {isGit && (
         <>
-          <Row label="Đồng bộ khi lưu" desc="Đẩy lên khoảng 30 giây sau lần lưu đầu tiên.">
-            <Toggle checked={value.syncOnSave} onChange={(v) => onChange({ syncOnSave: v })} label="Bật" />
+          <Row label={t("web.sync.onSave.label")} desc={t("web.sync.onSave.desc")}>
+            <Toggle checked={value.syncOnSave} onChange={(v) => onChange({ syncOnSave: v })} label={t("web.sync.on")} />
           </Row>
-          <Row label="Kéo về khi mở vault" desc="Lấy thay đổi mới từ repo mỗi khi bạn mở vault.">
-            <Toggle checked={value.pullOnOpen} onChange={(v) => onChange({ pullOnOpen: v })} label="Bật" />
+          <Row label={t("web.sync.pullOnOpen.label")} desc={t("web.sync.pullOnOpen.desc")}>
+            <Toggle checked={value.pullOnOpen} onChange={(v) => onChange({ pullOnOpen: v })} label={t("web.sync.on")} />
           </Row>
-          <Row label="Mẫu commit message" desc="Dùng {date} {time} {count}.">
+          <Row label={t("web.sync.commitTemplate.label")} desc={t("web.sync.commitTemplate.desc")}>
             <input
               className="st-text-input"
               value={value.commitTemplate}
@@ -183,6 +184,7 @@ function optionsOf(c: ApiSyncConnection): Required<ApiSyncOptions> {
 }
 
 export default function SyncSection({ vaultId }: { vaultId: string }) {
+  useLocale();
   const [connections, setConnections] = useState<ApiSyncConnection[] | null>(null);
   const [views, setViews] = useState<Record<string, JobView>>({});
   const [adding, setAdding] = useState<"github" | "git" | "webdav" | null>(null);
@@ -259,9 +261,9 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
     setNotice(null);
     try {
       const r = await webApi.sync.test(vaultId, connId);
-      setNotice(r.ok ? { kind: "ok", text: "Kết nối hoạt động." } : { kind: "fail", text: r.error || "Không kết nối được." });
+      setNotice(r.ok ? { kind: "ok", text: t("web.sync.testOk") } : { kind: "fail", text: r.error || t("web.sync.testFailed") });
     } catch (err) {
-      setNotice({ kind: "fail", text: describeError(err, "Không kiểm tra được kết nối.") });
+      setNotice({ kind: "fail", text: describeError(err, t("web.sync.testError")) });
     }
   }
 
@@ -280,7 +282,7 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
     try {
       await webApi.sync.remove(vaultId, connId);
     } catch (err) {
-      setNotice({ kind: "fail", text: describeError(err, "Không xoá được kết nối.") });
+      setNotice({ kind: "fail", text: describeError(err, t("web.sync.removeFailed")) });
     }
     refresh();
   }
@@ -296,12 +298,12 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
 
   return (
     <div className="st-section">
-      <div className="st-group-label">Kết nối Sync</div>
+      <div className="st-group-label">{t("web.sync.connections")}</div>
       {notice && <div className={`st-test-result ${notice.kind === "ok" ? "st-test-ok" : "st-test-fail"}`}>{notice.text}</div>}
-      {connections === null && <div className="st-row-desc">Đang tải…</div>}
+      {connections === null && <div className="st-row-desc">{t("web.sync.loading")}</div>}
       {connections?.length === 0 && !adding && (
         <div className="st-row-desc" style={{ padding: "8px 0" }}>
-          Chưa có kết nối nào. Kết nối GitHub để sao lưu và đồng bộ vault này với một repository.
+          {t("web.sync.none")}
         </div>
       )}
 
@@ -326,13 +328,13 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
                   {isGit ? `${c.remoteUrl} (${c.branch})` : c.webdavUrl}
                 </span>
                 <span className="st-row-desc">
-                  {c.lastSyncedAt ? `Lần cuối: ${new Date(c.lastSyncedAt).toLocaleString()}` : "Chưa sync lần nào"}
-                  {running && " · đang sync…"}
+                  {c.lastSyncedAt ? t("web.sync.lastSynced", { time: formatDate(new Date(c.lastSyncedAt), DATE_TIME) }) : t("web.sync.neverSynced")}
+                  {running && t("web.sync.syncing")}
                   {!running && job?.status === "success" && ` · ↑${job.pushedCount} ↓${job.pulledCount}`}
-                  {view && view.changesSinceSync > 0 && ` · ${view.changesSinceSync} note chưa sync`}
-                  {view?.remote?.remoteChanged && " · remote có thay đổi mới"}
-                  {view?.remote && !view.remote.remoteReachable && ` · không tới được remote (${view.remote.error ?? ""})`}
-                  {c.autoSync && ` · tự động mỗi ${c.syncIntervalMinutes} phút`}
+                  {view && view.changesSinceSync > 0 && t("web.sync.unsynced", { count: view.changesSinceSync })}
+                  {view?.remote?.remoteChanged && t("web.sync.remoteChanged")}
+                  {view?.remote && !view.remote.remoteReachable && t("web.sync.remoteUnreachable", { error: view.remote.error ?? "" })}
+                  {c.autoSync && t("web.sync.autoEvery", { count: c.syncIntervalMinutes })}
                 </span>
                 {job?.status === "success" && job.errorMessage && (
                   <span className="st-row-desc" style={{ color: "var(--yellow)" }}>
@@ -341,7 +343,7 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
                 )}
                 {job?.status === "error" && job.errorMessage && (
                   <span className="st-row-desc" style={{ color: "var(--red)" }}>
-                    Lỗi: {job.errorMessage}
+                    {t("web.sync.errorPrefix", { message: job.errorMessage })}
                   </span>
                 )}
               </div>
@@ -350,33 +352,33 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
             {conflict && isGit && (
               <div style={{ background: "var(--bg-tertiary)", borderRadius: 6, padding: 10, margin: "6px 0" }}>
                 <div style={{ fontWeight: 600, fontSize: 12, color: "var(--yellow)" }}>
-                  Xung đột: web và repo cùng sửa một số file
+                  {t("web.sync.conflictTitle")}
                 </div>
                 {job?.conflictFiles && job.conflictFiles.length > 0 && (
                   <ul style={{ fontSize: 12, margin: "6px 0 6px 16px", listStyle: "disc" }}>
                     {job.conflictFiles.slice(0, 8).map((f) => (
                       <li key={f}>{f}</li>
                     ))}
-                    {job.conflictFiles.length > 8 && <li>… và {job.conflictFiles.length - 8} file khác</li>}
+                    {job.conflictFiles.length > 8 && <li>{t("web.sync.moreFiles", { count: job.conflictFiles.length - 8 })}</li>}
                   </ul>
                 )}
-                <div className="st-row-desc">Chọn bên được giữ lại. Bên còn lại vẫn nằm trong lịch sử git của repo.</div>
+                <div className="st-row-desc">{t("web.sync.conflictHint")}</div>
                 <div style={{ display: "flex", gap: 6, marginTop: 8 }}>
                   <button
                     className="st-test-btn"
                     onClick={() =>
-                      confirmThen(`rw-${c.id}`, () => run(() => webApi.sync.resolve(vaultId, c.id, "web"), c.id, "Không xử lý được xung đột."))
+                      confirmThen(`rw-${c.id}`, () => run(() => webApi.sync.resolve(vaultId, c.id, "web"), c.id, t("web.sync.resolveFailed")))
                     }
                   >
-                    {armed === `rw-${c.id}` ? "Bấm lần nữa: giữ bản web" : "Giữ bản web"}
+                    {armed === `rw-${c.id}` ? t("web.sync.keepWebConfirm") : t("web.sync.keepWeb")}
                   </button>
                   <button
                     className="st-test-btn"
                     onClick={() =>
-                      confirmThen(`rr-${c.id}`, () => run(() => webApi.sync.resolve(vaultId, c.id, "remote"), c.id, "Không xử lý được xung đột."))
+                      confirmThen(`rr-${c.id}`, () => run(() => webApi.sync.resolve(vaultId, c.id, "remote"), c.id, t("web.sync.resolveFailed")))
                     }
                   >
-                    {armed === `rr-${c.id}` ? "Bấm lần nữa: lấy bản repo" : "Lấy bản repo"}
+                    {armed === `rr-${c.id}` ? t("web.sync.keepRepoConfirm") : t("web.sync.keepRepo")}
                   </button>
                 </div>
               </div>
@@ -386,26 +388,26 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
               <button
                 className="st-test-btn"
                 disabled={running}
-                onClick={() => run(() => webApi.sync.trigger(vaultId, c.id), c.id, "Không bắt đầu được sync.")}
+                onClick={() => run(() => webApi.sync.trigger(vaultId, c.id), c.id, t("web.sync.startFailed"))}
               >
-                {running ? "Đang sync…" : "Sync ngay"}
+                {running ? t("web.sync.syncingButton") : t("web.sync.syncNow")}
               </button>
               <button className="st-test-btn" onClick={() => testConnection(c.id)}>
-                Kiểm tra kết nối
+                {t("web.sync.test")}
               </button>
               {isGit && (
                 <button className="st-test-btn" onClick={() => loadStatus(c.id, true)}>
-                  Kiểm tra remote
+                  {t("web.sync.checkRemote")}
                 </button>
               )}
               <button className="st-test-btn" onClick={() => setEditingId(editingId === c.id ? null : c.id)}>
-                {editingId === c.id ? "Đóng chỉnh sửa" : "Chỉnh sửa"}
+                {editingId === c.id ? t("web.sync.closeEdit") : t("web.sync.edit")}
               </button>
               <button className="st-test-btn" onClick={() => openLog(c.id)}>
-                Nhật ký
+                {t("web.sync.log")}
               </button>
               <button className="st-test-btn" onClick={() => confirmThen(`rm-${c.id}`, () => removeConnection(c.id))}>
-                {armed === `rm-${c.id}` ? "Bấm lần nữa để xoá" : "Xoá"}
+                {armed === `rm-${c.id}` ? t("web.sync.removeConfirm") : t("web.sync.remove")}
               </button>
             </div>
 
@@ -422,17 +424,17 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
 
             {logFor === c.id && (
               <div style={{ marginTop: 8, fontSize: 12 }}>
-                {log.length === 0 && <div className="st-row-desc">Chưa có lần chạy nào.</div>}
+                {log.length === 0 && <div className="st-row-desc">{t("web.sync.logEmpty")}</div>}
                 {log.map((j) => (
                   <div key={j.id} style={{ display: "flex", gap: 8, padding: "2px 0", borderTop: "1px solid var(--border)" }}>
-                    <span style={{ minWidth: 130 }}>{new Date(j.createdAt).toLocaleString()}</span>
+                    <span style={{ minWidth: 130 }}>{formatDate(new Date(j.createdAt), DATE_TIME)}</span>
                     <span
                       style={{
                         minWidth: 70,
                         color: j.status === "success" ? "var(--green)" : j.status === "error" ? "var(--red)" : j.status === "conflict" ? "var(--yellow)" : undefined,
                       }}
                     >
-                      {j.status}
+                      {tOr(`web.sync.status.${j.status}`, j.status)}
                     </span>
                     <span style={{ flex: 1, wordBreak: "break-word" }}>
                       {j.status === "success" ? `↑${j.pushedCount} ↓${j.pulledCount}${j.errorMessage ? ` · ⚠ ${j.errorMessage.slice(0, 140)}` : ""}` : j.errorMessage?.slice(0, 160)}
@@ -450,13 +452,13 @@ export default function SyncSection({ vaultId }: { vaultId: string }) {
       {!adding ? (
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button className="st-test-btn" onClick={() => setAdding("github")}>
-            + Kết nối GitHub
+            {t("web.sync.addGithub")}
           </button>
           <button className="st-test-btn" onClick={() => setAdding("git")}>
-            + Git khác (GitLab, Gitea…)
+            {t("web.sync.addGit")}
           </button>
           <button className="st-test-btn" onClick={() => setAdding("webdav")}>
-            + WebDAV
+            {t("web.sync.addWebdav")}
           </button>
         </div>
       ) : adding === "github" ? (
@@ -519,7 +521,7 @@ function EditPanel({ vaultId, connection, onSaved }: { vaultId: string; connecti
       });
       onSaved();
     } catch (err) {
-      setError(describeError(err, "Không lưu được thay đổi."));
+      setError(describeError(err, t("web.sync.saveFailed")));
     } finally {
       setSaving(false);
     }
@@ -528,7 +530,7 @@ function EditPanel({ vaultId, connection, onSaved }: { vaultId: string; connecti
   return (
     <div style={{ marginTop: 10, display: "flex", flexDirection: "column", gap: 6 }}>
       {isGit && (
-        <Row label="Branch">
+        <Row label={t("web.sync.branch")}>
           {branches.length > 0 ? (
             <select className="st-text-input" value={branch} onChange={(e) => setBranch(e.target.value)}>
               {!branches.includes(branch) && <option value={branch}>{branch}</option>}
@@ -545,14 +547,14 @@ function EditPanel({ vaultId, connection, onSaved }: { vaultId: string; connecti
       )}
       <OptionsFields value={opts} onChange={(p) => setOpts((o) => ({ ...o, ...p }))} isGit={isGit} />
       {isGit && (
-        <Row label="Đổi access token" desc="Để trống nếu giữ token hiện tại.">
-          <input type="password" className="st-text-input" value={newToken} onChange={(e) => setNewToken(e.target.value)} placeholder="token mới" />
+        <Row label={t("web.sync.newToken.label")} desc={t("web.sync.newToken.desc")}>
+          <input type="password" className="st-text-input" value={newToken} onChange={(e) => setNewToken(e.target.value)} placeholder={t("web.sync.newToken.placeholder")} />
         </Row>
       )}
       {error && <div className="st-test-result st-test-fail">{error}</div>}
       <div>
         <button className="st-test-btn" disabled={saving} onClick={save}>
-          {saving ? "Đang lưu…" : "Lưu thay đổi"}
+          {saving ? t("web.sync.saving") : t("web.sync.saveChanges")}
         </button>
       </div>
     </div>
@@ -568,6 +570,7 @@ export function GithubWizard({
   onDone: (connection: ApiSyncConnection, repo: ApiGithubRepo) => void;
   onCancel: () => void;
 }) {
+  useLocale();
   const [token, setToken] = useState("");
   const [user, setUser] = useState<ApiGithubUser | null>(null);
   const [repos, setRepos] = useState<ApiGithubRepo[]>([]);
@@ -592,7 +595,7 @@ export function GithubWizard({
       setUser(u);
       setRepos(list);
     } catch (err) {
-      setError(describeError(err, "Không xác thực được token."));
+      setError(describeError(err, t("web.sync.github.verifyFailed")));
     } finally {
       setBusy(false);
     }
@@ -619,7 +622,7 @@ export function GithubWizard({
       setNewName("");
       await pick(repo);
     } catch (err) {
-      setError(describeError(err, "Không tạo được repository."));
+      setError(describeError(err, t("web.sync.github.createRepoFailed")));
     } finally {
       setBusy(false);
     }
@@ -640,7 +643,7 @@ export function GithubWizard({
       });
       onDone(conn, picked);
     } catch (err) {
-      setError(describeError(err, "Không tạo được kết nối."));
+      setError(describeError(err, t("web.sync.github.connectFailed")));
     } finally {
       setBusy(false);
     }
@@ -650,13 +653,13 @@ export function GithubWizard({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <div className="st-group-label">Kết nối GitHub</div>
+      <div className="st-group-label">{t("web.sync.github.title")}</div>
       {!user ? (
         <form onSubmit={verify} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
           <div className="st-row-desc">
-            Bước 1 — dán Personal Access Token (quyền <b>repo</b>).{" "}
+            {t("web.sync.github.step1")}{" "}
             <a href={tokenPageUrl("github.com")!} target="_blank" rel="noopener noreferrer" style={{ textDecoration: "underline" }}>
-              Tạo token →
+              {t("web.sync.github.createToken")}
             </a>
           </div>
           <input
@@ -664,16 +667,16 @@ export function GithubWizard({
             className="st-text-input"
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder="ghp_xxxx… hoặc github_pat_xxxx…"
+            placeholder={t("web.sync.github.tokenPlaceholder")}
             autoFocus
           />
           {error && <div className="st-test-result st-test-fail">{error}</div>}
           <div style={{ display: "flex", gap: 6 }}>
             <button type="submit" className="st-test-btn" disabled={busy || !token.trim()}>
-              {busy ? "Đang kiểm tra…" : "Xác thực & chọn repo"}
+              {busy ? t("web.sync.github.verifying") : t("web.sync.github.verify")}
             </button>
             <button type="button" className="st-test-btn" onClick={onCancel}>
-              Huỷ
+              {t("web.sync.cancel")}
             </button>
           </div>
         </form>
@@ -683,17 +686,17 @@ export function GithubWizard({
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={user.avatarUrl} alt="" width={22} height={22} style={{ borderRadius: "50%" }} />
             <span>
-              Đã xác thực: <b>@{user.login}</b>
+              {t("web.sync.github.signedIn")} <b>@{user.login}</b>
               {user.name ? ` (${user.name})` : ""}
             </span>
           </div>
 
           {!picked ? (
             <>
-              <div className="st-row-desc">Bước 2 — chọn repository có sẵn hoặc tạo mới.</div>
-              <input className="st-text-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder="Lọc repository…" />
+              <div className="st-row-desc">{t("web.sync.github.step2")}</div>
+              <input className="st-text-input" value={filter} onChange={(e) => setFilter(e.target.value)} placeholder={t("web.sync.github.filter")} />
               <div style={{ maxHeight: 190, overflowY: "auto", border: "1px solid var(--border)", borderRadius: 6 }}>
-                {shown.length === 0 && <div className="st-row-desc" style={{ padding: 8 }}>Không có repository nào khớp.</div>}
+                {shown.length === 0 && <div className="st-row-desc" style={{ padding: 8 }}>{t("web.sync.github.noMatch")}</div>}
                 {shown.map((r) => (
                   <button
                     key={r.fullName}
@@ -712,23 +715,23 @@ export function GithubWizard({
                   className="st-text-input"
                   value={newName}
                   onChange={(e) => setNewName(e.target.value)}
-                  placeholder="tên repo mới, vd: my-notes"
+                  placeholder={t("web.sync.github.newRepoPlaceholder")}
                 />
-                <Toggle checked={newPrivate} onChange={setNewPrivate} label="Private" />
+                <Toggle checked={newPrivate} onChange={setNewPrivate} label={t("web.sync.github.private")} />
                 <button type="button" className="st-test-btn" disabled={busy || !newName.trim()} onClick={createRepo}>
-                  Tạo repo
+                  {t("web.sync.github.createRepo")}
                 </button>
               </div>
             </>
           ) : (
             <>
               <div className="st-row-desc">
-                Bước 3 — repo <b>{picked.fullName}</b>
+                {t("web.sync.github.step3")} <b>{picked.fullName}</b>
                 <button type="button" className="st-test-btn" style={{ marginLeft: 8 }} onClick={() => setPicked(null)}>
-                  Đổi repo
+                  {t("web.sync.github.changeRepo")}
                 </button>
               </div>
-              <Row label="Branch" desc={branches.length === 0 ? "Repo trống: sẽ tạo branch này ở lần sync đầu." : ""}>
+              <Row label={t("web.sync.branch")} desc={branches.length === 0 ? t("web.sync.github.emptyRepo") : ""}>
                 {branches.length > 0 ? (
                   <select className="st-text-input" value={branch} onChange={(e) => setBranch(e.target.value)}>
                     {branches.map((b) => (
@@ -743,7 +746,7 @@ export function GithubWizard({
               </Row>
               <OptionsFields value={opts} onChange={(p) => setOpts((o) => ({ ...o, ...p }))} isGit />
               <div className="st-row-desc">
-                Lần sync đầu tiên: nếu repo đã có note, chúng được nhập vào vault; note trùng đường dẫn giữ nội dung của web.
+                {t("web.sync.github.firstSync")}
               </div>
             </>
           )}
@@ -751,11 +754,11 @@ export function GithubWizard({
           <div style={{ display: "flex", gap: 6 }}>
             {picked && (
               <button type="button" className="st-test-btn" disabled={busy} onClick={connect}>
-                {busy ? "Đang kết nối…" : "Kết nối"}
+                {busy ? t("web.sync.github.connecting") : t("web.sync.github.connect")}
               </button>
             )}
             <button type="button" className="st-test-btn" onClick={onCancel}>
-              Huỷ
+              {t("web.sync.cancel")}
             </button>
           </div>
         </>
@@ -780,7 +783,7 @@ function GenericGitForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone
     e.preventDefault();
     setError("");
     if (!remoteUrl.trim() || !token.trim()) {
-      setError("Cần remote URL và access token.");
+      setError(t("web.sync.git.required"));
       return;
     }
     setSaving(true);
@@ -795,7 +798,7 @@ function GenericGitForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone
       });
       onDone();
     } catch (err) {
-      setError(describeError(err, "Không thêm được kết nối — kiểm tra lại remote URL/token."));
+      setError(describeError(err, t("web.sync.git.addFailed")));
     } finally {
       setSaving(false);
     }
@@ -803,7 +806,7 @@ function GenericGitForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone
 
   return (
     <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <Row label="Remote URL" desc="GitLab, Gitea/Forgejo, Bitbucket… — HTTPS.">
+      <Row label={t("web.sync.field.remoteUrl")} desc={t("web.sync.git.remoteDesc")}>
         <input
           className="st-text-input"
           value={remoteUrl}
@@ -812,28 +815,28 @@ function GenericGitForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone
           style={{ minWidth: 260 }}
         />
       </Row>
-      <Row label="Branch">
+      <Row label={t("web.sync.branch")}>
         <input className="st-text-input" value={branch} onChange={(e) => setBranch(e.target.value)} />
       </Row>
       {ptu && (
         <a href={ptu} target="_blank" rel="noopener noreferrer" className="st-test-btn" style={{ alignSelf: "flex-start" }}>
-          Tạo access token →
+          {t("web.sync.git.createToken")}
         </a>
       )}
-      <Row label="Username" desc="Bỏ trống nếu không cần (GitLab). Dùng login cho Gitea/Forgejo.">
+      <Row label={t("web.sync.field.username")} desc={t("web.sync.git.usernameDesc")}>
         <input className="st-text-input" value={username} onChange={(e) => setUsername(e.target.value)} />
       </Row>
-      <Row label="Access token">
+      <Row label={t("web.sync.git.token")}>
         <input type="password" className="st-text-input" value={token} onChange={(e) => setToken(e.target.value)} />
       </Row>
       <OptionsFields value={opts} onChange={(p) => setOpts((o) => ({ ...o, ...p }))} isGit />
       {error && <div className="st-test-result st-test-fail">{error}</div>}
       <div style={{ display: "flex", gap: 6 }}>
         <button type="submit" className="st-test-btn" disabled={saving}>
-          {saving ? "Đang lưu…" : "Lưu"}
+          {saving ? t("web.sync.saving") : t("web.sync.save")}
         </button>
         <button type="button" className="st-test-btn" onClick={onCancel}>
-          Huỷ
+          {t("web.sync.cancel")}
         </button>
       </div>
     </form>
@@ -853,7 +856,7 @@ function WebdavForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone: ()
     e.preventDefault();
     setError("");
     if (!url.trim() || !user.trim() || !pass.trim()) {
-      setError("Cần URL, username và password.");
+      setError(t("web.sync.webdav.required"));
       return;
     }
     setSaving(true);
@@ -869,7 +872,7 @@ function WebdavForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone: ()
       });
       onDone();
     } catch (err) {
-      setError(describeError(err, "Không thêm được kết nối WebDAV — kiểm tra lại thông tin."));
+      setError(describeError(err, t("web.sync.webdav.addFailed")));
     } finally {
       setSaving(false);
     }
@@ -877,7 +880,7 @@ function WebdavForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone: ()
 
   return (
     <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-      <Row label="Server URL" desc="Nextcloud, ownCloud, hoặc WebDAV bất kỳ.">
+      <Row label={t("web.sync.field.serverUrl")} desc={t("web.sync.webdav.serverDesc")}>
         <input
           className="st-text-input"
           value={url}
@@ -886,23 +889,23 @@ function WebdavForm({ vaultId, onDone, onCancel }: { vaultId: string; onDone: ()
           style={{ minWidth: 260 }}
         />
       </Row>
-      <Row label="Username">
+      <Row label={t("web.sync.field.username")}>
         <input className="st-text-input" value={user} onChange={(e) => setUser(e.target.value)} />
       </Row>
-      <Row label="Password">
+      <Row label={t("web.sync.field.password")}>
         <input type="password" className="st-text-input" value={pass} onChange={(e) => setPass(e.target.value)} />
       </Row>
-      <Row label="Remote path">
+      <Row label={t("web.sync.field.remotePath")}>
         <input className="st-text-input" value={path} onChange={(e) => setPath(e.target.value)} />
       </Row>
       <OptionsFields value={opts} onChange={(p) => setOpts((o) => ({ ...o, ...p }))} isGit={false} />
       {error && <div className="st-test-result st-test-fail">{error}</div>}
       <div style={{ display: "flex", gap: 6 }}>
         <button type="submit" className="st-test-btn" disabled={saving}>
-          {saving ? "Đang lưu…" : "Lưu"}
+          {saving ? t("web.sync.saving") : t("web.sync.save")}
         </button>
         <button type="button" className="st-test-btn" onClick={onCancel}>
-          Huỷ
+          {t("web.sync.cancel")}
         </button>
       </div>
     </form>

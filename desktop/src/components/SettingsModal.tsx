@@ -25,18 +25,13 @@ import {
 import ThemePicker from "@/components/ThemePicker";
 import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
+import { t, tOr } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 type Section = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem";
 
-const SECTIONS: { id: Section; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "appearance", label: "Appearance" },
-  { id: "editor", label: "Editor" },
-  { id: "shortcuts", label: "Shortcuts" },
-  { id: "sync", label: "Sync" },
-  { id: "corePlugins", label: "Core plugins" },
-  { id: "ecosystem", label: "Ecosystem" },
-];
+/** Sections in nav order; their names are `settings.sections.<id>` in the i18n catalog. */
+const SECTIONS: Section[] = ["general", "appearance", "editor", "shortcuts", "sync", "corePlugins", "ecosystem"];
 
 /** Extract the hostname from an https or SSH git remote URL. */
 function gitRemoteHost(url: string): string {
@@ -110,6 +105,7 @@ export default function SettingsModal({
   corePluginSettingsTabs = [],
   onClose,
 }: SettingsModalProps) {
+  useLocale();
   const [active, setActive] = useState<Section>("general");
   const [recording, setRecording] = useState<HotkeyAction | null>(null);
   const [shortcutQuery, setShortcutQuery] = useState("");
@@ -170,11 +166,12 @@ export default function SettingsModal({
     );
   };
 
+  // `category` stays the table's English name (it groups rows); what is shown and searched is the catalog's text.
   const categories = Array.from(new Set(hotkeys.map((h) => h.category)));
   const normalizedShortcutQuery = shortcutQuery.trim().toLowerCase();
   const filteredHotkeys = normalizedShortcutQuery
     ? hotkeys.filter((h) =>
-        [h.label, h.action, h.category, h.keys, formatHotkey(h.keys, platform)]
+        [hotkeyLabel(h), h.action, categoryLabel(h.category), h.keys, formatHotkey(h.keys, platform)]
           .some((value) => value.toLowerCase().includes(normalizedShortcutQuery))
       )
     : hotkeys;
@@ -182,25 +179,25 @@ export default function SettingsModal({
   // Render sections
   const renderGeneral = () => (
     <div className="st-section">
-      <Row label="Auto-save" desc="Automatically save files at a regular interval.">
+      <Row label={t("settings.autoSave.label")} desc={t("settings.autoSave.descDesktop")}>
         <select
           className="st-select"
           value={settings.autoSaveInterval}
           onChange={(e) => update({ autoSaveInterval: Number(e.target.value) })}
         >
           {AUTO_SAVE_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>{o.label()}</option>
           ))}
         </select>
       </Row>
-      <Row label="Spell check" desc="Underline misspelled words in the editor.">
+      <Row label={t("settings.spellCheck.label")} desc={t("settings.spellCheck.desc")}>
         <Toggle checked={settings.spellCheck} onChange={(v) => update({ spellCheck: v })} />
       </Row>
-      <Row label="Responsive sidebar" desc="Collapse the file navigator when the window becomes narrow.">
+      <Row label={t("settings.autoCollapse.label")} desc={t("settings.autoCollapse.desc")}>
         <Toggle checked={settings.autoCollapseSidebar} onChange={(v) => update({ autoCollapseSidebar: v })} />
       </Row>
       {settings.autoCollapseSidebar && (
-        <Row label="Collapse below" desc="Window width at which the file navigator closes automatically.">
+        <Row label={t("desktop.settings.collapseBelow.label")} desc={t("desktop.settings.collapseBelow.desc")}>
           <select
             className="st-select"
             value={settings.sidebarCollapseWidth}
@@ -215,34 +212,34 @@ export default function SettingsModal({
       )}
 
       <div className="st-divider" />
-      <div className="st-group-label">PDF export</div>
-      <Row label="Column layout" desc="Number of print columns; content flows from the left column into the right.">
+      <div className="st-group-label">{t("settings.pdfExport")}</div>
+      <Row label={t("settings.pdfColumnLayout.label")} desc={t("settings.pdfColumnLayout.descDesktop")}>
         <select
           className="st-select"
           value={settings.pdfColumnLayout}
           onChange={(e) => update({ pdfColumnLayout: Number(e.target.value) as 1 | 2 })}
         >
           {PDF_COLUMN_LAYOUT_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>{o.label()}</option>
           ))}
         </select>
       </Row>
 
       <div className="st-divider" />
-      <div className="st-group-label">Updates</div>
+      <div className="st-group-label">{t("desktop.settings.updates")}</div>
 
       {appVersion && (
-        <Row label="Version" desc="Currently installed version of Noteriv.">
+        <Row label={t("desktop.settings.version.label")} desc={t("desktop.settings.version.desc")}>
           <span className="st-version-badge">v{appVersion}</span>
         </Row>
       )}
 
       {updateManaged ? (
-        <Row label="Automatic updates" desc="Updates are managed by your package manager (Flatpak/Flathub).">
-          <span className="st-test-result">Managed externally</span>
+        <Row label={t("desktop.settings.autoUpdate.label")} desc={t("desktop.settings.autoUpdate.managedDesc")}>
+          <span className="st-test-result">{t("desktop.settings.autoUpdate.managed")}</span>
         </Row>
       ) : (
-        <Row label="Automatic updates" desc="Check for updates on startup and notify when a new version is available.">
+        <Row label={t("desktop.settings.autoUpdate.label")} desc={t("desktop.settings.autoUpdate.desc")}>
           <Toggle checked={settings.autoUpdate} onChange={(v) => update({ autoUpdate: v })} />
         </Row>
       )}
@@ -250,23 +247,23 @@ export default function SettingsModal({
       <div className="st-update-row" hidden={updateManaged}>
         {updateStatus === "idle" && (
           <button className="st-test-btn" onClick={handleCheckForUpdates}>
-            Check for Updates
+            {t("desktop.settings.updater.check")}
           </button>
         )}
         {updateStatus === "checking" && (
-          <button className="st-test-btn" disabled>Checking...</button>
+          <button className="st-test-btn" disabled>{t("desktop.settings.updater.checking")}</button>
         )}
         {updateStatus === "up-to-date" && (
           <div className="st-update-status">
-            <span className="st-test-result st-test-ok">Up to date</span>
-            <button className="st-test-btn" onClick={handleCheckForUpdates}>Check Again</button>
+            <span className="st-test-result st-test-ok">{t("desktop.settings.updater.upToDate")}</span>
+            <button className="st-test-btn" onClick={handleCheckForUpdates}>{t("desktop.settings.updater.checkAgain")}</button>
           </div>
         )}
         {updateStatus === "available" && (
           <div className="st-update-status">
-            <span className="st-update-version">v{updateInfo.version} available</span>
+            <span className="st-update-version">{t("desktop.settings.updater.available", { version: updateInfo.version ?? "" })}</span>
             <button className="st-test-btn st-update-download-btn" onClick={handleDownloadUpdate}>
-              Download Update
+              {t("desktop.settings.updater.download")}
             </button>
           </div>
         )}
@@ -280,16 +277,16 @@ export default function SettingsModal({
         )}
         {updateStatus === "downloaded" && (
           <div className="st-update-status">
-            <span className="st-test-result st-test-ok">v{updateInfo.version} ready</span>
+            <span className="st-test-result st-test-ok">{t("desktop.settings.updater.ready", { version: updateInfo.version ?? "" })}</span>
             <button className="st-test-btn st-update-install-btn" onClick={handleInstallUpdate}>
-              Restart &amp; Install
+              {t("desktop.settings.updater.install")}
             </button>
           </div>
         )}
         {updateStatus === "error" && (
           <div className="st-update-status">
-            <span className="st-test-result st-test-fail">{updateInfo.error || "Update failed"}</span>
-            <button className="st-test-btn" onClick={handleCheckForUpdates}>Retry</button>
+            <span className="st-test-result st-test-fail">{updateInfo.error || t("desktop.settings.updater.failed")}</span>
+            <button className="st-test-btn" onClick={handleCheckForUpdates}>{t("desktop.settings.updater.retry")}</button>
           </div>
         )}
       </div>
@@ -298,7 +295,7 @@ export default function SettingsModal({
 
   const renderAppearance = () => (
     <div className="st-section">
-      <Row label="Accent color" desc="Primary color used for highlights, links, and active states.">
+      <Row label={t("settings.accent.label")} desc={t("settings.accent.descDesktop")}>
         <div className="st-colors">
           {ACCENT_COLORS.map((c) => (
             <button
@@ -306,7 +303,7 @@ export default function SettingsModal({
               className={`st-swatch${settings.accentColor === c.value ? " st-swatch-active" : ""}`}
               style={{ background: c.value }}
               onClick={() => update({ accentColor: c.value })}
-              title={c.name}
+              title={c.label()}
             />
           ))}
         </div>
@@ -322,7 +319,7 @@ export default function SettingsModal({
 
   const renderEditor = () => (
     <div className="st-section">
-      <Row label="Font size" desc="Base font size for the editor (px).">
+      <Row label={t("settings.fontSize.label")} desc={t("settings.fontSize.desc")}>
         <Stepper
           value={settings.fontSize}
           min={11}
@@ -330,7 +327,7 @@ export default function SettingsModal({
           onChange={(v) => update({ fontSize: v })}
         />
       </Row>
-      <Row label="Line height" desc="Vertical spacing between lines.">
+      <Row label={t("settings.lineHeight.label")} desc={t("settings.lineHeight.desc")}>
         <Stepper
           value={settings.lineHeight}
           min={1.2}
@@ -340,7 +337,7 @@ export default function SettingsModal({
           onChange={(v) => update({ lineHeight: v })}
         />
       </Row>
-      <Row label="Editor font" desc="Monospace font used in the editor.">
+      <Row label={t("settings.editorFont.label")} desc={t("settings.editorFont.desc")}>
         <select
           className="st-select"
           value={settings.editorFont}
@@ -351,14 +348,14 @@ export default function SettingsModal({
           ))}
         </select>
       </Row>
-      <Row label="Tab size" desc="Number of spaces per tab indentation.">
+      <Row label={t("settings.tabSize.label")} desc={t("settings.tabSize.desc")}>
         <select
           className="st-select"
           value={settings.tabSize}
           onChange={(e) => update({ tabSize: Number(e.target.value) })}
         >
           {[2, 4, 8].map((n) => (
-            <option key={n} value={n}>{n} spaces</option>
+            <option key={n} value={n}>{t("settings.tabSize.spaces", { count: n })}</option>
           ))}
         </select>
       </Row>
@@ -368,8 +365,8 @@ export default function SettingsModal({
   const renderShortcuts = () => (
     <div className="st-section">
       <div className="st-shortcuts-header">
-        <span className="st-hint">Click a shortcut to rebind it</span>
-        <button onClick={resetAllHotkeys} className="st-reset-all">Reset All</button>
+        <span className="st-hint">{t("settings.shortcuts.hint")}</span>
+        <button onClick={resetAllHotkeys} className="st-reset-all">{t("settings.shortcuts.resetAll")}</button>
       </div>
       <div className="st-shortcut-search">
         <svg width="15" height="15" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -380,29 +377,29 @@ export default function SettingsModal({
           type="search"
           value={shortcutQuery}
           onChange={(e) => setShortcutQuery(e.target.value)}
-          placeholder="Search commands or keys"
-          aria-label="Search shortcuts"
+          placeholder={t("settings.shortcuts.search")}
+          aria-label={t("settings.shortcuts.searchLabel")}
         />
         {shortcutQuery && (
           <button
             type="button"
             className="st-shortcut-search-clear"
             onClick={() => setShortcutQuery("")}
-            aria-label="Clear shortcut search"
+            aria-label={t("settings.shortcuts.clearLabel")}
           >
-            Clear
+            {t("settings.shortcuts.clear")}
           </button>
         )}
       </div>
       {normalizedShortcutQuery && (
         <div className="st-shortcut-results">
-          {filteredHotkeys.length} {filteredHotkeys.length === 1 ? "shortcut" : "shortcuts"}
+          {t("settings.shortcuts.results", { count: filteredHotkeys.length })}
         </div>
       )}
       {categories.map((cat) => (
         filteredHotkeys.some((h) => h.category === cat) && (
           <div key={cat} className="st-shortcut-group">
-            <div className="st-shortcut-cat">{cat}</div>
+            <div className="st-shortcut-cat">{categoryLabel(cat)}</div>
             {filteredHotkeys
               .filter((h) => h.category === cat)
             .map((h) => {
@@ -412,19 +409,19 @@ export default function SettingsModal({
 
               return (
                 <div key={h.action} className="st-shortcut-row">
-                  <span className="st-shortcut-label">{h.label}</span>
+                  <span className="st-shortcut-label">{hotkeyLabel(h)}</span>
                   <div className="st-shortcut-keys">
                     <button
                       onClick={() => setRecording(isRec ? null : h.action)}
                       className={`settings-key-btn${isRec ? " recording" : ""}`}
                     >
-                      {isRec ? "Press keys..." : formatHotkey(h.keys, platform)}
+                      {isRec ? t("settings.shortcuts.recording") : formatHotkey(h.keys, platform)}
                     </button>
                     {!isDefault && (
                       <button
                         onClick={() => resetHotkey(h.action)}
                         className="settings-key-reset"
-                        title="Reset to default"
+                        title={t("settings.shortcuts.reset")}
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12">
                           <path
@@ -446,7 +443,7 @@ export default function SettingsModal({
         )
       ))}
       {normalizedShortcutQuery && filteredHotkeys.length === 0 && (
-        <div className="st-shortcut-empty">No shortcuts match &quot;{shortcutQuery}&quot;.</div>
+        <div className="st-shortcut-empty">{t("settings.shortcuts.empty", { query: shortcutQuery })}</div>
       )}
     </div>
   );
@@ -507,7 +504,7 @@ export default function SettingsModal({
     const ok = await window.electronAPI.updaterDownload();
     if (!ok) {
       setUpdateStatus("error");
-      setUpdateInfo({ error: "Download failed" });
+      setUpdateInfo({ error: t("desktop.settings.updater.downloadFailed") });
     }
 
     // Cleanup listeners after a delay to catch events
@@ -587,7 +584,7 @@ export default function SettingsModal({
       if (updated) onVaultUpdate(updated);
       setRemoteSaved(true);
     } catch (err: unknown) {
-      setRemoteError(err instanceof Error ? err.message : "Failed to save remote");
+      setRemoteError(err instanceof Error ? err.message : t("desktop.sync.remote.saveFailed"));
     } finally {
       setSavingRemote(false);
     }
@@ -596,7 +593,7 @@ export default function SettingsModal({
   const submitToken = async () => {
     if (!window.electronAPI || !vault) return;
     const trimmed = tokenInput.trim();
-    if (!trimmed) { setTokenError("Token is required"); return; }
+    if (!trimmed) { setTokenError(t("desktop.sync.credentials.required")); return; }
     const username = usernameInput.trim();
     const { isGitHub } = gitHostInfo(vault.gitRemote || remoteUrl);
     setSavingToken(true);
@@ -608,7 +605,7 @@ export default function SettingsModal({
       if (isGitHub) {
         const result = await window.electronAPI.authValidateToken(trimmed);
         if (!result.valid) {
-          setTokenError(result.error || "Invalid token");
+          setTokenError(result.error || t("desktop.sync.credentials.invalid"));
           return;
         }
         await window.electronAPI.authSaveToken(vault.id, trimmed, username || undefined);
@@ -622,7 +619,7 @@ export default function SettingsModal({
       setUsernameInput("");
       setEditingToken(false);
     } catch (err: unknown) {
-      setTokenError(err instanceof Error ? err.message : "Failed to save token");
+      setTokenError(err instanceof Error ? err.message : t("desktop.sync.credentials.saveFailed"));
     } finally {
       setSavingToken(false);
     }
@@ -648,7 +645,7 @@ export default function SettingsModal({
       const result = await window.electronAPI.syncProviderTest(provider, config);
       setTestResult(result);
     } catch (e: unknown) {
-      setTestResult({ ok: false, error: e instanceof Error ? e.message : "Unknown error" });
+      setTestResult({ ok: false, error: e instanceof Error ? e.message : t("desktop.sync.unknownError") });
     } finally {
       setTesting(false);
     }
@@ -662,14 +659,14 @@ export default function SettingsModal({
 
     return (
     <div className="st-section">
-      <div className="st-group-label">Git Repository</div>
+      <div className="st-group-label">{t("desktop.sync.gitRepo")}</div>
       {!vault ? (
         <div className="st-row-desc" style={{ padding: "8px 0" }}>
-          Open a vault to configure Git sync.
+          {t("desktop.sync.openVault")}
         </div>
       ) : (
         <>
-          <Row label="Remote URL" desc="Git remote for this vault — GitHub, GitLab, Gitea/Forgejo, Bitbucket, or self-hosted. HTTPS or SSH.">
+          <Row label={t("desktop.sync.remote.label")} desc={t("desktop.sync.remote.desc")}>
             <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
               <input
                 type="text"
@@ -685,7 +682,7 @@ export default function SettingsModal({
                 onClick={handleSaveRemote}
                 disabled={savingRemote || !remoteDirty}
               >
-                {savingRemote ? "Saving..." : "Save"}
+                {savingRemote ? t("desktop.sync.saving") : t("desktop.sync.save")}
               </button>
             </div>
           </Row>
@@ -696,18 +693,18 @@ export default function SettingsModal({
           )}
           {remoteSaved && !remoteError && (
             <div className="st-test-result st-test-ok" style={{ padding: "0 0 8px" }}>
-              Saved
+              {t("desktop.sync.saved")}
             </div>
           )}
 
-          <Row label="Git credentials" desc="Access token for HTTPS sync, stored encrypted locally. Not needed for SSH remotes.">
+          <Row label={t("desktop.sync.credentials.label")} desc={t("desktop.sync.credentials.desc")}>
             {hostInfo.tokenPageUrl && (
               <button
                 type="button"
                 className="st-test-btn"
                 onClick={() => window.electronAPI?.openExternal(hostInfo.tokenPageUrl!)}
               >
-                Generate token →
+                {t("desktop.sync.credentials.generate")}
               </button>
             )}
           </Row>
@@ -719,10 +716,10 @@ export default function SettingsModal({
               )}
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div className="st-row-label" style={{ fontSize: 12 }}>
-                  {ghUser?.valid ? (ghUser.name || ghUser.username) : "Access token saved"}
+                  {ghUser?.valid ? (ghUser.name || ghUser.username) : t("desktop.sync.credentials.tokenSaved")}
                 </div>
                 <div className="st-row-desc" style={{ color: "var(--green)" }}>
-                  {ghUser?.valid ? `@${ghUser.username}` : "Encrypted on this device"}
+                  {ghUser?.valid ? `@${ghUser.username}` : t("desktop.sync.credentials.encrypted")}
                 </div>
               </div>
               <button
@@ -730,14 +727,14 @@ export default function SettingsModal({
                 className="st-test-btn"
                 onClick={() => { setEditingToken(true); setTokenInput(""); setUsernameInput(""); setTokenError(""); }}
               >
-                Change
+                {t("desktop.sync.credentials.change")}
               </button>
               <button
                 type="button"
                 className="st-test-btn"
                 onClick={handleDisconnectToken}
               >
-                Disconnect
+                {t("desktop.sync.credentials.disconnect")}
               </button>
             </div>
           )}
@@ -750,7 +747,7 @@ export default function SettingsModal({
                   className="st-text-input"
                   value={usernameInput}
                   onChange={(e) => setUsernameInput(e.target.value)}
-                  placeholder="Username (optional — blank works for GitLab; use your login for Gitea/Forgejo)"
+                  placeholder={t("desktop.sync.credentials.usernamePlaceholder")}
                   onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim() && !savingToken) submitToken(); }}
                   style={{ width: "100%" }}
                 />
@@ -761,7 +758,7 @@ export default function SettingsModal({
                   className="st-text-input"
                   value={tokenInput}
                   onChange={(e) => setTokenInput(e.target.value)}
-                  placeholder={hostInfo.isGitHub ? "ghp_xxxx..." : "Access token / app password"}
+                  placeholder={hostInfo.isGitHub ? "ghp_xxxx..." : t("desktop.sync.credentials.tokenPlaceholder")}
                   onKeyDown={(e) => { if (e.key === "Enter" && tokenInput.trim() && !savingToken) submitToken(); }}
                   style={{ flex: 1, fontFamily: "var(--font-mono, monospace)" }}
                 />
@@ -771,7 +768,7 @@ export default function SettingsModal({
                   onClick={submitToken}
                   disabled={!tokenInput.trim() || savingToken}
                 >
-                  {savingToken ? "..." : "Save"}
+                  {savingToken ? "..." : t("desktop.sync.save")}
                 </button>
                 {editingToken && (
                   <button
@@ -779,13 +776,13 @@ export default function SettingsModal({
                     className="st-test-btn"
                     onClick={() => { setEditingToken(false); setTokenError(""); setTokenInput(""); setUsernameInput(""); }}
                   >
-                    Cancel
+                    {t("desktop.sync.cancel")}
                   </button>
                 )}
               </div>
               {!hostInfo.isGitHub && (
                 <div className="st-row-desc">
-                  Token is stored encrypted and used as the HTTPS password. For Bitbucket, set username to <code>x-token-auth</code>.
+                  {t("desktop.sync.credentials.hint")} <code>x-token-auth</code>.
                 </div>
               )}
               {tokenError && (
@@ -797,25 +794,25 @@ export default function SettingsModal({
       )}
 
       <div className="st-divider" />
-      <div className="st-group-label">Git Sync</div>
-      <Row label="Auto sync interval" desc="Periodically commit and push changes in the background.">
+      <div className="st-group-label">{t("desktop.sync.gitSync")}</div>
+      <Row label={t("desktop.sync.interval.label")} desc={t("desktop.sync.interval.desc")}>
         <select
           className="st-select"
           value={settings.gitSyncInterval}
           onChange={(e) => update({ gitSyncInterval: Number(e.target.value) })}
         >
           {SYNC_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>{o.label}</option>
+            <option key={o.value} value={o.value}>{o.label()}</option>
           ))}
         </select>
       </Row>
-      <Row label="Sync on save" desc="Commit and push every time you manually save a file.">
+      <Row label={t("desktop.sync.onSave.label")} desc={t("desktop.sync.onSave.desc")}>
         <Toggle checked={settings.syncOnSave} onChange={(v) => update({ syncOnSave: v })} />
       </Row>
-      <Row label="Pull on open" desc="Fetch the latest changes from remote when opening a vault.">
+      <Row label={t("desktop.sync.pullOnOpen.label")} desc={t("desktop.sync.pullOnOpen.desc")}>
         <Toggle checked={settings.pullOnOpen} onChange={(v) => update({ pullOnOpen: v })} />
       </Row>
-      <Row label="Commit message" desc="Template for sync commits. Use {date}, {time}, {count}.">
+      <Row label={t("desktop.sync.commitMessage.label")} desc={t("desktop.sync.commitMessage.desc")}>
         <input
           type="text"
           className="st-text-input"
@@ -826,8 +823,8 @@ export default function SettingsModal({
       </Row>
 
       <div className="st-divider" />
-      <div className="st-group-label">Additional Sync Provider</div>
-      <Row label="Provider" desc="Sync your vault to a second destination alongside Git.">
+      <div className="st-group-label">{t("desktop.sync.extra")}</div>
+      <Row label={t("desktop.sync.provider.label")} desc={t("desktop.sync.provider.desc")}>
         <select
           className="st-select"
           value={settings.extraSyncProvider}
@@ -837,20 +834,20 @@ export default function SettingsModal({
           }}
         >
           {SYNC_PROVIDERS.map((p) => (
-            <option key={p.type} value={p.type}>{p.name}</option>
+            <option key={p.type} value={p.type}>{p.name()}</option>
           ))}
         </select>
       </Row>
       {settings.extraSyncProvider !== "none" && (
         <div className="st-provider-desc">
-          {SYNC_PROVIDERS.find((p) => p.type === settings.extraSyncProvider)?.description}
+          {SYNC_PROVIDERS.find((p) => p.type === settings.extraSyncProvider)?.description()}
         </div>
       )}
 
       {/* Folder config */}
       {settings.extraSyncProvider === "folder" && (
         <>
-          <Row label="Target folder" desc="Path to the cloud drive sync folder on your system.">
+          <Row label={t("desktop.sync.targetFolder.label")} desc={t("desktop.sync.targetFolder.desc")}>
             <input
               type="text"
               className="st-text-input"
@@ -859,14 +856,14 @@ export default function SettingsModal({
               placeholder="/home/user/Google Drive/Notes"
             />
           </Row>
-          <Row label="Direction" desc="Which way files should sync.">
+          <Row label={t("desktop.sync.direction.label")} desc={t("desktop.sync.direction.desc")}>
             <select
               className="st-select"
               value={settings.folderSync.direction}
               onChange={(e) => update({ folderSync: { ...settings.folderSync, direction: e.target.value as "push" | "pull" | "both" } })}
             >
               {FOLDER_DIRECTIONS.map((d) => (
-                <option key={d.value} value={d.value}>{d.label}</option>
+                <option key={d.value} value={d.value}>{d.label()}</option>
               ))}
             </select>
           </Row>
@@ -876,7 +873,7 @@ export default function SettingsModal({
       {/* WebDAV config */}
       {settings.extraSyncProvider === "webdav" && (
         <>
-          <Row label="Server URL" desc="WebDAV server address (e.g. https://cloud.example.com/remote.php/dav/files/user).">
+          <Row label={t("desktop.sync.serverUrl.label")} desc={t("desktop.sync.serverUrl.desc")}>
             <input
               type="text"
               className="st-text-input"
@@ -885,7 +882,7 @@ export default function SettingsModal({
               placeholder="https://cloud.example.com/remote.php/dav"
             />
           </Row>
-          <Row label="Username" desc="WebDAV account username.">
+          <Row label={t("desktop.sync.username.label")} desc={t("desktop.sync.username.desc")}>
             <input
               type="text"
               className="st-text-input"
@@ -893,7 +890,7 @@ export default function SettingsModal({
               onChange={(e) => update({ webdavSync: { ...settings.webdavSync, username: e.target.value } })}
             />
           </Row>
-          <Row label="Password" desc="WebDAV account password or app token.">
+          <Row label={t("desktop.sync.password.label")} desc={t("desktop.sync.password.desc")}>
             <input
               type="password"
               className="st-text-input"
@@ -901,7 +898,7 @@ export default function SettingsModal({
               onChange={(e) => update({ webdavSync: { ...settings.webdavSync, password: e.target.value } })}
             />
           </Row>
-          <Row label="Remote path" desc="Folder path on the server to sync to.">
+          <Row label={t("desktop.sync.remotePath.label")} desc={t("desktop.sync.remotePath.desc")}>
             <input
               type="text"
               className="st-text-input"
@@ -921,11 +918,11 @@ export default function SettingsModal({
             onClick={handleTestConnection}
             disabled={testing}
           >
-            {testing ? "Testing..." : "Test Connection"}
+            {testing ? t("desktop.sync.testing") : t("desktop.sync.test")}
           </button>
           {testResult && (
             <span className={`st-test-result ${testResult.ok ? "st-test-ok" : "st-test-fail"}`}>
-              {testResult.ok ? "Connected" : testResult.error || "Failed"}
+              {testResult.ok ? t("desktop.sync.connected") : testResult.error || t("desktop.sync.failed")}
             </span>
           )}
         </div>
@@ -945,8 +942,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">Community Plugins</span>
-          <span className="st-ecosystem-desc">Extend Noteriv with plugins. Install, enable, and manage third-party plugins.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.plugins")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.pluginsDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -961,8 +958,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">CSS Snippets</span>
-          <span className="st-ecosystem-desc">Customize the appearance with custom CSS snippets that override default styles.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.snippets")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.snippetsDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -977,8 +974,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">Community Themes</span>
-          <span className="st-ecosystem-desc">Browse and install community themes. Available in Appearance &gt; Theme.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.themes")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.themesDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -1008,15 +1005,15 @@ export default function SettingsModal({
       <div className="settings-modal">
         {/* Sidebar navigation */}
         <div className="st-nav">
-          <div className="st-nav-title">Settings</div>
-          {SECTIONS.map((s) => (
+          <div className="st-nav-title">{t("settings.title")}</div>
+          {SECTIONS.map((id) => (
             <button
-              key={s.id}
-              className={`st-nav-item${active === s.id ? " st-nav-active" : ""}`}
-              onClick={() => setActive(s.id)}
+              key={id}
+              className={`st-nav-item${active === id ? " st-nav-active" : ""}`}
+              onClick={() => setActive(id)}
             >
-              <SectionIcon section={s.id} />
-              <span>{s.label}</span>
+              <SectionIcon section={id} />
+              <span>{t(`settings.sections.${id}`)}</span>
             </button>
           ))}
         </div>
@@ -1025,7 +1022,7 @@ export default function SettingsModal({
         <div className="st-main">
           <div className="st-header">
             <h2 className="st-title">
-              {SECTIONS.find((s) => s.id === active)?.label}
+              {t(`settings.sections.${active}`)}
             </h2>
             <button onClick={onClose} className="settings-close-btn">
               <svg width="14" height="14" viewBox="0 0 14 14">
@@ -1039,6 +1036,10 @@ export default function SettingsModal({
     </div>
   );
 }
+
+/** A hotkey's name and category in the current language (the table's English when the catalog lacks it). */
+const hotkeyLabel = (h: HotkeyBinding) => tOr(`hotkeys.${h.action}`, h.label);
+const categoryLabel = (category: string) => tOr(`hotkeys.category.${category.toLowerCase()}`, category);
 
 // ── Reusable controls ──
 

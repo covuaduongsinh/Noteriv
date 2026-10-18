@@ -10,22 +10,27 @@ import {
   installCommunityPlugin,
 } from "@/lib/plugin-api";
 import "@/styles/plugins.css";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 type Tab = "installed" | "community";
 
-const PERMISSION_LABELS: Record<PluginPermission, string> = {
-  "vault:read": "read notes",
-  "vault:write": "create, edit and delete notes",
-  "editor:read": "read the open note",
-  "editor:write": "edit the open note",
-  "ui:commands": "add commands",
-  "ui:statusbar": "add status bar items",
-  "ui:panel": "add panels and settings tabs",
-  "markdown:render": "render code blocks",
+/** Permission ids (stored in manifests, never translated) and their text in the current language. */
+const PERMISSION_LABELS: Record<PluginPermission, () => string> = {
+  "vault:read": () => t("desktop.pluginManager.permission.vaultRead"),
+  "vault:write": () => t("desktop.pluginManager.permission.vaultWrite"),
+  "editor:read": () => t("desktop.pluginManager.permission.editorRead"),
+  "editor:write": () => t("desktop.pluginManager.permission.editorWrite"),
+  "ui:commands": () => t("desktop.pluginManager.permission.uiCommands"),
+  "ui:statusbar": () => t("desktop.pluginManager.permission.uiStatusbar"),
+  "ui:panel": () => t("desktop.pluginManager.permission.uiPanel"),
+  "markdown:render": () => t("desktop.pluginManager.permission.markdownRender"),
 };
 
 function describePermissions(perms: string[]): string {
-  return perms.length === 0 ? "no special permissions" : perms.map((p) => PERMISSION_LABELS[p as PluginPermission] ?? p).join(", ");
+  return perms.length === 0
+    ? t("desktop.pluginManager.noPermissions")
+    : perms.map((p) => PERMISSION_LABELS[p as PluginPermission]?.() ?? p).join(", ");
 }
 
 interface PluginManagerProps {
@@ -59,6 +64,7 @@ export default function PluginManagerModal({
   settingsPanels = [],
   onPanelEvent,
 }: PluginManagerProps) {
+  useLocale();
   const [activeTab, setActiveTab] = useState<Tab>("installed");
   const [search, setSearch] = useState("");
   const [confirmUninstall, setConfirmUninstall] = useState<string | null>(null);
@@ -115,7 +121,7 @@ export default function PluginManagerModal({
     setCommunityError("");
     const manifest = await fetchCommunityPluginManifest();
     if (!manifest) {
-      setCommunityError("Failed to load community plugins. Check your connection.");
+      setCommunityError(t("desktop.pluginManager.loadFailed"));
       setCommunityLoading(false);
       return;
     }
@@ -214,7 +220,7 @@ export default function PluginManagerModal({
               <path d="M2 4.5L8 7.5l6-3" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
               <path d="M8 7.5v4.5" stroke="currentColor" strokeWidth="1.2" />
             </svg>
-            <h2 className="pm-title">Plugins</h2>
+            <h2 className="pm-title">{t("desktop.pluginManager.title")}</h2>
           </div>
           <button onClick={onClose} className="pm-close-btn">
             <svg width="14" height="14" viewBox="0 0 14 14">
@@ -229,7 +235,7 @@ export default function PluginManagerModal({
             className={`pm-tab${activeTab === "installed" ? " pm-tab-active" : ""}`}
             onClick={() => setActiveTab("installed")}
           >
-            Installed
+            {t("desktop.pluginManager.installed")}
             {plugins.length > 0 && (
               <span className="pm-tab-count">{plugins.length}</span>
             )}
@@ -238,7 +244,7 @@ export default function PluginManagerModal({
             className={`pm-tab${activeTab === "community" ? " pm-tab-active" : ""}`}
             onClick={() => setActiveTab("community")}
           >
-            Community
+            {t("desktop.pluginManager.community")}
           </button>
         </div>
 
@@ -257,7 +263,7 @@ export default function PluginManagerModal({
                     ref={searchRef}
                     type="text"
                     className="pm-search-input"
-                    placeholder="Search installed plugins..."
+                    placeholder={t("desktop.pluginManager.searchInstalled")}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                   />
@@ -273,7 +279,7 @@ export default function PluginManagerModal({
                   <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                     <path d="M7 2v10M2 7h10" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" />
                   </svg>
-                  Install
+                  {t("desktop.pluginManager.install")}
                 </button>
               </div>
 
@@ -286,16 +292,18 @@ export default function PluginManagerModal({
                         <rect x="4" y="8" width="32" height="24" rx="4" stroke="currentColor" strokeWidth="1.5" />
                         <path d="M20 15v10M15 20h10" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
                       </svg>
-                      <p className="pm-empty-title">No plugins installed</p>
+                      <p className="pm-empty-title">{t("desktop.pluginManager.noneInstalled")}</p>
                       <p className="pm-empty-desc">
-                        Browse the <button className="pm-inline-link" onClick={() => setActiveTab("community")}>Community</button> tab or click &ldquo;Install&rdquo; to add a plugin from a local folder.
+                        {t("desktop.pluginManager.browseBefore")}{" "}
+                        <button className="pm-inline-link" onClick={() => setActiveTab("community")}>{t("desktop.pluginManager.community")}</button>{" "}
+                        {t("desktop.pluginManager.browseAfter")}
                       </p>
                     </>
                   ) : (
                     <>
-                      <p className="pm-empty-title">No matching plugins</p>
+                      <p className="pm-empty-title">{t("desktop.pluginManager.noMatchTitle")}</p>
                       <p className="pm-empty-desc">
-                        No installed plugins match &ldquo;{search}&rdquo;.
+                        {t("desktop.pluginManager.noMatch", { query: search })}
                       </p>
                     </>
                   )}
@@ -329,23 +337,23 @@ export default function PluginManagerModal({
                               <span className="pm-plugin-id">{plugin.manifest.id}</span>
                             </div>
                             <p className="pm-plugin-desc" style={{ marginTop: 4 }}>
-                              Runs in a sandbox. Allowed: {describePermissions(plugin.permissions)}.
+                              {t("desktop.pluginManager.sandbox", { permissions: describePermissions(plugin.permissions) })}
                             </p>
                             {pendingGrant === plugin.manifest.id && (
                               <div className="pm-plugin-desc" style={{ marginTop: 6 }}>
-                                This plugin asks to: <strong>{describePermissions(plugin.requested)}</strong>.{" "}
+                                {t("desktop.pluginManager.asks")} <strong>{describePermissions(plugin.requested)}</strong>.{" "}
                                 <button className="pm-inline-link" onClick={() => allowAndEnable(plugin)}>
-                                  Allow and enable
+                                  {t("desktop.pluginManager.allowEnable")}
                                 </button>{" "}
                                 <button className="pm-inline-link" onClick={() => setPendingGrant(null)}>
-                                  Cancel
+                                  {t("desktop.pluginManager.cancel")}
                                 </button>
                               </div>
                             )}
                             {pendingGrant !== plugin.manifest.id && plugin.enabled && (blocked.length > 0 || missingPermissions(plugin).length > 0) && (
                               <div className="pm-plugin-error">
                                 <span>
-                                  Blocked: {describePermissions(blocked.length > 0 ? blocked : missingPermissions(plugin))}.{" "}
+                                  {t("desktop.pluginManager.blocked", { permissions: describePermissions(blocked.length > 0 ? blocked : missingPermissions(plugin)) })}{" "}
                                   <button
                                     className="pm-inline-link"
                                     onClick={() =>
@@ -355,7 +363,7 @@ export default function PluginManagerModal({
                                       )
                                     }
                                   >
-                                    Allow
+                                    {t("desktop.pluginManager.allow")}
                                   </button>
                                 </span>
                               </div>
@@ -379,7 +387,7 @@ export default function PluginManagerModal({
                                 onClick={() =>
                                   setOpenSettingsTabId(activeTabForPlugin ? null : tabKey(pluginTabs[0]))
                                 }
-                                title="Plugin settings"
+                                title={t("desktop.pluginManager.settings")}
                               >
                                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                                   <path
@@ -402,7 +410,7 @@ export default function PluginManagerModal({
                               onClick={() => handleToggle(plugin.manifest.id, !plugin.enabled)}
                               role="switch"
                               aria-checked={plugin.enabled}
-                              title={plugin.enabled ? "Disable plugin" : "Enable plugin"}
+                              title={plugin.enabled ? t("desktop.pluginManager.disable") : t("desktop.pluginManager.enable")}
                             >
                               <span className="st-toggle-thumb" />
                             </button>
@@ -410,10 +418,10 @@ export default function PluginManagerModal({
                             <button
                               className={`pm-uninstall-btn${confirmUninstall === plugin.manifest.id ? " pm-uninstall-confirm" : ""}`}
                               onClick={() => handleUninstall(plugin.manifest.id)}
-                              title={confirmUninstall === plugin.manifest.id ? "Click again to confirm" : "Uninstall plugin"}
+                              title={confirmUninstall === plugin.manifest.id ? t("desktop.pluginManager.confirmUninstall") : t("desktop.pluginManager.uninstall")}
                             >
                               {confirmUninstall === plugin.manifest.id ? (
-                                "Confirm?"
+                                t("desktop.pluginManager.confirm")
                               ) : (
                                 <svg width="13" height="13" viewBox="0 0 14 14" fill="none">
                                   <path d="M3 4h8l-.75 8.25a1 1 0 01-1 .75H4.75a1 1 0 01-1-.75L3 4z" stroke="currentColor" strokeWidth="1.1" strokeLinejoin="round" />
@@ -454,7 +462,7 @@ export default function PluginManagerModal({
                   <input
                     type="text"
                     className="pm-search-input"
-                    placeholder="Search community plugins..."
+                    placeholder={t("desktop.pluginManager.searchCommunity")}
                     value={communitySearch}
                     onChange={(e) => setCommunitySearch(e.target.value)}
                   />
@@ -472,15 +480,15 @@ export default function PluginManagerModal({
                 {communityLoading ? (
                   <div className="pm-community-status">
                     <div className="pm-community-spinner" />
-                    Loading community plugins...
+                    {t("desktop.pluginManager.loading")}
                   </div>
                 ) : communityError ? (
                   <div className="pm-community-status pm-community-status-err">
                     <span>{communityError}</span>
-                    <button className="pm-community-retry" onClick={loadCommunity}>Retry</button>
+                    <button className="pm-community-retry" onClick={loadCommunity}>{t("desktop.pluginManager.retry")}</button>
                   </div>
                 ) : filteredCommunity.length === 0 ? (
-                  <div className="pm-community-status">No plugins found.</div>
+                  <div className="pm-community-status">{t("desktop.pluginManager.noneFound")}</div>
                 ) : (
                   filteredCommunity.map((entry) => {
                     const installed = isInstalled(entry.id);
@@ -508,7 +516,7 @@ export default function PluginManagerModal({
                           {installed ? (
                             <span className="pm-community-installed">
                               <svg width="10" height="10" viewBox="0 0 12 12"><path d="M2 6l3 3 5-6" stroke="currentColor" strokeWidth="1.5" fill="none" strokeLinecap="round" strokeLinejoin="round" /></svg>
-                              Installed
+                              {t("desktop.pluginManager.installed")}
                             </span>
                           ) : (
                             <button
@@ -516,7 +524,7 @@ export default function PluginManagerModal({
                               onClick={() => handleInstallCommunity(entry)}
                               disabled={installing}
                             >
-                              {installing ? "Installing..." : "Install"}
+                              {installing ? t("desktop.pluginManager.installing") : t("desktop.pluginManager.install")}
                             </button>
                           )}
                         </div>
@@ -536,7 +544,7 @@ export default function PluginManagerModal({
                 <svg width="14" height="14" viewBox="0 0 16 16" fill="none">
                   <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0016 8c0-4.42-3.58-8-8-8z" fill="currentColor" />
                 </svg>
-                Submit your plugin
+                {t("desktop.pluginManager.submit")}
               </a>
             </div>
           )}

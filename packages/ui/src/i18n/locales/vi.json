@@ -107,6 +107,120 @@
       "settings": "Tuỳ chọn",
       "hideSettings": "Ẩn tuỳ chọn",
       "saveFailed": "Không lưu được lựa chọn: {detail}"
+    },
+    "title": "Cài đặt",
+    "sections": {
+      "general": "Chung",
+      "appearance": "Giao diện",
+      "editor": "Editor",
+      "shortcuts": "Phím tắt",
+      "sync": "Đồng bộ",
+      "corePlugins": "Core plugins",
+      "ecosystem": "Hệ sinh thái",
+      "clipper": "Clipper"
+    },
+    "on": "Bật",
+    "off": "Tắt",
+    "duration": {
+      "seconds": {
+        "other": "{count} giây"
+      },
+      "minutes": {
+        "other": "{count} phút"
+      }
+    },
+    "pdfColumns": {
+      "other": "{count} cột"
+    },
+    "autoCollapse": {
+      "label": "Tự thu gọn sidebar",
+      "desc": "Thu gọn sidebar khi cửa sổ hẹp."
+    },
+    "spellCheck": {
+      "label": "Kiểm tra chính tả",
+      "desc": "Gạch chân từ sai theo trình duyệt (ngôn ngữ do trình duyệt quyết định)."
+    },
+    "autoSave": {
+      "label": "Auto-save",
+      "descWeb": "Tự động lưu sau khi dừng gõ bao lâu.",
+      "descDesktop": "Tự động lưu file theo chu kỳ.",
+      "instant": "500ms (gần như tức thì)",
+      "default": "800ms (mặc định)"
+    },
+    "accent": {
+      "label": "Màu nhấn (accent)",
+      "descWeb": "Ghi đè màu nhấn của theme; chọn ô đầu để dùng màu của theme.",
+      "descDesktop": "Màu chính cho phần tô sáng, liên kết và trạng thái đang chọn.",
+      "themeDefault": "Mặc định theo theme",
+      "blue": "Xanh dương",
+      "lavender": "Oải hương",
+      "mauve": "Tím",
+      "pink": "Hồng",
+      "peach": "Cam đào",
+      "yellow": "Vàng",
+      "green": "Xanh lá",
+      "teal": "Xanh ngọc"
+    },
+    "fontSize": {
+      "label": "Cỡ chữ",
+      "desc": "Cỡ chữ cơ bản trong editor (px)."
+    },
+    "lineHeight": {
+      "label": "Giãn dòng",
+      "desc": "Khoảng cách giữa các dòng."
+    },
+    "editorFont": {
+      "label": "Font editor",
+      "desc": "Font monospace dùng trong editor."
+    },
+    "tabSize": {
+      "label": "Độ rộng Tab",
+      "desc": "Số khoảng trắng của một lần thụt lề (phím Tab).",
+      "spaces": {
+        "other": "{count} khoảng trắng"
+      }
+    },
+    "vimMode": {
+      "label": "Vim mode",
+      "desc": "Dùng phím tắt kiểu Vim trong editor (chế độ Sửa)."
+    },
+    "pdfColumnLayout": {
+      "label": "PDF: số cột",
+      "descWeb": "Bố cục khi xuất PDF.",
+      "descDesktop": "Số cột khi in; nội dung chảy từ cột trái sang cột phải."
+    },
+    "pdfExport": "Xuất PDF",
+    "exportAccountHint": "Xuất dữ liệu / xoá tài khoản nằm ở trang danh sách vault (menu \"Tài khoản\").",
+    "pluginTabGone": "Tab này không còn khả dụng (plugin đã tắt?).",
+    "thisVault": "vault này",
+    "shortcuts": {
+      "hint": "Bấm vào một phím tắt để gán lại",
+      "resetAll": "Đặt lại tất cả",
+      "search": "Tìm lệnh hoặc phím",
+      "searchLabel": "Tìm phím tắt",
+      "clear": "Xoá",
+      "clearLabel": "Xoá ô tìm phím tắt",
+      "results": {
+        "other": "{count} phím tắt"
+      },
+      "recording": "Nhấn phím...",
+      "reset": "Đặt lại mặc định",
+      "empty": "Không có phím tắt nào khớp \"{query}\"."
+    },
+    "ecosystem": {
+      "plugins": "Plugin cộng đồng",
+      "pluginsDesc": "Mở rộng Noteriv bằng plugin — cài, bật/tắt, gỡ.",
+      "snippets": "CSS Snippets",
+      "snippetsDesc": "Tuỳ biến giao diện bằng CSS snippet riêng.",
+      "themes": "Theme cộng đồng",
+      "themesDesc": "Xem trong tab Giao diện > Theme."
+    },
+    "sync": {
+      "direction": {
+        "both": "Hai chiều (đẩy và kéo)",
+        "push": "Chỉ đẩy lên",
+        "pull": "Chỉ kéo về"
+      }
     }
   },
   "plugins": {
@@ -604,7 +718,139 @@
       "conflict": "sync: xung đột",
       "error": "sync: lỗi",
       "at": "sync: {time}",
-      "never": "sync: chưa chạy"
+      "never": "sync: chưa chạy",
+      "direction": {
+        "label": "Hướng đồng bộ",
+        "both": "Hai chiều",
+        "push": "Chỉ đẩy lên (web → repo)",
+        "pull": "Chỉ kéo về (repo → web)"
+      },
+      "status": {
+        "queued": "đang chờ",
+        "running": "đang chạy",
+        "success": "thành công",
+        "error": "lỗi",
+        "conflict": "xung đột"
+      },
+      "forbidden": "Bạn không có quyền thực hiện thao tác này.",
+      "on": "Bật",
+      "auto": {
+        "label": "Tự động đồng bộ",
+        "desc": "Chạy nền theo chu kỳ, không cần bấm nút."
+      },
+      "every": {
+        "other": "mỗi {count} phút"
+      },
+      "onSave": {
+        "label": "Đồng bộ khi lưu",
+        "desc": "Đẩy lên khoảng 30 giây sau lần lưu đầu tiên."
+      },
+      "pullOnOpen": {
+        "label": "Kéo về khi mở vault",
+        "desc": "Lấy thay đổi mới từ repo mỗi khi bạn mở vault."
+      },
+      "commitTemplate": {
+        "label": "Mẫu commit message",
+        "desc": "Dùng {date} {time} {count}."
+      },
+      "connections": "Kết nối Sync",
+      "loading": "Đang tải…",
+      "none": "Chưa có kết nối nào. Kết nối GitHub để sao lưu và đồng bộ vault này với một repository.",
+      "lastSynced": "Lần cuối: {time}",
+      "neverSynced": "Chưa sync lần nào",
+      "syncing": " · đang sync…",
+      "unsynced": {
+        "other": " · {count} note chưa sync"
+      },
+      "remoteChanged": " · remote có thay đổi mới",
+      "remoteUnreachable": " · không tới được remote ({error})",
+      "autoEvery": {
+        "other": " · tự động mỗi {count} phút"
+      },
+      "errorPrefix": "Lỗi: {message}",
+      "conflictTitle": "Xung đột: web và repo cùng sửa một số file",
+      "moreFiles": {
+        "other": "… và {count} file khác"
+      },
+      "conflictHint": "Chọn bên được giữ lại. Bên còn lại vẫn nằm trong lịch sử git của repo.",
+      "keepWeb": "Giữ bản web",
+      "keepWebConfirm": "Bấm lần nữa: giữ bản web",
+      "keepRepo": "Lấy bản repo",
+      "keepRepoConfirm": "Bấm lần nữa: lấy bản repo",
+      "resolveFailed": "Không xử lý được xung đột.",
+      "syncNow": "Sync ngay",
+      "syncingButton": "Đang sync…",
+      "startFailed": "Không bắt đầu được sync.",
+      "test": "Kiểm tra kết nối",
+      "testOk": "Kết nối hoạt động.",
+      "testFailed": "Không kết nối được.",
+      "testError": "Không kiểm tra được kết nối.",
+      "checkRemote": "Kiểm tra remote",
+      "edit": "Chỉnh sửa",
+      "closeEdit": "Đóng chỉnh sửa",
+      "log": "Nhật ký",
+      "logEmpty": "Chưa có lần chạy nào.",
+      "remove": "Xoá",
+      "removeConfirm": "Bấm lần nữa để xoá",
+      "removeFailed": "Không xoá được kết nối.",
+      "addGithub": "+ Kết nối GitHub",
+      "addGit": "+ Git khác (GitLab, Gitea…)",
+      "addWebdav": "+ WebDAV",
+      "branch": "Branch",
+      "newToken": {
+        "label": "Đổi access token",
+        "desc": "Để trống nếu giữ token hiện tại.",
+        "placeholder": "token mới"
+      },
+      "save": "Lưu",
+      "saveChanges": "Lưu thay đổi",
+      "saving": "Đang lưu…",
+      "saveFailed": "Không lưu được thay đổi.",
+      "cancel": "Huỷ",
+      "github": {
+        "title": "Kết nối GitHub",
+        "step1": "Bước 1 — dán Personal Access Token (quyền repo).",
+        "createToken": "Tạo token →",
+        "tokenPlaceholder": "ghp_xxxx… hoặc github_pat_xxxx…",
+        "verifying": "Đang kiểm tra…",
+        "verify": "Xác thực & chọn repo",
+        "verifyFailed": "Không xác thực được token.",
+        "signedIn": "Đã xác thực:",
+        "step2": "Bước 2 — chọn repository có sẵn hoặc tạo mới.",
+        "filter": "Lọc repository…",
+        "noMatch": "Không có repository nào khớp.",
+        "newRepoPlaceholder": "tên repo mới, vd: my-notes",
+        "private": "Private",
+        "createRepo": "Tạo repo",
+        "createRepoFailed": "Không tạo được repository.",
+        "step3": "Bước 3 — repo",
+        "changeRepo": "Đổi repo",
+        "emptyRepo": "Repo trống: sẽ tạo branch này ở lần sync đầu.",
+        "firstSync": "Lần sync đầu tiên: nếu repo đã có note, chúng được nhập vào vault; note trùng đường dẫn giữ nội dung của web.",
+        "connecting": "Đang kết nối…",
+        "connect": "Kết nối",
+        "connectFailed": "Không tạo được kết nối."
+      },
+      "git": {
+        "remoteDesc": "GitLab, Gitea/Forgejo, Bitbucket… — HTTPS.",
+        "createToken": "Tạo access token →",
+        "usernameDesc": "Bỏ trống nếu không cần (GitLab). Dùng login cho Gitea/Forgejo.",
+        "token": "Access token",
+        "required": "Cần remote URL và access token.",
+        "addFailed": "Không thêm được kết nối — kiểm tra lại remote URL/token."
+      },
+      "webdav": {
+        "serverDesc": "Nextcloud, ownCloud, hoặc WebDAV bất kỳ.",
+        "required": "Cần URL, username và password.",
+        "addFailed": "Không thêm được kết nối WebDAV — kiểm tra lại thông tin."
+      },
+      "field": {
+        "remoteUrl": "Remote URL",
+        "username": "Tên đăng nhập",
+        "password": "Mật khẩu",
+        "remotePath": "Thư mục trên server",
+        "serverUrl": "Địa chỉ server"
+      }
     },
     "vaults": {
       "title": "Vaults",
@@ -666,6 +912,85 @@
     "zenExit": "Thoát Zen (Esc)",
     "tabs": {
       "newTab": "Tạo note trong tab mới"
+    },
+    "newVaultGithub": {
+      "title": "Vault mới từ repo GitHub",
+      "createFailed": "Không tạo được vault mới.",
+      "preparing": "Đang chuẩn bị…"
+    },
+    "clipper": {
+      "saved": "Đã lưu vào Noteriv",
+      "errorStatus": "Noteriv: lỗi ",
+      "blocked": "Không gửi được tới Noteriv (trang này có thể chặn kết nối ngoài)",
+      "defaultName": "Trình duyệt của tôi",
+      "fallbackName": "Trình duyệt",
+      "createFailed": "Không tạo được token (tối đa 20 token, và cần quyền ghi vault).",
+      "revokeFailed": "Không thu hồi được token.",
+      "intro": "Lưu nhanh trang web đang xem vào vault \"{vault}\" (thư mục Clippings/). Bôi đen đoạn cần lưu rồi bấm bookmarklet; không bôi đen thì lưu nội dung chính của trang.",
+      "new": {
+        "label": "Tạo bookmarklet mới",
+        "desc": "Mỗi trình duyệt/thiết bị nên có một token riêng để thu hồi được."
+      },
+      "creating": "Đang tạo…",
+      "create": "Tạo",
+      "ready": "“{name}” đã sẵn sàng",
+      "dragHint": "Kéo nút dưới đây lên thanh bookmark của trình duyệt (hoặc chuột phải → Add to bookmarks). Token chỉ hiện ở đây một lần; bookmarklet chứa token nên đừng chia sẻ nó.",
+      "cspHint": "Một số trang (CSP nghiêm ngặt) chặn bookmarklet gửi dữ liệu ra ngoài; khi đó bạn sẽ thấy thông báo lỗi kết nối.",
+      "active": "Token đang hoạt động",
+      "loading": "Đang tải…",
+      "none": "Chưa có token nào.",
+      "usage": "Vault: {vault} · {used}",
+      "lastUsed": "dùng lần cuối {time}",
+      "unused": "chưa dùng",
+      "revoke": "Thu hồi",
+      "revokeConfirm": "Bấm lần nữa để thu hồi"
+    },
+    "pluginManager": {
+      "permission": {
+        "vaultRead": "Đọc note trong vault",
+        "vaultWrite": "Tạo/sửa/xoá note trong vault",
+        "editorRead": "Đọc nội dung đang mở",
+        "editorWrite": "Sửa nội dung đang mở",
+        "uiCommands": "Thêm lệnh vào giao diện",
+        "uiStatusbar": "Hiện thông tin trên thanh trạng thái",
+        "uiPanel": "Thêm panel bên cạnh và tab trong Settings",
+        "markdownRender": "Hiển thị nội dung đặc biệt trong note (code block)"
+      },
+      "communityLoadFailed": "Không tải được danh sách plugin cộng đồng (repo có thể chưa sẵn sàng).",
+      "sourceMissing": "Không tải được \"{name}\" — thiếu manifest.json hoặc main.js trong repo.",
+      "installFailed": "Cài \"{name}\" thất bại.",
+      "manifestInvalid": "manifest.json không hợp lệ (phải là JSON).",
+      "mainJsMissing": "Thiếu mã nguồn main.js.",
+      "title": "Plugins",
+      "close": "Đóng",
+      "tabs": {
+        "installed": "Đã cài",
+        "community": "Cộng đồng",
+        "manual": "Cài thủ công"
+      },
+      "confirmTitle": "Cài \"{name}\"?",
+      "grants": "Plugin này sẽ được cấp quyền: {permissions}",
+      "noPermissions": "không có quyền nào",
+      "confirm": "Xác nhận cài",
+      "cancel": "Huỷ",
+      "noneInstalled": "Chưa cài plugin nào.",
+      "noneGranted": "Chưa được cấp quyền nào",
+      "disable": "Tắt",
+      "enable": "Bật",
+      "uninstall": "Gỡ",
+      "blocked": "Plugin đã thử dùng nhưng bị chặn vì thiếu quyền: {permissions}.",
+      "needsMore": "Mã plugin có dùng API cần thêm quyền; plugin có thể không hoạt động đầy đủ.",
+      "grantNeeded": "Cấp quyền cần thiết",
+      "unused": "Quyền mà mã plugin không dùng đến: {permissions}.",
+      "keepNeeded": "Chỉ giữ quyền cần thiết",
+      "editPermissions": "Chỉnh quyền",
+      "loadingList": "Đang tải danh sách…",
+      "installed": "Đã cài",
+      "installing": "Đang cài…",
+      "install": "Cài đặt",
+      "noneCommunity": "Chưa có plugin cộng đồng nào.",
+      "manualTitle": "Cài plugin mới (dán thủ công)",
+      "manifestPlaceholder": "manifest.json, vd: {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}"
     }
   },
   "desktop": {
@@ -717,6 +1042,173 @@
     "pdfPluginOff": "Bật core plugin Đọc PDF (Cài đặt → Core plugins) để đọc file này.",
     "syncConflicts": {
       "other": "Đồng bộ đã giữ cả hai phiên bản của {count} note bị sửa ở cả máy này lẫn remote. Bản trên remote được lưu cạnh nó với tên \"(conflict …)\": {files}"
+    },
+    "settings": {
+      "collapseBelow": {
+        "label": "Thu gọn khi hẹp hơn",
+        "desc": "Độ rộng cửa sổ mà cây thư mục tự đóng."
+      },
+      "updates": "Cập nhật",
+      "version": {
+        "label": "Phiên bản",
+        "desc": "Phiên bản Noteriv đang cài."
+      },
+      "autoUpdate": {
+        "label": "Tự động cập nhật",
+        "desc": "Kiểm tra bản mới khi khởi động và báo khi có.",
+        "managedDesc": "Cập nhật do trình quản lý gói lo (Flatpak/Flathub).",
+        "managed": "Quản lý bên ngoài"
+      },
+      "updater": {
+        "check": "Kiểm tra cập nhật",
+        "checking": "Đang kiểm tra...",
+        "upToDate": "Đã là bản mới nhất",
+        "checkAgain": "Kiểm tra lại",
+        "available": "Có bản v{version}",
+        "download": "Tải bản cập nhật",
+        "ready": "Bản v{version} đã sẵn sàng",
+        "install": "Khởi động lại và cài",
+        "failed": "Cập nhật thất bại",
+        "downloadFailed": "Tải thất bại",
+        "retry": "Thử lại"
+      }
+    },
+    "sync": {
+      "gitRepo": "Repository Git",
+      "openVault": "Mở một vault để cài đặt đồng bộ Git.",
+      "remote": {
+        "label": "Remote URL",
+        "desc": "Remote Git của vault này — GitHub, GitLab, Gitea/Forgejo, Bitbucket hoặc tự host. HTTPS hoặc SSH.",
+        "saveFailed": "Không lưu được remote"
+      },
+      "save": "Lưu",
+      "saving": "Đang lưu...",
+      "saved": "Đã lưu",
+      "cancel": "Huỷ",
+      "credentials": {
+        "label": "Thông tin đăng nhập Git",
+        "desc": "Access token cho đồng bộ HTTPS, lưu mã hoá trên máy. Không cần với remote SSH.",
+        "generate": "Tạo token →",
+        "tokenSaved": "Đã lưu access token",
+        "encrypted": "Được mã hoá trên máy này",
+        "change": "Đổi",
+        "disconnect": "Ngắt kết nối",
+        "usernamePlaceholder": "Tên đăng nhập (không bắt buộc — để trống với GitLab; dùng tên đăng nhập với Gitea/Forgejo)",
+        "tokenPlaceholder": "Access token / app password",
+        "hint": "Token được lưu mã hoá và dùng làm mật khẩu HTTPS. Với Bitbucket, đặt tên đăng nhập là",
+        "required": "Cần nhập token",
+        "invalid": "Token không hợp lệ",
+        "saveFailed": "Không lưu được token"
+      },
+      "gitSync": "Đồng bộ Git",
+      "interval": {
+        "label": "Chu kỳ tự đồng bộ",
+        "desc": "Định kỳ commit và push thay đổi ở nền."
+      },
+      "onSave": {
+        "label": "Đồng bộ khi lưu",
+        "desc": "Commit và push mỗi lần bạn tự lưu file."
+      },
+      "pullOnOpen": {
+        "label": "Kéo về khi mở",
+        "desc": "Lấy thay đổi mới nhất từ remote khi mở vault."
+      },
+      "commitMessage": {
+        "label": "Commit message",
+        "desc": "Mẫu cho commit đồng bộ. Dùng {date}, {time}, {count}."
+      },
+      "extra": "Nơi đồng bộ thêm",
+      "provider": {
+        "label": "Nơi đồng bộ",
+        "desc": "Đồng bộ vault tới một nơi thứ hai bên cạnh Git."
+      },
+      "providers": {
+        "none": {
+          "name": "Không",
+          "desc": "Không đồng bộ thêm"
+        },
+        "folder": {
+          "name": "Ổ đám mây (thư mục)",
+          "desc": "Google Drive, Dropbox, OneDrive, iCloud — đồng bộ vào thư mục của chúng trên máy"
+        },
+        "webdav": {
+          "name": "WebDAV",
+          "desc": "Nextcloud, ownCloud hoặc bất kỳ server WebDAV nào"
+        }
+      },
+      "targetFolder": {
+        "label": "Thư mục đích",
+        "desc": "Đường dẫn tới thư mục đồng bộ của ổ đám mây trên máy."
+      },
+      "direction": {
+        "label": "Chiều đồng bộ",
+        "desc": "File được đồng bộ theo chiều nào."
+      },
+      "serverUrl": {
+        "label": "Địa chỉ server",
+        "desc": "Địa chỉ server WebDAV (ví dụ https://cloud.example.com/remote.php/dav/files/user)."
+      },
+      "username": {
+        "label": "Tên đăng nhập",
+        "desc": "Tên đăng nhập tài khoản WebDAV."
+      },
+      "password": {
+        "label": "Mật khẩu",
+        "desc": "Mật khẩu tài khoản WebDAV hoặc app token."
+      },
+      "remotePath": {
+        "label": "Thư mục trên server",
+        "desc": "Thư mục trên server để đồng bộ vào."
+      },
+      "test": "Thử kết nối",
+      "testing": "Đang thử...",
+      "connected": "Đã kết nối",
+      "failed": "Thất bại",
+      "unknownError": "Lỗi không rõ"
+    },
+    "pluginManager": {
+      "permission": {
+        "vaultRead": "đọc note",
+        "vaultWrite": "tạo, sửa và xoá note",
+        "editorRead": "đọc note đang mở",
+        "editorWrite": "sửa note đang mở",
+        "uiCommands": "thêm lệnh",
+        "uiStatusbar": "thêm mục trên thanh trạng thái",
+        "uiPanel": "thêm panel và tab cài đặt",
+        "markdownRender": "vẽ khối code"
+      },
+      "noPermissions": "không có quyền đặc biệt",
+      "loadFailed": "Không tải được plugin cộng đồng. Kiểm tra kết nối mạng.",
+      "title": "Plugins",
+      "installed": "Đã cài",
+      "community": "Cộng đồng",
+      "searchInstalled": "Tìm plugin đã cài...",
+      "install": "Cài đặt",
+      "noneInstalled": "Chưa cài plugin nào",
+      "browseBefore": "Xem tab",
+      "browseAfter": "hoặc bấm “Cài đặt” để thêm plugin từ một thư mục trên máy.",
+      "noMatchTitle": "Không có plugin khớp",
+      "noMatch": "Không có plugin đã cài nào khớp “{query}”.",
+      "sandbox": "Chạy trong sandbox. Được phép: {permissions}.",
+      "asks": "Plugin này xin quyền:",
+      "allowEnable": "Cho phép và bật",
+      "cancel": "Huỷ",
+      "blocked": "Bị chặn: {permissions}.",
+      "allow": "Cho phép",
+      "settings": "Cài đặt plugin",
+      "disable": "Tắt plugin",
+      "enable": "Bật plugin",
+      "confirmUninstall": "Bấm lần nữa để xác nhận",
+      "uninstall": "Gỡ plugin",
+      "confirm": "Xác nhận?",
+      "searchCommunity": "Tìm plugin cộng đồng...",
+      "loading": "Đang tải plugin cộng đồng...",
+      "retry": "Thử lại",
+      "noneFound": "Không tìm thấy plugin nào.",
+      "installing": "Đang cài...",
+      "submit": "Gửi plugin của bạn",
+      "noManifest": "Không thấy manifest.json trong thư mục đã chọn",
+      "invalidManifest": "Manifest không hợp lệ: thiếu trường bắt buộc (id, name, main)"
     }
   },
   "common": {

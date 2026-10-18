@@ -17,21 +17,15 @@ import type { PluginPanelRef } from "@noteriv/ui/plugins/sandbox";
 import type { MirrorEvent } from "@noteriv/ui/plugins/sandbox";
 import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
 import type { CorePluginInfo } from "@noteriv/core/plugin-registry";
+import { t, tOr } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper";
 /** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
 type Section = BuiltInSection | `plugin:${string}`;
 
-const SECTIONS: { id: BuiltInSection; label: string }[] = [
-  { id: "general", label: "General" },
-  { id: "appearance", label: "Appearance" },
-  { id: "editor", label: "Editor" },
-  { id: "shortcuts", label: "Shortcuts" },
-  { id: "sync", label: "Sync" },
-  { id: "corePlugins", label: "Core plugins" },
-  { id: "ecosystem", label: "Ecosystem" },
-  { id: "clipper", label: "Clipper" },
-];
+/** Built-in sections in nav order; their names are `settings.sections.<id>` in the i18n catalog. */
+const SECTIONS: BuiltInSection[] = ["general", "appearance", "editor", "shortcuts", "sync", "corePlugins", "ecosystem", "clipper"];
 
 export interface EditorSettings {
   editorFont: string;
@@ -91,6 +85,7 @@ export default function SettingsModal({
   onToggleCorePlugin,
   corePluginSettingsTabs = [],
 }: SettingsModalProps) {
+  useLocale();
   const [active, setActive] = useState<Section>(initialSection ?? "general");
   const [recording, setRecording] = useState<HotkeyAction | null>(null);
   const [shortcutQuery, setShortcutQuery] = useState("");
@@ -137,11 +132,12 @@ export default function SettingsModal({
     onHotkeysChange(hotkeys.map((h) => (h.action === action ? { ...h, keys: def.keys } : h)));
   };
 
+  // `category` stays the table's English name (it groups rows); what is shown and searched is the catalog's text.
   const categories = Array.from(new Set(hotkeys.map((h) => h.category)));
   const normalizedShortcutQuery = shortcutQuery.trim().toLowerCase();
   const filteredHotkeys = normalizedShortcutQuery
     ? hotkeys.filter((h) =>
-        [h.label, h.action, h.category, h.keys, formatHotkey(h.keys, platform)].some((v) =>
+        [hotkeyLabel(h), h.action, categoryLabel(h.category), h.keys, formatHotkey(h.keys, platform)].some((v) =>
           v.toLowerCase().includes(normalizedShortcutQuery)
         )
       )
@@ -149,19 +145,19 @@ export default function SettingsModal({
 
   const renderGeneral = () => (
     <div className="st-section">
-      <Row label="Tự thu gọn sidebar" desc="Thu gọn sidebar khi cửa sổ hẹp hơn 800px.">
+      <Row label={t("settings.autoCollapse.label")} desc={t("settings.autoCollapse.desc")}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={editorSettings.autoCollapseSidebar} onChange={(e) => onEditorSettingsChange({ autoCollapseSidebar: e.target.checked })} />
-          <span className="st-hint">{editorSettings.autoCollapseSidebar ? "Bật" : "Tắt"}</span>
+          <span className="st-hint">{editorSettings.autoCollapseSidebar ? t("settings.on") : t("settings.off")}</span>
         </label>
       </Row>
-      <Row label="PDF: số cột" desc="Bố cục khi xuất PDF.">
+      <Row label={t("settings.pdfColumnLayout.label")} desc={t("settings.pdfColumnLayout.descWeb")}>
         <select className="st-select" value={editorSettings.pdfColumnLayout} onChange={(e) => onEditorSettingsChange({ pdfColumnLayout: Number(e.target.value) as 1 | 2 })}>
-          <option value={1}>1 cột</option>
-          <option value={2}>2 cột</option>
+          <option value={1}>{t("settings.pdfColumns", { count: 1 })}</option>
+          <option value={2}>{t("settings.pdfColumns", { count: 2 })}</option>
         </select>
       </Row>
-      <Row label="Auto-save" desc="Tự động lưu sau khi dừng gõ bao lâu.">
+      <Row label={t("settings.autoSave.label")} desc={t("settings.autoSave.descWeb")}>
         <select
           className="st-select"
           value={editorSettings.autoSaveInterval}
@@ -169,26 +165,26 @@ export default function SettingsModal({
         >
           {AUTO_SAVE_OPTIONS.map((o) => (
             <option key={o.value} value={o.value}>
-              {o.label}
+              {o.label()}
             </option>
           ))}
         </select>
       </Row>
       <div className="st-divider" />
       <div className="st-row-desc" style={{ padding: "8px 0" }}>
-        Xuất dữ liệu / xoá tài khoản nằm ở trang danh sách vault (menu &quot;Tài khoản&quot;).
+        {t("settings.exportAccountHint")}
       </div>
     </div>
   );
 
   const renderAppearance = () => (
     <div className="st-section">
-      <Row label="Màu nhấn (accent)" desc="Ghi đè màu nhấn của theme; chọn ô đầu để dùng màu của theme.">
+      <Row label={t("settings.accent.label")} desc={t("settings.accent.descWeb")}>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {ACCENT_COLORS.map((c) => (
             <button
               key={c.name}
-              title={c.name}
+              title={c.label()}
               onClick={() => onEditorSettingsChange({ accentColor: c.value })}
               style={{
                 width: 20,
@@ -210,10 +206,10 @@ export default function SettingsModal({
 
   const renderEditor = () => (
     <div className="st-section">
-      <Row label="Font size" desc="Cỡ chữ cơ bản trong editor (px).">
+      <Row label={t("settings.fontSize.label")} desc={t("settings.fontSize.desc")}>
         <Stepper value={editorSettings.fontSize} min={11} max={24} onChange={(v) => onEditorSettingsChange({ fontSize: v })} />
       </Row>
-      <Row label="Line height" desc="Khoảng cách giữa các dòng.">
+      <Row label={t("settings.lineHeight.label")} desc={t("settings.lineHeight.desc")}>
         <Stepper
           value={editorSettings.lineHeight}
           min={1.2}
@@ -223,7 +219,7 @@ export default function SettingsModal({
           onChange={(v) => onEditorSettingsChange({ lineHeight: v })}
         />
       </Row>
-      <Row label="Editor font" desc="Font monospace dùng trong editor.">
+      <Row label={t("settings.editorFont.label")} desc={t("settings.editorFont.desc")}>
         <select
           className="st-select"
           value={editorSettings.editorFont}
@@ -237,7 +233,7 @@ export default function SettingsModal({
         </select>
       </Row>
       <div className="st-divider" />
-      <Row label="Tab size" desc="Số khoảng trắng của một lần thụt lề (phím Tab).">
+      <Row label={t("settings.tabSize.label")} desc={t("settings.tabSize.desc")}>
         <select className="st-select" value={editorSettings.tabSize} onChange={(e) => onEditorSettingsChange({ tabSize: Number(e.target.value) })}>
           {TAB_SIZES.map((n) => (
             <option key={n} value={n}>
@@ -246,20 +242,20 @@ export default function SettingsModal({
           ))}
         </select>
       </Row>
-      <Row label="Kiểm tra chính tả" desc="Gạch chân từ sai theo trình duyệt (ngôn ngữ do trình duyệt quyết định).">
+      <Row label={t("settings.spellCheck.label")} desc={t("settings.spellCheck.desc")}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input type="checkbox" checked={editorSettings.spellCheck} onChange={(e) => onEditorSettingsChange({ spellCheck: e.target.checked })} />
-          <span className="st-hint">{editorSettings.spellCheck ? "Bật" : "Tắt"}</span>
+          <span className="st-hint">{editorSettings.spellCheck ? t("settings.on") : t("settings.off")}</span>
         </label>
       </Row>
-      <Row label="Vim mode" desc="Dùng phím tắt kiểu Vim trong editor (chế độ Edit).">
+      <Row label={t("settings.vimMode.label")} desc={t("settings.vimMode.desc")}>
         <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
           <input
             type="checkbox"
             checked={editorSettings.vimModeEnabled}
             onChange={(e) => onEditorSettingsChange({ vimModeEnabled: e.target.checked })}
           />
-          <span className="st-hint">{editorSettings.vimModeEnabled ? "Bật" : "Tắt"}</span>
+          <span className="st-hint">{editorSettings.vimModeEnabled ? t("settings.on") : t("settings.off")}</span>
         </label>
       </Row>
     </div>
@@ -268,9 +264,9 @@ export default function SettingsModal({
   const renderShortcuts = () => (
     <div className="st-section">
       <div className="st-shortcuts-header">
-        <span className="st-hint">Bấm vào một phím tắt để gán lại</span>
+        <span className="st-hint">{t("settings.shortcuts.hint")}</span>
         <button onClick={resetAllHotkeys} className="st-reset-all">
-          Đặt lại tất cả
+          {t("settings.shortcuts.resetAll")}
         </button>
       </div>
       <div className="st-shortcut-search">
@@ -282,15 +278,15 @@ export default function SettingsModal({
           type="search"
           value={shortcutQuery}
           onChange={(e) => setShortcutQuery(e.target.value)}
-          placeholder="Tìm lệnh hoặc phím"
-          aria-label="Tìm phím tắt"
+          placeholder={t("settings.shortcuts.search")}
+          aria-label={t("settings.shortcuts.searchLabel")}
         />
       </div>
       {categories.map(
         (cat) =>
           filteredHotkeys.some((h) => h.category === cat) && (
             <div key={cat} className="st-shortcut-group">
-              <div className="st-shortcut-cat">{cat}</div>
+              <div className="st-shortcut-cat">{categoryLabel(cat)}</div>
               {filteredHotkeys
                 .filter((h) => h.category === cat)
                 .map((h) => {
@@ -298,16 +294,16 @@ export default function SettingsModal({
                   const isDefault = DEFAULT_HOTKEYS.find((d) => d.action === h.action)?.keys === h.keys;
                   return (
                     <div key={h.action} className="st-shortcut-row">
-                      <span className="st-shortcut-label">{h.label}</span>
+                      <span className="st-shortcut-label">{hotkeyLabel(h)}</span>
                       <div className="st-shortcut-keys">
                         <button
                           onClick={() => setRecording(isRec ? null : h.action)}
                           className={`settings-key-btn${isRec ? " recording" : ""}`}
                         >
-                          {isRec ? "Nhấn phím..." : formatHotkey(h.keys, platform) || "—"}
+                          {isRec ? t("settings.shortcuts.recording") : formatHotkey(h.keys, platform) || "—"}
                         </button>
                         {!isDefault && (
-                          <button onClick={() => resetHotkey(h.action)} className="settings-key-reset" title="Đặt lại mặc định">
+                          <button onClick={() => resetHotkey(h.action)} className="settings-key-reset" title={t("settings.shortcuts.reset")}>
                             <svg width="12" height="12" viewBox="0 0 12 12">
                               <path
                                 d="M2 4h3L2 1M2 4a5 5 0 105 5"
@@ -328,7 +324,7 @@ export default function SettingsModal({
           )
       )}
       {normalizedShortcutQuery && filteredHotkeys.length === 0 && (
-        <div className="st-shortcut-empty">Không có phím tắt nào khớp &quot;{shortcutQuery}&quot;.</div>
+        <div className="st-shortcut-empty">{t("settings.shortcuts.empty", { query: shortcutQuery })}</div>
       )}
     </div>
   );
@@ -344,8 +340,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">Plugin cộng đồng</span>
-          <span className="st-ecosystem-desc">Mở rộng Noteriv bằng plugin — cài, bật/tắt, gỡ.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.plugins")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.pluginsDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -360,8 +356,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">CSS Snippets</span>
-          <span className="st-ecosystem-desc">Tuỳ biến giao diện bằng CSS snippet riêng.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.snippets")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.snippetsDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -376,8 +372,8 @@ export default function SettingsModal({
           </svg>
         </div>
         <div className="st-ecosystem-info">
-          <span className="st-ecosystem-title">Theme cộng đồng</span>
-          <span className="st-ecosystem-desc">Xem trong tab Appearance &gt; Theme.</span>
+          <span className="st-ecosystem-title">{t("settings.ecosystem.themes")}</span>
+          <span className="st-ecosystem-desc">{t("settings.ecosystem.themesDesc")}</span>
         </div>
         <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="st-ecosystem-arrow">
           <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
@@ -400,11 +396,12 @@ export default function SettingsModal({
       />
     ),
     ecosystem: renderEcosystem,
-    clipper: () => <ClipperSection vaultId={vaultId} vaultName={vaultName ?? "vault này"} />,
+    clipper: () => <ClipperSection vaultId={vaultId} vaultName={vaultName ?? t("settings.thisVault")} />,
   };
 
   const navItems: { id: Section; label: string }[] = [
-    ...SECTIONS,
+    ...SECTIONS.map((id) => ({ id, label: t(`settings.sections.${id}`) })),
+    // A plugin's own tab title, as the plugin gave it.
     ...pluginTabs.map((t) => ({ id: `plugin:${t.pluginDbId}:${t.id}` as Section, label: t.title })),
   ];
   const activePluginTab = active.startsWith("plugin:")
@@ -417,7 +414,7 @@ export default function SettingsModal({
       return activePluginTab ? (
         <PluginMirror html={activePluginTab.html} css={activePluginTab.css} onEvent={(e) => onPluginEvent?.(activePluginTab, e)} />
       ) : (
-        <div className="st-row-desc">Tab này không còn khả dụng (plugin đã tắt?).</div>
+        <div className="st-row-desc">{t("settings.pluginTabGone")}</div>
       );
     }
     return builtInContent[active as BuiltInSection]();
@@ -427,7 +424,7 @@ export default function SettingsModal({
     <div ref={overlayRef} className="settings-overlay" onClick={handleBackdrop}>
       <div className="settings-modal">
         <div className="st-nav">
-          <div className="st-nav-title">Settings</div>
+          <div className="st-nav-title">{t("settings.title")}</div>
           {navItems.map((s) => (
             <button key={s.id} className={`st-nav-item${active === s.id ? " st-nav-active" : ""}`} onClick={() => setActive(s.id)}>
               <span>{s.label}</span>
@@ -449,6 +446,10 @@ export default function SettingsModal({
     </div>
   );
 }
+
+/** A hotkey's name and category in the current language (the table's English when the catalog lacks it). */
+const hotkeyLabel = (h: HotkeyBinding) => tOr(`hotkeys.${h.action}`, h.label);
+const categoryLabel = (category: string) => tOr(`hotkeys.category.${category.toLowerCase()}`, category);
 
 function Row({ label, desc, children }: { label: string; desc: string; children: React.ReactNode }) {
   return (

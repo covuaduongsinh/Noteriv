@@ -1,3 +1,5 @@
+import { t } from "@noteriv/ui/i18n";
+
 export interface AppSettings {
   autoSaveInterval: number; // seconds, 0 = disabled
   spellCheck: boolean;
@@ -45,15 +47,16 @@ export const DEFAULT_SETTINGS: AppSettings = {
   pdfChessboardWidth: 75,
 };
 
+// `label`s are read when a menu renders, so they follow the current language.
 export const ACCENT_COLORS = [
-  { name: "Blue", value: "#89b4fa" },
-  { name: "Lavender", value: "#b4befe" },
-  { name: "Mauve", value: "#cba6f7" },
-  { name: "Pink", value: "#f38ba8" },
-  { name: "Peach", value: "#fab387" },
-  { name: "Yellow", value: "#f9e2af" },
-  { name: "Green", value: "#a6e3a1" },
-  { name: "Teal", value: "#94e2d5" },
+  { name: "blue", value: "#89b4fa", label: () => t("settings.accent.blue") },
+  { name: "lavender", value: "#b4befe", label: () => t("settings.accent.lavender") },
+  { name: "mauve", value: "#cba6f7", label: () => t("settings.accent.mauve") },
+  { name: "pink", value: "#f38ba8", label: () => t("settings.accent.pink") },
+  { name: "peach", value: "#fab387", label: () => t("settings.accent.peach") },
+  { name: "yellow", value: "#f9e2af", label: () => t("settings.accent.yellow") },
+  { name: "green", value: "#a6e3a1", label: () => t("settings.accent.green") },
+  { name: "teal", value: "#94e2d5", label: () => t("settings.accent.teal") },
 ];
 
 export const EDITOR_FONTS = [
@@ -66,24 +69,24 @@ export const EDITOR_FONTS = [
 ];
 
 export const AUTO_SAVE_OPTIONS = [
-  { label: "Off", value: 0 },
-  { label: "10 seconds", value: 10 },
-  { label: "30 seconds", value: 30 },
-  { label: "1 minute", value: 60 },
-  { label: "5 minutes", value: 300 },
+  { label: () => t("settings.off"), value: 0 },
+  { label: () => t("settings.duration.seconds", { count: 10 }), value: 10 },
+  { label: () => t("settings.duration.seconds", { count: 30 }), value: 30 },
+  { label: () => t("settings.duration.minutes", { count: 1 }), value: 60 },
+  { label: () => t("settings.duration.minutes", { count: 5 }), value: 300 },
 ];
 
 export const SYNC_OPTIONS = [
-  { label: "Off", value: 0 },
-  { label: "1 minute", value: 1 },
-  { label: "5 minutes", value: 5 },
-  { label: "10 minutes", value: 10 },
-  { label: "30 minutes", value: 30 },
+  { label: () => t("settings.off"), value: 0 },
+  { label: () => t("settings.duration.minutes", { count: 1 }), value: 1 },
+  { label: () => t("settings.duration.minutes", { count: 5 }), value: 5 },
+  { label: () => t("settings.duration.minutes", { count: 10 }), value: 10 },
+  { label: () => t("settings.duration.minutes", { count: 30 }), value: 30 },
 ];
 
 export const PDF_COLUMN_LAYOUT_OPTIONS = [
-  { label: "1 column", value: 1 },
-  { label: "2 columns", value: 2 },
+  { label: () => t("settings.pdfColumns", { count: 1 }), value: 1 },
+  { label: () => t("settings.pdfColumns", { count: 2 }), value: 2 },
 ];
 
 export function applySettings(s: AppSettings) {

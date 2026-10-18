@@ -109,6 +109,125 @@
       "settings": "Options",
       "hideSettings": "Hide options",
       "saveFailed": "Could not save this choice: {detail}"
+    },
+    "title": "Settings",
+    "sections": {
+      "general": "General",
+      "appearance": "Appearance",
+      "editor": "Editor",
+      "shortcuts": "Shortcuts",
+      "sync": "Sync",
+      "corePlugins": "Core plugins",
+      "ecosystem": "Ecosystem",
+      "clipper": "Clipper"
+    },
+    "on": "On",
+    "off": "Off",
+    "duration": {
+      "seconds": {
+        "one": "{count} second",
+        "other": "{count} seconds"
+      },
+      "minutes": {
+        "one": "{count} minute",
+        "other": "{count} minutes"
+      }
+    },
+    "pdfColumns": {
+      "one": "{count} column",
+      "other": "{count} columns"
+    },
+    "autoCollapse": {
+      "label": "Responsive sidebar",
+      "desc": "Collapse the file navigator when the window becomes narrow."
+    },
+    "spellCheck": {
+      "label": "Spell check",
+      "desc": "Underline misspelled words in the editor."
+    },
+    "autoSave": {
+      "label": "Auto-save",
+      "descWeb": "How long after you stop typing the note is saved.",
+      "descDesktop": "Automatically save files at a regular interval.",
+      "instant": "500 ms (almost instant)",
+      "default": "800 ms (default)"
+    },
+    "accent": {
+      "label": "Accent color",
+      "descWeb": "Overrides the theme's accent color; pick the first swatch to use the theme's own.",
+      "descDesktop": "Primary color used for highlights, links, and active states.",
+      "themeDefault": "Theme default",
+      "blue": "Blue",
+      "lavender": "Lavender",
+      "mauve": "Mauve",
+      "pink": "Pink",
+      "peach": "Peach",
+      "yellow": "Yellow",
+      "green": "Green",
+      "teal": "Teal"
+    },
+    "fontSize": {
+      "label": "Font size",
+      "desc": "Base font size for the editor (px)."
+    },
+    "lineHeight": {
+      "label": "Line height",
+      "desc": "Vertical spacing between lines."
+    },
+    "editorFont": {
+      "label": "Editor font",
+      "desc": "Monospace font used in the editor."
+    },
+    "tabSize": {
+      "label": "Tab size",
+      "desc": "Number of spaces per tab indentation.",
+      "spaces": {
+        "one": "{count} space",
+        "other": "{count} spaces"
+      }
+    },
+    "vimMode": {
+      "label": "Vim mode",
+      "desc": "Use Vim-style key bindings in the editor (Edit mode)."
+    },
+    "pdfColumnLayout": {
+      "label": "Column layout",
+      "descWeb": "Layout of PDF exports.",
+      "descDesktop": "Number of print columns; content flows from the left column into the right."
+    },
+    "pdfExport": "PDF export",
+    "exportAccountHint": "Exporting your data and deleting your account are on the vault list page (\"Account\" menu).",
+    "pluginTabGone": "This tab is no longer available (was the plugin turned off?).",
+    "thisVault": "this vault",
+    "shortcuts": {
+      "hint": "Click a shortcut to rebind it",
+      "resetAll": "Reset All",
+      "search": "Search commands or keys",
+      "searchLabel": "Search shortcuts",
+      "clear": "Clear",
+      "clearLabel": "Clear shortcut search",
+      "results": {
+        "one": "{count} shortcut",
+        "other": "{count} shortcuts"
+      },
+      "recording": "Press keys...",
+      "reset": "Reset to default",
+      "empty": "No shortcuts match \"{query}\"."
+    },
+    "ecosystem": {
+      "plugins": "Community Plugins",
+      "pluginsDesc": "Extend Noteriv with plugins. Install, enable, and manage third-party plugins.",
+      "snippets": "CSS Snippets",
+      "snippetsDesc": "Customize the appearance with custom CSS snippets that override default styles.",
+      "themes": "Community Themes",
+      "themesDesc": "Browse and install community themes. Available in Appearance > Theme."
+    },
+    "sync": {
+      "direction": {
+        "both": "Two-way (push & pull)",
+        "push": "Push only (local → folder)",
+        "pull": "Pull only (folder → local)"
+      }
     }
   },
   "plugins": {
@@ -621,7 +740,143 @@
       "conflict": "sync: conflict",
       "error": "sync: error",
       "at": "sync: {time}",
-      "never": "sync: not run yet"
+      "never": "sync: not run yet",
+      "direction": {
+        "label": "Sync direction",
+        "both": "Two-way",
+        "push": "Push only (web → repo)",
+        "pull": "Pull only (repo → web)"
+      },
+      "status": {
+        "queued": "queued",
+        "running": "running",
+        "success": "success",
+        "error": "error",
+        "conflict": "conflict"
+      },
+      "forbidden": "You don't have permission to do this.",
+      "on": "On",
+      "auto": {
+        "label": "Auto-sync",
+        "desc": "Runs in the background on a schedule, no button needed."
+      },
+      "every": {
+        "one": "every {count} minute",
+        "other": "every {count} minutes"
+      },
+      "onSave": {
+        "label": "Sync on save",
+        "desc": "Pushes about 30 seconds after the first save."
+      },
+      "pullOnOpen": {
+        "label": "Pull when opening the vault",
+        "desc": "Fetches new changes from the repo every time you open the vault."
+      },
+      "commitTemplate": {
+        "label": "Commit message template",
+        "desc": "Use {date} {time} {count}."
+      },
+      "connections": "Sync connections",
+      "loading": "Loading…",
+      "none": "No connections yet. Connect GitHub to back up and sync this vault with a repository.",
+      "lastSynced": "Last: {time}",
+      "neverSynced": "Never synced",
+      "syncing": " · syncing…",
+      "unsynced": {
+        "one": " · {count} note not synced",
+        "other": " · {count} notes not synced"
+      },
+      "remoteChanged": " · remote has new changes",
+      "remoteUnreachable": " · remote unreachable ({error})",
+      "autoEvery": {
+        "one": " · automatic every {count} minute",
+        "other": " · automatic every {count} minutes"
+      },
+      "errorPrefix": "Error: {message}",
+      "conflictTitle": "Conflict: the web and the repo both changed some files",
+      "moreFiles": {
+        "one": "… and {count} more file",
+        "other": "… and {count} more files"
+      },
+      "conflictHint": "Choose the side to keep. The other side stays in the repo's git history.",
+      "keepWeb": "Keep the web version",
+      "keepWebConfirm": "Click again: keep the web version",
+      "keepRepo": "Take the repo version",
+      "keepRepoConfirm": "Click again: take the repo version",
+      "resolveFailed": "Could not resolve the conflict.",
+      "syncNow": "Sync now",
+      "syncingButton": "Syncing…",
+      "startFailed": "Could not start the sync.",
+      "test": "Test connection",
+      "testOk": "The connection works.",
+      "testFailed": "Could not connect.",
+      "testError": "Could not test the connection.",
+      "checkRemote": "Check remote",
+      "edit": "Edit",
+      "closeEdit": "Close editing",
+      "log": "Log",
+      "logEmpty": "No runs yet.",
+      "remove": "Delete",
+      "removeConfirm": "Click again to delete",
+      "removeFailed": "Could not delete the connection.",
+      "addGithub": "+ Connect GitHub",
+      "addGit": "+ Other git (GitLab, Gitea…)",
+      "addWebdav": "+ WebDAV",
+      "branch": "Branch",
+      "newToken": {
+        "label": "Change access token",
+        "desc": "Leave empty to keep the current token.",
+        "placeholder": "new token"
+      },
+      "save": "Save",
+      "saveChanges": "Save changes",
+      "saving": "Saving…",
+      "saveFailed": "Could not save the changes.",
+      "cancel": "Cancel",
+      "github": {
+        "title": "Connect GitHub",
+        "step1": "Step 1 — paste a Personal Access Token (with the repo scope).",
+        "createToken": "Create a token →",
+        "tokenPlaceholder": "ghp_xxxx… or github_pat_xxxx…",
+        "verifying": "Checking…",
+        "verify": "Verify & pick a repo",
+        "verifyFailed": "Could not verify the token.",
+        "signedIn": "Verified:",
+        "step2": "Step 2 — pick an existing repository or create one.",
+        "filter": "Filter repositories…",
+        "noMatch": "No matching repository.",
+        "newRepoPlaceholder": "new repo name, e.g. my-notes",
+        "private": "Private",
+        "createRepo": "Create repo",
+        "createRepoFailed": "Could not create the repository.",
+        "step3": "Step 3 — repo",
+        "changeRepo": "Change repo",
+        "emptyRepo": "Empty repo: this branch is created on the first sync.",
+        "firstSync": "First sync: notes already in the repo are imported into the vault; a note at the same path keeps the web's content.",
+        "connecting": "Connecting…",
+        "connect": "Connect",
+        "connectFailed": "Could not create the connection."
+      },
+      "git": {
+        "remoteDesc": "GitLab, Gitea/Forgejo, Bitbucket… — HTTPS.",
+        "createToken": "Create an access token →",
+        "usernameDesc": "Leave empty if not needed (GitLab). Use your login for Gitea/Forgejo.",
+        "token": "Access token",
+        "required": "A remote URL and an access token are required.",
+        "addFailed": "Could not add the connection — check the remote URL and token."
+      },
+      "webdav": {
+        "serverDesc": "Nextcloud, ownCloud, or any WebDAV server.",
+        "required": "A URL, username and password are required.",
+        "addFailed": "Could not add the WebDAV connection — check the details."
+      },
+      "field": {
+        "remoteUrl": "Remote URL",
+        "username": "Username",
+        "password": "Password",
+        "remotePath": "Remote path",
+        "serverUrl": "Server URL"
+      }
     },
     "vaults": {
       "title": "Vaults",
@@ -684,6 +939,85 @@
     "zenExit": "Exit Zen (Esc)",
     "tabs": {
       "newTab": "New note"
+    },
+    "newVaultGithub": {
+      "title": "New vault from a GitHub repo",
+      "createFailed": "Could not create a new vault.",
+      "preparing": "Preparing…"
+    },
+    "clipper": {
+      "saved": "Saved to Noteriv",
+      "errorStatus": "Noteriv: error ",
+      "blocked": "Could not reach Noteriv (this page may block outside connections)",
+      "defaultName": "My browser",
+      "fallbackName": "Browser",
+      "createFailed": "Could not create the token (20 tokens at most, and you need write access to the vault).",
+      "revokeFailed": "Could not revoke the token.",
+      "intro": "Save the page you are viewing to the vault \"{vault}\" (folder Clippings/). Select the part to keep, then click the bookmarklet; with nothing selected it saves the page's main content.",
+      "new": {
+        "label": "New bookmarklet",
+        "desc": "Give each browser or device its own token so it can be revoked."
+      },
+      "creating": "Creating…",
+      "create": "Create",
+      "ready": "“{name}” is ready",
+      "dragHint": "Drag the button below to your browser's bookmarks bar (or right-click → Add to bookmarks). The token is shown only here, once; the bookmarklet contains it, so don't share it.",
+      "cspHint": "Some pages (strict CSP) stop bookmarklets from sending data out; you then see a connection error.",
+      "active": "Active tokens",
+      "loading": "Loading…",
+      "none": "No tokens yet.",
+      "usage": "Vault: {vault} · {used}",
+      "lastUsed": "last used {time}",
+      "unused": "never used",
+      "revoke": "Revoke",
+      "revokeConfirm": "Click again to revoke"
+    },
+    "pluginManager": {
+      "permission": {
+        "vaultRead": "Read notes in the vault",
+        "vaultWrite": "Create, edit and delete notes in the vault",
+        "editorRead": "Read the open note",
+        "editorWrite": "Edit the open note",
+        "uiCommands": "Add commands to the interface",
+        "uiStatusbar": "Show information in the status bar",
+        "uiPanel": "Add side panels and tabs in Settings",
+        "markdownRender": "Show special content in notes (code blocks)"
+      },
+      "communityLoadFailed": "Could not load the community plugin list (the repository may not be ready yet).",
+      "sourceMissing": "Could not load \"{name}\": manifest.json or main.js is missing from the repository.",
+      "installFailed": "Installing \"{name}\" failed.",
+      "manifestInvalid": "manifest.json is not valid (it must be JSON).",
+      "mainJsMissing": "main.js is missing.",
+      "title": "Plugins",
+      "close": "Close",
+      "tabs": {
+        "installed": "Installed",
+        "community": "Community",
+        "manual": "Manual install"
+      },
+      "confirmTitle": "Install \"{name}\"?",
+      "grants": "This plugin will be granted: {permissions}",
+      "noPermissions": "no permissions",
+      "confirm": "Confirm install",
+      "cancel": "Cancel",
+      "noneInstalled": "No plugins installed yet.",
+      "noneGranted": "No permissions granted yet",
+      "disable": "Disable",
+      "enable": "Enable",
+      "uninstall": "Uninstall",
+      "blocked": "The plugin tried to use permissions it does not have and was blocked: {permissions}.",
+      "needsMore": "The plugin's code uses APIs that need more permissions; it may not work fully.",
+      "grantNeeded": "Grant the needed permissions",
+      "unused": "Permissions the plugin's code does not use: {permissions}.",
+      "keepNeeded": "Keep only the needed permissions",
+      "editPermissions": "Edit permissions",
+      "loadingList": "Loading the list…",
+      "installed": "Installed",
+      "installing": "Installing…",
+      "install": "Install",
+      "noneCommunity": "No community plugins yet.",
+      "manualTitle": "Install a new plugin (paste it in)",
+      "manifestPlaceholder": "manifest.json, e.g. {\"id\":\"hello\",\"name\":\"Hello\",\"version\":\"1.0.0\",\"description\":\"\",\"author\":\"\",\"main\":\"main.js\",\"permissions\":[\"ui:commands\"]}"
     }
   },
   "desktop": {
@@ -737,6 +1071,173 @@
     "syncConflicts": {
       "one": "Sync kept both versions of {count} note edited here and on the remote. The remote version is saved next to it as \"(conflict …)\": {files}",
       "other": "Sync kept both versions of {count} notes edited here and on the remote. The remote version is saved next to it as \"(conflict …)\": {files}"
+    },
+    "settings": {
+      "collapseBelow": {
+        "label": "Collapse below",
+        "desc": "Window width at which the file navigator closes automatically."
+      },
+      "updates": "Updates",
+      "version": {
+        "label": "Version",
+        "desc": "Currently installed version of Noteriv."
+      },
+      "autoUpdate": {
+        "label": "Automatic updates",
+        "desc": "Check for updates on startup and notify when a new version is available.",
+        "managedDesc": "Updates are managed by your package manager (Flatpak/Flathub).",
+        "managed": "Managed externally"
+      },
+      "updater": {
+        "check": "Check for Updates",
+        "checking": "Checking...",
+        "upToDate": "Up to date",
+        "checkAgain": "Check Again",
+        "available": "v{version} available",
+        "download": "Download Update",
+        "ready": "v{version} ready",
+        "install": "Restart & Install",
+        "failed": "Update failed",
+        "downloadFailed": "Download failed",
+        "retry": "Retry"
+      }
+    },
+    "sync": {
+      "gitRepo": "Git Repository",
+      "openVault": "Open a vault to configure Git sync.",
+      "remote": {
+        "label": "Remote URL",
+        "desc": "Git remote for this vault — GitHub, GitLab, Gitea/Forgejo, Bitbucket, or self-hosted. HTTPS or SSH.",
+        "saveFailed": "Failed to save remote"
+      },
+      "save": "Save",
+      "saving": "Saving...",
+      "saved": "Saved",
+      "cancel": "Cancel",
+      "credentials": {
+        "label": "Git credentials",
+        "desc": "Access token for HTTPS sync, stored encrypted locally. Not needed for SSH remotes.",
+        "generate": "Generate token →",
+        "tokenSaved": "Access token saved",
+        "encrypted": "Encrypted on this device",
+        "change": "Change",
+        "disconnect": "Disconnect",
+        "usernamePlaceholder": "Username (optional — blank works for GitLab; use your login for Gitea/Forgejo)",
+        "tokenPlaceholder": "Access token / app password",
+        "hint": "Token is stored encrypted and used as the HTTPS password. For Bitbucket, set username to",
+        "required": "Token is required",
+        "invalid": "Invalid token",
+        "saveFailed": "Failed to save token"
+      },
+      "gitSync": "Git Sync",
+      "interval": {
+        "label": "Auto sync interval",
+        "desc": "Periodically commit and push changes in the background."
+      },
+      "onSave": {
+        "label": "Sync on save",
+        "desc": "Commit and push every time you manually save a file."
+      },
+      "pullOnOpen": {
+        "label": "Pull on open",
+        "desc": "Fetch the latest changes from remote when opening a vault."
+      },
+      "commitMessage": {
+        "label": "Commit message",
+        "desc": "Template for sync commits. Use {date}, {time}, {count}."
+      },
+      "extra": "Additional Sync Provider",
+      "provider": {
+        "label": "Provider",
+        "desc": "Sync your vault to a second destination alongside Git."
+      },
+      "providers": {
+        "none": {
+          "name": "None",
+          "desc": "No additional sync provider"
+        },
+        "folder": {
+          "name": "Cloud Drive (Folder)",
+          "desc": "Google Drive, Dropbox, OneDrive, iCloud — sync to their local folder"
+        },
+        "webdav": {
+          "name": "WebDAV",
+          "desc": "Nextcloud, ownCloud, or any WebDAV server"
+        }
+      },
+      "targetFolder": {
+        "label": "Target folder",
+        "desc": "Path to the cloud drive sync folder on your system."
+      },
+      "direction": {
+        "label": "Direction",
+        "desc": "Which way files should sync."
+      },
+      "serverUrl": {
+        "label": "Server URL",
+        "desc": "WebDAV server address (e.g. https://cloud.example.com/remote.php/dav/files/user)."
+      },
+      "username": {
+        "label": "Username",
+        "desc": "WebDAV account username."
+      },
+      "password": {
+        "label": "Password",
+        "desc": "WebDAV account password or app token."
+      },
+      "remotePath": {
+        "label": "Remote path",
+        "desc": "Folder path on the server to sync to."
+      },
+      "test": "Test Connection",
+      "testing": "Testing...",
+      "connected": "Connected",
+      "failed": "Failed",
+      "unknownError": "Unknown error"
+    },
+    "pluginManager": {
+      "permission": {
+        "vaultRead": "read notes",
+        "vaultWrite": "create, edit and delete notes",
+        "editorRead": "read the open note",
+        "editorWrite": "edit the open note",
+        "uiCommands": "add commands",
+        "uiStatusbar": "add status bar items",
+        "uiPanel": "add panels and settings tabs",
+        "markdownRender": "render code blocks"
+      },
+      "noPermissions": "no special permissions",
+      "loadFailed": "Failed to load community plugins. Check your connection.",
+      "title": "Plugins",
+      "installed": "Installed",
+      "community": "Community",
+      "searchInstalled": "Search installed plugins...",
+      "install": "Install",
+      "noneInstalled": "No plugins installed",
+      "browseBefore": "Browse the",
+      "browseAfter": "tab or click “Install” to add a plugin from a local folder.",
+      "noMatchTitle": "No matching plugins",
+      "noMatch": "No installed plugins match “{query}”.",
+      "sandbox": "Runs in a sandbox. Allowed: {permissions}.",
+      "asks": "This plugin asks to:",
+      "allowEnable": "Allow and enable",
+      "cancel": "Cancel",
+      "blocked": "Blocked: {permissions}.",
+      "allow": "Allow",
+      "settings": "Plugin settings",
+      "disable": "Disable plugin",
+      "enable": "Enable plugin",
+      "confirmUninstall": "Click again to confirm",
+      "uninstall": "Uninstall plugin",
+      "confirm": "Confirm?",
+      "searchCommunity": "Search community plugins...",
+      "loading": "Loading community plugins...",
+      "retry": "Retry",
+      "noneFound": "No plugins found.",
+      "installing": "Installing...",
+      "submit": "Submit your plugin",
+      "noManifest": "No manifest.json found in the selected folder",
+      "invalidManifest": "Invalid manifest: missing required fields (id, name, main)"
     }
   },
   "common": {

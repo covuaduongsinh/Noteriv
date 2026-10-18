@@ -19,8 +19,8 @@ const others = readdirSync(localesDir)
   .map((f) => [f.replace(/\.json$/, ""), load(f.replace(/\.json$/, ""))] as const);
 
 /**
- * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.4).
- * Must be empty when 4.4 is done.
+ * English keys a catalog may still lack while strings are being moved into the catalogs (Stage 4, sessions 4.2–4.5).
+ * Must be empty when 4.5 is done.
  */
 const NOT_YET_TRANSLATED: Record<string, string[]> = { vi: [] };
 
@@ -99,6 +99,20 @@ describe("i18n catalogs", () => {
     for (const [, title] of menu.matchAll(/title: "(\w+)",/g)) {
       if (!en.has(`web.menu.${title}`)) missing.push(`web menu section: ${title}`);
     }
+    expect(missing).toEqual([]);
+  });
+
+  it("names every Settings section of both apps and every sync direction and status the web shows", () => {
+    const missing: string[] = [];
+    for (const app of ["web", "desktop"]) {
+      const modal = readFileSync(join(root, app, "src", "components", "SettingsModal.tsx"), "utf8");
+      const list = /const SECTIONS: \w+\[\] = \[([^\]]+)\]/.exec(modal)?.[1] ?? "";
+      const ids = Array.from(list.matchAll(/"(\w+)"/g), (m) => m[1]);
+      expect(ids.length, app).toBeGreaterThan(5);
+      for (const id of ids) if (!en.has(`settings.sections.${id}`)) missing.push(`${app}: settings.sections.${id}`);
+    }
+    for (const d of ["both", "push", "pull"]) if (!en.has(`web.sync.direction.${d}`)) missing.push(`web.sync.direction.${d}`);
+    for (const s of ["queued", "running", "success", "error", "conflict"]) if (!en.has(`web.sync.status.${s}`)) missing.push(`web.sync.status.${s}`);
     expect(missing).toEqual([]);
   });
 
