@@ -7,6 +7,9 @@ import { trashNote } from "../lib/trash.js";
 import { listSnapshots, getSnapshotContent } from "../lib/noteSnapshots.js";
 import { scheduleSyncOnSave } from "../lib/syncOnSave.js";
 import { getNoteGitHistory, getNoteContentAtCommit } from "../lib/noteHistory.js";
+import { contentHash } from "../lib/contentHash.js";
+import { conflictCopyPath } from "../lib/gitSync.js";
+import { logAudit } from "../lib/auditLog.js";
 
 const createNoteSchema = z.object({
   name: z.string().min(1).max(255),
@@ -16,6 +19,12 @@ const createNoteSchema = z.object({
 
 const updateNoteSchema = z.object({
   content: z.string().optional(),
+  /**
+   * SHA-256 (hex) of the text this edit started from. When it no longer matches the stored text (the note was changed
+   * elsewhere meanwhile), the edit is not written over it: it is saved as a conflict copy next to the note instead.
+   * Without it, the write is unconditional (collaborative editing, plugins, older clients).
+   */
+  baseHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   frontmatter: z.record(z.any()).optional(),
   name: z.string().min(1).max(255).optional(),
   folderId: z.string().uuid().nullable().optional(),
@@ -91,7 +100,36 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
 
-      const { content, frontmatter, name, folderId } = parsed.data;
+      const { content, frontmatter, name, folderId, baseHash } = parsed.data;
+
+      if (content !== undefined && baseHash && baseHash !== contentHash(existing.content) && content !== existing.content) {
+        // Changed elsewhere since this client read it: keep both. The client's text becomes "<name> (conflict …).md"
+        // beside the note, which the conflict banner then offers to compare, use or discard.
+        const slash = existing.path.lastIndexOf("/");
+        const stem = existing.path.slice(0, existing.path.length - (existing.name.match(/\.[^.]+$/)?.[0].length ?? 0));
+        const siblings = await prisma.note.findMany({ where: { vaultId: vid, path: { startsWith: `${stem} (conflict ` } }, select: { path: true } });
+        const taken = new Set(siblings.map((n) => n.path));
+        const copyPath = conflictCopyPath(existing.path, (candidate) => taken.has(candidate));
+        const copyName = copyPath.slice(slash + 1);
+        const copy = await prisma.note.create({
+          data: {
+            vaultId: vid,
+            folderId: existing.folderId,
+            name: copyName,
+            path: copyPath,
+            content,
+            sizeBytes: Buffer.byteLength(content, "utf8"),
+            createdById: request.user!.id,
+            updatedById: request.user!.id,
+          },
+          select: { id: true, path: true, name: true },
+        });
+        await recomputeBacklinksForNote(prisma, vid, copy.id, content);
+        logAudit(prisma, { userId: request.user!.id, action: "note_conflict", resourceType: "note", resourceId: nid, metadata: { copyId: copy.id }, ip: request.ip });
+        void scheduleSyncOnSave(prisma, vid);
+        return reply.code(409).send({ error: "stale", note: existing, copy });
+      }
+
       let path = existing.path;
       const nextName = name ?? existing.name;
       const nextFolderId = folderId === undefined ? existing.folderId : folderId;

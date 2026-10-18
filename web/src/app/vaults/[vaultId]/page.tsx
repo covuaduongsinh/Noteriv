@@ -50,8 +50,14 @@ import {
   type ApiVault,
   type VaultIndex,
   type ApiSyncConnection,
+  type ApiWorkspaceState,
+  type StaleNote,
   type ViewMode,
 } from "@/lib/webApi";
+import { contentHash } from "@/lib/content-hash";
+import { isNetworkError, staleNote } from "@/lib/offline";
+import { dropPendingEdit, getPendingEdit, getStoredNote, kvGet, kvSet, putPendingEdit, storeNote } from "@/lib/offline-store";
+import { flushPending } from "@/lib/offline-sync";
 import { BUILT_IN_THEMES, getDefaultTheme, applyTheme, loadCustomThemes, type ThemeDefinition } from "@/lib/theme-utils";
 import { loadSnippets, applySnippets, refreshSnippets, type CSSSnippet } from "@/lib/css-snippets";
 import {
@@ -303,10 +309,48 @@ export default function VaultPage() {
   const tabsRef = useRef(tabs);
   tabsRef.current = tabs;
 
-  async function persistNote(noteId: string, content: string) {
+  /** The server's text of each open note as this page last saw it: what an edit started from (sent as baseHash). */
+  const serverBaseRef = useRef<Record<string, string>>({});
+  /** Saves of one note run one after the other, so a save never starts from a base the previous one is changing. */
+  const saveChainRef = useRef<Record<string, Promise<void>>>({});
+  /** The last request failed for want of a network: the page shows what this device kept. */
+  const [networkDown, setNetworkDown] = useState(false);
+  const collabNoteRef = useRef<string | null>(null);
+  const openNoteRef = useRef<(noteId: string) => Promise<void>>(async () => {});
+  /** Notes opened with an edit still waiting to be sent: saved again once their tab is on screen. */
+  const resendRef = useRef(new Set<string>());
+
+  function persistNote(noteId: string, content: string): Promise<void> {
+    const next = (saveChainRef.current[noteId] ?? Promise.resolve()).then(() => saveNow(noteId, content));
+    saveChainRef.current[noteId] = next;
+    return next;
+  }
+
+  async function saveNow(noteId: string, content: string) {
+    const tab = tabsRef.current.find((t) => t.noteId === noteId);
+    const base = serverBaseRef.current[noteId] ?? tab?.savedContent;
+    if (base === content) {
+      // Nothing new for the server (e.g. the editor normalised the text it was given).
+      failedSavesRef.current.delete(noteId);
+      if (failedSavesRef.current.size === 0) setSaveFailed(false);
+      void dropPendingEdit(noteId);
+      setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
+      return;
+    }
+    // A note being edited together (collab) is written by the collab server too: no version check there, as before.
+    const baseHash = base !== undefined && collabNoteRef.current !== noteId ? (await contentHash(base)) ?? undefined : undefined;
     try {
-      await webApi.notes.update(vaultId, noteId, { content });
-    } catch {
+      const note = await webApi.notes.update(vaultId, noteId, { content, baseHash });
+      serverBaseRef.current[noteId] = note.content;
+      void dropPendingEdit(noteId);
+      void storeNote({ id: note.id, vaultId, path: note.path, name: note.name, content: note.content });
+      setNetworkDown(false);
+    } catch (err) {
+      const stale = staleNote(err);
+      if (stale) return onStaleSave(noteId, content, stale);
+      // Kept on this device until the server takes it, so closing or reloading the page does not lose it.
+      await putPendingEdit({ noteId, vaultId, path: tab?.path ?? "", name: tab?.name ?? "", content, base: base ?? content, queuedAt: Date.now() });
+      if (isNetworkError(err)) setNetworkDown(true);
       failedSavesRef.current.add(noteId);
       setSaveFailed(true);
       return;
@@ -315,11 +359,73 @@ export default function VaultPage() {
     if (failedSavesRef.current.size === 0) setSaveFailed(false);
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
     refreshIndex();
-    emitPluginEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
+    emitPluginEvent("file-save", tab?.path ?? null);
   }
 
+  /**
+   * The note changed elsewhere since this edit started. The server kept its text and saved this edit as a conflict
+   * copy: the tab now shows the server's text, the copy opens beside it (its banner compares, uses or discards it).
+   */
+  async function onStaleSave(noteId: string, sent: string, stale: StaleNote) {
+    serverBaseRef.current[noteId] = stale.note.content;
+    void dropPendingEdit(noteId);
+    void storeNote({ id: noteId, vaultId, path: stale.note.path, name: stale.note.name, content: stale.note.content });
+    failedSavesRef.current.delete(noteId);
+    if (failedSavesRef.current.size === 0) setSaveFailed(false);
+    // Typing that went on after this save was sent belongs to the copy too.
+    const latest = tabsRef.current.find((t) => t.noteId === noteId)?.content;
+    if (latest !== undefined && latest !== sent) await webApi.notes.update(vaultId, stale.copy.id, { content: latest }).catch(() => undefined);
+    if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
+    setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, content: stale.note.content, savedContent: stale.note.content } : t)));
+    setPageNotice(t("web.offline.conflict", { name: stale.copy.name }));
+    refreshIndex();
+    void openNoteRef.current(stale.copy.id);
+  }
+
+  /**
+   * A note's text as a tab: the server's (also kept on this device) or, offline, the copy kept here. An edit still
+   * waiting to be sent wins over both; it shows as unsaved and is sent again.
+   */
+  async function tabForNote(note: { id: string; path: string; name: string; content: string }, fromServer: boolean): Promise<OpenTab> {
+    if (fromServer) void storeNote({ id: note.id, vaultId, path: note.path, name: note.name, content: note.content });
+    const pending = await getPendingEdit(note.id);
+    if (pending && pending.content !== note.content) {
+      serverBaseRef.current[note.id] = pending.base;
+      resendRef.current.add(note.id);
+      return { noteId: note.id, path: note.path, name: note.name, content: pending.content, savedContent: pending.base };
+    }
+    if (pending) void dropPendingEdit(note.id);
+    serverBaseRef.current[note.id] = note.content;
+    return { noteId: note.id, path: note.path, name: note.name, content: note.content, savedContent: note.content };
+  }
+
+  /** A note for a tab; offline, the copy kept on this device. "missing": deleted (404); "unavailable": not kept here. */
+  async function fetchNoteTab(noteId: string): Promise<OpenTab | "missing" | "unavailable"> {
+    try {
+      const note = await webApi.notes.get(vaultId, noteId);
+      return tabForNote(note, true);
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 404) return "missing";
+      if (!isNetworkError(err)) throw err;
+      setNetworkDown(true);
+      const kept = await getStoredNote(noteId);
+      return kept ? tabForNote(kept, false) : "unavailable";
+    }
+  }
+
+  // Tabs opened with a waiting edit: send it now (or keep it waiting if still offline).
   useEffect(() => {
-    if (!saveFailed) return;
+    for (const noteId of [...resendRef.current]) {
+      const tab = tabs.find((t) => t.noteId === noteId);
+      if (!tab) continue;
+      resendRef.current.delete(noteId);
+      void persistNote(noteId, tab.content);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tabs]);
+
+  useEffect(() => {
+    if (!saveFailed && !networkDown) return;
     const retry = () => {
       for (const noteId of [...failedSavesRef.current]) {
         const tab = tabsRef.current.find((t) => t.noteId === noteId);
@@ -327,6 +433,8 @@ export default function VaultPage() {
         else void persistNote(noteId, tab.content);
       }
       if (failedSavesRef.current.size === 0) setSaveFailed(false);
+      void sendWaitingEdits();
+      refreshIndex();
     };
     const timer = setInterval(retry, 15_000);
     window.addEventListener("online", retry);
@@ -335,9 +443,38 @@ export default function VaultPage() {
       window.removeEventListener("online", retry);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [saveFailed]);
+  }, [saveFailed, networkDown]);
+
+  /** Edits kept on this device for notes that are not open here (an open one is saved by its tab). */
+  async function sendWaitingEdits() {
+    const open = new Set(tabsRef.current.map((t) => t.noteId));
+    const result = await flushPending(vaultId, open);
+    if (result.saved.length) setNetworkDown(false);
+    for (const { stale } of result.conflicts) setPageNotice(t("web.offline.conflict", { name: stale.copy.name }));
+    if (result.saved.length || result.conflicts.length) refreshIndex();
+  }
+
+  // Edits kept on this device from an earlier visit (or another vault page) go out once the page has loaded.
+  useEffect(() => {
+    if (workspaceReady) void sendWaitingEdits();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspaceReady]);
+
+  // A network request that failed and was not handled (creating, renaming, deleting… need a connection): say so.
+  useEffect(() => {
+    const onRejection = (e: PromiseRejectionEvent) => {
+      if (!isNetworkError(e.reason)) return;
+      e.preventDefault();
+      setNetworkDown(true);
+      setPageNotice(t("web.offline.needsNetwork"));
+    };
+    window.addEventListener("unhandledrejection", onRejection);
+    return () => window.removeEventListener("unhandledrejection", onRejection);
+  }, []);
 
   function scheduleSave(noteId: string, content: string) {
+    // A new edit is "unsaved" until its own save is tried; an earlier failure no longer describes it.
+    if (failedSavesRef.current.delete(noteId) && failedSavesRef.current.size === 0) setSaveFailed(false);
     if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
     saveTimers.current[noteId] = setTimeout(() => {
       persistNote(noteId, content);
@@ -364,6 +501,7 @@ export default function VaultPage() {
     }
 
     const noteId = activeTabId;
+    collabNoteRef.current = noteId;
     let cancelled = false;
     setCollabConnected(false);
     setCollabPeers([]);
@@ -385,14 +523,27 @@ export default function VaultPage() {
 
     return () => {
       cancelled = true;
+      collabNoteRef.current = null;
       collabSessionRef.current?.destroy();
       collabSessionRef.current = null;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [collabVisible, activeTabId]);
 
+  // The file tree; kept on this device, which is what shows when the network is down.
   const refreshIndex = useCallback(() => {
-    webApi.vaults.index(vaultId).then(setIndex);
+    webApi.vaults
+      .index(vaultId)
+      .then((idx) => {
+        setIndex(idx);
+        void kvSet(`index:${vaultId}`, idx);
+      })
+      .catch(async (err) => {
+        if (!isNetworkError(err)) return;
+        setNetworkDown(true);
+        const kept = await kvGet<VaultIndex>(`index:${vaultId}`);
+        if (kept) setIndex((cur) => cur ?? kept);
+      });
   }, [vaultId]);
 
   // Once the vault is on screen, fetch the editor while the browser is idle, so opening a note does not wait for it.
@@ -613,27 +764,25 @@ export default function VaultPage() {
         setActiveTabId(noteId);
         return;
       }
-      let note;
+      let tab: OpenTab | "missing" | "unavailable";
       try {
-        note = await webApi.notes.get(vaultId, noteId);
-      } catch (err) {
-        setPageNotice(
-          err instanceof ApiError && err.status === 404
-            ? t("web.notice.noteMissing")
-            : t("web.notice.openFailed")
-        );
+        tab = await fetchNoteTab(noteId);
+      } catch {
+        setPageNotice(t("web.notice.openFailed"));
         return;
       }
-      setTabs((prev) =>
-        prev.some((t) => t.noteId === noteId)
-          ? prev
-          : [...prev, { noteId, path: note.path, name: note.name, content: note.content, savedContent: note.content }]
-      );
+      if (tab === "missing" || tab === "unavailable") {
+        setPageNotice(tab === "missing" ? t("web.notice.noteMissing") : t("web.offline.notKept"));
+        return;
+      }
+      const opened = tab;
+      setTabs((prev) => (prev.some((t) => t.noteId === noteId) ? prev : [...prev, opened]));
       setActiveTabId(noteId);
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [vaultId, tabs]
   );
+  openNoteRef.current = openNote;
 
   function closeTab(noteId: string) {
     if (pinnedTabIds.has(noteId)) return;
@@ -711,6 +860,17 @@ export default function VaultPage() {
   useEffect(() => {
     webApi.vaults
       .get(vaultId)
+      .then((v) => {
+        void kvSet(`vault:${vaultId}`, v);
+        return v;
+      })
+      .catch(async (err) => {
+        // Offline: the copy kept on this device, if this vault was opened here before.
+        const kept = isNetworkError(err) ? await kvGet<ApiVault>(`vault:${vaultId}`) : undefined;
+        if (!kept) throw err;
+        setNetworkDown(true);
+        return kept;
+      })
       .then(async (v) => {
         setVault(v);
 
@@ -722,11 +882,11 @@ export default function VaultPage() {
         if (builtIn) {
           applyTheme(builtIn);
         } else {
-          const customs = await loadCustomThemes(vaultId);
+          const customs = await loadCustomThemes(vaultId).catch(() => (v.settings.customThemes as ThemeDefinition[] | undefined) ?? []);
           applyTheme(customs.find((t) => t.id === themeId) ?? getDefaultTheme());
         }
 
-        const snips = await loadSnippets(vaultId);
+        const snips = await loadSnippets(vaultId).catch(() => [] as CSSSnippet[]);
         setCSSSnippets(snips);
         applySnippets(snips);
       })
@@ -739,6 +899,18 @@ export default function VaultPage() {
     let cancelled = false;
     webApi.workspace
       .getState(vaultId)
+      .then((state) => {
+        void kvSet(`ws:${vaultId}`, state);
+        return state;
+      })
+      .catch(async (err) => {
+        const kept = isNetworkError(err) ? await kvGet<ApiWorkspaceState>(`ws:${vaultId}`) : undefined;
+        if (!kept) throw err;
+        // Shown from this device: the server's copy must not be overwritten from it.
+        restoreIncompleteRef.current = true;
+        setNetworkDown(true);
+        return kept;
+      })
       .then(async (state) => {
         // Tabs to restore will show an editor: fetch its chunk alongside the notes, not after they render.
         if (state.openTabs.length > 0) void loadEditor().catch(() => {});
@@ -752,22 +924,19 @@ export default function VaultPage() {
         const notes = await Promise.all(
           state.openTabs.map((t) =>
             inlined[t.noteId]
-              ? Promise.resolve<OpenTab>({
-                  noteId: inlined[t.noteId].id,
-                  path: inlined[t.noteId].path,
-                  name: inlined[t.noteId].name,
-                  content: inlined[t.noteId].content,
-                  savedContent: inlined[t.noteId].content,
-                })
+              ? tabForNote(inlined[t.noteId], !restoreIncompleteRef.current)
               : missing.has(t.noteId)
               ? Promise.resolve(null)
-              : webApi.notes
-              .get(vaultId, t.noteId)
-              .then((note): OpenTab => ({ noteId: note.id, path: note.path, name: note.name, content: note.content, savedContent: note.content }))
-              .catch((err) => {
-                if (!(err instanceof ApiError && err.status === 404)) transientFailure = true;
-                return null;
-              })
+              : fetchNoteTab(t.noteId)
+                  .then((tab) => {
+                    if (tab === "missing") return null;
+                    if (tab === "unavailable") transientFailure = true;
+                    return tab === "unavailable" ? null : tab;
+                  })
+                  .catch(() => {
+                    transientFailure = true;
+                    return null;
+                  })
           )
         );
         if (cancelled) return;
@@ -824,6 +993,8 @@ export default function VaultPage() {
     if (workspaceSaveTimer.current) clearTimeout(workspaceSaveTimer.current);
     workspaceSaveTimer.current = setTimeout(() => {
       savedWorkspaceRef.current = serialized;
+      // This device's copy too: offline, the open tabs come back from it (their text from the stored notes).
+      void kvSet(`ws:${vaultId}`, state);
       webApi.workspace.updateState(vaultId, state).catch(() => undefined);
     }, WORKSPACE_SAVE_DEBOUNCE_MS);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1333,6 +1504,7 @@ export default function VaultPage() {
     const original = await findNoteByPath(originalPath);
     if (!original) return;
     await vaultAdapter.writeNote(original.id, copy.content);
+    serverBaseRef.current[original.id] = copy.content;
     setTabs((prev) => prev.map((t) => (t.noteId === original.id ? { ...t, content: copy.content, savedContent: copy.content } : t)));
     await discardConflictCopy(copy.noteId);
     openNote(original.id);
@@ -1641,6 +1813,7 @@ export default function VaultPage() {
                   content={draft}
                   dirty={activeTab.content !== activeTab.savedContent}
                   saveFailed={saveFailed && failedSavesRef.current.has(activeTab.noteId)}
+                  keptLocally={networkDown}
                   syncSummary={syncSummaryText}
                   syncTone={syncTone}
                   onOpenSync={() => openSettings("sync")}
@@ -1949,6 +2122,12 @@ export default function VaultPage() {
         >
           {t("web.zenExit")}
         </button>
+      )}
+
+      {networkDown && (
+        <div role="status" className="fixed top-2 left-1/2 -translate-x-1/2 z-50 px-3 py-1.5 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--yellow)] text-xs text-[var(--text-secondary)] shadow-lg max-w-[90vw] text-center">
+          {t("web.offline.banner")}
+        </div>
       )}
 
       {pageNotice && (

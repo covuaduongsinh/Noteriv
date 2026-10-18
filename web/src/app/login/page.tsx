@@ -8,6 +8,7 @@ import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
 import { safeNext } from "@/lib/safe-next";
+import { claimOfflineData } from "@/lib/offline-store";
 
 export default function LoginPage() {
   useLocale();
@@ -23,6 +24,8 @@ export default function LoginPage() {
     setLoading(true);
     try {
       await webApi.auth.login({ email, password });
+      // What this device kept offline belongs to one account; another one starts from nothing.
+      await webApi.auth.me().then((u) => claimOfflineData(u.id)).catch(() => undefined);
       // Back to where the sign-in was asked for (e.g. /quick from the home-screen shortcut).
       router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {

@@ -1237,7 +1237,18 @@
         "step3": "Tap “Add”. Noteriv opens full screen from its icon."
       },
       "quick": "Quick note (/quick) is a light page for capturing a thought in seconds; notes go into the Inbox folder of the vault you pick.",
-      "offlineNote": "The app opens without a connection, but reading and editing notes offline comes in a later update."
+      "offlineNote": "Without a connection the app still opens: vaults and notes you opened recently can be read and edited, and your edits are sent when you're back online."
+    },
+    "offline": {
+      "banner": "Offline — showing what this device kept. Edits are sent when you're back online.",
+      "conflict": "This note was changed elsewhere meanwhile. Nothing was overwritten: your version is saved as “{name}”.",
+      "needsNetwork": "This needs a connection. Your notes and edits are kept on this device meanwhile.",
+      "notKept": "This note isn't kept on this device yet; open it once while online to read it offline.",
+      "vaultListKept": "Offline — this is the list kept on this device.",
+      "signOutUnsent": {
+        "one": "{count} edit made offline hasn't reached the server yet; signing out on this device discards it. Click Sign out again to sign out anyway.",
+        "other": "{count} edits made offline haven't reached the server yet; signing out on this device discards them. Click Sign out again to sign out anyway."
+      }
     }
   },
   "desktop": {
@@ -1602,7 +1613,9 @@
         "other": "{count} chars"
       },
       "saveFailed": "Not saved — retrying",
-      "saveFailedHint": "The last save did not reach the server (offline?). Your text is still here and is sent again automatically."
+      "saveFailedHint": "The last save did not reach the server (offline?). Your text is still here and is sent again automatically.",
+      "keptLocally": "Kept on this device",
+      "keptLocallyHint": "No connection: this edit is kept on this device and sent as soon as the server can be reached."
     },
     "commands": {
       "corePlugin": "Core plugin",
