@@ -3,6 +3,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { getSnapshots, loadSnapshot } from "@/lib/file-recovery";
 import "@/styles/file-recovery.css";
+import { formatDate as formatIntl, t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface FileRecoveryProps {
   vaultPath: string;
@@ -25,6 +27,7 @@ export default function FileRecovery({
   onRestore,
   onClose,
 }: FileRecoveryProps) {
+  useLocale();
   const [snapshots, setSnapshots] = useState<SnapshotInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedSnapshot, setSelectedSnapshot] = useState<SnapshotInfo | null>(null);
@@ -97,7 +100,7 @@ export default function FileRecovery({
   // Format helpers
   const formatDate = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleDateString(undefined, {
+    return formatIntl(date, {
       month: "short",
       day: "numeric",
       year: "numeric",
@@ -106,7 +109,7 @@ export default function FileRecovery({
 
   const formatTime = (timestamp: number): string => {
     const date = new Date(timestamp);
-    return date.toLocaleTimeString(undefined, {
+    return formatIntl(date, {
       hour: "2-digit",
       minute: "2-digit",
       second: "2-digit",
@@ -119,11 +122,11 @@ export default function FileRecovery({
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
 
-    if (minutes < 1) return "just now";
-    if (minutes < 60) return `${minutes}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 30) return `${days}d ago`;
-    return `${Math.floor(days / 30)}mo ago`;
+    if (minutes < 1) return t("fileRecovery.ago.justNow");
+    if (minutes < 60) return t("fileRecovery.ago.minutes", { count: minutes });
+    if (hours < 24) return t("fileRecovery.ago.hours", { count: hours });
+    if (days < 30) return t("fileRecovery.ago.days", { count: days });
+    return t("fileRecovery.ago.months", { count: Math.floor(days / 30) });
   };
 
   const formatSize = (bytes: number): string => {
@@ -142,7 +145,7 @@ export default function FileRecovery({
               <circle cx="8" cy="8" r="6.5" stroke="currentColor" strokeWidth="1.2" />
               <path d="M8 4v4l2.5 1.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
             </svg>
-            <h2 className="fr-title">File Recovery</h2>
+            <h2 className="fr-title">{t("fileRecovery.title")}</h2>
             <span className="fr-file-name">{fileName}</span>
           </div>
           <button onClick={onClose} className="fr-close-btn">
@@ -157,19 +160,19 @@ export default function FileRecovery({
           {/* Snapshot list */}
           <div className="fr-list-pane">
             <div className="fr-list-header">
-              <span className="fr-list-title">Snapshots</span>
+              <span className="fr-list-title">{t("fileRecovery.snapshots")}</span>
               <span className="fr-list-count">
                 {loading ? "..." : snapshots.length}
               </span>
             </div>
             <div className="fr-list">
               {loading ? (
-                <div className="fr-empty">Loading snapshots...</div>
+                <div className="fr-empty">{t("fileRecovery.loading")}</div>
               ) : snapshots.length === 0 ? (
                 <div className="fr-empty">
-                  <p>No snapshots found</p>
+                  <p>{t("fileRecovery.none")}</p>
                   <p className="fr-empty-hint">
-                    Snapshots are created automatically before saves
+                    {t("fileRecovery.hint.desktop")}
                   </p>
                 </div>
               ) : (
@@ -196,7 +199,7 @@ export default function FileRecovery({
                       <button
                         className="fr-snapshot-delete"
                         onClick={(e) => handleDeleteSnapshot(snap, e)}
-                        title="Delete snapshot"
+                        title={t("desktop.fileRecovery.delete")}
                       >
                         <svg width="12" height="12" viewBox="0 0 12 12">
                           <path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
@@ -212,24 +215,24 @@ export default function FileRecovery({
           {/* Preview pane */}
           <div className="fr-preview-pane">
             <div className="fr-preview-header">
-              <span className="fr-preview-title">Preview</span>
+              <span className="fr-preview-title">{t("fileRecovery.preview")}</span>
               {selectedSnapshot && previewContent !== null && (
                 <button className="fr-restore-btn" onClick={handleRestore}>
                   <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                     <path d="M2 4h3L2 1M2 4a5 5 0 105 5" stroke="currentColor" strokeWidth="1.2" fill="none" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
-                  Restore
+                  {t("fileRecovery.restore")}
                 </button>
               )}
             </div>
             <div className="fr-preview-content">
               {loadingPreview ? (
-                <div className="fr-preview-empty">Loading preview...</div>
+                <div className="fr-preview-empty">{t("fileRecovery.loadingPreview")}</div>
               ) : previewContent !== null ? (
                 <pre className="fr-preview-text">{previewContent}</pre>
               ) : (
                 <div className="fr-preview-empty">
-                  Select a snapshot to preview
+                  {t("fileRecovery.select")}
                 </div>
               )}
             </div>

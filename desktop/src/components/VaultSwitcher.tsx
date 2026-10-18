@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { t } from "@noteriv/ui/i18n";
+import { useLocale } from "@noteriv/ui/i18n/react";
 
 interface VaultSwitcherProps {
   vaults: Vault[];
@@ -19,6 +21,7 @@ export default function VaultSwitcher({
   onDelete,
   onManageGit,
 }: VaultSwitcherProps) {
+  useLocale();
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
@@ -40,7 +43,7 @@ export default function VaultSwitcher({
     };
   }, [open]);
 
-  const displayName = activeVault?.name || "No Vault";
+  const displayName = activeVault?.name || t("desktop.vaults.noVault");
 
   return (
     <div style={{ position: "relative" }} ref={dropdownRef}>
@@ -56,7 +59,7 @@ export default function VaultSwitcher({
 
       {open && (
         <div className="vault-dropdown">
-          <div className="vault-dropdown-header">Vaults</div>
+          <div className="vault-dropdown-header">{t("desktop.vaults.title")}</div>
 
           <div className="vault-list">
             {vaults.map((vault) => {
@@ -77,7 +80,7 @@ export default function VaultSwitcher({
                       <button
                         onClick={(e) => { e.stopPropagation(); onManageGit(vault); }}
                         className="vault-action-btn"
-                        title="Git settings"
+                        title={t("desktop.vaults.gitSettings")}
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                           <circle cx="5" cy="5" r="2" stroke="currentColor" strokeWidth="1.3" />
@@ -90,12 +93,12 @@ export default function VaultSwitcher({
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
-                          if (confirm(`Delete vault "${vault.name}"? This won't delete your files.`)) {
+                          if (confirm(t("desktop.vaults.confirmRemove", { name: vault.name }))) {
                             onDelete(vault.id);
                           }
                         }}
                         className="vault-action-btn vault-delete"
-                        title="Remove vault"
+                        title={t("desktop.vaults.remove")}
                       >
                         <svg width="12" height="12" viewBox="0 0 16 16" fill="none">
                           <path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -113,7 +116,7 @@ export default function VaultSwitcher({
               <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
                 <path d="M6 2v8M2 6h8" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
               </svg>
-              New vault
+              {t("desktop.vaults.new")}
             </button>
           </div>
         </div>

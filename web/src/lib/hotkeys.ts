@@ -100,9 +100,9 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
 
-  { action: "previewPDF", label: "Xem trước PDF", keys: "", category: "File" },
-  { action: "exportPDF", label: "Tải PDF", keys: "", category: "File" },
-  { action: "printNote", label: "In… (hộp thoại in của trình duyệt)", keys: "", category: "File" },
+  { action: "previewPDF", label: "Preview PDF", keys: "", category: "File" },
+  { action: "exportPDF", label: "Download PDF", keys: "", category: "File" },
+  { action: "printNote", label: "Print… (the browser's print dialog)", keys: "", category: "File" },
   { action: "pluginManager", label: "Plugin Manager", keys: "", category: "Ecosystem" },
   { action: "cssSnippets", label: "CSS Snippets", keys: "", category: "Ecosystem" },
   { action: "gitSync", label: "Sync Now", keys: "Ctrl+Shift+G", category: "Sync" },

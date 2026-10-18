@@ -886,7 +886,10 @@
       "confirmDelete": "Click again to delete permanently",
       "newPlaceholder": "New vault name",
       "renameFailed": "Could not rename the vault.",
-      "deleteFailed": "Could not delete the vault (only its owner can)."
+      "deleteFailed": "Could not delete the vault (only its owner can).",
+      "new": "New vault",
+      "newFromGithub": "New vault from GitHub…",
+      "importZip": "Import folder / zip…"
     },
     "hoverPreview": {
       "loading": "Loading…",
@@ -1027,6 +1030,99 @@
       "used": "{used} / {quota} used",
       "clickView": "Click to view: {name}",
       "footerView": "view"
+    },
+    "fileRecovery": {
+      "scrubTitle": "Switch to Time Scrubber view",
+      "scrub": "Scrub timeline"
+    },
+    "diagnostics": {
+      "title": "Diagnostics",
+      "serverFailed": "Could not get the report from the server (is the API responding?).",
+      "copyFailed": "The browser does not allow copying automatically; select the text and copy it yourself.",
+      "server": "SERVER",
+      "checking": "Checking…",
+      "database": "Database",
+      "redis": "Redis (queue)",
+      "gitMissing": "not installed — sync will fail",
+      "storage": "Attachment storage (S3)",
+      "unreachable": "cannot connect",
+      "worker": "Worker (background sync)",
+      "heartbeat": "heartbeat {seconds}s ago",
+      "noHeartbeat": "no heartbeat — sync and auto-sync will not run",
+      "pdf": "PDF service",
+      "ready": "ready",
+      "notResponding": "not responding",
+      "notConfigured": "not configured (PDF_SERVICE_URL)",
+      "scratch": "Scratch disk for sync",
+      "diskFree": "{free} MB free / {total} MB",
+      "noConnections": "No connections.",
+      "neverRun": "not run yet",
+      "noPlugins": "No plugins installed.",
+      "off": "(off)",
+      "permissions": "permissions: {list}",
+      "none": "none",
+      "blocked": "BLOCKED: {list}",
+      "browser": "BROWSER",
+      "unknown": "unknown",
+      "recheck": "Check again",
+      "copied": "Copied ✓",
+      "copy": "Copy report",
+      "sync": "SYNC",
+      "plugins": "PLUGINS"
+    },
+    "pdfPreview": {
+      "download": "Download PDF",
+      "print": "Print",
+      "hint": "Preview not showing in your browser? Click “Download PDF” to open it in another app.",
+      "title": "Preview · {file}",
+      "frameTitle": "Preview of {file}"
+    },
+    "import": {
+      "nothing": "No .md files or attachments found to import.",
+      "readFailed": "Could not read the selected source (is the zip file valid?).",
+      "interrupted": "The import was interrupted. You can run it again — files already imported are skipped.",
+      "pickFolder": "Choose a folder…",
+      "pickZip": "Choose a .zip file…",
+      "scanning": "Scanning…",
+      "newName": "New vault name",
+      "conflict": "If a note already exists at the same path",
+      "running": "Importing…",
+      "start": "Start import",
+      "stop": "Stop",
+      "stopped": "Stopped part way",
+      "done": "Import finished",
+      "open": "Open the vault",
+      "reason": {
+        "hidden": "hidden file",
+        "tooBig": "larger than 25 MB",
+        "quota": "out of attachment storage",
+        "unreadable": "could not read the file"
+      },
+      "phase": {
+        "attachments": "Uploading attachments",
+        "notes": "Importing notes",
+        "finalize": "Updating links",
+        "done": "Done"
+      },
+      "into": "Import into \"{vault}\"",
+      "newVault": "Import as a new vault",
+      "intro": "Choose a vault folder (it may be one you use with desktop or Obsidian) or a .zip file. .md notes keep their folder structure; images, PDFs, audio… are uploaded as attachments and the links in your notes are updated to match.",
+      "found": "{notes} notes · {attachments} attachments",
+      "skipped": {
+        "one": "Skipped {count} file",
+        "other": "Skipped {count} files"
+      },
+      "keepExisting": "Keep the vault's version (skip)",
+      "overwrite": "Overwrite with the imported one",
+      "reportNotes": "Notes: {created} new, {updated} overwritten, {skipped} skipped",
+      "reportAttachments": "Attachments: {uploaded} uploaded, {reused} reused",
+      "failures": {
+        "one": "{count} item failed",
+        "other": "{count} items failed"
+      },
+      "errorStatus": "error {status}",
+      "uploadFailed": "could not upload",
+      "sendFailed": "could not send"
     }
   },
   "desktop": {
@@ -1249,12 +1345,93 @@
       "invalidManifest": "Invalid manifest: missing required fields (id, name, main)"
     },
     "attachments": {
-      "savedTo": "Files are saved to the attachments/ folder"
+      "savedTo": "Files are saved to the attachments/ folder",
+      "readFailed": "Failed to read file",
+      "importFailed": "Failed to import attachment: {name}"
+    },
+    "fileRecovery": {
+      "delete": "Delete snapshot"
+    },
+    "setup": {
+      "invalidToken": "Invalid token",
+      "validateFailed": "Failed to validate token",
+      "createFailed": "Failed to create vault",
+      "tagline": "Markdown notes, everywhere",
+      "welcomeTitle": "Create your workspace",
+      "welcomeDesc": "A vault is where your notes live. Pick how you want to start.",
+      "newVault": "New vault",
+      "newVaultDesc": "Start fresh with an empty folder",
+      "openFolder": "Open folder",
+      "openFolderDesc": "Use an existing notes folder",
+      "clone": "Clone from GitHub",
+      "cloneDesc": "Pull notes from a repository",
+      "nameTitle": "Name your vault",
+      "namePlaceholder": "My Notes",
+      "back": "Back",
+      "continue": "Continue",
+      "chooseFolder": "Choose your folder",
+      "whereToStore": "Where to store it?",
+      "selectFolder": "Select the folder with your notes.",
+      "pickParent": "Pick a parent folder, or use the default.",
+      "clickToChoose": "Click to choose folder...",
+      "connectGithub": "Connect GitHub",
+      "signIn": "Sign in to access your repos.",
+      "optional": "Optional. You can also set up Folder or WebDAV sync later in Settings.",
+      "createVault": "Create Vault",
+      "disconnect": "Disconnect",
+      "pat": "Personal Access Token",
+      "connect": "Connect",
+      "autoSync": "Auto-sync on save",
+      "autoSyncDesc": "Push when you save a file",
+      "pickRepoButton": "Pick repo",
+      "skip": "Skip",
+      "pickRepo": "Pick a repo",
+      "chooseRepo": "Choose a repo",
+      "repoDesc": "Select an existing repo or create a new one.",
+      "createRepo": "Create new repo",
+      "privateRepo": "Private repo",
+      "private": "private",
+      "cloneCreate": "Clone & Create",
+      "cloning": "Cloning repository...",
+      "creatingRepo": "Creating repo and vault...",
+      "settingUp": "Setting up your vault...",
+      "defaultPath": "Default: {path}",
+      "scopeBefore": "Select the",
+      "scopeAfter": "scope. Your token is encrypted locally."
+    },
+    "collab": {
+      "startFailed": "Could not start collaboration. Install yjs and y-webrtc: npm install yjs y-webrtc",
+      "joinFailed": "Could not join session. Install yjs and y-webrtc: npm install yjs y-webrtc",
+      "title": "Live Collaboration",
+      "connected": "Connected",
+      "room": "Room:",
+      "copy": "Copy",
+      "disconnect": "Disconnect",
+      "yourName": "Your name",
+      "newSession": "Start a new session",
+      "joinSession": "Join a session",
+      "roomPlaceholder": "Enter room ID...",
+      "join": "Join",
+      "peers": {
+        "one": "{count} peer",
+        "other": "{count} peers"
+      },
+      "connecting": "Connecting...",
+      "start": "Start Session"
+    },
+    "vaults": {
+      "noVault": "No Vault",
+      "title": "Vaults",
+      "gitSettings": "Git settings",
+      "remove": "Remove vault",
+      "new": "New vault",
+      "confirmRemove": "Delete vault \"{name}\"? This won't delete your files."
     }
   },
   "common": {
     "close": "Close",
-    "loading": "Loading..."
+    "loading": "Loading...",
+    "loadingShort": "Loading…"
   },
   "shell": {
     "ribbon": {
@@ -1521,5 +1698,26 @@
     "footerInsert": "insert",
     "footerClose": "close",
     "confirmDelete": "Delete \"{name}\"? This cannot be undone."
+  },
+  "fileRecovery": {
+    "ago": {
+      "justNow": "just now",
+      "minutes": "{count}m ago",
+      "hours": "{count}h ago",
+      "days": "{count}d ago",
+      "months": "{count}mo ago"
+    },
+    "title": "File Recovery",
+    "snapshots": "Snapshots",
+    "loading": "Loading snapshots...",
+    "none": "No snapshots found",
+    "hint": {
+      "web": "Snapshots are captured automatically every ~10 minutes while this note changes",
+      "desktop": "Snapshots are created automatically before saves"
+    },
+    "preview": "Preview",
+    "restore": "Restore",
+    "loadingPreview": "Loading preview...",
+    "select": "Select a snapshot to preview"
   }
 }

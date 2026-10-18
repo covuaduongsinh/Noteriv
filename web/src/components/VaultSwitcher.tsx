@@ -172,7 +172,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
               <>
                 <button onClick={() => setCreating(true)} className="vault-create-btn">
                   <PlusIcon size={12} />
-                  New vault
+                  {t("web.vaults.new")}
                 </button>
                 {onNewFromGithub && (
                   <button
@@ -183,7 +183,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
                     className="vault-create-btn"
                   >
                     <PlusIcon size={12} />
-                    New vault from GitHub…
+                    {t("web.vaults.newFromGithub")}
                   </button>
                 )}
                 {onImportNewVault && (
@@ -195,7 +195,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
                     className="vault-create-btn"
                   >
                     <PlusIcon size={12} />
-                    Import folder / zip…
+                    {t("web.vaults.importZip")}
                   </button>
                 )}
               </>

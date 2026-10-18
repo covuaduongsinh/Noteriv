@@ -860,7 +860,10 @@
       "confirmDelete": "Bấm lần nữa để xoá vĩnh viễn",
       "newPlaceholder": "Tên vault mới",
       "renameFailed": "Không đổi tên được vault.",
-      "deleteFailed": "Không xoá được vault (chỉ chủ sở hữu mới xoá được)."
+      "deleteFailed": "Không xoá được vault (chỉ chủ sở hữu mới xoá được).",
+      "new": "Vault mới",
+      "newFromGithub": "Vault mới từ GitHub…",
+      "importZip": "Import thư mục / zip…"
     },
     "hoverPreview": {
       "loading": "Đang tải…",
@@ -1000,6 +1003,97 @@
       "used": "{used} / {quota} đã dùng",
       "clickView": "Bấm để xem: {name}",
       "footerView": "xem"
+    },
+    "fileRecovery": {
+      "scrubTitle": "Chuyển sang xem bằng Time scrubber",
+      "scrub": "Tua dòng thời gian"
+    },
+    "diagnostics": {
+      "title": "Chẩn đoán",
+      "serverFailed": "Không lấy được báo cáo từ máy chủ (API không phản hồi?).",
+      "copyFailed": "Trình duyệt không cho sao chép tự động; hãy chọn và copy thủ công.",
+      "server": "MÁY CHỦ",
+      "checking": "Đang kiểm tra…",
+      "database": "Cơ sở dữ liệu",
+      "redis": "Redis (hàng đợi)",
+      "gitMissing": "chưa cài — sync sẽ lỗi",
+      "storage": "Kho file đính kèm (S3)",
+      "unreachable": "không kết nối được",
+      "worker": "Worker (sync nền)",
+      "heartbeat": "heartbeat {seconds}s trước",
+      "noHeartbeat": "không thấy heartbeat — sync/auto-sync sẽ không chạy",
+      "pdf": "Dịch vụ tạo PDF",
+      "ready": "sẵn sàng",
+      "notResponding": "không phản hồi",
+      "notConfigured": "chưa cấu hình (PDF_SERVICE_URL)",
+      "scratch": "Đĩa tạm cho sync",
+      "diskFree": "{free} MB trống / {total} MB",
+      "noConnections": "Chưa có kết nối.",
+      "neverRun": "chưa chạy",
+      "noPlugins": "Chưa cài plugin nào.",
+      "off": "(tắt)",
+      "permissions": "quyền: {list}",
+      "none": "không",
+      "blocked": "BỊ CHẶN: {list}",
+      "browser": "TRÌNH DUYỆT",
+      "unknown": "không rõ",
+      "recheck": "Kiểm tra lại",
+      "copied": "Đã sao chép ✓",
+      "copy": "Sao chép báo cáo",
+      "sync": "ĐỒNG BỘ",
+      "plugins": "PLUGIN"
+    },
+    "pdfPreview": {
+      "download": "Tải PDF",
+      "print": "In",
+      "hint": "Trình duyệt không hiển thị được bản xem trước? Bấm “Tải PDF” để mở bằng ứng dụng khác.",
+      "title": "Xem trước · {file}",
+      "frameTitle": "Xem trước {file}"
+    },
+    "import": {
+      "nothing": "Không tìm thấy file .md hoặc file đính kèm nào để nhập.",
+      "readFailed": "Không đọc được nguồn đã chọn (file zip có hợp lệ không?).",
+      "interrupted": "Import bị gián đoạn. Bạn có thể chạy lại — những file đã nhập sẽ được bỏ qua.",
+      "pickFolder": "Chọn thư mục…",
+      "pickZip": "Chọn file .zip…",
+      "scanning": "Đang quét…",
+      "newName": "Tên vault mới",
+      "conflict": "Nếu note đã tồn tại cùng đường dẫn",
+      "running": "Đang nhập…",
+      "start": "Bắt đầu import",
+      "stop": "Dừng",
+      "stopped": "Đã dừng giữa chừng",
+      "done": "Import xong",
+      "open": "Mở vault",
+      "reason": {
+        "hidden": "file ẩn",
+        "tooBig": "lớn hơn 25MB",
+        "quota": "hết dung lượng đính kèm",
+        "unreadable": "không đọc được file"
+      },
+      "phase": {
+        "attachments": "Đang tải file đính kèm",
+        "notes": "Đang nhập note",
+        "finalize": "Đang cập nhật liên kết",
+        "done": "Hoàn tất"
+      },
+      "into": "Import vào \"{vault}\"",
+      "newVault": "Import vault mới",
+      "intro": "Chọn thư mục vault (có thể đang dùng với desktop/Obsidian) hoặc file .zip. Note .md giữ nguyên cấu trúc thư mục; ảnh, PDF, audio… được tải lên làm file đính kèm và liên kết trong note được cập nhật theo.",
+      "found": "{notes} note · {attachments} file đính kèm",
+      "skipped": {
+        "other": "Bỏ qua {count} file"
+      },
+      "keepExisting": "Giữ bản trong vault (bỏ qua)",
+      "overwrite": "Ghi đè bằng bản nhập vào",
+      "reportNotes": "Note: {created} mới, {updated} ghi đè, {skipped} bỏ qua",
+      "reportAttachments": "Đính kèm: {uploaded} tải lên, {reused} dùng lại",
+      "failures": {
+        "other": "{count} mục lỗi"
+      },
+      "errorStatus": "lỗi {status}",
+      "uploadFailed": "không tải lên được",
+      "sendFailed": "không gửi được"
     }
   },
   "desktop": {
@@ -1220,12 +1314,92 @@
       "invalidManifest": "Manifest không hợp lệ: thiếu trường bắt buộc (id, name, main)"
     },
     "attachments": {
-      "savedTo": "Tệp được lưu vào thư mục attachments/"
+      "savedTo": "Tệp được lưu vào thư mục attachments/",
+      "readFailed": "Không đọc được file",
+      "importFailed": "Không nhập được đính kèm: {name}"
+    },
+    "fileRecovery": {
+      "delete": "Xoá bản lưu"
+    },
+    "setup": {
+      "invalidToken": "Token không hợp lệ",
+      "validateFailed": "Không kiểm tra được token",
+      "createFailed": "Không tạo được vault",
+      "tagline": "Ghi chú Markdown, ở mọi nơi",
+      "welcomeTitle": "Tạo không gian làm việc",
+      "welcomeDesc": "Vault là nơi chứa ghi chú của bạn. Chọn cách bắt đầu.",
+      "newVault": "Vault mới",
+      "newVaultDesc": "Bắt đầu với một thư mục trống",
+      "openFolder": "Mở thư mục",
+      "openFolderDesc": "Dùng một thư mục ghi chú có sẵn",
+      "clone": "Clone từ GitHub",
+      "cloneDesc": "Lấy ghi chú từ một repository",
+      "nameTitle": "Đặt tên vault",
+      "namePlaceholder": "Ghi chú của tôi",
+      "back": "Quay lại",
+      "continue": "Tiếp tục",
+      "chooseFolder": "Chọn thư mục",
+      "whereToStore": "Lưu ở đâu?",
+      "selectFolder": "Chọn thư mục chứa ghi chú của bạn.",
+      "pickParent": "Chọn thư mục cha, hoặc dùng thư mục mặc định.",
+      "clickToChoose": "Bấm để chọn thư mục...",
+      "connectGithub": "Kết nối GitHub",
+      "signIn": "Đăng nhập để xem các repo của bạn.",
+      "optional": "Không bắt buộc. Bạn có thể cài đồng bộ thư mục hoặc WebDAV sau trong Cài đặt.",
+      "createVault": "Tạo vault",
+      "disconnect": "Ngắt kết nối",
+      "pat": "Personal Access Token",
+      "connect": "Kết nối",
+      "autoSync": "Tự đồng bộ khi lưu",
+      "autoSyncDesc": "Đẩy lên mỗi khi bạn lưu file",
+      "pickRepoButton": "Chọn repo",
+      "skip": "Bỏ qua",
+      "pickRepo": "Chọn một repo",
+      "chooseRepo": "Chọn repo",
+      "repoDesc": "Chọn một repo có sẵn hoặc tạo repo mới.",
+      "createRepo": "Tạo repo mới",
+      "privateRepo": "Repo riêng tư",
+      "private": "riêng tư",
+      "cloneCreate": "Clone và tạo",
+      "cloning": "Đang clone repository...",
+      "creatingRepo": "Đang tạo repo và vault...",
+      "settingUp": "Đang thiết lập vault...",
+      "defaultPath": "Mặc định: {path}",
+      "scopeBefore": "Chọn quyền",
+      "scopeAfter": ". Token của bạn được mã hoá trên máy."
+    },
+    "collab": {
+      "startFailed": "Không bắt đầu được cộng tác. Cài yjs và y-webrtc: npm install yjs y-webrtc",
+      "joinFailed": "Không vào được phiên. Cài yjs và y-webrtc: npm install yjs y-webrtc",
+      "title": "Cộng tác trực tiếp",
+      "connected": "Đã kết nối",
+      "room": "Phòng:",
+      "copy": "Chép",
+      "disconnect": "Ngắt kết nối",
+      "yourName": "Tên của bạn",
+      "newSession": "Bắt đầu phiên mới",
+      "joinSession": "Vào một phiên",
+      "roomPlaceholder": "Nhập ID phòng...",
+      "join": "Vào",
+      "peers": {
+        "other": "{count} người"
+      },
+      "connecting": "Đang kết nối...",
+      "start": "Bắt đầu phiên"
+    },
+    "vaults": {
+      "noVault": "Chưa có vault",
+      "title": "Vaults",
+      "gitSettings": "Cài đặt Git",
+      "remove": "Gỡ vault",
+      "new": "Vault mới",
+      "confirmRemove": "Gỡ vault \"{name}\"? File của bạn vẫn còn nguyên."
     }
   },
   "common": {
     "close": "Đóng",
-    "loading": "Đang tải..."
+    "loading": "Đang tải...",
+    "loadingShort": "Đang tải…"
   },
   "shell": {
     "ribbon": {
@@ -1486,5 +1660,26 @@
     "footerInsert": "chèn",
     "footerClose": "đóng",
     "confirmDelete": "Xoá \"{name}\"? Không thể hoàn tác."
+  },
+  "fileRecovery": {
+    "ago": {
+      "justNow": "vừa xong",
+      "minutes": "{count} phút trước",
+      "hours": "{count} giờ trước",
+      "days": "{count} ngày trước",
+      "months": "{count} tháng trước"
+    },
+    "title": "Khôi phục file",
+    "snapshots": "Bản lưu",
+    "loading": "Đang tải các bản lưu...",
+    "none": "Chưa có bản lưu nào",
+    "hint": {
+      "web": "Bản lưu được tạo tự động khoảng 10 phút một lần khi note thay đổi",
+      "desktop": "Bản lưu được tạo tự động trước mỗi lần lưu"
+    },
+    "preview": "Xem trước",
+    "restore": "Khôi phục",
+    "loadingPreview": "Đang tải bản xem trước...",
+    "select": "Chọn một bản lưu để xem trước"
   }
 }

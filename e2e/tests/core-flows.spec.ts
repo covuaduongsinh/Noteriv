@@ -152,6 +152,10 @@ test("the interface switches to English (developer override until the Language p
     await expect(other.getByText("Appearance", { exact: true }).first()).toBeVisible(); // Settings sections
     await expect(other.getByText("Responsive sidebar", { exact: true })).toBeVisible(); // a Settings row
     await other.keyboard.press("Escape");
+    await other.getByTitle("More tools").click();
+    await other.getByRole("menuitem", { name: "Trash" }).click();
+    await expect(other.getByRole("heading", { name: "Trash" })).toBeVisible(); // a dialog
+    await other.keyboard.press("Escape");
   } finally {
     await other.evaluate(() => localStorage.removeItem("noteriv.locale.dev"));
     await other.close();

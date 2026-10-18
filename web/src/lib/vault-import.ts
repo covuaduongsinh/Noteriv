@@ -7,6 +7,7 @@
 
 import { webApi, ApiError } from "@/lib/webApi";
 import { getAttachmentType, markdownLinkForAttachment } from "@/lib/attachment-utils";
+import { t } from "@noteriv/ui/i18n";
 
 /** Same 25MB ceiling the multipart upload route enforces. */
 export const MAX_ATTACHMENT_BYTES = 25 * 1024 * 1024;
@@ -56,7 +57,7 @@ function classify(path: string, size: number, out: ImportScan) {
   if (parts.slice(0, -1).some((p) => IGNORED_DIRS.has(p))) return null;
   if (IGNORED_FILES.has(name.toLowerCase()) || name.startsWith("._")) return null;
   if (name.startsWith(".")) {
-    out.skipped.push({ path, reason: "file ẩn" });
+    out.skipped.push({ path, reason: t("web.import.reason.hidden") });
     return null;
   }
   return /\.md$/i.test(name) ? ("note" as const) : ("attachment" as const);
@@ -64,7 +65,7 @@ function classify(path: string, size: number, out: ImportScan) {
 
 function finalizeScan(scan: ImportScan): ImportScan {
   const tooBig = scan.attachments.filter((a) => a.size > MAX_ATTACHMENT_BYTES);
-  for (const a of tooBig) scan.skipped.push({ path: a.path, reason: "lớn hơn 25MB" });
+  for (const a of tooBig) scan.skipped.push({ path: a.path, reason: t("web.import.reason.tooBig") });
   scan.attachments = scan.attachments.filter((a) => a.size <= MAX_ATTACHMENT_BYTES);
   return scan;
 }
@@ -248,7 +249,7 @@ export async function runImport(
     3,
     async (item) => {
       if (quotaHit) {
-        report.failures.push({ path: item.path, error: "hết dung lượng đính kèm" });
+        report.failures.push({ path: item.path, error: t("web.import.reason.quota") });
         return;
       }
       const filename = item.path.split("/").pop()!;
@@ -270,7 +271,7 @@ export async function runImport(
         if (!byName.has(filename.toLowerCase())) byName.set(filename.toLowerCase(), ref);
       } catch (err) {
         if (err instanceof ApiError && err.status === 413) quotaHit = true;
-        report.failures.push({ path: item.path, error: err instanceof ApiError ? `lỗi ${err.status}` : "không tải lên được" });
+        report.failures.push({ path: item.path, error: err instanceof ApiError ? t("web.import.errorStatus", { status: err.status }) : t("web.import.uploadFailed") });
       } finally {
         done++;
         onProgress({ phase: "attachments", done, total: scan.attachments.length });
@@ -298,7 +299,7 @@ export async function runImport(
       report.notesSkipped += res.skipped;
       for (const e of res.errors) report.failures.push(e);
     } catch (err) {
-      for (const f of files) report.failures.push({ path: f.path, error: err instanceof ApiError ? `lỗi ${err.status}` : "không gửi được" });
+      for (const f of files) report.failures.push({ path: f.path, error: err instanceof ApiError ? t("web.import.errorStatus", { status: err.status }) : t("web.import.sendFailed") });
     }
     done += files.length;
     onProgress({ phase: "notes", done, total });
@@ -313,7 +314,7 @@ export async function runImport(
       batch.push({ path: item.path, content });
       batchChars += content.length;
     } catch {
-      report.failures.push({ path: item.path, error: "không đọc được file" });
+      report.failures.push({ path: item.path, error: t("web.import.reason.unreadable") });
       done++;
     }
   }
