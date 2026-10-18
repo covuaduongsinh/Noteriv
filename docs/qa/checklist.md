@@ -83,6 +83,10 @@
 | 6.3 | Độ rộng 390 px | Cài đặt dùng được, không tràn ngang | Ảnh chụp (3.6) | | ➖ |
 | 6.4 | Xuất PDF, xem trước PDF | Đúng nội dung, font tiếng Việt | | | |
 | 6.5 | Desktop: CSP bật (không có lỗi CSP trong console) | Mọi màn hình chạy | Desktop smoke | ➖ | ✅ (3.7) |
+| 6.6 | Trang vault ở 390 px | Ribbon là thanh dưới, sidebar là ngăn kéo (bấm note thì đóng), hàng nút note cuộn được, "⋯" mở lên trên | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
+| 6.7 | Cài như app (PWA): manifest, icon, service worker | Chromium báo "installable"; trang đã mở vẫn mở khi mất mạng, trang khác ra trang offline | E2E `pwa.spec.ts` (4.7) | ✅ (4.7, chưa thử máy thật) | ➖ |
+| 6.8 | Ghi nhanh `/quick` | Mở nhanh, lưu vào `Inbox/` của vault chọn, mất mạng thì giữ bản nháp | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
+| 6.9 | Lưu note khi mất mạng | Thanh trạng thái báo đỏ "Chưa lưu được", có mạng lại thì tự lưu | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
 
 ## Lỗi tìm được
 

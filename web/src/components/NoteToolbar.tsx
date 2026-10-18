@@ -47,9 +47,10 @@ export default function NoteToolbar({
 }: NoteToolbarProps) {
   useLocale();
   return (
-    <div className="flex items-center justify-between px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
-      <span className="truncate">{notePath}</span>
-      <div className="flex items-center gap-1">
+    <div className="flex items-center justify-between gap-2 px-4 py-2 border-b border-[var(--border)] text-sm text-[var(--text-secondary)]">
+      <span className="truncate min-w-0">{notePath}</span>
+      {/* On a narrow screen the buttons scroll sideways instead of being cut off. */}
+      <div className="note-toolbar-actions flex items-center gap-1 min-w-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         <button
           onClick={onToggleBookmark}
           title={bookmarked ? t("web.noteToolbar.unbookmark") : t("web.noteToolbar.bookmark")}

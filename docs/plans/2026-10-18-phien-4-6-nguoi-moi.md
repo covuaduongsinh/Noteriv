@@ -72,3 +72,9 @@ Ngoài ra sửa một chuỗi tiếng Anh còn viết cứng trong wizard ("Some
 - Desktop:
   - `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle` rồi `node e2e/desktop/smoke.mjs`: **17/17 đạt**;
   - thử wizard thật trên bản portable (script tạm, xoá sau khi chạy): ô chọn hiện và bật sẵn, tạo vault mới thì ghi đủ 6 note mẫu (trước khi sửa lỗi `~` thì 0); thư mục vault thử đã xoá.
+
+## Lên production (2026-10-18)
+
+- Không có migration. CI của PR #14 xanh cả 4 job. Staging: `/`, `/login`, `/register`, `/api/v1/healthz` trả 200.
+- Gộp PR #14 (merge `f3b5396`), deploy production `done`; `/`, `/login`, `/register`, `/api/v1/healthz` trả 200; 9 container chạy.
+- `next` đưa về `main`, chờ staging deploy xong rồi `compose.stop`.

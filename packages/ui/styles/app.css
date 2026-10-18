@@ -9672,3 +9672,90 @@ body {
     max-width: 100%;
   }
 }
+
+/* ── Web vault page on a phone (≤ 600px) ──────────────────────────────────
+   Scoped to .web-vault (the web vault page's root) so the desktop app, which shares this stylesheet, is unchanged.
+   The ribbon becomes a bottom bar, the file sidebar a drawer over the note, side panels take the full width. */
+.web-drawer-backdrop {
+  display: none;
+}
+@media (max-width: 600px) {
+  .web-vault {
+    --web-bottom-bar: calc(48px + env(safe-area-inset-bottom, 0px));
+  }
+  .web-vault .web-vault-body {
+    padding-bottom: var(--web-bottom-bar);
+  }
+  .web-vault .ribbon {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 45;
+    width: auto;
+    min-width: 0;
+    height: var(--web-bottom-bar);
+    flex-direction: row !important;
+    align-items: flex-start;
+    gap: 4px;
+    padding: 4px 6px env(safe-area-inset-bottom, 0px);
+    border-right: none;
+    border-top: 1px solid var(--border);
+  }
+  .web-vault .ribbon-top,
+  .web-vault .ribbon-bottom {
+    flex-direction: row;
+    gap: 4px;
+  }
+  .web-vault .ribbon-top {
+    flex: 1;
+    min-width: 0;
+    overflow-x: auto;
+    overflow-y: hidden !important;
+  }
+  .web-vault .ribbon-btn {
+    width: 40px;
+    height: 40px;
+    flex-shrink: 0;
+  }
+
+  .web-vault .sidebar-root {
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: var(--web-bottom-bar);
+    z-index: 50;
+    width: min(85vw, 320px) !important;
+    min-width: 0 !important;
+    box-shadow: 0 0 40px rgba(0, 0, 0, 0.5);
+  }
+  .web-vault .sidebar-resize-handle {
+    display: none;
+  }
+  .web-vault .web-drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0 0 var(--web-bottom-bar) 0;
+    z-index: 49;
+    background: rgba(0, 0, 0, 0.45);
+  }
+
+  .web-vault .web-note-area {
+    position: relative;
+  }
+  /* Mode, vault and path are already on screen above; the save state and counts are what matter here. */
+  .web-vault .web-status-left {
+    display: none;
+  }
+  .web-vault .web-side-panel {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    width: auto;
+    background: var(--bg-primary);
+    border-left: none;
+  }
+}
+.note-toolbar-actions > * {
+  flex-shrink: 0;
+}

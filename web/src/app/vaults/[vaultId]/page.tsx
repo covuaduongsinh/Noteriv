@@ -65,6 +65,7 @@ import {
 } from "@/lib/hotkeys";
 import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
+import { useIsPhone } from "@/lib/use-is-phone";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
 
@@ -172,6 +173,7 @@ export default function VaultPage() {
   const workspaceSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const isPhone = useIsPhone();
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
@@ -294,12 +296,46 @@ export default function VaultPage() {
   const editorSettingsRef = useRef(editorSettings);
   editorSettingsRef.current = editorSettings;
 
+  // Notes whose last save failed (no network, server error). They stay "unsaved", the status bar says so, and the
+  // latest text is sent again when the browser is back online, every 15 s, or on the next edit.
+  const [saveFailed, setSaveFailed] = useState(false);
+  const failedSavesRef = useRef(new Set<string>());
+  const tabsRef = useRef(tabs);
+  tabsRef.current = tabs;
+
   async function persistNote(noteId: string, content: string) {
-    await webApi.notes.update(vaultId, noteId, { content });
+    try {
+      await webApi.notes.update(vaultId, noteId, { content });
+    } catch {
+      failedSavesRef.current.add(noteId);
+      setSaveFailed(true);
+      return;
+    }
+    failedSavesRef.current.delete(noteId);
+    if (failedSavesRef.current.size === 0) setSaveFailed(false);
     setTabs((prev) => prev.map((t) => (t.noteId === noteId ? { ...t, savedContent: content } : t)));
     refreshIndex();
     emitPluginEvent("file-save", tabs.find((t) => t.noteId === noteId)?.path ?? null);
   }
+
+  useEffect(() => {
+    if (!saveFailed) return;
+    const retry = () => {
+      for (const noteId of [...failedSavesRef.current]) {
+        const tab = tabsRef.current.find((t) => t.noteId === noteId);
+        if (!tab) failedSavesRef.current.delete(noteId);
+        else void persistNote(noteId, tab.content);
+      }
+      if (failedSavesRef.current.size === 0) setSaveFailed(false);
+    };
+    const timer = setInterval(retry, 15_000);
+    window.addEventListener("online", retry);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener("online", retry);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [saveFailed]);
 
   function scheduleSave(noteId: string, content: string) {
     if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
@@ -1372,7 +1408,7 @@ export default function VaultPage() {
   }
 
   return (
-    <div className="h-screen flex flex-col" data-vault-id={vaultId}>
+    <div className="web-vault h-screen flex flex-col" data-vault-id={vaultId}>
       {!zenMode && (
         <VaultHeader
           vault={vault}
@@ -1413,7 +1449,7 @@ export default function VaultPage() {
         />
       )}
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="web-vault-body flex flex-1 overflow-hidden">
         {!zenMode && (
           <Ribbon
             onQuickOpen={() => setQuickOpenVisible(true)}
@@ -1453,6 +1489,8 @@ export default function VaultPage() {
           />
         )}
 
+        {/* On a phone the sidebar is a drawer over the note: tapping beside it closes it. */}
+        {isPhone && !sidebarCollapsed && !zenMode && <div className="web-drawer-backdrop" onClick={() => setSidebarCollapsed(true)} />}
         {!sidebarCollapsed && !zenMode &&
           (activePluginPanel && pluginHost.panels.some((p) => `${p.pluginDbId}:${p.id}` === activePluginPanel && p.kind === "sidebar") ? (
             (() => {
@@ -1485,7 +1523,10 @@ export default function VaultPage() {
               activeNoteId={activeTabId}
               width={sidebarWidth}
               onWidthChange={setSidebarWidth}
-              onFileSelect={openNote}
+              onFileSelect={(noteId) => {
+                void openNote(noteId);
+                if (isPhone) setSidebarCollapsed(true);
+              }}
               onRefresh={refreshIndex}
               onNewNote={handleQuickNewNote}
               renameRequest={sidebarRenameRequest}
@@ -1493,7 +1534,7 @@ export default function VaultPage() {
             />
           ))}
 
-        <main className="flex-1 flex flex-col relative">
+        <main className="flex-1 min-w-0 flex flex-col relative">
           {activeTab ? (
             <>
               <NoteToolbar
@@ -1523,7 +1564,7 @@ export default function VaultPage() {
                   ))}
                 </div>
               )}
-              <div className="flex-1 flex min-h-0">
+              <div className="web-note-area flex-1 flex min-h-0">
                 <div className="flex-1 min-w-0 flex flex-col">
                   <SplitPane
                     direction="horizontal"
@@ -1548,17 +1589,17 @@ export default function VaultPage() {
                   />
                 </div>
                 {outlineVisible && (
-                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                  <div className="web-side-panel w-64 border-l border-[var(--border)] overflow-y-auto">
                     <OutlinePanel content={draft} onHeadingClick={handleHeadingClick} onClose={() => setOutlineVisible(false)} />
                   </div>
                 )}
                 {tagPaneVisible && (
-                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                  <div className="web-side-panel w-64 border-l border-[var(--border)] overflow-y-auto">
                     <TagPane adapter={vaultAdapter} onTagClick={() => {}} onNoteSelect={openNote} visible={tagPaneVisible} />
                   </div>
                 )}
                 {bookmarksVisible && (
-                  <div className="w-64 border-l border-[var(--border)] overflow-y-auto">
+                  <div className="web-side-panel w-64 border-l border-[var(--border)] overflow-y-auto">
                     <BookmarksPanel
                       notes={bookmarkedNotes}
                       currentNoteId={activeTabId}
@@ -1570,7 +1611,7 @@ export default function VaultPage() {
                   </div>
                 )}
                 {backlinksVisible && (
-                  <div className="w-72 border-l border-[var(--border)] overflow-y-auto">
+                  <div className="web-side-panel w-72 border-l border-[var(--border)] overflow-y-auto">
                     <BacklinksPanel
                       adapter={vaultAdapter}
                       noteId={activeTab.noteId}
@@ -1599,6 +1640,7 @@ export default function VaultPage() {
                   notePath={activeTab.path}
                   content={draft}
                   dirty={activeTab.content !== activeTab.savedContent}
+                  saveFailed={saveFailed && failedSavesRef.current.has(activeTab.noteId)}
                   syncSummary={syncSummaryText}
                   syncTone={syncTone}
                   onOpenSync={() => openSettings("sync")}

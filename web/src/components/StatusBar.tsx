@@ -11,6 +11,8 @@ interface StatusBarProps {
   notePath: string | null;
   content: string;
   dirty: boolean;
+  /** The last save of this note failed; it is retried in the background. */
+  saveFailed?: boolean;
   syncSummary?: string | null;
   syncTone?: "muted" | "warn" | "error";
   onOpenSync?: () => void;
@@ -40,6 +42,7 @@ export default function StatusBar({
   notePath,
   content,
   dirty,
+  saveFailed = false,
   syncSummary,
   syncTone = "muted",
   onOpenSync,
@@ -50,15 +53,18 @@ export default function StatusBar({
   useLocale();
   return (
     <div className="flex items-center justify-between h-6 px-3 bg-[var(--bg-secondary)] border-t border-[var(--border)] text-[10px] text-[var(--text-muted)] select-none shrink-0">
-      <div className="flex items-center gap-3 min-w-0">
+      <div className="web-status-left flex items-center gap-3 min-w-0 whitespace-nowrap">
         <span>{t(`shell.status.mode.${viewMode}`)}</span>
         {vaultName && <span>{vaultName}</span>}
         {notePath && <span className="truncate max-w-md">{notePath}</span>}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         {notePath && (
-          <span className={dirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}>
-            {dirty ? t("shell.status.unsaved") : t("shell.status.saved")}
+          <span
+            className={saveFailed ? "text-[var(--red)]" : dirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}
+            title={saveFailed ? t("shell.status.saveFailedHint") : undefined}
+          >
+            {saveFailed ? t("shell.status.saveFailed") : dirty ? t("shell.status.unsaved") : t("shell.status.saved")}
           </span>
         )}
         {notePath && (
