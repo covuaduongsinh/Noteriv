@@ -1208,7 +1208,17 @@
         "step3": "Bấm “Thêm”. Noteriv mở toàn màn hình từ biểu tượng."
       },
       "quick": "Ghi nhanh (/quick) là trang nhẹ để ghi một ý trong vài giây; note vào thư mục Inbox của vault bạn chọn.",
-      "offlineNote": "App mở được khi không có mạng, nhưng đọc và sửa note offline sẽ có ở bản cập nhật sau."
+      "offlineNote": "Không có mạng app vẫn mở được: vault và note đã mở gần đây đọc và sửa được, chỉnh sửa sẽ được gửi khi có mạng lại."
+    },
+    "offline": {
+      "banner": "Đang offline — hiển thị bản lưu trên máy. Chỉnh sửa sẽ được gửi khi có mạng.",
+      "conflict": "Note này vừa được sửa ở nơi khác. Không có gì bị ghi đè: bản của bạn được lưu thành “{name}”.",
+      "needsNetwork": "Việc này cần có mạng. Note và chỉnh sửa của bạn vẫn được giữ trên máy.",
+      "notKept": "Note này chưa được lưu trên máy; hãy mở nó một lần khi có mạng để đọc được lúc offline.",
+      "vaultListKept": "Đang offline — đây là danh sách lưu trên máy.",
+      "signOutUnsent": {
+        "other": "Còn {count} chỉnh sửa offline chưa tới máy chủ; đăng xuất trên máy này sẽ bỏ chúng. Bấm Đăng xuất lần nữa nếu vẫn muốn đăng xuất."
+      }
     }
   },
   "desktop": {
@@ -1568,7 +1578,9 @@
         "other": "{count} ký tự"
       },
       "saveFailed": "Chưa lưu được — đang thử lại",
-      "saveFailedHint": "Lần lưu cuối chưa tới được máy chủ (mất mạng?). Chữ của bạn vẫn còn đây và sẽ tự gửi lại."
+      "saveFailedHint": "Lần lưu cuối chưa tới được máy chủ (mất mạng?). Chữ của bạn vẫn còn đây và sẽ tự gửi lại.",
+      "keptLocally": "Đã giữ trên máy",
+      "keptLocallyHint": "Không có mạng: bản sửa này được giữ trên máy và sẽ gửi ngay khi kết nối được máy chủ."
     },
     "commands": {
       "corePlugin": "Core plugin",

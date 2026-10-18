@@ -5,6 +5,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, webApi, type ApiVault } from "@/lib/webApi";
 import { clearCachedPages } from "@/components/ServiceWorkerRegister";
+import { isNetworkError } from "@/lib/offline";
+import { claimOfflineData, clearOfflineData, kvGet, kvSet, pendingEdits } from "@/lib/offline-store";
+import { flushPending } from "@/lib/offline-sync";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage } from "@/lib/i18n";
@@ -19,16 +22,35 @@ export default function VaultsPage() {
   const [deletingAccount, setDeletingAccount] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [unreachable, setUnreachable] = useState(false);
+  /** Edits kept on this device that signing out would lose; set when the first click on Sign out found some. */
+  const [unsentEdits, setUnsentEdits] = useState(0);
+  const [notice, setNotice] = useState<string | null>(null);
 
   useEffect(() => {
     webApi.vaults
       .list()
-      .then(setVaults)
-      // Only a refused session means "sign in again"; no network (the installed app opened offline) does not.
-      .catch((err) => (err instanceof ApiError && err.status === 401 ? router.replace("/login") : setUnreachable(true)));
+      .then((list) => {
+        setVaults(list);
+        void kvSet("vaults", list);
+        // Edits kept on this device from an offline session go out now, whichever vault they belong to.
+        void flushPending();
+      })
+      // Only a refused session means "sign in again"; no network (the installed app opened offline) does not: the
+      // list kept on this device shows instead.
+      .catch(async (err) => {
+        if (err instanceof ApiError && err.status === 401) return router.replace("/login");
+        setUnreachable(true);
+        if (isNetworkError(err)) {
+          const kept = await kvGet<ApiVault[]>("vaults");
+          if (kept) setVaults(kept);
+        }
+      });
     webApi.auth
       .me()
-      .then((u) => setIsAdmin(!!u.isAdmin))
+      .then((u) => {
+        setIsAdmin(!!u.isAdmin);
+        void claimOfflineData(u.id);
+      })
       .catch(() => undefined);
     // The account's language, so this page (and the next ones) shows it even on a device that never opened a vault.
     webApi.preferences
@@ -50,8 +72,21 @@ export default function VaultsPage() {
   }
 
   async function logout() {
-    await webApi.auth.logout();
+    // Signing out forgets what this device kept, including edits not sent yet: say so once before doing it.
+    const unsent = (await pendingEdits()).length;
+    if (unsent > 0 && unsentEdits === 0) {
+      setUnsentEdits(unsent);
+      return;
+    }
+    try {
+      await webApi.auth.logout();
+    } catch (err) {
+      // The session lives on the server: without a connection it cannot be ended, so nothing is forgotten either.
+      if (isNetworkError(err)) return setNotice(t("web.offline.needsNetwork"));
+      throw err;
+    }
     clearCachedPages();
+    await clearOfflineData();
     router.replace("/login");
   }
 
@@ -74,6 +109,8 @@ export default function VaultsPage() {
     setDeletingAccount(true);
     try {
       await webApi.users.deleteAccount();
+      clearCachedPages();
+      await clearOfflineData();
       router.replace("/login");
     } finally {
       setDeletingAccount(false);
@@ -91,7 +128,9 @@ export default function VaultsPage() {
 
       <div className="w-full max-w-md flex flex-col gap-2">
         {vaults === null && !unreachable && <p className="text-[var(--text-secondary)]">{t("web.vaultList.loading")}</p>}
-        {unreachable && <p className="text-[var(--text-secondary)]">{t("web.vaultList.unreachable")}</p>}
+        {unreachable && <p className="text-[var(--text-secondary)]">{vaults?.length ? t("web.offline.vaultListKept") : t("web.vaultList.unreachable")}</p>}
+        {unsentEdits > 0 && <p className="text-sm text-[var(--yellow)]">{t("web.offline.signOutUnsent", { count: unsentEdits })}</p>}
+        {notice && <p className="text-sm text-[var(--yellow)]">{notice}</p>}
         {vaults?.length === 0 && (
           <>
             <p className="text-[var(--text-secondary)]">{t("web.vaultList.empty")}</p>

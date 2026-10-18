@@ -4,7 +4,8 @@
 // - Pages: network first; offline, the last copy of that same page, otherwise offline.html. (A page of another
 //   vault is not a stand-in: the HTML carries its route parameters.)
 // - Never cached: the API (/api/*, which carries the user's data and auth), anything that is not a GET, other origins.
-//   Reading notes offline comes from the app's own store (stage 4.8), not from cached API responses.
+//   Notes, the file tree and edits made offline live in the app's own IndexedDB store (web/src/lib/offline-store.ts),
+//   written by the app after a successful request — never cached API responses, which could hold a stale or 401 answer.
 //
 // Bump VERSION when the caching rules change; activate drops every cache of an older version.
 

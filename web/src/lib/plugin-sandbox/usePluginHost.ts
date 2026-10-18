@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import type { VaultAdapter } from "@noteriv/core/vault-adapter";
 import { useSandboxPluginHost, type EditorBridge, type PluginPermission, type SandboxPluginRecord } from "@noteriv/ui/plugins/sandbox";
 import { webApi, type ApiPlugin } from "@/lib/webApi";
+import { kvGet, kvSet } from "@/lib/offline-store";
 
 /**
  * Web side of the community-plugin tier: installed plugins (and their grants and settings) live in the DB behind
@@ -18,8 +19,18 @@ export function usePluginHost(
 ) {
   const [installed, setInstalled] = useState<ApiPlugin[]>([]);
 
+  // Kept on this device too, so the vault's community plugins still run when it is opened offline.
   const refreshInstalled = useCallback(() => {
-    webApi.plugins.list(vaultId).then(setInstalled);
+    webApi.plugins
+      .list(vaultId)
+      .then((list) => {
+        setInstalled(list);
+        void kvSet(`plugins:${vaultId}`, list);
+      })
+      .catch(async () => {
+        const kept = await kvGet<ApiPlugin[]>(`plugins:${vaultId}`);
+        if (kept) setInstalled(kept);
+      });
   }, [vaultId]);
 
   useEffect(() => {

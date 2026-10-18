@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, webApi, type ApiVault } from "@/lib/webApi";
+import { isNetworkError } from "@/lib/offline";
 import { formatDate, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 
@@ -51,6 +52,8 @@ export default function QuickNotePage() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<{ path: string; vaultId: string; at: number } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** The last save found no network: it is tried again as soon as the browser is back online. */
+  const [waitingForNetwork, setWaitingForNetwork] = useState(false);
   const area = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -73,6 +76,15 @@ export default function QuickNotePage() {
       });
   }, [router]);
 
+  // Saved by itself once the network is back (the text never left this device meanwhile).
+  const saveRef = useRef<() => Promise<void>>(async () => {});
+  useEffect(() => {
+    if (!waitingForNetwork) return;
+    const onOnline = () => void saveRef.current();
+    window.addEventListener("online", onOnline);
+    return () => window.removeEventListener("online", onOnline);
+  }, [waitingForNetwork]);
+
   function edit(value: string) {
     setText(value);
     store(DRAFT_KEY, value);
@@ -91,12 +103,17 @@ export default function QuickNotePage() {
       // After edit(""), which clears the previous confirmation.
       setSaved({ path: note.path, vaultId, at: Date.now() });
       area.current?.focus();
+      setWaitingForNetwork(false);
     } catch (err) {
-      setError(err instanceof ApiError ? t("web.quick.failed") : t("web.quick.offline"));
+      const offline = isNetworkError(err);
+      setWaitingForNetwork(offline);
+      setError(offline ? t("web.quick.offline") : t("web.quick.failed"));
     } finally {
       setSaving(false);
     }
   }
+
+  saveRef.current = save;
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 pt-6 pb-10">

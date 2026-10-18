@@ -76,6 +76,13 @@ export interface ApiNoteSummary {
   updatedAt: string;
 }
 
+/** Body of a 409 from a note save whose base text was out of date: the stored note, and the copy holding the edit. */
+export interface StaleNote {
+  error: "stale";
+  note: ApiNote;
+  copy: { id: string; path: string; name: string };
+}
+
 export interface VaultIndex {
   folders: ApiFolder[];
   notes: ApiNoteSummary[];
@@ -428,7 +435,10 @@ export const webApi = {
     update: (
       vaultId: string,
       noteId: string,
-      data: Partial<Pick<ApiNote, "content" | "frontmatter" | "name" | "folderId">>
+      data: Partial<Pick<ApiNote, "content" | "frontmatter" | "name" | "folderId">> & {
+        /** SHA-256 of the text the edit started from; a changed note then answers 409 { error: "stale" } (StaleNote). */
+        baseHash?: string;
+      }
     ) => request<ApiNote>(`/vaults/${vaultId}/notes/${noteId}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (vaultId: string, noteId: string) =>
       request<{ ok: true }>(`/vaults/${vaultId}/notes/${noteId}`, { method: "DELETE" }),

@@ -41,13 +41,14 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      await webApi.auth.register({
+      const account = await webApi.auth.register({
         email,
         password,
         displayName,
         acceptTerms: true,
         ...(mode === "invite" ? { inviteCode: inviteCode.trim() } : {}),
       });
+      await import("@/lib/offline-store").then((m) => m.claimOfflineData(account.id)).catch(() => undefined);
       // A new account starts with the "Getting started" vault in the language it signed up in. Best effort: the
       // account exists already, so a failure here only means an empty vault list.
       try {

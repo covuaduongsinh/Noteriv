@@ -13,6 +13,8 @@ interface StatusBarProps {
   dirty: boolean;
   /** The last save of this note failed; it is retried in the background. */
   saveFailed?: boolean;
+  /** The server cannot be reached: an unsaved edit is kept on this device and sent later. */
+  keptLocally?: boolean;
   syncSummary?: string | null;
   syncTone?: "muted" | "warn" | "error";
   onOpenSync?: () => void;
@@ -43,6 +45,7 @@ export default function StatusBar({
   content,
   dirty,
   saveFailed = false,
+  keptLocally = false,
   syncSummary,
   syncTone = "muted",
   onOpenSync,
@@ -61,10 +64,16 @@ export default function StatusBar({
       <div className="flex items-center gap-3 shrink-0">
         {notePath && (
           <span
-            className={saveFailed ? "text-[var(--red)]" : dirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}
-            title={saveFailed ? t("shell.status.saveFailedHint") : undefined}
+            className={saveFailed && !keptLocally ? "text-[var(--red)]" : dirty ? "text-[var(--yellow)]" : "text-[var(--green)]"}
+            title={saveFailed ? (keptLocally ? t("shell.status.keptLocallyHint") : t("shell.status.saveFailedHint")) : undefined}
           >
-            {saveFailed ? t("shell.status.saveFailed") : dirty ? t("shell.status.unsaved") : t("shell.status.saved")}
+            {saveFailed
+              ? keptLocally
+                ? t("shell.status.keptLocally")
+                : t("shell.status.saveFailed")
+              : dirty
+              ? t("shell.status.unsaved")
+              : t("shell.status.saved")}
           </span>
         )}
         {notePath && (

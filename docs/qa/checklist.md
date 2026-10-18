@@ -86,7 +86,9 @@
 | 6.6 | Trang vault ở 390 px | Ribbon là thanh dưới, sidebar là ngăn kéo (bấm note thì đóng), hàng nút note cuộn được, "⋯" mở lên trên | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
 | 6.7 | Cài như app (PWA): manifest, icon, service worker | Chromium báo "installable"; trang đã mở vẫn mở khi mất mạng, trang khác ra trang offline | E2E `pwa.spec.ts` (4.7) | ✅ (4.7, chưa thử máy thật) | ➖ |
 | 6.8 | Ghi nhanh `/quick` | Mở nhanh, lưu vào `Inbox/` của vault chọn, mất mạng thì giữ bản nháp | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
-| 6.9 | Lưu note khi mất mạng | Thanh trạng thái báo đỏ "Chưa lưu được", có mạng lại thì tự lưu | E2E `core-flows` (4.7) | ✅ (4.7) | ➖ |
+| 6.9 | Lưu note khi mất mạng | Thanh trạng thái báo "Đã giữ trên máy" (lỗi server: đỏ "Chưa lưu được"), có mạng lại thì tự lưu | E2E `core-flows` (4.7, 4.8) | ✅ (4.8) | ➖ |
+| 6.10 | Mở vault đã vào trước đó khi offline | Cây file, note đã mở, băng offline; sửa được, tải lại không mất, có mạng thì gửi; note chưa mở báo cần mạng | E2E `offline.spec.ts` (4.8) | ✅ (4.8) | ➖ |
+| 6.11 | Hai nơi cùng sửa một note | Không ghi đè: bản sau thành "(conflict …)", ConflictBanner hiện | E2E `core-flows` (4.8) | ✅ (4.8) | ➖ |
 
 ## Lỗi tìm được
 

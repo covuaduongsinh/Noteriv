@@ -261,14 +261,15 @@ test("a deleted note goes to the trash and can be restored", async () => {
   await expect(sidebarItem("Second")).toBeVisible();
 });
 
-test("a failed save is reported and sent again once the network is back", async () => {
+test("a save without network is kept on the device and sent once the network is back", async () => {
   await sidebarItem("First").click();
   const notePatch = /\/api\/v1\/vaults\/[^/]+\/notes\/[^/]+$/;
   await page.route(notePatch, (route) => (route.request().method() === "PATCH" ? route.abort("internetdisconnected") : route.fallback()));
   await editor().click();
   await page.keyboard.press("Control+End");
   await page.keyboard.type(" offline edit");
-  await expect(page.getByText("Not saved — retrying")).toBeVisible();
+  // No network: the edit is kept on this device (and would survive a reload) until it can be sent.
+  await expect(page.getByText("Kept on this device", { exact: true })).toBeVisible();
   await page.unroute(notePatch);
   const resent = noteSaved("offline edit");
   await page.evaluate(() => window.dispatchEvent(new Event("online")));
@@ -319,4 +320,25 @@ test("on a phone the ribbon is a bottom bar and the file list a drawer", async (
   } finally {
     await phone.close();
   }
+});
+
+test("a note changed elsewhere meanwhile is not overwritten: the edit becomes a conflict copy", async () => {
+  await sidebarItem("First").click();
+  await expect(editor()).toContainText("Hello e2e world");
+  const vaultId = new URL(page.url()).pathname.split("/")[2];
+  const index = await (await page.request.get(`/api/v1/vaults/${vaultId}/index`)).json();
+  const first = index.notes.find((n: { name: string }) => n.name === "First.md");
+  // Another device saves the note (no base version: an unconditional write).
+  const other = await page.request.patch(`/api/v1/vaults/${vaultId}/notes/${first.id}`, { data: { content: "# First\n\nChanged on another device." } });
+  expect(other.ok()).toBe(true);
+
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type(" local words");
+  await expect(page.getByText(/was changed elsewhere meanwhile/)).toBeVisible();
+  await expect(page.locator(".sidebar-root .sb-label").getByText(/^First \(conflict \d{4}-\d{2}-\d{2} \d{4}\)$/)).toBeVisible();
+  await expect(page.locator("[data-testid=conflict-banner]")).toBeVisible();
+  await expect(editor()).toContainText("local words"); // the copy, opened beside the note
+  await sidebarItem("First").click();
+  await expect(editor()).toContainText("Changed on another device.");
 });
