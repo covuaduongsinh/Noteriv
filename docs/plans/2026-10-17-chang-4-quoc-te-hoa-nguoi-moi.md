@@ -1,6 +1,6 @@
 # Chặng 4: Quốc tế hoá, người mới, di động
 
-> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.6 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.7 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 2 xong (chuỗi giao diện đã trung lập); nên xong 3.2 (E2E) để bắt lỗi khi rút chuỗi.
 
@@ -65,12 +65,12 @@
 2. Trạng thái rỗng có hướng dẫn (vault trống, chưa có kết quả tìm, chưa có plugin).
 3. Rà lại mặc định bật/tắt của core plugin cho người dùng chung (danh sách hiện tại: `docs/plugin-api/v1.md` mục 9).
 
-## Phiên 4.7: PWA, Ghi nhanh, giao diện điện thoại
+## Phiên 4.7 – 4.8: PWA, Ghi nhanh, giao diện điện thoại, offline
 
-Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-dong-chia-se.md`), bỏ phần cờ:
+Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-dong-chia-se.md`), bỏ phần cờ. **Chủ dự án chốt (2026-10-18): tách đôi.** 4.7 làm mục 1 (phần cài như app), 3, 4, 5 và báo khi lưu lỗi; 4.8 làm đọc và ghi offline (mục 1 phần IndexedDB, mục 2). Tài liệu tiếng Anh lùi thành 4.9.
 
-1. `manifest.webmanifest`, Service Worker (theo tài liệu Next 16 trong `node_modules/next/dist/docs/`; cân nhắc Serwist): cache vỏ ứng dụng; **đọc offline** note mở gần đây (IndexedDB).
-2. Ghi offline có hàng đợi; xung đột dùng giao diện của Chặng 3 (phiên 3.5).
+1. `manifest.webmanifest`, Service Worker (theo tài liệu Next 16 trong `node_modules/next/dist/docs/`; chủ dự án chọn tự viết, không dùng Serwist): cache vỏ ứng dụng; **đọc offline** note mở gần đây (IndexedDB, 4.8).
+2. Ghi offline có hàng đợi; xung đột dùng giao diện của Chặng 3 (phiên 3.5). Cần thêm kiểm tra phiên bản khi lưu trên server (hiện lưu theo kiểu "ai lưu sau thắng") (4.8).
 3. **Ghi nhanh** `/quick`: trang nhẹ chỉ có ô nhập + chọn vault/thư mục (mặc định `Inbox/`), mở dưới 1,5 giây trên điện thoại tầm trung; shortcut trong manifest.
 4. Giao diện điện thoại (dời từ 3.6):
    - thanh công cụ note không bị cắt;
@@ -78,7 +78,7 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
    - ribbon thành thanh dưới.
 5. Hướng dẫn "Cài lên điện thoại" (Android Chrome, iOS Safari).
 
-## Phiên 4.8: Tài liệu người dùng tiếng Anh
+## Phiên 4.9: Tài liệu người dùng tiếng Anh
 
 - Chỉnh các trang sẵn có trong `docs/getting-started`, `docs/features`, `docs/editor`, `docs/sync`, `docs/plugins`, `docs/themes`, `docs/views` cho đúng bản web hiện tại (nhiều trang viết cho desktop của upstream).
 - Viết lại hoặc bỏ `docs/mobile` (viết cho app React Native, không còn).
@@ -101,5 +101,6 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
 | 4.4 Rút chuỗi (phần 3: các hộp thoại còn lại) | Xong, đã lên production (PR #12 merge `c99d7b8`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-4-hop-thoai.md); các hộp thoại còn lại hai app; báo cáo Chẩn đoán cố định tiếng Anh; 470 test, E2E 9/9, smoke desktop 16/16, JS tải đầu 229,5 KB |
 | 4.5 Rút chuỗi (phần 4: trang ngoài, pháp lý), đổi mặc định, ô Language | Xong, đã lên production (PR #13 merge `9dd0844`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-5-ngon-ngu.md); ngôn ngữ theo lựa chọn → trình duyệt/hệ điều hành → `en`; ô Language hai app; người cũ giữ ngôn ngữ đang thấy (web `vi` qua migration, desktop `en`), tên mặc định theo ngôn ngữ (chủ dự án chốt); E2E chạy tiếng Anh; 475 test, E2E 10/10, smoke desktop 17/17, JS tải đầu 231,3 KB |
 | 4.6 Người mới | Xong, đã lên production (PR #14 merge `f3b5396`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-6-nguoi-moi.md); vault mẫu "Getting started"/"Bắt đầu" (web tự tạo khi đăng ký qua đường nhập, desktop có ô trong wizard), trạng thái rỗng có gợi ý, mặc định core plugin giữ nguyên (chủ dự án chốt); sửa wizard desktop ghi vào `~`; 486 test, E2E 11/11, smoke desktop 17/17, JS tải đầu 231,9 KB |
-| 4.7 PWA, Ghi nhanh, giao diện điện thoại | Chưa làm | | |
-| 4.8 Tài liệu tiếng Anh | Chưa làm | | |
+| 4.7 PWA (cài như app), Ghi nhanh, giao diện điện thoại | Xong, chờ lên production | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-7-pwa.md); manifest + icon + SW tự viết (vỏ app, trang offline), `/quick` (API `quick-note`, mở nguội ~0,9 s), `/install`, ribbon thành thanh dưới, sidebar thành ngăn kéo, báo khi lưu lỗi; tách 4.7/4.8 (chủ dự án chốt); 494 test, E2E 16/16, smoke desktop 17/17, JS tải đầu 233,8 KB |
+| 4.8 Đọc và ghi offline | Chưa làm | | |
+| 4.9 Tài liệu tiếng Anh | Chưa làm | | |
