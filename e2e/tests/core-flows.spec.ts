@@ -206,7 +206,7 @@ test("a deleted note goes to the trash and can be restored", async () => {
 
   await page.getByTitle("Thêm công cụ").click();
   await page.getByText("Thùng rác", { exact: true }).click();
-  await page.getByTitle("Khôi phục").first().click();
+  await page.getByTitle("Khôi phục", { exact: true }).first().click(); // not "Khôi phục file" (File Recovery)
   await page.keyboard.press("Escape"); // closes the trash panel
   await expect(sidebarItem("Second")).toBeVisible();
 });

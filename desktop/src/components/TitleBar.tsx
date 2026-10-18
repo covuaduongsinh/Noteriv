@@ -239,19 +239,19 @@ export default function TitleBar({
               onClick={() => onViewModeChange("live")}
               className={`view-toggle-btn ${viewMode === "live" ? "vt-active" : ""}`}
             >
-              Edit
+              {t("shell.status.mode.live")}
             </button>
             <button
               onClick={() => onViewModeChange("view")}
               className={`view-toggle-btn ${viewMode === "view" ? "vt-active" : ""}`}
             >
-              View
+              {t("shell.status.mode.view")}
             </button>
             <button
               onClick={() => onViewModeChange("source")}
               className={`view-toggle-btn ${viewMode === "source" ? "vt-active" : ""}`}
             >
-              Source
+              {t("shell.status.mode.source")}
             </button>
           </div>
           )}

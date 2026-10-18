@@ -782,8 +782,14 @@
       },
       "saved": "saved",
       "unsaved": "unsaved",
-      "lines": "{count} lines",
-      "chars": "{count} chars"
+      "lines": {
+        "one": "{count} line",
+        "other": "{count} lines"
+      },
+      "chars": {
+        "one": "{count} char",
+        "other": "{count} chars"
+      }
     },
     "commands": {
       "corePlugin": "Core plugin",

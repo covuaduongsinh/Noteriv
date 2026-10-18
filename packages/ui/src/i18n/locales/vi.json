@@ -762,8 +762,12 @@
       },
       "saved": "đã lưu",
       "unsaved": "chưa lưu",
-      "lines": "{count} dòng",
-      "chars": "{count} ký tự"
+      "lines": {
+        "other": "{count} dòng"
+      },
+      "chars": {
+        "other": "{count} ký tự"
+      }
     },
     "commands": {
       "corePlugin": "Core plugin",
