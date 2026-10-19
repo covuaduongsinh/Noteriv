@@ -161,8 +161,10 @@ export async function clipPublicRoutes(fastify: FastifyInstance) {
     const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
     if (!token.startsWith(TOKEN_PREFIX)) return reply.code(401).send({ error: "unauthorized" });
 
-    const row = await prisma.clipToken.findUnique({ where: { tokenHash: hashToken(token) } });
+    const row = await prisma.clipToken.findUnique({ where: { tokenHash: hashToken(token) }, include: { user: { select: { lockedAt: true } } } });
     if (!row) return reply.code(401).send({ error: "unauthorized" });
+    // A locked account's bookmarklets stop too, like its sessions.
+    if (row.user.lockedAt) return reply.code(403).send({ error: "account_locked" });
 
     // The token carries its creator's authority, which can change after it was issued: someone
     // removed from the vault, or demoted to viewer, must not keep writing into it through an old token.

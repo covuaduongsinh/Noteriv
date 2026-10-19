@@ -77,6 +77,6 @@
 | 5.1 Email và tài khoản | Xong, đã lên production | 2026-10-19 | PR #18, merge `4a03f9d`; Resend, xác minh, quên mật khẩu, đổi email; [bản ghi](2026-10-19-phien-5-1-email.md). Email tắt ở production cho tới khi chủ dự án tạo domain Resend và đặt env |
 | 5.2 Mở đăng ký | Xong, đã lên production | 2026-10-19 | PR #19, merge `1118361`; Turnstile (đăng ký, quên mật khẩu), chặn 4 việc khi chưa xác minh, email chữ thường; production vẫn `invite`; [bản ghi](2026-10-19-phien-5-2-mo-dang-ky.md) |
 | 5.3 Gói và hạn mức | Xong, đã lên production | 2026-10-19 | PR #20, merge `8bd78c8`; bảng `plans` + `users.plan_id`, free 10 vault / 1 GB / 3 kết nối / 50 bản lịch sử, CLI `cli/plan.ts`, Cài đặt → Plan and usage; [bản ghi](2026-10-19-phien-5-3-goi-han-muc.md) |
-| 5.4 Trang quản trị | Chưa làm | | |
+| 5.4 Trang quản trị | Xong, chờ lên production | 2026-10-19 | Nhánh `covuaduongsinh/chang5-admin`; `users.role` + `users.locked_at`, khoá có hiệu lực ngay, `/admin` (người dùng, gói, khoá, quyền admin, đặt lại mật khẩu, xác minh, xoá), `/admin/audit`; [bản ghi](2026-10-19-phien-5-4-quan-tri.md) |
 | 5.5 Vận hành | Chưa làm | | |
 | 5.6 Pháp lý quốc tế | Chưa làm | | |

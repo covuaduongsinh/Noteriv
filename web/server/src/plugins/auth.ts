@@ -25,11 +25,24 @@ export default fp(async (fastify: FastifyInstance) => {
       reply.code(401).send({ error: "unauthorized" });
       return;
     }
+    let payload;
     try {
-      const payload = verifyAccessToken(token);
-      request.user = { id: payload.sub, email: payload.email };
+      payload = verifyAccessToken(token);
     } catch {
       reply.code(401).send({ error: "unauthorized" });
+      return;
     }
+    // Checked on every request (a primary-key read) so locking an account takes effect at once, not when its
+    // 15-minute access token runs out. 401 sends the page through its refresh → sign-in path, which is refused too.
+    const account = await fastify.prisma.user.findUnique({ where: { id: payload.sub }, select: { lockedAt: true } });
+    if (!account) {
+      reply.code(401).send({ error: "unauthorized" });
+      return;
+    }
+    if (account.lockedAt) {
+      reply.code(401).send({ error: "account_locked" });
+      return;
+    }
+    request.user = { id: payload.sub, email: payload.email };
   });
 });

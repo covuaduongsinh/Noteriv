@@ -69,8 +69,21 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - **Turnstile** (Cloudflare, từ phiên 5.2): kiểm tra chống bot ở form đăng ký và quên mật khẩu. Bật khi có đủ `TURNSTILE_SITE_KEY` (công khai, trang lấy qua `GET /api/v1/auth/registration`) và `TURNSTILE_SECRET_KEY` (bí mật). Tạo widget trong Cloudflare dashboard → Turnstile, chế độ *Managed*, hostname `noteriv.dsc.edu.vn` và `staging-noteriv.dsc.edu.vn`. Cloudflare không trả lời thì form từ chối (lỗi thì chặn). Key thử luôn đạt để chạy E2E tại máy: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.
 - **Tài khoản chưa xác minh** (từ phiên 5.2, chỉ khi email đang bật): không tạo được kết nối đồng bộ và lệnh GitHub, không tải đính kèm, không tạo token web clipper, không xuất PDF (403 `email_unverified`, audit `blocked_unverified`). Mã: `web/server/src/lib/emailGate.ts`.
 - **Email lưu bằng chữ thường** (từ phiên 5.2, `emailField` trong `web/server/src/lib/registration.ts`; migration `20261019140000_lowercase_emails`, chỉ sửa dữ liệu, áp trước khi deploy).
-- `ADMIN_EMAILS` (cùng chỗ): danh sách email (cách nhau dấu phẩy) được quản lý mã mời. Rỗng = không ai là admin. Production: `duongsinhchess@gmail.com`.
-- Tạo mã mời: đăng nhập bằng email admin → **Vault của bạn → Quản lý mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
+- `ADMIN_EMAILS` (cùng chỗ): danh sách email (cách nhau dấu phẩy) luôn là admin. Production: `duongsinhchess@gmail.com`. **Từ phiên 5.4** admin = email trong danh sách này **hoặc** người có vai trò `admin` trong DB (`users.role`, cấp/thu trên trang quản trị). Quyền đọc từ DB ở mỗi request, nên thu quyền có hiệu lực ngay. Admin từ `ADMIN_EMAILS` không bị thu quyền trên giao diện; đây là cách khởi tạo admin đầu tiên và cách lấy lại quyền nếu cần.
+- **Trang quản trị** `/admin` (từ phiên 5.4; trang Vault → **Quản trị (admin)**), có ba thẻ:
+  - **Người dùng:**
+    - tìm theo email hoặc tên; xem mức dùng; đổi gói;
+    - **Khoá/Mở khoá:** khoá có hiệu lực ngay. Mọi request, kể cả mở kết nối cộng tác mới và web clipper, đều bị từ chối; refresh token bị thu hồi; đăng nhập nhận thông báo "locked";
+    - cấp/thu quyền admin;
+    - **Gửi liên kết đặt lại mật khẩu** (cần email bật);
+    - **Đánh dấu đã xác minh**;
+    - **Xoá** (bấm hai lần; phải thu quyền admin trước).
+    - Admin không tự khoá, tự thu quyền hay tự xoá chính mình.
+  - **Mã mời:** trang cũ.
+  - **Nhật ký:** audit log mới nhất trước, lọc theo hành động và email.
+  - Mọi thao tác ghi audit `admin_*`, người thực hiện là admin, `resourceId` là người bị tác động.
+  - Xử lý yêu cầu hỗ trợ (quên mật khẩu, đổi gói) dùng trang này; các CLI `reset-password` và `plan` vẫn giữ cho lúc giao diện không dùng được.
+- Tạo mã mời: đăng nhập bằng email admin → **Quản trị → Mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
 - Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.
 - Trang `/terms` và `/privacy` hiện nhãn **Bản nháp** cho tới khi điền `OPERATOR_NAME` và `CONTACT_EMAIL` trong `web/src/lib/legal.ts`.
 - Migration `20261015120000_invite_codes` (đã áp dụng ở production ngày 2026-10-15). **Quy tắc rút ra:** khi migration chỉ *thêm* bảng/cột nullable mà mã mới đọc cột đó ở mọi truy vấn (ở đây là `users`), áp migration **trước** khi deploy (sao lưu thủ công, rồi `psql -1` file `migration.sql` vào Postgres), deploy, rồi `prisma migrate resolve --applied <tên>` để Prisma ghi nhận. Nếu làm ngược lại, đăng nhập lỗi cho tới khi migration chạy. Staging thì chạy `migrate deploy` bình thường.
@@ -111,7 +124,7 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
   docker exec <noteriv-api> node dist/cli/plan.js set free maxVaults 20        # hoặc: unlimited
   docker exec <noteriv-api> node dist/cli/plan.js create team "Team"           # gói mới, chưa có hạn mức
   ```
-- **Tài khoản chủ dự án** đang ở gói `unlimited` (gán khi lên production 5.3). Trang quản trị ở 5.4 sẽ gán gói bằng giao diện.
+- **Tài khoản chủ dự án** đang ở gói `unlimited` (gán khi lên production 5.3). Từ phiên 5.4, đổi gói của một người trên trang **Quản trị → Người dùng**; CLI vẫn dùng để sửa con số của gói.
 - **Nút "Need more room? Contact us"** mở email tới `CONTACT_EMAIL` (`web/src/lib/legal.ts`), tiêu đề "Noteriv: more room". Thay bằng trang giá ở Chặng 6.
 - **Lưu ý dung lượng VPS:** kho Garage trên VPS dùng chung chỉ có khoảng 3 GB. Gói free cho 1 GB mỗi tài khoản, nên trước khi mở đăng ký rộng phải xem lại con số này hoặc chuyển sang máy chủ riêng (Chặng 6).
 - E2E: `web/server/scripts/e2e-plan.ts <email>` đưa tài khoản test sang gói `e2e-tight` (2 vault, 1000 byte, 0 kết nối, 3 bản lịch sử). **Không chạy với production.**

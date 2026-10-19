@@ -174,6 +174,9 @@ async function authenticate(cookieHeader: string | undefined): Promise<{ userId:
   if (!token) return null;
   try {
     const payload = jwt.verify(token, process.env.JWT_ACCESS_SECRET!) as { sub: string };
+    // A locked account (admin page) cannot open new connections; open ones end with the access token.
+    const account = await prisma.user.findUnique({ where: { id: payload.sub }, select: { lockedAt: true } });
+    if (!account || account.lockedAt) return null;
     return { userId: payload.sub };
   } catch {
     return null;

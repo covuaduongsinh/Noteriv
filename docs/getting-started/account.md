@@ -61,6 +61,10 @@ Every account is on a plan; new accounts are on **Free**. **Settings → Plan an
 
 When something would go past a limit — a new vault, an attachment, a sync connection — Noteriv says so and nothing is added; what you already have stays. Delete what you no longer need, or choose **Need more room? Contact us**, which opens an email to us.
 
+## If your account is locked
+
+An administrator can lock an account, for example after abuse is reported. A locked account is signed out everywhere and signing in says *This account is locked.* If you think this is a mistake, write to the address shown there.
+
 ## Download your data or delete the account
 
 - **Download all my data (JSON)** saves your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file; attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).

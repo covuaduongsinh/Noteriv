@@ -1,7 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
-import { deleteObjectsBestEffort } from "../lib/attachments.js";
+import { deleteAccount } from "../lib/accounts.js";
 import { verifyPassword } from "../lib/password.js";
 import { emailField } from "../lib/registration.js";
 import { limitsOf, planForUser, snapshotCap, usageFor } from "../lib/plans.js";
@@ -108,33 +108,11 @@ export default async function userRoutes(fastify: FastifyInstance) {
    */
   fastify.delete("/me", async (request, reply) => {
     const userId = request.user!.id;
-
-    // Files of every vault in a workspace this user owns; read now, removed after the rows are gone.
-    const keys = (
-      await prisma.attachment.findMany({ where: { vault: { workspace: { ownerId: userId } } }, select: { storageKey: true } })
-    ).map((a) => a.storageKey);
-
-    await prisma.$transaction(async (tx) => {
-      // Workspace->owner has no onDelete:Cascade (a workspace must always
-      // have an explicit owner), so owned workspaces must be deleted before
-      // the user row — this cascades down through Vault->Folder/Note/
-      // Backlink/Plugin/SyncConnection/SyncJob automatically.
-      await tx.workspace.deleteMany({ where: { ownerId: userId } });
-
-      // Note.createdBy/updatedBy has no onDelete action either. By this
-      // point every note in a workspace this user owned is already gone;
-      // this only matters for notes in a workspace they were a non-owner
-      // member of (not reachable via the app's UI yet, kept for safety).
-      await tx.note.updateMany({ where: { createdById: userId }, data: { createdById: null } });
-      await tx.note.updateMany({ where: { updatedById: userId }, data: { updatedById: null } });
-
-      // RefreshToken and WorkspaceMember both cascade on User delete.
-      await tx.user.delete({ where: { id: userId } });
-    });
-
-    const failed = await deleteObjectsBestEffort(keys);
-    if (failed) request.log.warn({ failed, total: keys.length }, "some attachment files were not removed from storage");
-    logAudit(prisma, { userId, action: "account_deleted", metadata: { attachmentFiles: keys.length, attachmentFilesFailed: failed }, ip: request.ip });
+    const { attachmentFiles, failed } = await deleteAccount(prisma, userId);
+    if (failed) request.log.warn({ failed, total: attachmentFiles }, "some attachment files were not removed from storage");
+    // The user row is gone, so the entry names the account as its resource: with userId set, the foreign key made
+    // this insert fail (silently, logAudit never throws) and account deletions were never logged before session 5.4.
+    logAudit(prisma, { action: "account_deleted", resourceType: "user", resourceId: userId, metadata: { attachmentFiles, attachmentFilesFailed: failed }, ip: request.ip });
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
     return reply.send({ ok: true });

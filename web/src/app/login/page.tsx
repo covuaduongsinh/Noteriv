@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { webApi, ApiError } from "@/lib/webApi";
+import { webApi, ApiError, apiErrorCode } from "@/lib/webApi";
+import { CONTACT_EMAIL } from "@/lib/legal";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
@@ -38,7 +39,8 @@ export default function LoginPage() {
       // Back to where the sign-in was asked for (e.g. /quick from the home-screen shortcut).
       router.replace(safeNext(new URLSearchParams(window.location.search).get("next")));
     } catch (err) {
-      setError(err instanceof ApiError ? t("web.auth.badLogin") : t("web.auth.error"));
+      if (apiErrorCode(err) === "account_locked") setError(t("web.auth.locked", { email: CONTACT_EMAIL }));
+      else setError(err instanceof ApiError ? t("web.auth.badLogin") : t("web.auth.error"));
     } finally {
       setLoading(false);
     }
