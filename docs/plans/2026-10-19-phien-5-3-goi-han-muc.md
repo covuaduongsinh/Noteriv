@@ -77,3 +77,19 @@
 - **Dung lượng VPS:** kho Garage có khoảng 3 GB. Gói free cho 1 GB mỗi tài khoản, nên phải xem lại con số trước khi mở đăng ký rộng, hoặc chuyển máy chủ riêng ở Chặng 6.
 - Thanh toán và trang giá: Chặng 6.
 - Hạn mức cộng tác và AI: khi có tính năng.
+
+## Lên production (2026-10-19)
+
+- **CI của PR #20:** xanh cả 4 job ngay lần đầu.
+- **Staging:**
+  - gộp vào `next`, deploy `done`, `prisma migrate deploy`;
+  - `node dist/cli/plan.js list` chạy được trong container (bản build thật);
+  - `/`, `/login`, `/register`, `/api/v1/healthz` trả 200.
+- **Production:**
+  1. Sao lưu tay: `/root/noteriv-manual-backups/pre-5-3-20261019T054003Z.dump` trên VPS.
+  2. Áp `migration.sql` bằng `psql -1` (`CREATE TABLE`, `INSERT 0 2`, hai lệnh `ALTER TABLE`). Đếm: 1 người dùng ở gói `free`.
+  3. Gộp PR #20 (merge `8bd78c8`); deploy `done` (05:40 → 05:49 UTC).
+  4. `prisma migrate resolve --applied 20261019160000_plans`; `migrate status` báo up to date.
+  5. `plan.js assign <tài khoản chủ dự án> unlimited`. Đếm sau đó: `free` 0 người, `unlimited` 1 người.
+  6. Kiểm: 9 container chạy; `/`, `/login`, `/register`, `/api/v1/healthz` trả 200.
+- `next` đặt bằng `main` (cây mã trùng nhau); chờ staging deploy xong rồi `compose.stop`.
