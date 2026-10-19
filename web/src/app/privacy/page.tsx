@@ -18,7 +18,7 @@ export default function PrivacyPage() {
 
         <h3>1. Data we store</h3>
         <ul>
-          <li>Account: email, display name, a one-way hash of your password (never the password itself), the invite code you used, and when and which version of the terms you accepted.</li>
+          <li>Account: email, display name, a one-way hash of your password (never the password itself), the invite code you used, when and which version of the terms you accepted, and whether you have verified your email.</li>
           <li>Content you create: notes, folders, attachments, settings, plugins you install.</li>
           <li>Sync credentials (GitHub, WebDAV) if you set them up: encrypted on the server.</li>
           <li>Security log: events such as sign-up, sign-in, failed sign-in, vault creation/deletion, with IP address, to detect abuse.</li>
@@ -33,6 +33,10 @@ export default function PrivacyPage() {
             Database backups are kept on a rotation (roughly 7 daily, 4 weekly, 12 monthly).
           </li>
           <li>Monitoring services (UptimeRobot, healthchecks.io) only receive “alive/failed” signals and the site’s public address, never note content or account data.</li>
+          <li>
+            Account emails (verifying your address, resetting your password, confirming a new address) are sent through Resend, an email delivery
+            service. It receives your email address and the message, never your notes.
+          </li>
           <li>If you enable GitHub/WebDAV sync, your vault data is sent to the service you choose.</li>
           <li>We do not sell data or share it for advertising.</li>
         </ul>
@@ -73,7 +77,7 @@ export default function PrivacyPage() {
 
         <h3>1. Dữ liệu chúng tôi lưu</h3>
         <ul>
-          <li>Tài khoản: email, tên hiển thị, mật khẩu ở dạng băm một chiều (không lưu mật khẩu gốc), mã mời bạn đã dùng, thời điểm và phiên bản điều khoản bạn đã đồng ý.</li>
+          <li>Tài khoản: email, tên hiển thị, mật khẩu ở dạng băm một chiều (không lưu mật khẩu gốc), mã mời bạn đã dùng, thời điểm và phiên bản điều khoản bạn đã đồng ý, và email đã được xác minh hay chưa.</li>
           <li>Nội dung bạn tạo: ghi chú, thư mục, tệp đính kèm, cài đặt, plugin bạn cài.</li>
           <li>Thông tin kết nối đồng bộ (GitHub, WebDAV) nếu bạn tự cấu hình: được mã hoá trên máy chủ.</li>
           <li>Nhật ký bảo mật: các sự kiện như đăng ký, đăng nhập, đăng nhập sai, tạo/xoá vault, kèm địa chỉ IP, để phát hiện lạm dụng.</li>
@@ -90,6 +94,10 @@ export default function PrivacyPage() {
           <li>
             Dịch vụ giám sát (UptimeRobot, healthchecks.io) chỉ nhận tín hiệu “còn sống/lỗi” và địa chỉ công khai của trang; chúng
             không nhận nội dung ghi chú hay dữ liệu tài khoản.
+          </li>
+          <li>
+            Thư của tài khoản (xác minh địa chỉ, đặt lại mật khẩu, xác nhận địa chỉ mới) được gửi qua Resend, một dịch vụ gửi email. Resend nhận
+            địa chỉ email của bạn và nội dung thư, không bao giờ nhận ghi chú.
           </li>
           <li>Nếu bạn bật đồng bộ GitHub/WebDAV, dữ liệu vault được gửi tới dịch vụ bạn chọn theo ý bạn.</li>
           <li>Chúng tôi không bán dữ liệu, không chia sẻ để quảng cáo.</li>

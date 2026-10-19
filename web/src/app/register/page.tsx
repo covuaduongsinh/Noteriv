@@ -3,17 +3,10 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { webApi, ApiError, type RegistrationMode } from "@/lib/webApi";
+import { webApi, ApiError, apiErrorCode, type RegistrationMode } from "@/lib/webApi";
 import { getLocale, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
-
-function errorCode(err: unknown): string | null {
-  if (err instanceof ApiError && err.body && typeof err.body === "object" && "error" in err.body) {
-    return String((err.body as { error: unknown }).error);
-  }
-  return null;
-}
 
 export default function RegisterPage() {
   useLocale();
@@ -46,6 +39,8 @@ export default function RegisterPage() {
         password,
         displayName,
         acceptTerms: true,
+        // The verification email is written in the language of this page.
+        locale: getLocale(),
         ...(mode === "invite" ? { inviteCode: inviteCode.trim() } : {}),
       });
       await import("@/lib/offline-store").then((m) => m.claimOfflineData(account.id)).catch(() => undefined);
@@ -59,7 +54,7 @@ export default function RegisterPage() {
       }
       router.replace("/vaults");
     } catch (err) {
-      const code = errorCode(err);
+      const code = apiErrorCode(err);
       if (code === "invalid_invite") {
         setError(t("web.auth.badInvite"));
       } else if (code === "registration_closed") {

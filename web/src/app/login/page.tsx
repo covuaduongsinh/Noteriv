@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { webApi, ApiError } from "@/lib/webApi";
@@ -17,6 +17,15 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  // "Forgot password?" only where the server can send the email.
+  const [emailEnabled, setEmailEnabled] = useState(false);
+
+  useEffect(() => {
+    webApi.auth
+      .registration()
+      .then((r) => setEmailEnabled(!!r.emailEnabled))
+      .catch(() => undefined);
+  }, []);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -56,6 +65,11 @@ export default function LoginPage() {
           className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] outline-none focus:ring-1 focus:ring-[var(--accent)]"
         />
         {error && <p className="text-sm text-[var(--red)]">{error}</p>}
+        {emailEnabled && (
+          <Link href="/forgot-password" className="text-sm text-[var(--accent)] self-end">
+            {t("web.auth.forgotLink")}
+          </Link>
+        )}
         <button
           type="submit"
           disabled={loading}

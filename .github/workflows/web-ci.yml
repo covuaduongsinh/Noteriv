@@ -140,6 +140,10 @@ jobs:
       JWT_REFRESH_SECRET: e2e-refresh-secret
       ENCRYPTION_KEY: 0000000000000000000000000000000000000000000000000000000000000000
       REGISTRATION_MODE: invite
+      # Account emails are written as files; e2e/tests/account.spec.ts reads the links from them.
+      EMAIL_PROVIDER: file
+      EMAIL_OUTBOX_DIR: /tmp/noteriv-email-outbox
+      E2E_EMAIL_OUTBOX: /tmp/noteriv-email-outbox
       E2E_BASE_URL: http://localhost:3457
     steps:
       - uses: actions/checkout@v4

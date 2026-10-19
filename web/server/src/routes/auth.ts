@@ -13,6 +13,12 @@ import { randomUUID } from "node:crypto";
 import { logAudit } from "../lib/auditLog.js";
 import { Prisma } from "@prisma/client";
 import { isAdminEmail, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
+import { emailEnabled } from "../lib/email/send.js";
+import { consumeEmailToken } from "../lib/emailTokens.js";
+import { sendEmailChangedNotice, sendPasswordResetEmail, sendVerificationEmail } from "../lib/accountEmails.js";
+
+/** Language of the emails a request triggers: the page's interface language. */
+const localeField = z.enum(["en", "vi"]).optional();
 
 const registerSchema = z.object({
   email: z.string().email(),
@@ -21,7 +27,13 @@ const registerSchema = z.object({
   inviteCode: z.string().max(64).optional(),
   // The client must send an explicit `true`: agreeing to the Terms is not something to default.
   acceptTerms: z.literal(true),
+  locale: localeField,
 });
+
+const forgotPasswordSchema = z.object({ email: z.string().email(), locale: localeField });
+const tokenField = z.string().min(1).max(200);
+const resetPasswordSchema = z.object({ token: tokenField, password: z.string().min(8).max(200) });
+const verifyEmailSchema = z.object({ token: tokenField });
 
 /** Thrown inside the register transaction so a rejected invite rolls the whole signup back. */
 class InviteRejected extends Error {}
@@ -134,12 +146,95 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     await issueSession(reply, user.id, user.email);
     logAudit(prisma, { userId: user.id, action: "register", metadata: { inviteCodeId, termsVersion: TERMS_VERSION }, ip: request.ip });
+    // Not awaited: the account exists either way, and the page can ask for the email again.
+    void sendVerificationEmail(prisma, request.log, user, parsed.data.locale).then((result) => {
+      if (result === "sent") logAudit(prisma, { userId: user.id, action: "email_verification_sent", ip: request.ip });
+    });
     return reply.code(201).send({ id: user.id, email: user.email, displayName: user.displayName });
   });
 
-  // Public: lets the register page decide whether to show the invite-code field.
+  // Public: lets the register page decide whether to show the invite-code field, and the sign-in page whether
+  // "Forgot password?" can work.
   fastify.get("/registration", async (_request, reply) => {
-    return reply.send({ mode: registrationMode() });
+    return reply.send({ mode: registrationMode(), emailEnabled: emailEnabled() });
+  });
+
+  // Same answer whether or not the address has an account, and the email goes out in the background so the response
+  // time does not tell either. Abuse is bounded by the IP limit here and the per-user cooldown in emailTokens.ts.
+  fastify.post("/forgot-password", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const parsed = forgotPasswordSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    if (!emailEnabled()) return reply.code(503).send({ error: "email_disabled" });
+
+    const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
+    if (user) {
+      void sendPasswordResetEmail(prisma, request.log, user, parsed.data.locale).then((result) => {
+        if (result === "sent") logAudit(prisma, { userId: user.id, action: "password_reset_requested", ip: request.ip });
+      });
+    }
+    return reply.send({ ok: true });
+  });
+
+  fastify.post("/reset-password", bruteForceGuard, async (request, reply) => {
+    const parsed = resetPasswordSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+
+    const row = await consumeEmailToken(prisma, parsed.data.token, ["reset_password"]);
+    if (!row) return reply.code(400).send({ error: "invalid_token" });
+
+    const passwordHash = await hashPassword(parsed.data.password);
+    const now = new Date();
+    const [, revoked] = await prisma.$transaction([
+      prisma.user.update({ where: { id: row.userId }, data: { passwordHash } }),
+      prisma.refreshToken.updateMany({ where: { userId: row.userId, revokedAt: null }, data: { revokedAt: now } }),
+      // Following the link proved the user reads this inbox, so the address counts as verified too.
+      prisma.user.updateMany({ where: { id: row.userId, emailVerifiedAt: null }, data: { emailVerifiedAt: now } }),
+    ]);
+    logAudit(prisma, { userId: row.userId, action: "password_reset", metadata: { sessionsRevoked: revoked.count }, ip: request.ip });
+    // Whoever is signed in on this browser signs in again with the new password, like every other device.
+    reply.clearCookie(ACCESS_COOKIE, { path: "/" });
+    reply.clearCookie(REFRESH_COOKIE, { path: "/" });
+    return reply.send({ ok: true });
+  });
+
+  // One endpoint for both links that prove an address: the sign-up verification and the confirmation of a new email.
+  fastify.post("/verify-email", bruteForceGuard, async (request, reply) => {
+    const parsed = verifyEmailSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+
+    const row = await consumeEmailToken(prisma, parsed.data.token, ["verify_email", "change_email"]);
+    if (!row) return reply.code(400).send({ error: "invalid_token" });
+
+    if (row.purpose === "verify_email") {
+      await prisma.user.updateMany({ where: { id: row.userId, emailVerifiedAt: null }, data: { emailVerifiedAt: new Date() } });
+      logAudit(prisma, { userId: row.userId, action: "email_verified", ip: request.ip });
+      return reply.send({ ok: true, purpose: "verify_email" });
+    }
+
+    const before = await prisma.user.findUnique({ where: { id: row.userId } });
+    if (!before || !row.newEmail) return reply.code(400).send({ error: "invalid_token" });
+    const now = new Date();
+    let user;
+    try {
+      [user] = await prisma.$transaction([
+        prisma.user.update({ where: { id: row.userId }, data: { email: row.newEmail, emailVerifiedAt: now } }),
+        // The account's sign-in name changed: every session starts over with it.
+        prisma.refreshToken.updateMany({ where: { userId: row.userId, revokedAt: null }, data: { revokedAt: now } }),
+        // A verification link still out for the old address must not count for the new one.
+        prisma.emailToken.updateMany({ where: { userId: row.userId, usedAt: null, purpose: "verify_email" }, data: { expiresAt: now } }),
+      ]);
+    } catch (err) {
+      // Someone registered or switched to that address between the request and the click.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === "P2002") {
+        return reply.code(409).send({ error: "email_taken" });
+      }
+      throw err;
+    }
+    logAudit(prisma, { userId: user.id, action: "email_changed", ip: request.ip });
+    void sendEmailChangedNotice(prisma, request.log, user, before.email);
+    reply.clearCookie(ACCESS_COOKIE, { path: "/" });
+    reply.clearCookie(REFRESH_COOKIE, { path: "/" });
+    return reply.send({ ok: true, purpose: "change_email" });
   });
 
   fastify.post("/login", bruteForceGuard, async (request, reply) => {
@@ -218,6 +313,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       email: user.email,
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
+      emailVerified: user.emailVerifiedAt !== null,
       isAdmin: isAdminEmail(user.email),
     });
   });

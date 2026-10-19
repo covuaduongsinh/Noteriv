@@ -222,7 +222,12 @@ try {
     /* already gone */
   }
   await sleep(1500);
-  rmSync(root, { recursive: true, force: true });
+  // WebView2 can hold the profile folder a little after the kill; a leftover temp folder must not hide the results.
+  try {
+    rmSync(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 500 });
+  } catch (err) {
+    console.warn(`could not remove ${root}: ${err.code ?? err}`);
+  }
   const failed = results.filter((r) => !r.ok).length;
   console.log(failed === 0 ? `\nALL ${results.length} PASSED` : `\n${failed} of ${results.length} FAILED`);
   process.exit(failed === 0 ? 0 : 1);

@@ -1,4 +1,5 @@
-// Manual password reset, for as long as there is no email-based reset (no mail server yet).
+// Manual password reset by an admin. Users normally reset their own password by email (POST /auth/forgot-password);
+// this stays for when email is off or not reaching someone.
 //
 //   printf '%s\n' 'new-password' | docker exec -i <noteriv-api> node dist/cli/reset-password.js user@example.com
 //
