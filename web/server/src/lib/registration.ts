@@ -26,6 +26,14 @@ export function isAdminEmail(email: string | null | undefined): boolean {
   return admins.includes(email.trim().toLowerCase());
 }
 
+/**
+ * Admin = the admin role in the database (given and taken on /admin) OR an email in ADMIN_EMAILS. The env list is how
+ * the first admin exists and cannot be undone from the page, so the operator can never lock themselves out.
+ */
+export function isAdmin(user: { role: string; email: string }): boolean {
+  return user.role === "admin" || isAdminEmail(user.email);
+}
+
 // No 0/O/1/I/L: codes get read out loud and typed from screenshots.
 const CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 

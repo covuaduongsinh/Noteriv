@@ -1182,7 +1182,8 @@
       "verifyDone": "Your email is verified. Thank you!",
       "emailChangedDone": "Your email was changed. Sign in with the new address.",
       "continue": "Continue",
-      "captchaFailed": "The bot check did not pass. Try again."
+      "captchaFailed": "The bot check did not pass. Try again.",
+      "locked": "This account is locked. If you think this is a mistake, write to {email}."
     },
     "vaultList": {
       "title": "Your vaults",
@@ -1211,7 +1212,8 @@
       "tooSoon": "An email was sent less than a minute ago. Wait a moment and try again.",
       "emailOff": "Sending email is not available yet.",
       "emailFailed": "The email could not be sent. Try again later.",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "admin": "Administration (admin)"
     },
     "invites": {
       "createFailed": "Could not create the code. Try again later.",
@@ -1306,6 +1308,60 @@
         "vaults": "Your plan allows {max} vaults. Delete one you no longer need, or ask us for more.",
         "attachmentBytes": "This does not fit: your plan has {max} of attachment storage for the whole account. Delete attachments you no longer need, or ask us for more.",
         "syncConnections": "Your plan allows {max} sync connections. Remove one, or ask us for more."
+      }
+    },
+    "admin": {
+      "title": "Admin",
+      "tabs": {
+        "users": "Users",
+        "invites": "Invite codes",
+        "audit": "Audit log"
+      },
+      "search": "Search by email or name, then press Enter",
+      "total": {
+        "one": "{count} user",
+        "other": "{count} users"
+      },
+      "none": "Nothing here.",
+      "col": {
+        "user": "User",
+        "plan": "Plan",
+        "usage": "Usage",
+        "actions": "Actions"
+      },
+      "badge": {
+        "admin": "admin",
+        "locked": "locked",
+        "unverified": "unverified"
+      },
+      "usage": "Vaults {vaults} · {storage} · Sync {sync}",
+      "lock": "Lock",
+      "unlock": "Unlock",
+      "makeAdmin": "Make admin",
+      "removeAdmin": "Remove admin",
+      "sendReset": "Send reset link",
+      "resetSent": "Password reset link sent.",
+      "markVerified": "Mark verified",
+      "delete": "Delete",
+      "deleteConfirm": "Click again to delete the account and all its data",
+      "deleted": "Account deleted.",
+      "emailOff": "Email is not turned on on this server.",
+      "notOnYourself": "You cannot do that to your own account.",
+      "envAdminHint": "Admin through the server's ADMIN_EMAILS: change it there.",
+      "removeAdminFirst": "Remove the admin role first.",
+      "prev": "Previous",
+      "next": "Next",
+      "pageOf": "Page {page} of {pages}",
+      "audit": {
+        "action": "Action contains…",
+        "email": "User email contains…",
+        "filter": "Filter",
+        "time": "Time",
+        "actionCol": "Action",
+        "who": "User",
+        "target": "Target",
+        "details": "Details",
+        "more": "Load more"
       }
     }
   },

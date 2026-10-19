@@ -37,6 +37,33 @@ export interface ApiInvite {
   status: "active" | "used_up" | "expired" | "revoked";
 }
 
+/** A row of the admin users list (web/server/src/routes/admin.ts). */
+export interface ApiAdminUser {
+  id: string;
+  email: string;
+  displayName: string;
+  createdAt: string;
+  emailVerified: boolean;
+  locked: boolean;
+  planId: string;
+  role: "user" | "admin";
+  isAdmin: boolean;
+  /** Admin through the server's ADMIN_EMAILS: the page cannot take the role away. */
+  envAdmin: boolean;
+  usage: { vaults: number; attachmentBytes: number; syncConnections: number };
+}
+
+export interface ApiAuditEntry {
+  id: string;
+  createdAt: string;
+  action: string;
+  userEmail: string | null;
+  resourceType: string | null;
+  resourceId: string | null;
+  ip: string | null;
+  metadata: unknown;
+}
+
 export interface ApiVault {
   id: string;
   workspaceId: string;
@@ -673,6 +700,22 @@ export const webApi = {
         request<{ id: string; code: string }>("/admin/invites", { method: "POST", body: JSON.stringify(data) }),
       revoke: (id: string) => request<{ ok: true }>(`/admin/invites/${id}`, { method: "DELETE" }),
     },
+    users: {
+      list: (q: string, page: number) =>
+        request<{ users: ApiAdminUser[]; total: number; page: number; pageSize: number }>(
+          `/admin/users?${new URLSearchParams({ ...(q ? { q } : {}), page: String(page) })}`
+        ),
+      update: (id: string, data: { planId?: string; locked?: boolean; role?: "user" | "admin" }) =>
+        request<{ ok: true }>(`/admin/users/${id}`, { method: "PATCH", body: JSON.stringify(data) }),
+      passwordReset: (id: string) => request<{ ok: true }>(`/admin/users/${id}/password-reset`, { method: "POST", body: "{}" }),
+      verifyEmail: (id: string) => request<{ ok: true }>(`/admin/users/${id}/verify-email`, { method: "POST", body: "{}" }),
+      remove: (id: string) => request<{ ok: true }>(`/admin/users/${id}`, { method: "DELETE" }),
+    },
+    plans: () => request<{ id: string; name: string }[]>("/admin/plans"),
+    audit: (filter: { action?: string; email?: string; before?: string }) =>
+      request<{ entries: ApiAuditEntry[]; next: string | null }>(
+        `/admin/audit?${new URLSearchParams(Object.entries(filter).filter((e): e is [string, string] => !!e[1]))}`
+      ),
   },
 
   pdf: {

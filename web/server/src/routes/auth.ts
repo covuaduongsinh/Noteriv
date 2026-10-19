@@ -12,7 +12,7 @@ import { hashToken } from "../lib/tokenHash.js";
 import { randomUUID } from "node:crypto";
 import { logAudit } from "../lib/auditLog.js";
 import { Prisma } from "@prisma/client";
-import { emailField, isAdminEmail, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
+import { emailField, isAdmin, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
 import { emailEnabled } from "../lib/email/send.js";
 import { turnstileEnabled, turnstileSiteKey, verifyTurnstile } from "../lib/turnstile.js";
 import { consumeEmailToken } from "../lib/emailTokens.js";
@@ -258,6 +258,11 @@ export default async function authRoutes(fastify: FastifyInstance) {
       logAudit(prisma, { action: "login_failed", metadata: { email }, ip: request.ip });
       return reply.code(401).send({ error: "invalid_credentials" });
     }
+    // Said only after the right password, so the lock does not tell strangers the address has an account.
+    if (user.lockedAt) {
+      logAudit(prisma, { userId: user.id, action: "login_refused_locked", ip: request.ip });
+      return reply.code(403).send({ error: "account_locked" });
+    }
 
     await issueSession(reply, user.id, user.email);
     logAudit(prisma, { userId: user.id, action: "login", ip: request.ip });
@@ -285,6 +290,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const user = await prisma.user.findUnique({ where: { id: payload.sub } });
     if (!user) {
       return reply.code(401).send({ error: "unauthorized" });
+    }
+    if (user.lockedAt) {
+      return reply.code(401).send({ error: "account_locked" });
     }
 
     // rotate: revoke old, issue new
@@ -323,7 +331,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       displayName: user.displayName,
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerifiedAt !== null,
-      isAdmin: isAdminEmail(user.email),
+      isAdmin: isAdmin(user),
     });
   });
 }

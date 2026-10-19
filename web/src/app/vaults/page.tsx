@@ -185,10 +185,10 @@ export default function VaultsPage() {
         {me && <AccountEmail user={me} />}
         {me?.isAdmin && (
           <Link
-            href="/admin/invites"
+            href="/admin"
             className="px-3 py-2 rounded-lg text-sm text-[var(--accent)] hover:bg-[var(--bg-secondary)]"
           >
-            {t("web.vaultList.invites")}
+            {t("web.vaultList.admin")}
           </Link>
         )}
         <button

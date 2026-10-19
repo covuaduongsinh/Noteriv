@@ -58,8 +58,12 @@ model User {
   emailVerifiedAt  DateTime? @map("email_verified_at")
   /// The plan whose limits apply to what this user owns (lib/plans.ts). Changed with the CLI (cli/plan.ts).
   planId           String    @default("free") @map("plan_id")
+  /// Admin is this role OR an email in ADMIN_EMAILS (lib/registration.ts isAdmin); the env list bootstraps the first one.
+  role             UserRole  @default(user)
+  /// Set by an admin: every request of a locked account is refused (plugins/auth.ts) and it cannot sign in.
+  lockedAt         DateTime? @map("locked_at")
 
-  invitedWith     InviteCode?        @relation("InviteUsedBy", fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  invitedWith    InviteCode?        @relation("InviteUsedBy", fields: [inviteCodeId], references: [id], onDelete: SetNull)
   plan            Plan               @relation(fields: [planId], references: [id])
   createdInvites   InviteCode[]       @relation("InviteCreatedBy")
   ownedWorkspaces  Workspace[]        @relation("WorkspaceOwner")
@@ -95,6 +99,11 @@ model Plan {
   users User[]
 
   @@map("plans")
+}
+
+enum UserRole {
+  user
+  admin
 }
 
 enum EmailTokenPurpose {
@@ -488,5 +497,6 @@ model AuditLog {
 
   @@index([userId])
   @@index([action])
+  @@index([createdAt])
   @@map("audit_logs")
 }

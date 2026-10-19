@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { webApi, type ApiInvite } from "@/lib/webApi";
+import AdminNav from "@/components/AdminNav";
 import { formatDate, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 
@@ -77,14 +77,9 @@ export default function InvitesPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center gap-6 py-16 px-4">
-      <div className="flex items-center justify-between w-full max-w-3xl">
-        <h1 className="text-2xl font-semibold">{t("web.invites.title")}</h1>
-        <Link href="/vaults" className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)]">
-          {t("web.invites.back")}
-        </Link>
-      </div>
+      <AdminNav active="invites" />
 
-      <form onSubmit={create} className="w-full max-w-3xl flex flex-wrap items-end gap-3 p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
+      <form onSubmit={create} className="w-full max-w-5xl flex flex-wrap items-end gap-3 p-4 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
         <label className="flex flex-col gap-1 text-sm text-[var(--text-secondary)] flex-1 min-w-48">
           {t("web.invites.noteLabel")}
           <input value={note} onChange={(e) => setNote(e.target.value)} maxLength={120} className={input} />
@@ -108,7 +103,7 @@ export default function InvitesPage() {
         <p className="w-full text-xs text-[var(--text-secondary)]">{t("web.invites.noExpiryHint")}</p>
       </form>
 
-      <div className="w-full max-w-3xl overflow-x-auto rounded-xl border border-[var(--border)]">
+      <div className="w-full max-w-5xl overflow-x-auto rounded-xl border border-[var(--border)]">
         <table className="w-full text-sm">
           <thead className="text-left text-[var(--text-secondary)] bg-[var(--bg-secondary)]">
             <tr>
