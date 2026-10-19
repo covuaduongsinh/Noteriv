@@ -149,6 +149,8 @@ jobs:
       SENTRY_ENVIRONMENT: e2e
       E2E_SENTRY_OUTBOX: /tmp/noteriv-sentry-outbox
       STATUS_PAGE_URL: https://status.example.test/
+      # All tests share one address and run far faster than a person; the per-route limits (sign-in) still apply.
+      RATE_LIMIT_PER_MINUTE: "3000"
       E2E_BASE_URL: http://localhost:3457
     steps:
       - uses: actions/checkout@v4
