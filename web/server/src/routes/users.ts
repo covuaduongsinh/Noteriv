@@ -4,6 +4,7 @@ import { logAudit } from "../lib/auditLog.js";
 import { deleteObjectsBestEffort } from "../lib/attachments.js";
 import { verifyPassword } from "../lib/password.js";
 import { emailField } from "../lib/registration.js";
+import { limitsOf, planForUser, snapshotCap, usageFor } from "../lib/plans.js";
 import { sendEmailChangeConfirmation, sendVerificationEmail, type SendResult } from "../lib/accountEmails.js";
 
 const localeField = z.enum(["en", "vi"]).optional();
@@ -137,6 +138,15 @@ export default async function userRoutes(fastify: FastifyInstance) {
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
     return reply.send({ ok: true });
+  });
+
+  // Settings → Plan and usage: the plan's limits (null = no limit) next to what the account uses now.
+  fastify.get("/me/plan", async (request, reply) => {
+    const userId = request.user!.id;
+    const [plan, usage] = await Promise.all([planForUser(prisma, userId), usageFor(prisma, userId)]);
+    // History is always bounded (snapshotCap): report the number actually kept, not "no limit".
+    const limits = { ...limitsOf(plan), snapshotsPerNote: snapshotCap(plan.maxSnapshotsPerNote) };
+    return reply.send({ plan: { id: plan.id, name: plan.name }, limits, usage });
   });
 
   fastify.post("/me/verification-email", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (request, reply) => {

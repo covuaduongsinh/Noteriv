@@ -24,7 +24,7 @@ Open **Settings → Sync** (or **Git / WebDAV sync** at the bottom of the ribbon
 
 Tokens and passwords are stored encrypted on the server and never shown again; to change one, edit the connection and enter a new value.
 
-Adding a connection, and anything that talks to GitHub (including **New vault from GitHub…**), needs a verified email address. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).
+Your plan sets how many connections you can have across all your vaults (3 on the Free plan; see [Plan and usage](../getting-started/account.md#plan-and-usage)). Adding a connection, and anything that talks to GitHub (including **New vault from GitHub…**), needs a verified email address. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).
 
 ## When it syncs
 

@@ -5,7 +5,7 @@
  * attachment download URL, then sends the notes to the server in batches.
  */
 
-import { webApi, ApiError, isEmailUnverified } from "@/lib/webApi";
+import { webApi, ApiError, isEmailUnverified, planLimit } from "@/lib/webApi";
 import { getAttachmentType, markdownLinkForAttachment } from "@/lib/attachment-utils";
 import { t } from "@noteriv/ui/i18n";
 
@@ -276,7 +276,11 @@ export async function runImport(
         byPath.set(item.path.toLowerCase(), ref);
         if (!byName.has(filename.toLowerCase())) byName.set(filename.toLowerCase(), ref);
       } catch (err) {
-        if (err instanceof ApiError && err.status === 413) quotaHit = true;
+        if (planLimit(err)) {
+          quotaHit = true;
+          report.failures.push({ path: item.path, error: t("web.import.reason.quota") });
+          return;
+        }
         if (isEmailUnverified(err)) {
           unverified = true;
           report.failures.push({ path: item.path, error: t("web.import.reason.unverified") });

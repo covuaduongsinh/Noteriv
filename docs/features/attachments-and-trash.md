@@ -20,7 +20,7 @@ Attachments also arrive from [importing](./import-export.md) a folder or zip, fr
 
 Images display inline in Live and View mode; audio links get a player; PDFs open in the [PDF viewer](../views/pdf-viewer.md).
 
-Each vault has room for **500 MB** of attachments.
+Attachment storage is counted for your **whole account** (all the vaults you own) and its size depends on your plan: **1 GB** on the Free plan. The attachment manager shows how much is used; see [Plan and usage](../getting-started/account.md#plan-and-usage).
 
 Adding attachments needs a verified email address. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).
 

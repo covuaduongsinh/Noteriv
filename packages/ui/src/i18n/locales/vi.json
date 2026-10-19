@@ -118,7 +118,8 @@
       "sync": "Đồng bộ",
       "corePlugins": "Core plugins",
       "ecosystem": "Hệ sinh thái",
-      "clipper": "Clipper"
+      "clipper": "Clipper",
+      "plan": "Gói và mức dùng"
     },
     "on": "Bật",
     "off": "Tắt",
@@ -1008,9 +1009,10 @@
       "nearlyFull": "Sắp đầy hạn mức",
       "maxSize": "Tối đa 25MB mỗi tệp",
       "deleteConfirm": "Bấm lần nữa để xoá",
-      "used": "{used} / {quota} đã dùng",
+      "used": "{used} / {quota} đã dùng (cả tài khoản)",
       "clickView": "Bấm để xem: {name}",
-      "footerView": "xem"
+      "footerView": "xem",
+      "usedNoLimit": "{used} đã dùng (cả tài khoản, không giới hạn)"
     },
     "fileRecovery": {
       "scrubTitle": "Chuyển sang xem bằng Time scrubber",
@@ -1257,6 +1259,24 @@
     },
     "account": {
       "verifyFirst": "Hãy xác minh email trước: bấm liên kết trong thư chúng tôi đã gửi. Có thể gửi lại ở Vault của bạn → Tài khoản."
+    },
+    "plan": {
+      "current": "Gói hiện tại",
+      "hint": "Hạn mức tính mọi thứ trong các vault bạn sở hữu.",
+      "vaults": "Vault",
+      "storage": "Dung lượng đính kèm (cả tài khoản)",
+      "sync": "Kết nối đồng bộ",
+      "history": "Số bản lịch sử giữ cho mỗi note",
+      "unlimited": "Không giới hạn",
+      "of": "{used} / {max}",
+      "needMore": "Cần thêm? Liên hệ chúng tôi",
+      "loadFailed": "Không tải được thông tin gói. Hãy thử lại sau.",
+      "seePlan": "Xem Cài đặt → Gói và mức dùng.",
+      "limit": {
+        "vaults": "Gói của bạn cho phép {max} vault. Hãy xoá vault không dùng nữa, hoặc liên hệ để có thêm.",
+        "attachmentBytes": "Không đủ chỗ: gói của bạn có {max} dung lượng đính kèm cho cả tài khoản. Hãy xoá đính kèm không cần nữa, hoặc liên hệ để có thêm.",
+        "syncConnections": "Gói của bạn cho phép {max} kết nối đồng bộ. Hãy gỡ một kết nối, hoặc liên hệ để có thêm."
+      }
     }
   },
   "desktop": {

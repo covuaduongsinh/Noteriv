@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, webApi, type ApiUser, type ApiVault } from "@/lib/webApi";
 import AccountEmail from "@/components/AccountEmail";
+import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { clearCachedPages } from "@/components/ServiceWorkerRegister";
 import { isNetworkError } from "@/lib/offline";
 import { claimOfflineData, clearOfflineData, kvGet, kvSet, pendingEdits } from "@/lib/offline-store";
@@ -26,6 +27,7 @@ export default function VaultsPage() {
   /** Edits kept on this device that signing out would lose; set when the first click on Sign out found some. */
   const [unsentEdits, setUnsentEdits] = useState(0);
   const [notice, setNotice] = useState<string | null>(null);
+  const [createError, setCreateError] = useState<React.ReactNode>(null);
 
   useEffect(() => {
     webApi.vaults
@@ -64,9 +66,12 @@ export default function VaultsPage() {
     e.preventDefault();
     if (!newName.trim()) return;
     setCreating(true);
+    setCreateError(null);
     try {
       const vault = await webApi.vaults.create({ name: newName.trim() });
       router.push(`/vaults/${vault.id}`);
+    } catch (err) {
+      setCreateError(planLimitNotice(err) ?? t("web.newVaultGithub.createFailed"));
     } finally {
       setCreating(false);
     }
@@ -164,6 +169,7 @@ export default function VaultsPage() {
           {t("web.vaultList.create")}
         </button>
       </form>
+      {createError && <p className="w-full max-w-md text-sm text-[var(--red)]">{createError}</p>}
 
       <div className="w-full max-w-md flex gap-4 text-sm">
         <Link href="/quick" className="text-[var(--accent)] hover:underline">

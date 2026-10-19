@@ -120,7 +120,8 @@
       "sync": "Sync",
       "corePlugins": "Core plugins",
       "ecosystem": "Ecosystem",
-      "clipper": "Clipper"
+      "clipper": "Clipper",
+      "plan": "Plan and usage"
     },
     "on": "On",
     "off": "Off",
@@ -1035,9 +1036,10 @@
       "nearlyFull": "Nearly at the storage limit",
       "maxSize": "Up to 25 MB per file",
       "deleteConfirm": "Click again to delete",
-      "used": "{used} / {quota} used",
+      "used": "{used} / {quota} used (whole account)",
       "clickView": "Click to view: {name}",
-      "footerView": "view"
+      "footerView": "view",
+      "usedNoLimit": "{used} used (whole account, no limit)"
     },
     "fileRecovery": {
       "scrubTitle": "Switch to Time Scrubber view",
@@ -1287,6 +1289,24 @@
     },
     "account": {
       "verifyFirst": "Verify your email first: open the link we emailed you. Your vaults → Account can send it again."
+    },
+    "plan": {
+      "current": "Current plan",
+      "hint": "Limits count everything in the vaults you own.",
+      "vaults": "Vaults",
+      "storage": "Attachment storage (whole account)",
+      "sync": "Sync connections",
+      "history": "History versions kept per note",
+      "unlimited": "Unlimited",
+      "of": "{used} / {max}",
+      "needMore": "Need more room? Contact us",
+      "loadFailed": "Could not load your plan. Try again later.",
+      "seePlan": "See Settings → Plan and usage.",
+      "limit": {
+        "vaults": "Your plan allows {max} vaults. Delete one you no longer need, or ask us for more.",
+        "attachmentBytes": "This does not fit: your plan has {max} of attachment storage for the whole account. Delete attachments you no longer need, or ask us for more.",
+        "syncConnections": "Your plan allows {max} sync connections. Remove one, or ask us for more."
+      }
     }
   },
   "desktop": {

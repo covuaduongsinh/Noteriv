@@ -1,19 +1,22 @@
 import type { PrismaClient } from "@prisma/client";
-
-/** Mirrors desktop's lib/file-recovery.ts MAX_SNAPSHOTS_PER_FILE. */
-export const MAX_SNAPSHOTS_PER_NOTE = 50;
+import { snapshotCap, snapshotLimitForNote } from "./plans.js";
 
 /**
  * Recurring job body (see sync-worker) — for every non-trashed note whose
  * content changed since its last snapshot (or has none yet), writes a new
- * NoteSnapshot row, then prunes anything past MAX_SNAPSHOTS_PER_NOTE (oldest
- * first). Runs across all vaults in one pass, same shape as
+ * NoteSnapshot row, then prunes anything past the note's limit (oldest first):
+ * the plan of the vault's owner (lib/plans.ts; desktop keeps its own fixed
+ * MAX_SNAPSHOTS_PER_FILE). Runs across all vaults in one pass, same shape as
  * cleanupExpiredTrash in lib/trash.ts.
  */
 export async function captureSnapshots(prisma: PrismaClient): Promise<void> {
   const notes = await prisma.note.findMany({
     where: { deletedAt: null, content: { not: "" } },
-    select: { id: true, content: true },
+    select: {
+      id: true,
+      content: true,
+      vault: { select: { workspace: { select: { owner: { select: { plan: { select: { maxSnapshotsPerNote: true } } } } } } } },
+    },
   });
 
   for (const note of notes) {
@@ -29,7 +32,7 @@ export async function captureSnapshots(prisma: PrismaClient): Promise<void> {
     const toPrune = await prisma.noteSnapshot.findMany({
       where: { noteId: note.id },
       orderBy: { createdAt: "desc" },
-      skip: MAX_SNAPSHOTS_PER_NOTE,
+      skip: snapshotCap(note.vault.workspace.owner.plan.maxSnapshotsPerNote),
       select: { id: true },
     });
     if (toPrune.length > 0) {
@@ -55,7 +58,7 @@ export async function snapshotBeforeOverwrite(prisma: PrismaClient, noteId: stri
   const toPrune = await prisma.noteSnapshot.findMany({
     where: { noteId },
     orderBy: { createdAt: "desc" },
-    skip: MAX_SNAPSHOTS_PER_NOTE,
+    skip: await snapshotLimitForNote(prisma, noteId),
     select: { id: true },
   });
   if (toPrune.length > 0) {
