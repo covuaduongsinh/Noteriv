@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { webApi } from "@/lib/webApi";
+import { webApi, isEmailUnverified } from "@/lib/webApi";
 import { formatDate, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 
@@ -63,8 +63,8 @@ export default function ClipperSection({ vaultId, vaultName }: { vaultId: string
       const created = await webApi.clipper.create(name.trim() || t("web.clipper.fallbackName"), vaultId);
       setFresh({ token: created.token, name: created.name });
       refresh();
-    } catch {
-      setError(t("web.clipper.createFailed"));
+    } catch (err) {
+      setError(isEmailUnverified(err) ? t("web.account.verifyFirst") : t("web.clipper.createFailed"));
     } finally {
       setBusy(false);
     }

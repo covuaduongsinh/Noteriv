@@ -34,6 +34,9 @@ The note lands in the vault's **Clippings** folder (created on first use), named
 
 ## When it does not work
 
+Creating a bookmarklet needs a verified email address. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).
+
+
 Some websites block pages from sending data elsewhere (a strict content security policy). The bookmarklet then shows "Could not reach Noteriv". Copy the text by hand, or use [Quick note](../mobile/index.md#quick-note).
 
 > **Desktop app:** the repository's `extension/` folder holds a browser extension that clips to the desktop app running on the same computer; see [Desktop app](../desktop.md).

@@ -68,6 +68,20 @@ async function signIn(email: string, password: string) {
 
 const apiLogin = (email: string, password: string) => page.request.post("/api/v1/auth/login", { data: { email, password } });
 
+/** The account's first vault (Getting started), for the calls that need one. */
+async function firstVaultId(): Promise<string> {
+  const vaults = (await (await page.request.get("/api/v1/vaults")).json()) as { id: string }[];
+  return vaults[0].id;
+}
+
+const sampleFile = { name: "e2e.txt", mimeType: "text/plain", buffer: Buffer.from("hello") };
+const upload = (vaultId: string) => page.request.post(`/api/v1/vaults/${vaultId}/attachments`, { multipart: { file: sampleFile } });
+
+const VERIFY_FIRST = "Verify your email first";
+// Cloudflare's dummy Turnstile token, for API calls made without the page: passes when the server runs Turnstile's
+// test keys, ignored when Turnstile is off.
+const DUMMY_CAPTCHA = "XXXX.DUMMY.TOKEN.XXXX";
+
 test("sign up: the account starts unverified and gets a verification email", async () => {
   const invite = process.env.E2E_INVITE_CODE;
   expect(invite, "global-setup seeds E2E_INVITE_CODE").toBeTruthy();
@@ -81,6 +95,27 @@ test("sign up: the account starts unverified and gets a verification email", asy
   await expect(page).toHaveURL(/\/vaults$/, { timeout: 60_000 });
   await expect(page.getByText(`Signed in as ${firstEmail}`)).toBeVisible();
   await expect(page.getByText("Your email is not verified yet.", { exact: false })).toBeVisible();
+});
+
+test("an unverified account cannot upload, sync, clip or export a PDF until it verifies", async () => {
+  const vaultId = await firstVaultId();
+  const refused = async (res: Awaited<ReturnType<typeof upload>>) => {
+    expect(res.status()).toBe(403);
+    expect(await res.json()).toEqual({ error: "email_unverified" });
+  };
+  await refused(await upload(vaultId));
+  await refused(await page.request.post(`/api/v1/vaults/${vaultId}/sync-connections`, { data: { providerType: "github", remoteUrl: "https://github.com/x/y.git" } }));
+  await refused(await page.request.post(`/api/v1/vaults/${vaultId}/github/user`, { data: { token: "x" } }));
+  await refused(await page.request.post("/api/v1/users/me/clip-tokens", { data: { name: "e2e", vaultId } }));
+  await refused(await page.request.post(`/api/v1/vaults/${vaultId}/notes/${vaultId}/pdf`, { data: { html: "<p>x</p>" } }));
+
+  // The page says why, in plain words.
+  await page.goto(`/vaults/${vaultId}`);
+  await page.getByTitle("More tools", { exact: true }).click();
+  await page.getByText("Attachments", { exact: true }).click();
+  await page.locator('input[type="file"]').first().setInputFiles(sampleFile);
+  await expect(page.getByText(VERIFY_FIRST, { exact: false })).toBeVisible();
+  await page.goto("/vaults");
 });
 
 test("the verification link verifies the email, once", async () => {
@@ -98,10 +133,31 @@ test("the verification link verifies the email, once", async () => {
   await page.goto("/vaults");
   await expect(page.getByText(`Signed in as ${firstEmail}`)).toBeVisible();
   await expect(page.getByText("Your email is not verified yet.", { exact: false })).toHaveCount(0);
+
+  // Verified, the same upload gets past the check (what storage then says depends on the server: CI has no S3).
+  const after = await upload(await firstVaultId());
+  expect(after.status()).not.toBe(403);
+  expect(await after.text()).not.toContain("email_unverified");
+});
+
+test("the email is matched whatever its capitals", async () => {
+  expect((await apiLogin(firstEmail.toUpperCase(), firstPassword)).status()).toBe(200);
+  // Signing up again with the same address in other capitals is "email taken", not a second account.
+  const again = await page.request.post("/api/v1/auth/register", {
+    data: {
+      email: `  ${firstEmail.toUpperCase()} `,
+      password: firstPassword,
+      displayName: "Dup",
+      acceptTerms: true,
+      inviteCode: process.env.E2E_INVITE_CODE,
+      captchaToken: DUMMY_CAPTCHA,
+    },
+  });
+  expect(again.status()).toBe(409);
 });
 
 test("forgot password answers the same whether or not the email has an account", async () => {
-  const unknown = await page.request.post("/api/v1/auth/forgot-password", { data: { email: `nobody-${stamp}@example.test` } });
+  const unknown = await page.request.post("/api/v1/auth/forgot-password", { data: { email: `nobody-${stamp}@example.test`, captchaToken: DUMMY_CAPTCHA } });
   expect(unknown.status()).toBe(200);
   expect(await unknown.json()).toEqual({ ok: true });
   // Nothing is sent for an address without an account.

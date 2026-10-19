@@ -7,6 +7,7 @@ import { webApi, ApiError, apiErrorCode, type RegistrationMode } from "@/lib/web
 import { getLocale, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
+import TurnstileWidget from "@/components/TurnstileWidget";
 
 export default function RegisterPage() {
   useLocale();
@@ -18,13 +19,20 @@ export default function RegisterPage() {
   const [acceptTerms, setAcceptTerms] = useState(false);
   // null until the server answers; "invite" is assumed on failure so the field is never hidden by mistake.
   const [mode, setMode] = useState<RegistrationMode | null>(null);
+  // Set when the server asks for the bot check; the button waits for a passed check.
+  const [siteKey, setSiteKey] = useState<string | null>(null);
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null);
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     webApi.auth
       .registration()
-      .then((r) => setMode(r.mode))
+      .then((r) => {
+        setMode(r.mode);
+        setSiteKey(r.turnstileSiteKey ?? null);
+      })
       .catch(() => setMode("invite"));
   }, []);
 
@@ -41,6 +49,7 @@ export default function RegisterPage() {
         acceptTerms: true,
         // The verification email is written in the language of this page.
         locale: getLocale(),
+        ...(captchaToken ? { captchaToken } : {}),
         ...(mode === "invite" ? { inviteCode: inviteCode.trim() } : {}),
       });
       await import("@/lib/offline-store").then((m) => m.claimOfflineData(account.id)).catch(() => undefined);
@@ -55,7 +64,11 @@ export default function RegisterPage() {
       router.replace("/vaults");
     } catch (err) {
       const code = apiErrorCode(err);
-      if (code === "invalid_invite") {
+      // A check token works once: run it again for the next try.
+      if (siteKey) setCaptchaReset((n) => n + 1);
+      if (code === "captcha_failed") {
+        setError(t("web.auth.captchaFailed"));
+      } else if (code === "invalid_invite") {
         setError(t("web.auth.badInvite"));
       } else if (code === "registration_closed") {
         setError(t("web.auth.closed"));
@@ -87,7 +100,7 @@ export default function RegisterPage() {
 
   return (
     <div className="h-screen flex items-center justify-center">
-      <form onSubmit={onSubmit} className="w-80 flex flex-col gap-3 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]">
+      <form onSubmit={onSubmit} className={`w-80 ${siteKey ? "sm:w-[22rem]" : ""} flex flex-col gap-3 p-6 rounded-xl bg-[var(--bg-secondary)] border border-[var(--border)]`}>
         <h1 className="text-xl font-semibold mb-2">{t("web.auth.registerTitle")}</h1>
         {mode !== "open" && (
           <input
@@ -147,10 +160,11 @@ export default function RegisterPage() {
             .
           </span>
         </label>
+        {siteKey && <TurnstileWidget siteKey={siteKey} onToken={setCaptchaToken} resetSignal={captchaReset} />}
         {error && <p className="text-sm text-[var(--red)]">{error}</p>}
         <button
           type="submit"
-          disabled={loading || !acceptTerms || mode === null}
+          disabled={loading || !acceptTerms || mode === null || (!!siteKey && !captchaToken)}
           className="px-3 py-2 rounded-lg bg-[var(--accent)] text-[var(--bg-primary)] font-medium disabled:opacity-50"
         >
           {loading ? t("web.auth.creating") : t("web.auth.signUp")}

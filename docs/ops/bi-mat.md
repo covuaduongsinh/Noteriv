@@ -18,6 +18,7 @@ Production: compose `noteriv-prod`; staging: `noteriv-staging` (**giá trị ri�
 | `BACKUP_DEPLOY_KEY_B64` | backup (đẩy vào repo `noteriv-backups`) | Tạo lại | Xem mục 6 của `sao-luu-khoi-phuc.md` |
 | `BACKUP_HEALTHCHECK_URL` | backup (ping healthchecks.io) | Tạo lại check | Lộ = ai đó gửi được tín hiệu "ổn" giả; tạo URL mới trên healthchecks.io |
 | `REGISTRATION_MODE`, `ADMIN_EMAILS` | api | — | Không phải bí mật nhưng quyết định ai đăng ký/quản trị được; chỉ sửa trong Dokploy |
+| `TURNSTILE_SECRET_KEY` (từ phiên 5.2; `TURNSTILE_SITE_KEY` đi kèm là công khai) | api (kiểm tra chống bot ở đăng ký, quên mật khẩu) | Không mất dữ liệu; thiếu một trong hai key thì kiểm tra tắt | Lộ = người khác hỏi Cloudflare thay mình, không vượt được kiểm tra. Xoay secret trong Cloudflare dashboard → Turnstile, đưa vào env, deploy lại |
 | `RESEND_API_KEY` (từ phiên 5.1) | api (gửi thư tài khoản qua Resend) | Không mất dữ liệu; thư ngừng gửi (quên mật khẩu, xác minh) cho tới khi có key mới | Lộ = người khác gửi thư dưới tên miền của mình. Tạo key mới (quyền *Sending access*) trên resend.com, đưa vào env, deploy lại, rồi xoá key cũ |
 
 ## 2. Bí mật của chủ dự án (nằm trên máy cá nhân, `~/.config/noteriv/`)

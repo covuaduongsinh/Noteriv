@@ -22,6 +22,8 @@ Images display inline in Live and View mode; audio links get a player; PDFs open
 
 Each vault has room for **500 MB** of attachments.
 
+Adding attachments needs a verified email address. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).
+
 ## Trash
 
 Deleting a note or folder (sidebar right-click → **Delete**) moves it to the **trash**; nothing is removed at once.

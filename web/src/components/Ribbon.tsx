@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import {
   QuickOpenIcon,
   NewNoteIcon,
@@ -72,7 +72,9 @@ export default function Ribbon(props: RibbonProps) {
   const [pos, setPos] = useState({ left: 44, bottom: 8 });
   const POPOVER_WIDTH = 220;
 
-  useEffect(() => {
+  // Placed before the browser paints: positioned in a plain effect, the menu showed for one frame at its default
+  // spot (over the phone's bottom bar), and a click or a measurement could land on it there.
+  useLayoutEffect(() => {
     if (!moreOpen) return;
     const r = moreBtnRef.current?.getBoundingClientRect();
     if (r) {
@@ -84,6 +86,10 @@ export default function Ribbon(props: RibbonProps) {
           : { left: r.right + 8, bottom: Math.max(8, window.innerHeight - r.bottom) }
       );
     }
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!moreOpen) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (!popRef.current?.contains(t) && !moreBtnRef.current?.contains(t)) setMoreOpen(false);

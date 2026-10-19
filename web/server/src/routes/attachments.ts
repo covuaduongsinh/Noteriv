@@ -1,5 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
+import { requireVerifiedEmail } from "../lib/emailGate.js";
 import { ATTACHMENT_QUOTA_BYTES, getVaultUsage, makeStorageKey, putObject, getObjectStream, deleteObject, formatBytes } from "../lib/attachments.js";
 
 export default async function attachmentRoutes(fastify: FastifyInstance) {
@@ -19,7 +20,7 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/:vid/attachments", async (request, reply) => {
+  fastify.post("/:vid/attachments", { preHandler: requireVerifiedEmail(prisma, "attachment_upload") }, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     try {
       const { role } = await requireVaultAccess(prisma, vid, request.user!.id);

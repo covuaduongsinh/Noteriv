@@ -16,7 +16,7 @@ Bring an existing collection of Markdown notes into Noteriv — an Obsidian vaul
 
 Pick a folder or a `.zip` file. Noteriv then:
 - keeps the folder structure;
-- uploads images, PDFs, audio and other files the notes use as [attachments](./attachments-and-trash.md), and updates the notes' links to them (files over 25 MB are skipped and listed);
+- uploads images, PDFs, audio and other files the notes use as [attachments](./attachments-and-trash.md), and updates the notes' links to them (files over 25 MB are skipped and listed; until your email is verified, attachments are not uploaded and are listed as such);
 - rebuilds the links between notes, so `[[wiki-links]]` and backlinks work straight away;
 - asks what to do **if a note already exists at the same path**: skip it or overwrite it.
 
@@ -36,4 +36,4 @@ For a continuous copy rather than a one-off export, connect the vault to a Git r
 
 ## PDF and HTML
 
-To share a single note, use **File → Download PDF** (or **Preview PDF**, **Print…**) or **Publish preview** in the note's toolbar, which makes a static HTML page. See [View mode](../editor/view-mode.md#printing-and-export).
+To share a single note, use **File → Download PDF** (or **Preview PDF**, **Print…**) or **Publish preview** in the note's toolbar, which makes a static HTML page. See [View mode](../editor/view-mode.md#printing-and-export). **Download PDF** and **Preview PDF** need a verified email address; **Print…** does not. See [Before your email is verified](../getting-started/account.md#before-your-email-is-verified).

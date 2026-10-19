@@ -3,11 +3,12 @@ import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
 import { deleteObjectsBestEffort } from "../lib/attachments.js";
 import { verifyPassword } from "../lib/password.js";
+import { emailField } from "../lib/registration.js";
 import { sendEmailChangeConfirmation, sendVerificationEmail, type SendResult } from "../lib/accountEmails.js";
 
 const localeField = z.enum(["en", "vi"]).optional();
 const resendVerificationSchema = z.object({ locale: localeField });
-const changeEmailSchema = z.object({ newEmail: z.string().email(), password: z.string().min(1), locale: localeField });
+const changeEmailSchema = z.object({ newEmail: emailField, password: z.string().min(1), locale: localeField });
 
 /** How a send that the user asked for directly is answered; "sent" is the only 200. */
 function sendFailure(result: Exclude<SendResult, "sent">): { code: number; error: string } {

@@ -19,12 +19,13 @@ const COLLAB_ORIGIN = (() => {
 // (a nonce policy would force every page to render dynamically). Tighten and enforce later, with evidence.
 const reportOnlyCsp = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline'",
+  // Cloudflare Turnstile (sign-up, forgot password): its script, its iframe and its calls.
+  "script-src 'self' 'unsafe-inline' https://challenges.cloudflare.com",
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https:",
   "font-src 'self' data:",
-  `connect-src 'self' ${COLLAB_ORIGIN}`.trim(),
-  "frame-src 'self' blob:",
+  `connect-src 'self' ${COLLAB_ORIGIN} https://challenges.cloudflare.com`.replace(/\s+/g, " "),
+  "frame-src 'self' blob: https://challenges.cloudflare.com",
   "object-src 'none'",
   "base-uri 'self'",
   "form-action 'self'",

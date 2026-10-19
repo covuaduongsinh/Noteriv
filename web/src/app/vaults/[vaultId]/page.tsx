@@ -47,6 +47,7 @@ import { startCollab, type CollabSession, type CollabPeer } from "@/lib/collab";
 import {
   webApi,
   ApiError,
+  isEmailUnverified,
   type ApiVault,
   type VaultIndex,
   type ApiSyncConnection,
@@ -1390,7 +1391,7 @@ export default function VaultPage() {
       setPageNotice(done);
       setTimeout(() => setPageNotice((n) => (n === done ? null : n)), 3000);
     } catch (err) {
-      const message = (err as { body?: { message?: string } } | null)?.body?.message;
+      const message = isEmailUnverified(err) ? t("web.account.verifyFirst") : (err as { body?: { message?: string } } | null)?.body?.message;
       setPageNotice(message ?? t("web.notice.pdfFailed"));
     }
   }
@@ -1403,7 +1404,7 @@ export default function VaultPage() {
       setPdfPreview(await (await loadPdfExport()).renderPdf(vaultId, activeTab.noteId, draft, activeTab.name, pdfOptions()));
       setPageNotice(null);
     } catch (err) {
-      const message = (err as { body?: { message?: string } } | null)?.body?.message;
+      const message = isEmailUnverified(err) ? t("web.account.verifyFirst") : (err as { body?: { message?: string } } | null)?.body?.message;
       setPageNotice(message ?? t("web.notice.previewFailed"));
     }
   }

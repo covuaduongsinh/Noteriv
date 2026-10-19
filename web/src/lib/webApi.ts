@@ -283,6 +283,9 @@ export function apiErrorCode(err: unknown): string | null {
   return null;
 }
 
+/** The server refused because the account's email is not verified yet (web/server/src/lib/emailGate.ts). */
+export const isEmailUnverified = (err: unknown): boolean => apiErrorCode(err) === "email_unverified";
+
 // The access token (15min TTL, see server/src/lib/jwt.ts) expires mid-session
 // on any long-lived tab. A single in-flight refresh is shared across
 // concurrent 401s so a burst of requests doesn't each race their own
@@ -404,11 +407,12 @@ function syncListShared(vaultId: string): Promise<ApiSyncConnection[]> {
 
 export const webApi = {
   auth: {
-    register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true; locale?: Locale }) =>
+    register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true; locale?: Locale; captchaToken?: string }) =>
       request<ApiUser>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
-    registration: () => request<{ mode: RegistrationMode; emailEnabled?: boolean }>("/auth/registration"),
+    /** `turnstileSiteKey` is set when the server asks for the bot check on sign-up and forgot-password. */
+    registration: () => request<{ mode: RegistrationMode; emailEnabled?: boolean; turnstileSiteKey?: string | null }>("/auth/registration"),
     /** Always answers ok for a well-formed address, whether or not it has an account. */
-    forgotPassword: (data: { email: string; locale?: Locale }) =>
+    forgotPassword: (data: { email: string; locale?: Locale; captchaToken?: string }) =>
       request<{ ok: true }>("/auth/forgot-password", { method: "POST", body: JSON.stringify(data) }),
     resetPassword: (data: { token: string; password: string }) =>
       request<{ ok: true }>("/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),

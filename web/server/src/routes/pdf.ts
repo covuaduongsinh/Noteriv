@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { logAudit } from "../lib/auditLog.js";
+import { requireVerifiedEmail } from "../lib/emailGate.js";
 
 // Download a note as a real PDF. The browser builds the final HTML (it alone can render plugin
 // blocks such as chessboards and fetch attachments with the user's cookie) and this route hands it
@@ -24,7 +25,11 @@ export default async function pdfRoutes(fastify: FastifyInstance) {
 
   fastify.post(
     "/:vid/notes/:nid/pdf",
-    { bodyLimit: 8 * 1024 * 1024, config: { rateLimit: { max: 10, timeWindow: "1 minute" } } },
+    {
+      bodyLimit: 8 * 1024 * 1024,
+      config: { rateLimit: { max: 10, timeWindow: "1 minute" } },
+      preHandler: requireVerifiedEmail(prisma, "pdf_export"),
+    },
     async (request, reply) => {
       const { vid, nid } = request.params as { vid: string; nid: string };
       const parsed = bodySchema.safeParse(request.body);

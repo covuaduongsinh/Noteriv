@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { webApi, type ApiAttachment } from "@/lib/webApi";
+import { webApi, isEmailUnverified, type ApiAttachment } from "@/lib/webApi";
 import { getAttachmentType, formatFileSize, markdownLinkForAttachment, type AttachmentType } from "@/lib/attachment-utils";
 import "@/styles/attachments.css";
 import { t } from "@noteriv/ui/i18n";
@@ -76,7 +76,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
         await load();
       } catch (err) {
         const apiErr = err as { body?: { message?: string } };
-        setError(apiErr?.body?.message ?? t("web.attachments.uploadFailed"));
+        setError(isEmailUnverified(err) ? t("web.account.verifyFirst") : (apiErr?.body?.message ?? t("web.attachments.uploadFailed")));
       }
       setImporting(false);
     },

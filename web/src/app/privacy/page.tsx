@@ -37,6 +37,10 @@ export default function PrivacyPage() {
             Account emails (verifying your address, resetting your password, confirming a new address) are sent through Resend, an email delivery
             service. It receives your email address and the message, never your notes.
           </li>
+          <li>
+            The sign-up and forgot-password forms may run Cloudflare Turnstile, a check that tells people from bots. Cloudflare receives your IP
+            address and technical signals from your browser for that check; it does not set advertising cookies.
+          </li>
           <li>If you enable GitHub/WebDAV sync, your vault data is sent to the service you choose.</li>
           <li>We do not sell data or share it for advertising.</li>
         </ul>
@@ -98,6 +102,10 @@ export default function PrivacyPage() {
           <li>
             Thư của tài khoản (xác minh địa chỉ, đặt lại mật khẩu, xác nhận địa chỉ mới) được gửi qua Resend, một dịch vụ gửi email. Resend nhận
             địa chỉ email của bạn và nội dung thư, không bao giờ nhận ghi chú.
+          </li>
+          <li>
+            Form đăng ký và quên mật khẩu có thể dùng Cloudflare Turnstile, một bước kiểm tra phân biệt người với bot. Cloudflare nhận địa chỉ IP
+            và các tín hiệu kỹ thuật của trình duyệt cho việc kiểm tra đó; không đặt cookie quảng cáo.
           </li>
           <li>Nếu bạn bật đồng bộ GitHub/WebDAV, dữ liệu vault được gửi tới dịch vụ bạn chọn theo ý bạn.</li>
           <li>Chúng tôi không bán dữ liệu, không chia sẻ để quảng cáo.</li>
