@@ -98,3 +98,8 @@
   4. `prisma migrate resolve --applied 20261019180000_admin`; `migrate status` báo up to date.
   5. Kiểm: 9 container chạy; `/`, `/login`, `/admin`, `/admin/audit`, `/api/v1/healthz` trả 200; API admin khi chưa đăng nhập trả 401.
 - `next` đặt bằng `main` (cây mã trùng nhau); chờ staging deploy xong rồi `compose.stop`.
+- **Lần deploy staging theo `main` (07:15) báo `error`:**
+  - lỗi ở `next build` trong Docker: `Cannot find module '../lightningcss.linux-x64-musl.node'`, tức gói native tuỳ chọn không được tải về khi `npm install`;
+  - cùng cây mã đã build thành công ở production (07:05–07:15) và ở staging trước đó (06:45), nên đây là lỗi tải gói chập chờn, không phải lỗi mã;
+  - staging vẫn đã `compose.stop` (0 container); production 9 container;
+  - lần push `next` sau sẽ build lại. Nếu lỗi lặp lại, xem bước cài `lightningcss` / optional deps trong `web/Dockerfile`.
