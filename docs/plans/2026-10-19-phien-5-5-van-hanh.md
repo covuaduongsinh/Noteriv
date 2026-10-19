@@ -100,3 +100,9 @@
   - trang `/login` không tải SDK (không có `window.__SENTRY__`), không gửi gì tới tunnel, và không có link Status.
 - Lệnh thử Sentry trong `giam-sat.md` mục 6 đã chạy trên bản `tsc` build và gửi được tới stub.
 - Đã chụp `/admin/stats` ở tiếng Anh và tiếng Việt.
+- **CI lần đầu:** job e2e hỏng ở `offline.spec.ts`. Nguyên nhân: request lấy note nhận 429.
+  - CI chạy nhanh và mọi request đến từ cùng một IP, nên chạm giới hạn chung 300 request/phút. `GET /api/v1/config` mới (gọi ở mỗi lần tải trang) đủ để đẩy qua ngưỡng; máy cục bộ chậm hơn (DB ở xa) nên không gặp.
+  - Sửa: `/config` không tính vào rate limit, giống `/api/v1/healthz` (route này chỉ đọc env).
+  - Người dùng thật không bị ảnh hưởng: ở production mỗi IP thật có bucket riêng (`trustProxy`).
+- **CI lần hai:** vẫn 429, lần này ở `ops.spec.ts`. Cả bộ 46 test chạy từ một IP trong khoảng 2,5 phút, vượt 300/phút. Đây là giới hạn của môi trường test.
+  - Sửa: thêm env `RATE_LIMIT_PER_MINUTE` (mặc định 300, production giữ nguyên); job e2e của CI đặt 3000.

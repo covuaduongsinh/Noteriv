@@ -52,9 +52,11 @@ await fastify.register(helmet, {
   // not from CSP, so a strict default-src here would be redundant friction.
   contentSecurityPolicy: false,
 });
+// Per-IP requests a minute across the API (routes with their own limit, such as sign-in, keep theirs). The CI
+// end-to-end run raises it: every test comes from one address, much faster than any person.
 await fastify.register(rateLimit, {
   global: true,
-  max: 300,
+  max: Number(process.env.RATE_LIMIT_PER_MINUTE) || 300,
   timeWindow: "1 minute",
 });
 await fastify.register(cookie);

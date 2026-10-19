@@ -67,7 +67,9 @@ function rewriteEnvelope(body: string): { dsn: string; envelope: string } | null
  * and only envelopes for our own DSN go on to Sentry, which then sees this server's address, not the visitor's.
  */
 export default async function opsRoutes(fastify: FastifyInstance) {
-  fastify.get("/config", async (_request, reply) => {
+  // Every page load asks for this, so it stays out of the per-IP global limit (it only reads env, like /healthz):
+  // counted, it pushed a fast run of page loads from one address over 300/minute and the app's own calls got 429.
+  fastify.get("/config", { config: { rateLimit: false } }, async (_request, reply) => {
     const dsn = sentryDsn();
     return reply.send({
       errorReporting: dsn ? { dsn, environment: sentryEnvironment(), release: sentryRelease() ?? null } : null,
