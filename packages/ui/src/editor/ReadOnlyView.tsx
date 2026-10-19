@@ -14,18 +14,23 @@ import {
   renderAllLines,
   mathExtension,
 } from "../markdown";
+import { linkClickHandler } from "./link-click";
 
 export interface ReadOnlyViewProps {
   content: string;
   onChange?: (content: string) => void;
   className?: string;
+  /** Fires when a `[[wiki-link]]` is clicked; the app opens (or creates) the note it names. */
+  onWikilinkOpen?: (target: string) => void;
 }
 
-export default function ReadOnlyView({ content, onChange, className = "" }: ReadOnlyViewProps) {
+export default function ReadOnlyView({ content, onChange, className = "", onWikilinkOpen }: ReadOnlyViewProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   onChangeRef.current = onChange;
+  const onWikilinkOpenRef = useRef(onWikilinkOpen);
+  onWikilinkOpenRef.current = onWikilinkOpen;
 
   const createEditor = useCallback(() => {
     if (!editorRef.current) return;
@@ -40,6 +45,7 @@ export default function ReadOnlyView({ content, onChange, className = "" }: Read
       mathExtension(),
 
       renderAllLines.of(true),
+      linkClickHandler(() => onWikilinkOpenRef.current),
       EditorView.lineWrapping,
       EditorView.editable.of(false),
       EditorView.theme({

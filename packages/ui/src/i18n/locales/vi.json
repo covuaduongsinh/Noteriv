@@ -56,7 +56,7 @@
       "remove": "Bỏ bookmark"
     },
     "conflict": {
-      "banner": "Đây là bản xung đột của {original}: phiên bản kia, được sync lưu lại lúc {stamp} (UTC) vì cả hai nơi cùng sửa ghi chú này.",
+      "banner": "Đây là bản xung đột của {original}: phiên bản thứ hai, được giữ lại lúc {stamp} (UTC) vì ghi chú bị sửa ở hai nơi cùng lúc.",
       "compare": "So sánh",
       "hideCompare": "Ẩn so sánh",
       "keepOriginal": "Giữ bản gốc (xoá bản này)",

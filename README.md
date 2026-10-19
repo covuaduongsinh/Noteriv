@@ -17,6 +17,7 @@
 - Plain Markdown, no lock-in; import and export a vault as `.zip`
 - Git sync (GitHub, GitLab, Gitea, Forgejo, Codeberg, Bitbucket) and WebDAV sync
 - Real-time collaboration on the web (Yjs)
+- Installable on phones and computers (PWA), Quick note, offline reading and editing of recent notes; no silent overwrite when a note is edited in two places
 - Attachments, trash with restore, file recovery snapshots
 - PDF export with print preview
 
@@ -27,7 +28,7 @@
 **Extensibility**
 - Community plugins run in a sandboxed iframe with explicit permissions, on both web and desktop
 - Themes and CSS snippets
-- Web clipper (browser extension) and an MCP server for AI assistants (local vaults)
+- Web clipper (a bookmarklet on the web; a browser extension for the desktop app) and an MCP server for AI assistants (local vault folders)
 
 ## Apps
 
@@ -36,10 +37,10 @@
 | Web app | `web/` (Next.js 16), `web/server/` (Fastify + Prisma/PostgreSQL), `web/pdf-service/` | The main product. Multi-user, server-backed |
 | Desktop app | `desktop/` (Next.js + Tauri 2) | Same features, notes stored as local files |
 | Shared code | `packages/core`, `packages/ui`, `packages/plugin-api`, `packages/plugins` | Logic, editor and UI, plugin API types, core plugins |
-| Browser extension | `extension/` | Web clipper |
+| Browser extension | `extension/` | Web clipper for the desktop app |
 | MCP server | `mcp/` | Lets AI assistants read and write a local vault |
 
-A mobile experience is planned as an installable web app (PWA).
+On phones and tablets the web app installs to the home screen (PWA), with a phone layout, Quick note and offline reading and editing of recently opened notes.
 
 ## Development
 
@@ -60,7 +61,7 @@ The plugin API is described in [`docs/plugin-api/v1.md`](docs/plugin-api/v1.md) 
 
 ## Documentation
 
-- User documentation: [`docs/`](docs/) (being updated for the web app)
+- User documentation: [`docs/index.md`](docs/index.md) (English; describes the web app, with a page on the desktop app)
 - Developer handbook (Vietnamese): [`docs/dev/so-tay.md`](docs/dev/so-tay.md)
 - Roadmap and session plans (Vietnamese): [`docs/plans/`](docs/plans/), starting from [`2026-10-17-lo-trinh-thuong-mai.md`](docs/plans/2026-10-17-lo-trinh-thuong-mai.md)
 - Operations (Vietnamese): [`docs/ops/`](docs/ops/)

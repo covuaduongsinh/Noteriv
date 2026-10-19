@@ -9,13 +9,10 @@ The calendar view provides a monthly grid that connects your daily notes, tasks,
 
 ## Opening the Calendar
 
-There are three ways to open the calendar view:
+- **Ribbon**: **Calendar view**.
+- **Command palette**: Open `Ctrl+Shift+P` and run **Calendar: open**.
 
-- **Ribbon sidebar**: Click the calendar icon in the left ribbon.
-- **Command palette**: Open `Ctrl+P` and search for "Calendar".
-- **Daily note header**: The daily note panel includes a mini-calendar for quick date selection.
-
-On mobile, the calendar is a full-screen view accessible from the bottom navigation bar.
+The calendar comes with the **Calendar and daily notes** [core plugin](../features/core-plugins.md), on by default.
 
 ## Monthly Grid
 
@@ -28,9 +25,9 @@ Each cell shows the day number and up to two indicator dots:
 
 The current day is highlighted with the accent color border and a subtle background tint.
 
-## Week Start Configuration
+## Week Start
 
-By default, weeks start on Sunday. If you prefer a Monday start (common in European locales), you can change this in Settings. The `weekStartMonday` option rotates the column headers from `Sun Mon Tue ... Sat` to `Mon Tue ... Sun` and adjusts the grid layout accordingly.
+Weeks start on Sunday; there is no setting to change this yet.
 
 ## Navigation
 
@@ -44,12 +41,12 @@ A "Today" button resets the view to the current month and scrolls the current da
 
 ## Daily Notes Integration
 
-Clicking a day in the calendar does one of two things:
+Double-clicking a day in the calendar does one of two things:
 
 1. **If a daily note exists**: Opens it in the editor.
-2. **If no daily note exists**: Creates a new daily note for that date using your configured daily note template and folder, then opens it.
+2. **If no daily note exists**: Creates the daily note for that date in the `Daily` folder, with the date as its heading, then opens it.
 
-Daily notes are matched by their file name. Noteriv looks for files named in the `YYYY-MM-DD` format (e.g., `2026-03-20.md`) inside the configured daily notes folder. The matching is based on the formatted date string, so your daily notes must follow this naming convention to be recognized by the calendar.
+Daily notes are matched by their file name. Noteriv looks for notes named in the `YYYY-MM-DD` format (e.g., `2026-03-20.md`) in the `Daily` folder. The matching is based on the formatted date string, so your daily notes must follow this naming convention to be recognized by the calendar.
 
 ## Task Due Dates
 
@@ -74,7 +71,7 @@ This lets you assign a due date to an entire note, not just individual tasks wit
 
 ### Task Counts
 
-When a day has tasks due, the yellow dot indicates their presence. Hovering over a day cell (on desktop) or tapping it (on mobile) can show a count of how many tasks are due that day. Completed tasks (`- [x]`) are still counted but styled differently.
+When a day has tasks due, the yellow dot indicates their presence. The tasks due are also listed under the calendar. Completed tasks (`- [x]`) are still counted but styled differently.
 
 ## Calendar Data Model
 
@@ -103,10 +100,6 @@ These three maps are combined with the month grid to produce an array of `Calend
 - `taskCount`: The number of tasks due on this date.
 - `noteCount`: The number of notes associated with this date.
 
-## Mobile Calendar
-
-On the mobile app, the calendar view is a dedicated screen accessible from the navigation. It uses the same grid layout and dot indicators, adapted for touch interaction. Tapping a day navigates to the daily note editor. The month picker supports swipe gestures for navigation.
-
 ## Date Formatting
 
 All dates in the calendar system use the `YYYY-MM-DD` format (ISO 8601). This is the same format used for:
@@ -123,7 +116,7 @@ Tasks that have `@due()` annotations in board files appear on the calendar just 
 
 - Use the board view to organize tasks into columns (To Do, In Progress, Done).
 - Use the calendar view to see what is due when.
-- Click a date to create a daily note where you can plan which board tasks to tackle.
+- Double-click a date to create a daily note where you can plan which board tasks to tackle.
 
 ## Limitations
 

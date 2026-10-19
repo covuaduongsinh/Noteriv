@@ -1,122 +1,55 @@
 ---
-title: Mobile App
+title: Phone and Tablet
 order: 1
 ---
 
-# Mobile App
+# Phone and Tablet
 
-Noteriv's mobile app brings your notes to your phone and tablet. Built with React Native and Expo, it runs natively on both Android and iOS, giving you a fast, platform-appropriate experience without the overhead of a web wrapper.
+Noteriv on a phone or tablet is the same web app, installed to the home screen. There is no separate app to download from a store: install it from the browser and it opens full screen from its own icon, with your vaults, notes and settings exactly as on your computer.
 
-The mobile app is not a stripped-down companion. It is a full-featured note-taking environment that shares the same file format and vault structure as the desktop app. Notes you create on your phone are standard `.md` files in your vault folder, and they work identically when you open them on your desktop.
+## Installing
 
-## Technology Stack
+### Android (Chrome)
 
-The mobile app is built on the following technologies:
+1. Open your Noteriv address in Chrome and sign in.
+2. Tap the **⋮** menu, then **Install app** (or **Add to Home screen**).
+3. Confirm. Noteriv appears on your home screen.
 
-- **React Native 0.81** for native UI rendering on Android and iOS.
-- **Expo SDK 54** for build tooling, file system access, routing, and device APIs.
-- **Expo Router** for file-based navigation between screens.
-- **React Native Gesture Handler** for swipe navigation between notes, pull-to-refresh, and other touch interactions.
-- **React Native WebView** for rendering math (KaTeX), Mermaid diagrams, and syntax-highlighted code blocks in the preview.
-- **React Native Reanimated** for smooth, 60fps animations.
-- **Expo File System** for reading and writing vault files directly on the device.
-- **AsyncStorage** for persisting settings, vault configuration, and workspace state across sessions.
+### iPhone and iPad (Safari)
 
-## Available Features
+1. Open your Noteriv address in Safari and sign in.
+2. Tap the **Share** button (the square with an arrow), then **Add to Home Screen**.
+3. Tap **Add**. Noteriv opens full screen from its icon.
 
-The mobile app includes the following features, each adapted for touch interaction:
+The page **Install on your phone** (`/install`, linked from the vault list and the sign-in page) shows the same steps, and an **Install the app** button where the browser offers one.
 
-| Feature | Description |
-|---|---|
-| Markdown editor | Full-text editing with a formatting toolbar for bold, italic, headings, links, lists, code, highlights, and more |
-| Markdown preview | Rendered HTML preview with syntax highlighting, KaTeX math, Mermaid diagrams, callouts, embeds, table of contents, and interactive checkboxes |
-| Wiki-link navigation | Tap `[[wiki-links]]` in preview to jump to linked notes, with automatic note creation for links that do not exist yet |
-| Swipe navigation | Swipe left and right to move between notes in the same folder |
-| Board view | Kanban-style board for notes with a `board: true` frontmatter field |
-| Graph view | Interactive network graph showing connections between notes via wiki-links and tags |
-| Calendar view | View and create daily notes on a monthly calendar |
-| Flashcards | Spaced repetition review of Q:/A: pairs and {{cloze}} deletions extracted from your notes |
-| Trash | Soft-delete notes with restore capability; permanently delete when ready |
-| Dataview | Query your notes like a database using TABLE, LIST, and TASK queries inside code blocks |
-| Focus mode | Dim surrounding content and center the current line while editing |
-| Markdown lint | Check your notes for formatting issues: heading hierarchy, broken wiki-links, trailing whitespace, and more |
-| Publish HTML | Export any note as a standalone HTML page using your current theme colors |
-| Note history | View the git commit history of a note and diff any two versions side by side |
-| GitHub sync | Push and pull your vault to a GitHub repository using the GitHub REST API |
-| Themes | Choose from 10 built-in themes and community themes, with 8 accent colors |
-| Templates | Insert pre-built note templates into new or existing notes |
-| Note composer | Merge multiple notes into one, or split a note at a heading |
-| File recovery | Access automatic snapshots to restore previous versions of a note |
-| Slide presentation | Present any note as a slideshow, split at horizontal rules or headings |
-| Frontmatter editor | Visual editor for YAML frontmatter fields |
-| Bookmarks | Pin frequently accessed notes for quick access |
-| Outline panel | Navigate headings within the current note |
-| Tag browser | Browse all tags in your vault and see which notes use each tag |
-| Vault search | Full-text search across all notes in your vault |
-| Vault switcher | Switch between multiple vaults without leaving the app |
-| CSS snippets | Toggle custom CSS snippets on and off to fine-tune the interface |
-| Plugins | Enable and manage community plugins per vault |
-| Attachments | Browse and manage images, PDFs, and other files in your vault |
+## The phone layout
 
-## Desktop-Only Features
+On a narrow screen the vault page rearranges itself:
 
-A few features are available only on the desktop app due to platform constraints:
+- the **ribbon** becomes a bar along the bottom of the screen — Quick Open, New note, Search, the panels, and **More tools (⋯)**, which opens above it;
+- the **file list** is a drawer: open it with the sidebar button at the top left; tap beside it, or open a note, to close it;
+- the **note toolbar** scrolls sideways, and the formatting toolbar scrolls too;
+- **side panels** (outline, tags, bookmarks, backlinks) take the whole width; close them with their × button.
 
-| Feature | Reason |
-|---|---|
-| Split editor | Mobile screens are too narrow for side-by-side editing |
-| Vim mode | Touch keyboards do not support modal editing |
-| Canvas / whiteboard | Requires precise mouse interaction for node layout |
-| Drawing editor | Freehand drawing tools are desktop-optimized |
-| PDF annotation viewer | Native PDF rendering requires desktop WebView APIs |
-| Real-time collaboration | WebRTC peer-to-peer connections require desktop networking APIs |
-| Audio recorder | Desktop microphone access via the OS portal |
-| Folder sync (Dropbox/Drive) | File system watcher requires native OS integration |
-| WebDAV sync | Desktop network stack handles authentication and large transfers |
-| Web clipper | Browser extension communicates with the desktop app |
+Everything else works as on a computer. For reading, **zen mode** (**View → Zen Mode**) gives the note the whole screen.
 
-## Architecture
+## Quick note
 
-The mobile app follows a standard Expo Router structure:
+**Quick note** is a light page for catching a thought in seconds — no editor to load, no vault to open.
 
-```
-phone/
-  app/              # Screen routes (editor, settings, graph, etc.)
-  components/       # Reusable UI components (MarkdownEditor, MarkdownPreview, etc.)
-  context/          # React context providers (ThemeContext, AppContext)
-  lib/              # Business logic (file system, sync, dataview, flashcards, etc.)
-  constants/        # Color definitions and configuration constants
-  hooks/            # Custom React hooks
-  types/            # TypeScript type definitions
-  assets/           # Fonts, icons, and static resources
-```
+- **Open it:** press and hold the Noteriv icon on your home screen and choose **Quick note**; or open `/quick`; or follow the link on the vault list.
+- **Write:** pick the vault (Noteriv remembers your last choice) and the folder — **Inbox** by default — and type. The first line becomes the note's name.
+- **Save:** tap **Save** (or `Ctrl+Enter` / `Cmd+Enter` with a keyboard). "Saved to Inbox/…" confirms it, with a link to open the vault.
 
-State management is handled through React context providers. `AppContext` manages the current vault, file list, active file, editor content, and dirty state. `ThemeContext` provides the active theme colors to all components. Both persist their state to AsyncStorage so the app resumes exactly where you left off.
+Your text is kept on the phone as you type, so nothing is lost if the page closes. Without a connection, Quick note says so and saves by itself as soon as you are back online.
 
-## File Storage
+## Offline
 
-On mobile, vaults are stored in the app's document directory under a `vaults/` folder. Each vault is a regular directory containing your markdown files and a `.noteriv/` configuration directory. The file system layer uses Expo's File and Directory APIs for synchronous reads and writes, with async wrappers for operations that touch multiple files.
+An installed Noteriv opens without a connection. Vaults and notes you have opened recently on the phone can be read and edited; edits are kept on the phone ("Kept on this device" in the status bar) and sent when the connection returns. Notes you have never opened on the phone need a connection the first time. See [Offline use](../features/offline.md).
 
-## Sync on Mobile
+## Tips
 
-The mobile app supports GitHub sync using the GitHub REST API. Unlike the desktop app, which uses native git commands, the mobile app communicates directly with GitHub's API to push and pull changes. This means you do not need git installed on your phone.
-
-To set up sync:
-
-1. Open **Settings** > **Sync**.
-2. Enter your GitHub repository URL (e.g., `https://github.com/username/my-notes`).
-3. Enter a personal access token with `repo` scope.
-4. Choose a sync interval (1, 5, 10, or 30 minutes) or sync manually.
-
-The sync engine handles:
-
-- **Pulling remote changes** and merging them with local files.
-- **Pushing local changes** as commits to the remote repository.
-- **Conflict detection** when the same file has been modified both locally and remotely.
-- **Auto-sync** at the configured interval when the app is in the foreground.
-
-Folder sync (Dropbox/Drive) and WebDAV sync are desktop-only features due to platform limitations.
-
-## Getting Started
-
-See [Setup](./setup.md) for instructions on running the mobile app locally, or download the latest release from the App Store or Google Play.
+- Open the notes you will need on the road once before leaving.
+- Use [bookmarks](../features/bookmarks.md) for the notes you open most; the Bookmarks panel is one tap from the bottom bar.
+- [Daily notes](../features/daily-notes.md) and Quick note make a good pair: capture during the day, sort the Inbox in the evening.

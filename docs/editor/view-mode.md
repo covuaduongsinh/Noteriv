@@ -94,17 +94,9 @@ All links -- standard Markdown links, wiki-links, and autolinks -- are clickable
 
 Each code block has a copy button that copies the block content to the clipboard. This is useful for grabbing code snippets from your notes.
 
-## Scroll Position
-
-View mode preserves your scroll position when you switch to it from live or source mode. If you were looking at a specific section, you will still be looking at that section after the mode switch. Similarly, switching away from view mode and back restores the position.
-
-## Search in View Mode
-
-You can use `Ctrl+F` to search within the rendered content. The search highlights matches in the rendered output and supports case-insensitive matching and regular expressions.
-
 ## Printing and Export
 
-View mode's rendered output is the basis for Noteriv's print and PDF export features. When you print a note (`Ctrl+Shift+P` or File > Print), the view mode rendering is used, ensuring the printed output matches what you see on screen. Export to PDF uses the same rendering pipeline.
+The **File** menu (or the command palette) has **Preview PDF**, **Download PDF** and **Print…**. They use the same rendering as View mode, so the PDF or the printout matches what you see; math, Mermaid diagrams and images are included. **Settings → General → Column layout** sets how the PDF lays out. The note toolbar also has a **Download PDF** button and a **Publish preview** that turns the note into a static HTML page.
 
 ## When to Use View Mode
 
@@ -118,10 +110,11 @@ View mode is ideal for:
 
 ## Switching to View Mode
 
-- **Status bar**: Click the mode indicator and select View.
-- **Command palette**: Search for "Toggle View Mode".
-- **Context menu**: Right-click in the editor and select View mode.
-- **Per-file default**: Right-click and set View as the default mode for this file. This is especially useful for reference notes that you read often but rarely edit.
+- `Ctrl+E` cycles Edit → View → Source.
+- The **Edit / View / Source** switch at the right of the title bar.
+- **View → Cycle Edit / View / Source**, or the command palette.
+
+The mode is remembered for the note while its tab stays open.
 
 ## Comparison with Live Mode
 

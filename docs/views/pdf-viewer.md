@@ -9,7 +9,9 @@ Noteriv includes a built-in PDF viewer that opens PDF files inline, directly ins
 
 ## Opening PDFs
 
-Place a PDF file inside your vault (or any subfolder) and click it in the file explorer. Noteriv detects the `.pdf` extension and opens the file in the PDF viewer instead of the text editor. The viewer occupies the same editor pane, so you can have a PDF open in one tab and Markdown notes in another.
+PDFs are [attachments](../features/attachments-and-trash.md) of the vault. Add one in the attachment manager (ribbon → **More tools ⋯** → **Attachments**), then click it there: it opens full screen in the PDF viewer. Close the viewer to come back to your notes.
+
+The viewer comes with the **PDF viewer** [core plugin](../features/core-plugins.md), on by default.
 
 PDFs are rendered using [pdf.js](https://mozilla.github.io/pdf.js/), the same engine used by Firefox for its built-in PDF reader. This provides high-fidelity rendering for text, vector graphics, and embedded images.
 
@@ -66,36 +68,11 @@ Each annotation is stored as a `PDFAnnotation` object with the following fields:
 - **rect**: The bounding rectangle `{ x, y, w, h }` on the PDF page, in PDF coordinate units.
 - **created**: A Unix timestamp (milliseconds) of when the annotation was created.
 
-## Storage: Sidecar JSON
+## Storage
 
-Annotations are not embedded inside the PDF file. Instead, they are saved in a **sidecar JSON file** next to the PDF. The sidecar file name is derived from the PDF file name with a dot prefix and `-annotations.json` suffix:
+Annotations are not written into the PDF. On the web they are stored with the PDF's attachment record on the server, as the list of annotations described above, so they are the same on every device and the original PDF is never modified.
 
-```
-/vault/papers/attention-is-all-you-need.pdf
-/vault/papers/.attention-is-all-you-need.pdf-annotations.json
-```
-
-The leading dot makes the sidecar file hidden on Unix-based systems, keeping the vault tidy. The JSON file contains the full `PDFAnnotationFile` structure:
-
-```json
-{
-  "pdfPath": "/vault/papers/attention-is-all-you-need.pdf",
-  "annotations": [
-    {
-      "id": "ann-1711234567890-x7k2m1",
-      "page": 3,
-      "type": "highlight",
-      "text": "Attention is all you need",
-      "comment": "The core thesis",
-      "color": "#f9e2af",
-      "rect": { "x": 72, "y": 540, "w": 200, "h": 14 },
-      "created": 1711234567890
-    }
-  ]
-}
-```
-
-Because annotations live in a separate file, the original PDF is never modified. This is important for shared PDFs where you do not want your personal annotations to alter the source document.
+> **Desktop app:** annotations are saved in a hidden file next to the PDF, `.name.pdf-annotations.json`.
 
 ## Exporting Annotations to Markdown
 
@@ -130,23 +107,15 @@ This Markdown file is a regular vault file, so it participates in search, backli
 
 ## Loading and Saving
 
-Annotations are loaded automatically when you open a PDF. The viewer checks for the sidecar JSON file and parses it. If no sidecar exists, the viewer starts with an empty annotation set.
-
-Annotations are saved automatically whenever you create, modify, or delete an annotation. The save operation writes the entire `PDFAnnotationFile` to the sidecar path with 2-space indented JSON.
+Annotations load when you open the PDF and are saved automatically whenever you create, change or delete one.
 
 ## Annotation Lifecycle
 
 1. **Create**: Select a tool (highlight, underline, or note), interact with the PDF, and the annotation is created and saved immediately.
 2. **View**: Annotations are rendered as overlays on the PDF pages. Highlights are semi-transparent rectangles, underlines are colored lines, and notes are icon markers.
 3. **Edit**: Click an existing annotation to modify its comment or change its color.
-4. **Delete**: Select an annotation and press Delete, or use the context menu to remove it.
+4. **Delete**: Use the **Delete** button of the annotation in the annotations list.
 5. **Export**: Use the Export button to generate a Markdown summary of all annotations.
-
-## Version Control
-
-The sidecar JSON files are regular files in your vault, so they are tracked by git sync and backed up by folder sync. This means your PDF annotations are versioned alongside your notes and can be restored from history if needed.
-
-Since the sidecar file name starts with a dot, some git configurations may ignore hidden files. Make sure your `.gitignore` does not exclude `.*-annotations.json` files if you want them synced.
 
 ## Limitations
 
@@ -154,4 +123,4 @@ Since the sidecar file name starts with a dot, some git configurations may ignor
 - The PDF viewer is read-only with respect to the PDF content. You cannot edit the PDF text, add form fields, or sign documents.
 - Text selection for highlights depends on the PDF having embedded text. Scanned documents without OCR will not allow text highlighting -- only positional note annotations.
 - The viewer renders one page at a time in the visible viewport. Very large PDFs (1000+ pages) may be slow to navigate but do not consume excessive memory.
-- PDF annotations are a desktop-only feature. The mobile app does not include a PDF viewer.
+- Annotations are not part of [Git sync](../sync/git-sync.md); export them to a note if you want them in the repository.

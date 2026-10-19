@@ -61,11 +61,11 @@ There is no limit to nesting depth. `#a/b/c/d/e` works, though keeping hierarchi
 
 ## Tag Pane
 
-The tag pane is a sidebar panel that shows every tag in your vault as a navigable tree.
+The tag pane is a panel that shows every tag in your vault as a navigable tree.
 
 ### Opening the Pane
 
-Open the tag pane from the command palette (`Ctrl+Shift+P`, search for "Toggle Tag Pane") or from the sidebar panel selector.
+Choose **Tags** in the ribbon, or run **Toggle Tag Pane** from the command palette. The pane opens on the right of the editor.
 
 ### Layout
 

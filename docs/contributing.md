@@ -5,239 +5,64 @@ order: 91
 
 # Contributing to Noteriv
 
-Noteriv is an open-source project, and contributions of all kinds are welcome. Whether you are fixing a typo, reporting a bug, suggesting a feature, building a plugin, or submitting a pull request with a new feature, your contribution helps make Noteriv better for everyone.
+Noteriv is open source under the MIT license. Bug reports, ideas, documentation fixes, plugins, themes and pull requests are all welcome.
 
-## Ways to Contribute
+## Reporting bugs and suggesting features
 
-### Report Bugs
+Open an issue on the project's GitHub repository (`covuaduongsinh/Noteriv`) with:
 
-Found a bug? Open an issue on the [GitHub repository](https://github.com/thejacedev/Noteriv/issues) with:
+- what you did, what you expected, and what happened instead;
+- the browser (or desktop app) and the device;
+- screenshots if they help. **Developer → Diagnostics…** in the app menu produces a report you can copy into the issue.
 
-- A clear, descriptive title.
-- Steps to reproduce the bug.
-- What you expected to happen vs. what actually happened.
-- Your operating system and Noteriv version.
-- Screenshots or screen recordings if applicable.
+For a feature, describe the problem it solves before the solution you have in mind.
 
-Check existing issues first to avoid duplicates. If someone has already reported the same bug, add a thumbs-up reaction or a comment with additional details.
+## Repository layout
 
-### Suggest Features
+| Folder | What it is |
+|---|---|
+| `web/` | The web app (Next.js) |
+| `web/server/` | Its API, sync worker and collaboration server (Fastify, Prisma, PostgreSQL) |
+| `web/infra/` | Docker Compose files for development and production |
+| `desktop/` | The desktop app (Tauri; the UI is a static Next.js export) |
+| `packages/core` | Platform-neutral logic shared by both apps (`@noteriv/core`) |
+| `packages/ui` | Shared UI: editor, Markdown rendering, panels, the i18n catalogs (`@noteriv/ui`) |
+| `packages/plugins` | The seventeen core plugins |
+| `packages/plugin-api` | The plugin API types |
+| `e2e/` | End-to-end tests (Playwright) and the desktop smoke test |
+| `mcp/` | The [MCP server](mcp/index.md) |
+| `extension/` | The browser extension that clips pages to the desktop app |
 
-Have an idea for a new feature or improvement? Open a feature request issue with:
+## Development setup
 
-- A description of the problem or use case.
-- Your proposed solution.
-- Any alternatives you have considered.
+You need Node.js 22 and npm; for the desktop app also the Rust toolchain (see the [Tauri prerequisites](https://tauri.app/start/prerequisites/)); for the API a PostgreSQL and a Redis (the development compose file in `web/infra/` provides them).
 
-Feature discussions happen in the issue thread. Upvoted requests are more likely to be implemented.
+```sh
+npm install                 # once, at the repository root (web, desktop and packages are npm workspaces)
+npm test                    # unit tests (Vitest) of packages/core, packages/ui, packages/plugins
+npm run typecheck           # TypeScript across the workspaces
+npm run dev:web             # the web app at http://localhost:3457 (expects the API on port 4001)
+npm run build:web           # production build of the web app
 
-### Submit Pull Requests
-
-Code contributions are welcome for bug fixes, new features, performance improvements, and refactors. Follow the development setup below to get started.
-
-### Create Plugins
-
-Plugins extend Noteriv without modifying the core codebase. If you build a useful plugin, consider publishing it to the [NoterivPlugins](https://github.com/thejacedev/NoterivPlugins) repository so others can install it from the community browser. See [Creating Plugins](./plugins/creating-plugins.md) for the API guide.
-
-### Create Themes
-
-Design a color scheme and share it via the [NoterivThemes](https://github.com/thejacedev/NoterivThemes) repository. Custom themes are JSON files with 18 color properties. See [Custom Themes](./themes/custom-themes.md) for the format.
-
-### Create CSS Snippets
-
-Build useful CSS snippets and share them via the [NoterivSnippets](https://github.com/thejacedev/NoterivSnippets) repository. See [CSS Snippets](./themes/css-snippets.md) for details.
-
-### Improve Documentation
-
-Documentation improvements are valuable contributions. Fix typos, add missing details, improve examples, or write new guides. The documentation source files are in the `docs/` directory of this repository, which is the canonical source for [docs.noteriv.com](https://docs.noteriv.com). The marketing website's `/docs` route redirects there; do not add documentation content to the website project.
-
-## Development Setup
-
-### Prerequisites
-
-- **Node.js 18+** with npm
-- **Git**
-- A code editor (VS Code, Cursor, or any editor you prefer)
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/thejacedev/Noteriv.git
-cd Noteriv
+cd web/server && npm install && npm run dev     # the API (its own lockfile)
+cd desktop && npm run dev                       # the desktop app (Next.js + Tauri)
 ```
 
-### Desktop App
+End-to-end tests run against a production build of the web app and a running API; see `e2e/README.md`. `npm run e2e` runs them.
 
-The desktop app is a Tauri 2 + Next.js application (Rust backend, Next.js renderer).
+## Conventions
 
-```bash
-cd desktop
-npm install
-npm run dev
-```
+- **Shared code goes in `packages/`**, not copied into each app.
+- **Interface text goes in the catalogs**, `packages/ui/src/i18n/locales/en.json` and `vi.json`, never hard-coded; a test fails when a key is missing from either.
+- **Commit messages** are in English, in the form `feat(area): …`, `fix(area): …`, `docs: …`.
+- Code copied from another project must be recorded in `NOTICE.md` at the time it is copied.
+- The maintainers' handbook (Vietnamese) is [`docs/dev/so-tay.md`](dev/so-tay.md); plans and session records are in `docs/plans/`.
 
-This starts the Next.js development server and opens the Tauri window. Hot reload is enabled for both the renderer and the Rust backend.
+## Plugins, themes and snippets
 
-To build a production binary:
+- [Creating plugins](plugins/creating-plugins.md) explains the plugin API; the community plugin list is the [NoterivPlugins](https://github.com/thejacedev/NoterivPlugins) repository.
+- [Custom themes](themes/custom-themes.md) and [CSS snippets](themes/css-snippets.md) describe their formats; the community lists are [NoterivThemes](https://github.com/thejacedev/NoterivThemes) and [NoterivSnippets](https://github.com/thejacedev/NoterivSnippets).
 
-```bash
-npm run build
-```
+## Documentation
 
-### Mobile App
-
-The mobile app is a React Native + Expo application.
-
-```bash
-cd phone
-npm install
-npx expo start
-```
-
-Scan the QR code with Expo Go on your phone, or press `a` for Android emulator / `i` for iOS simulator.
-
-### MCP Server
-
-The MCP server is a standalone Node.js script.
-
-```bash
-cd mcp
-npm install
-node index.js
-```
-
-Or test with a specific vault path:
-
-```bash
-node index.js /path/to/test-vault
-```
-
-### Browser Extension
-
-The web clipper browser extension is in the `extension/` directory.
-
-```bash
-cd extension
-npm install
-npm run build
-```
-
-Load the built extension in Chrome via `chrome://extensions` (developer mode) or in Firefox via `about:debugging`.
-
-## Architecture Overview
-
-The Noteriv repository is a monorepo with four main packages:
-
-```
-Noteriv/
-  desktop/          # Tauri 2 + Next.js desktop app
-    src/
-      app/          # Next.js pages and routes
-      components/   # React components (Editor, Sidebar, Canvas, etc.)
-      lib/          # Business logic (sync, dataview, flashcards, etc.)
-      styles/       # CSS modules
-      types/        # TypeScript type definitions
-    src-tauri/      # Rust backend (IPC commands, file watcher, clipper, updater)
-  phone/            # React Native + Expo mobile app
-    app/            # Expo Router screens
-    components/     # React Native components
-    lib/            # Mobile business logic
-    context/        # React context providers
-  mcp/              # MCP server (Node.js)
-    index.js        # Single-file MCP server
-  extension/        # Web clipper browser extension
-  docs/             # Documentation (you are here)
-```
-
-### Desktop Architecture
-
-The desktop app uses:
-
-- **Tauri 2 (Rust)** for the native window, file system access, git operations, and system integration.
-- **Next.js** for the React-based UI, statically exported and loaded inside the Tauri WebView.
-- **CodeMirror 6** for the text editor with custom plugins for markdown rendering, syntax highlighting, and vim mode.
-- **Yjs + WebRTC** for real-time collaborative editing.
-
-Key abstractions:
-
-- **Settings** (`lib/settings.ts`): Application settings with defaults and persistence.
-- **Themes** (`lib/theme-utils.ts`): 10 built-in themes, custom theme loading, and CSS variable application.
-- **Sync** (`lib/sync-providers.ts`): Git, folder sync, and WebDAV providers with a unified interface.
-- **Plugins** (`lib/plugin-api.ts`): Plugin manager with sandboxed execution, lifecycle hooks, and a rich API surface.
-- **Dataview** (`lib/dataview.ts`): Query parser and execution engine for TABLE, LIST, and TASK queries.
-- **Flashcards** (`lib/flashcard-utils.ts`): Card extraction (Q/A and cloze), SM-2 algorithm, and review data persistence.
-
-### Mobile Architecture
-
-The mobile app uses:
-
-- **Expo SDK 54** for build tooling and device APIs.
-- **Expo Router** for file-based navigation.
-- **React Native Gesture Handler** for touch interactions.
-- **React Native WebView** for rendering math, Mermaid diagrams, and syntax-highlighted code.
-- **Expo File System** for direct file operations.
-
-State management uses React context (`AppContext` for vault/file state, `ThemeContext` for appearance). The mobile app reimplements much of the desktop business logic (dataview, flashcards, wiki-links, markdown preview) in a mobile-appropriate way.
-
-### MCP Server Architecture
-
-The MCP server is a single `index.js` file that implements the Model Context Protocol using the `@modelcontextprotocol/sdk`. It communicates over stdio, auto-discovers vaults from the Noteriv config, and provides 22 tools for vault management, note CRUD, browsing, knowledge graph queries, statistics, and daily notes.
-
-## Code Style
-
-- **TypeScript** is used throughout the desktop and mobile apps. The MCP server uses plain JavaScript (ES modules).
-- **Functional components** with hooks in React. No class components.
-- **Descriptive naming**: functions and variables should be self-documenting.
-- **No external state management libraries**: React context and local state only.
-- **Minimal dependencies**: prefer implementing features directly over adding npm packages.
-
-## Pull Request Guidelines
-
-1. **Create a branch** from `main` for your changes.
-2. **Keep PRs focused**. One feature or fix per PR. Large PRs are harder to review.
-3. **Write descriptive commit messages** that explain what changed and why.
-4. **Test your changes** on the relevant platform (desktop, mobile, or MCP server).
-5. **Update documentation** if your change affects user-facing behavior.
-6. **Do not include unrelated formatting changes** in the same PR.
-
-### PR Checklist
-
-- [ ] Code compiles without errors (`npm run build`)
-- [ ] Existing functionality is not broken
-- [ ] New features include documentation updates
-- [ ] Commit messages are clear and descriptive
-- [ ] No unrelated changes are included
-
-## Community Repositories
-
-Noteriv has three community repositories for user-created content:
-
-### NoterivPlugins
-
-- **Repository**: [github.com/thejacedev/NoterivPlugins](https://github.com/thejacedev/NoterivPlugins)
-- **Purpose**: Community plugins installable from the app
-- **To contribute**: Fork, add your plugin folder with `manifest.json` and `main.js`, update the root `manifest.json`, and submit a PR.
-
-### NoterivThemes
-
-- **Repository**: [github.com/thejacedev/NoterivThemes](https://github.com/thejacedev/NoterivThemes)
-- **Purpose**: Community color themes
-- **To contribute**: Fork, add your theme JSON file, update the root `manifest.json`, and submit a PR.
-
-### NoterivSnippets
-
-- **Repository**: [github.com/thejacedev/NoterivSnippets](https://github.com/thejacedev/NoterivSnippets)
-- **Purpose**: Community CSS snippets
-- **To contribute**: Fork, add your snippet CSS file, update the root `manifest.json`, and submit a PR.
-
-## Getting Help
-
-If you need help with your contribution:
-
-- Open a draft PR and ask questions in the PR description.
-- Open a discussion on GitHub Discussions.
-- Check existing issues and PRs for similar work.
-
-## License
-
-By contributing to Noteriv, you agree that your contributions will be licensed under the MIT License, the same license as the project itself.
+These pages live in `docs/` of the repository, in English. Describe the web app first; where the desktop app differs, add a short "Desktop app:" note or extend [Desktop app](desktop.md). Use the interface's own words for buttons and menus, as they appear in `en.json`.

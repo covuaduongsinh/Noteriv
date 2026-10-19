@@ -1347,6 +1347,29 @@ export default function VaultPage() {
     setWikilinkHover(null);
   }
 
+  /**
+   * Opens the note a clicked `[[link]]` names — by path, else by name — or creates it (folders included) when there
+   * is none yet, as the link promises.
+   */
+  async function openWikilink(raw: string) {
+    const target = raw.split("|")[0].split("#")[0].trim();
+    if (!target) return;
+    const wanted = target.replace(/\.md$/i, "").toLowerCase();
+    const notes = index?.notes ?? [];
+    const base = (p: string) => p.replace(/\.md$/i, "").toLowerCase();
+    const hit =
+      notes.find((n) => base(n.path) === wanted) ??
+      (wanted.includes("/") ? undefined : notes.find((n) => base(n.name) === wanted));
+    if (hit) return openNote(hit.id);
+    try {
+      const created = await vaultAdapter.createNote(`${target.replace(/\.md$/i, "")}.md`);
+      refreshIndex();
+      await openNote(created.id);
+    } catch (err) {
+      setPageNotice(isNetworkError(err) ? t("web.offline.needsNetwork") : t("web.notice.newNoteFailed"));
+    }
+  }
+
   function openNoteByPath(path: string) {
     const note = index?.notes.find((n) => n.path === path);
     if (note) openNote(note.id);
@@ -1560,7 +1583,7 @@ export default function VaultPage() {
               prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
             />
           ) : mode === "view" ? (
-            <ReadOnlyView content={content} onChange={onChange} />
+            <ReadOnlyView content={content} onChange={onChange} onWikilinkOpen={openWikilink} />
           ) : (
             <Editor
               content={content}
@@ -1572,6 +1595,7 @@ export default function VaultPage() {
               onViewReady={onReady}
               onWikilinkHover={isMain ? handleWikilinkHover : undefined}
               onWikilinkLeave={isMain ? handleWikilinkLeave : undefined}
+              onWikilinkOpen={openWikilink}
             />
           )}
         </div>

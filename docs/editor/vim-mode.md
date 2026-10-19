@@ -9,9 +9,9 @@ Noteriv includes full Vim keybinding support through the [`@replit/codemirror-vi
 
 ## Enabling Vim Mode
 
-Open **Settings** and navigate to the **Editor** section. Toggle **Vim Mode** on. The change takes effect immediately in all open editor panes. A mode indicator appears in the status bar showing the current Vim mode (NORMAL, INSERT, VISUAL, etc.).
+Open **Settings → Editor** and turn **Vim mode** on. It applies at once to the editor in Live mode (Source and View modes keep the standard keys). Turn it off the same way.
 
-To disable Vim mode, return to Settings and toggle it off. The editor reverts to the standard keymap immediately.
+The cursor shape shows the mode: a block in Normal mode, a bar in Insert mode.
 
 ## Modes
 
@@ -54,118 +54,16 @@ In visual mode, the selection is highlighted and you can extend it with any moti
 
 ### Command-Line Mode
 
-Press `:` in Normal mode to enter command-line mode. A command input appears at the bottom of the editor. Supported commands include:
+Press `:` in Normal mode to enter command-line mode; a command input appears at the bottom of the editor. The commands are those of the Vim emulation library, for example:
 
 | Command | Action |
 |---|---|
-| `:w` | Save the current note |
-| `:q` | Close the current tab |
-| `:wq` | Save and close |
-| `:x` | Save and close (same as `:wq`) |
-| `:e {file}` | Open a file (triggers the file switcher) |
 | `:{number}` | Jump to line number |
-| `:%s/old/new/g` | Find and replace across the document |
+| `:%s/old/new/g` | Find and replace across the note |
 | `:s/old/new/g` | Find and replace on the current line |
 | `:noh` | Clear search highlighting |
 
-## Motion Commands
-
-Standard Vim motion commands work as expected:
-
-### Character and Word Motions
-
-| Key | Action |
-|---|---|
-| `h` | Move left |
-| `j` | Move down |
-| `k` | Move up |
-| `l` | Move right |
-| `w` | Move to start of next word |
-| `W` | Move to start of next WORD (whitespace-delimited) |
-| `b` | Move to start of previous word |
-| `B` | Move to start of previous WORD |
-| `e` | Move to end of current/next word |
-| `E` | Move to end of current/next WORD |
-| `0` | Move to start of line |
-| `^` | Move to first non-blank character of line |
-| `$` | Move to end of line |
-
-### Line and Document Motions
-
-| Key | Action |
-|---|---|
-| `gg` | Go to first line |
-| `G` | Go to last line |
-| `{number}G` | Go to specific line number |
-| `{` | Move to previous blank line (paragraph up) |
-| `}` | Move to next blank line (paragraph down) |
-| `H` | Move to top of visible screen |
-| `M` | Move to middle of visible screen |
-| `L` | Move to bottom of visible screen |
-| `Ctrl+U` | Scroll up half page |
-| `Ctrl+D` | Scroll down half page |
-| `Ctrl+F` | Scroll down full page |
-| `Ctrl+B` | Scroll up full page |
-
-### Search Motions
-
-| Key | Action |
-|---|---|
-| `f{char}` | Find next occurrence of character on line |
-| `F{char}` | Find previous occurrence of character on line |
-| `t{char}` | Move to just before next occurrence of character |
-| `T{char}` | Move to just after previous occurrence of character |
-| `;` | Repeat last `f`/`F`/`t`/`T` motion |
-| `,` | Repeat last `f`/`F`/`t`/`T` motion in reverse |
-| `/` | Search forward |
-| `?` | Search backward |
-| `n` | Next search match |
-| `N` | Previous search match |
-| `*` | Search forward for word under cursor |
-| `#` | Search backward for word under cursor |
-
-## Operators
-
-Operators act on motions or selections:
-
-| Key | Action |
-|---|---|
-| `d{motion}` | Delete |
-| `dd` | Delete entire line |
-| `D` | Delete to end of line |
-| `c{motion}` | Change (delete and enter insert mode) |
-| `cc` | Change entire line |
-| `C` | Change to end of line |
-| `y{motion}` | Yank (copy) |
-| `yy` | Yank entire line |
-| `Y` | Yank entire line |
-| `p` | Paste after cursor |
-| `P` | Paste before cursor |
-| `>` | Indent |
-| `<` | Unindent |
-| `=` | Auto-indent |
-| `~` | Toggle case |
-| `gu{motion}` | Lowercase |
-| `gU{motion}` | Uppercase |
-
-## Text Objects
-
-Text objects can be used with operators in the form `{operator}{a/i}{object}`:
-
-| Object | Description |
-|---|---|
-| `w` | Word |
-| `W` | WORD |
-| `s` | Sentence |
-| `p` | Paragraph |
-| `"`, `'`, `` ` `` | Quoted string |
-| `(`, `)`, `b` | Parentheses |
-| `[`, `]` | Square brackets |
-| `{`, `}`, `B` | Curly braces |
-| `<`, `>` | Angle brackets |
-| `t` | HTML/XML tag |
-
-For example, `ci"` changes the content inside double quotes, and `dap` deletes an entire paragraph including surrounding blank lines.
+Noteriv adds no file commands: `:w` is not needed (notes save themselves), and tabs are closed with `Ctrl+W` or the tab's ×.
 
 ## Registers and Marks
 
@@ -178,14 +76,13 @@ Record macros with `q{register}` and play them back with `@{register}`. Repeat t
 
 ## Interaction with Noteriv Features
 
-Vim mode integrates with Noteriv's features:
+Vim mode works alongside Noteriv's own shortcuts:
 
-- **Formatting shortcuts**: `Ctrl+B`, `Ctrl+I`, and other formatting shortcuts work in Insert mode.
-- **Command palette**: `Ctrl+P` opens the command palette from any Vim mode.
-- **Focus mode**: `Ctrl+Shift+D` toggles focus mode regardless of Vim mode state.
-- **Split editor**: `Ctrl+\` works for split editor control.
-- **Wiki-link navigation**: In Normal mode, pressing `gd` on a wiki-link opens the linked note (go to definition).
-- **Live mode rendering**: Live mode's inline rendering works normally with Vim mode. Non-cursor lines are rendered, and the cursor line shows raw Markdown.
+- **Command palette** — `Ctrl+Shift+P` (or `F1`) from any Vim mode.
+- **Quick Open** — `Ctrl+K`.
+- **Split editor** — `Ctrl+\` and `Ctrl+Shift+\`.
+- **Live rendering** — lines away from the cursor stay rendered; the cursor line shows raw Markdown.
+- **Links** — clicking a rendered `[[wiki-link]]` opens the note, as without Vim.
 
 ## Limitations
 
@@ -193,6 +90,6 @@ The Vim emulation is extensive but not identical to full Vim:
 
 - **Vimscript**: Vimscript (`.vimrc`) is not supported. Configuration is done through Noteriv's settings.
 - **Plugins**: Vim plugins are not supported. Features like surround, commentary, etc. are not available unless Noteriv implements them natively.
-- **Ex commands**: Only a subset of Ex commands (`:w`, `:q`, `:s`, etc.) are implemented.
+- **Ex commands**: Only a subset of Ex commands (`:s`, `:noh`, line jumps…) is implemented; there are no file commands.
 - **Split commands**: `:sp` and `:vsp` are not supported. Use Noteriv's split editor instead.
 - **Terminal**: `:terminal` is not available.

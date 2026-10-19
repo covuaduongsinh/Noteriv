@@ -30,7 +30,7 @@ You can have as many template files as you need. Since they are sorted alphabeti
 
 ## Inserting a Template
 
-Press `Ctrl+T` (or `Cmd+T` on macOS) to open the template picker. The picker consists of three parts:
+Press `Ctrl+Alt+T` (`Cmd+Alt+T` on a Mac), or run **Templates: insert template** from the command palette, to open the template picker. The picker consists of three parts:
 
 1. **Search input.** Filters the template list as you type. The filter matches against template names.
 2. **Template list.** Shows matching templates. Use the arrow keys to highlight an entry, or hover with the mouse. The selected template's preview updates in real time.
@@ -47,6 +47,12 @@ Press `Ctrl+T` (or `Cmd+T` on macOS) to open the template picker. The picker con
 ### Mouse Navigation
 
 Click a template in the list to insert it immediately. Hover over a template to preview it without inserting.
+
+## Starting a New Note from a Template
+
+**Templates: new note from template** in the command palette, or the **Templates** button in the ribbon, opens the same picker in "create" mode: choose a template and Noteriv creates a new note at the root of the vault, named after the template (with a number added if that name is taken), fills it with the template's content and opens it. Rename it as you like.
+
+Templates come with the **Templates** [core plugin](./core-plugins.md), which is on by default.
 
 ## Template Variables
 
@@ -164,11 +170,11 @@ The entire process is synchronous after the file read, so there is no visible de
 
 ## Combining with Daily Notes
 
-Templates pair well with [Daily Notes](./daily-notes.md). After pressing `Ctrl+D` to create a new daily note, immediately press `Ctrl+T` and select your daily template. The `{{date}}` and `{{weekday}}` variables will reflect today's values.
+Templates pair well with [Daily Notes](./daily-notes.md). After pressing `Ctrl+D` to create a new daily note, press `Ctrl+Alt+T` and select your daily template. The `{{date}}` and `{{weekday}}` variables will reflect today's values.
 
 ## Combining with Note Composer
 
-If you have a template that represents a common section (e.g., a status update block), you can insert it into an existing note with `Ctrl+T`. The content is added at the cursor position, so templates are not limited to new-file creation.
+If you have a template that represents a common section (e.g., a status update block), you can insert it into an existing note with `Ctrl+Alt+T`. The content is added at the cursor position, so templates are not limited to new-file creation.
 
 ## Tips
 
@@ -176,4 +182,4 @@ If you have a template that represents a common section (e.g., a status update b
 - **Use frontmatter in templates.** Pre-filling `tags`, `status`, and `date` fields in the frontmatter saves time and keeps your vault consistent for dataview queries.
 - **Name templates clearly.** The picker displays filenames, so `Meeting.md` is better than `tmpl-mtg-01.md`.
 - **Use `{{title}}` for the H1 heading.** This ensures the note's heading matches its filename without extra typing.
-- **Version your templates.** Since templates are plain files in the vault, they are versioned by Git sync like everything else. You can track how your templates evolve over time.
+- **Version your templates.** Templates are ordinary notes, so [Git sync](../sync/git-sync.md) and [file recovery](./file-recovery.md) keep their history like everything else.

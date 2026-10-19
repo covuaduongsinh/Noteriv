@@ -5,17 +5,13 @@ order: 8
 
 # Drawing Editor
 
-Noteriv includes a built-in drawing editor for creating diagrams, sketches, and illustrations directly inside your vault. Drawings are saved as `.drawing` files in JSON format and can be embedded in Markdown notes using the `![[file.drawing]]` syntax. The editor provides a vector-based canvas with pencil, shape, text, and eraser tools, plus full color and stroke configuration.
+Noteriv includes a built-in drawing editor for creating diagrams, sketches, and illustrations directly inside your vault. Drawings are saved as JSON — on the web inside a note marked `drawing: true`, in the desktop app as `.drawing` files. The editor provides a vector-based canvas with pencil, shape, text, and eraser tools, plus full color and stroke configuration.
 
 ## Creating a Drawing
 
-There are several ways to create a new drawing:
+Drawing comes with the **Drawing** [core plugin](../features/core-plugins.md), which is **off by default**: turn it on in **Settings → Core plugins** first. Then run **New drawing** from the command palette (`Ctrl+Shift+P`).
 
-- **File menu**: File > New Drawing.
-- **Command palette**: Press `Ctrl+P` and search for "New Drawing".
-- **File explorer**: Right-click a folder and select "New Drawing".
-
-New drawings are named automatically using a counter system: `Drawing.drawing`, `Drawing 2.drawing`, `Drawing 3.drawing`, and so on. You can rename the file after creation.
+New drawings are named automatically at the root of the vault: `Drawing.md`, `Drawing 2.md`, and so on (`.drawing` files in the desktop app). Rename and move them like any note. Source mode (`Ctrl+E`) shows the drawing's data as text.
 
 ## File Format
 
@@ -111,38 +107,9 @@ Use the scroll wheel to zoom in and out. The drawing editor supports the same zo
 
 Zoom controls (+ and - buttons) are available in the toolbar. The current zoom level is displayed as a percentage.
 
-## Embedding Drawings in Notes
+## Using Drawings in Notes
 
-Drawings can be embedded in any Markdown note using the standard Noteriv embed syntax:
-
-```markdown
-Here is the system architecture:
-
-![[architecture.drawing]]
-
-As you can see, the three services communicate through the message bus.
-```
-
-When the note is rendered in live mode or view mode, the drawing file is loaded, converted to an SVG representation, and displayed inline. The SVG conversion handles all element types:
-
-- **Rectangles** become `<rect>` elements with rounded corners.
-- **Ellipses** become `<ellipse>` elements.
-- **Lines** become `<line>` elements.
-- **Arrows** become `<line>` elements with an SVG marker arrowhead.
-- **Text** becomes `<text>` elements.
-- **Pencil strokes** become `<polyline>` elements with round caps and joins.
-
-The SVG is sized to the bounding box of all elements with 20px padding on each side. An empty drawing renders as a placeholder with the text "Empty Drawing".
-
-## SVG Export
-
-The `elementsToSVG` function generates a standalone SVG document from the drawing elements. This SVG can be:
-
-- Embedded in Markdown notes (automatic).
-- Copied to the clipboard for pasting into other applications.
-- Saved as an `.svg` file for use outside Noteriv.
-
-The SVG includes a background rectangle matching the canvas background color, so the drawing looks correct when embedded in documents with different backgrounds.
+Link to a drawing like any note, `[[Drawing]]`, and open it from there. Drawings are not yet displayed inline inside other notes on the web, and there is no SVG export yet.
 
 ## Element Operations
 
@@ -182,9 +149,8 @@ The drawing file format is compatible with files that have a `"type": "excalidra
 |---|---|
 | `Delete` / `Backspace` | Delete selected element |
 | `Escape` | Deselect / exit tool |
-| `Ctrl+Z` | Undo |
-| `Ctrl+Shift+Z` | Redo |
-| `Ctrl+A` | Select all elements |
+| `Ctrl+Z` | Undo the last element |
+| `Ctrl+0` | Reset the zoom and position |
 | Scroll wheel | Zoom |
 
 ## Limitations
@@ -192,5 +158,5 @@ The drawing file format is compatible with files that have a `"type": "excalidra
 - The drawing editor does not support curved lines (bezier paths), only straight lines and freehand polylines.
 - Text editing is single-line only. Multi-line text blocks are not supported.
 - There is no layer system. Elements overlap based on creation order, and there is no way to reorder them independently (unlike the canvas view, which supports z-ordering).
-- The drawing editor is a desktop-only feature. Mobile users can view embedded drawings as rendered SVGs but cannot edit `.drawing` files directly.
+- Drawings are easiest to make with a mouse or pen on a larger screen; on a phone they work but are cramped.
 - Collaborative editing is not supported. Drawings should be edited by one person at a time.

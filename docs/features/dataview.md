@@ -7,6 +7,8 @@ order: 13
 
 Dataview lets you query your vault like a database. Write a query in a fenced code block, and Noteriv renders the results live in the editor -- tables, lists, or task views filtered by tags, folders, frontmatter fields, and more.
 
+Dataview is a [core plugin](./core-plugins.md) that is **off by default**: turn it on in **Settings → Core plugins**. **Insert Dataview query** in the command palette adds an example block to start from.
+
 ## Basic Syntax
 
 Wrap your query in a fenced code block with the language tag `dataview`:

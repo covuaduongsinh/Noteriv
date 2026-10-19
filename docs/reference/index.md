@@ -23,7 +23,7 @@ All 14 callout types with their syntax, icons, colors, and collapsible variants.
 
 ### [File Types](./file-types.md)
 
-Every file type that Noteriv handles: markdown notes, canvas files, drawing files, and board notes. Also covers the `.noteriv/` directory structure and the configuration files stored within it.
+Every file type that Noteriv handles: markdown notes, canvas files, drawing files, and board notes. Also covers where vault settings are kept.
 
 ## Quick Links
 
@@ -49,7 +49,7 @@ This reference section is designed for quick lookup, not sequential reading. Eac
 
 **I want to highlight important information**: See [Callouts](./callouts.md) for the 14 callout types (note, tip, info, warning, danger, bug, example, quote, success, question, abstract, todo, failure, important) with their syntax and color coding.
 
-**I want to understand file formats**: See [File Types](./file-types.md) for documentation of `.md`, `.canvas`, `.drawing`, and the `.noteriv/` configuration directory.
+**I want to understand file formats**: See [File Types](./file-types.md) for documentation of notes, boards, canvases, drawings and attachments.
 
 ## Conventions Used in This Section
 

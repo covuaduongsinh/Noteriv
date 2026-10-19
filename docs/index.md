@@ -5,103 +5,34 @@ order: 1
 
 # Noteriv Documentation
 
-Welcome to the Noteriv documentation. Noteriv is an open-source, cross-platform markdown note-taking application built for writers, developers, researchers, and anyone who wants their notes in a portable, future-proof format. Notes are plain `.md` files stored on your filesystem -- no proprietary format, no cloud lock-in, no database.
+Noteriv is a Markdown note-taking app that runs in your browser. Notes are plain Markdown, linked with `[[wiki-links]]`, organised in vaults, and can be kept in sync with a Git repository or a WebDAV server. It installs on a phone or computer like an app, keeps working without a connection for the notes you have opened, and has a desktop app as well.
 
-Noteriv runs on desktop (Windows, macOS, Linux) via Tauri 2 and on mobile (Android, iOS) via React Native. Both platforms share the same file format and vault structure, so your notes work identically everywhere.
+These pages describe the **web app**. Where the [desktop app](desktop.md) behaves differently, a short "Desktop app" note says so.
 
-## Documentation Sections
+## Sections
 
-### [Getting Started](./getting-started/)
-
-Installation, creating your first vault, understanding the interface, and the quickstart guide. Start here if you are new to Noteriv.
-
-### [Editor](./editor/)
-
-The CodeMirror 6 editor with three view modes (Live, Source, View), split panes, focus mode, Zen mode, Vim keybindings, formatting toolbar, and context menu.
-
-### [Features](./features/)
-
-Deep dives into individual features: wiki-links, backlinks, graph view, tags, templates, daily notes, note composer, bookmarks, quick open, vault search, command palette, flashcards, dataview queries, slide presentations, PDF export, audio recording, canvas whiteboard, drawing editor, note history, file recovery, publish HTML, and web clipper.
-
-### [Views](./views/)
-
-The different ways to visualize your notes: board view (Kanban), graph view (network diagram), calendar view, outline panel, and slide presentation mode.
-
-### [Sync](./sync/)
-
-Syncing your notes across devices: GitHub sync (native git on desktop, REST API on mobile), folder sync (Dropbox, Google Drive, OneDrive, iCloud), and WebDAV sync (Nextcloud, ownCloud).
-
-### [Mobile](./mobile/)
-
-The React Native mobile app: available features, setup for development, swipe navigation, and platform-specific details. [Read more](./mobile/)
-
-### [MCP Server](./mcp/)
-
-The Model Context Protocol server that gives AI assistants access to your vault. 22 tools for reading, writing, searching, and managing notes. Published as `noteriv-mcp` on npm. [Read more](./mcp/)
-
-### [Themes](./themes/)
-
-10 built-in themes, 8 accent colors, community themes, custom theme creation, and CSS snippets for fine-grained visual control. [Read more](./themes/)
-
-### [Plugins](./plugins/)
-
-Community plugin system with a sandboxed JavaScript API. Install plugins from the community repository, or create your own with commands, sidebar panels, status bar items, and event handlers. [Read more](./plugins/)
-
-### [Reference](./reference/)
-
-Comprehensive reference documentation: complete markdown syntax (including all extensions), YAML frontmatter fields, all 14 callout types, supported file types, and the `.noteriv/` directory structure. [Read more](./reference/)
-
-### [FAQ](./faq.md)
-
-Answers to the 20 most common questions about Noteriv.
-
-### [Contributing](./contributing.md)
-
-How to contribute to Noteriv: reporting bugs, suggesting features, submitting pull requests, and creating plugins, themes, and CSS snippets.
-
-## Key Features at a Glance
-
-| Category | Highlights |
+| Section | What it covers |
 |---|---|
-| **Editor** | Live preview, source mode, read-only view, CodeMirror 6, Vim mode, focus mode, Zen mode, split editor |
-| **Knowledge** | Wiki-links, backlinks, tags, graph view, hover preview, outline panel, dataview queries |
-| **Organization** | Multiple vaults, nested folders, bookmarks, quick open, command palette, daily notes, templates |
-| **Media** | Images, audio, video, canvas/whiteboard, drawing editor, PDF viewer, attachment manager |
-| **Sync** | GitHub (git), folder sync (Dropbox/Drive/OneDrive/iCloud), WebDAV |
-| **Collaboration** | Real-time co-editing (Yjs + WebRTC), publish as HTML, web clipper extension |
-| **Study** | Flashcards with SM-2 spaced repetition, cloze deletions |
-| **AI** | MCP server with 22 tools for Claude, Cursor, and other AI assistants |
-| **Customization** | 10 themes, 8 accent colors, community themes, CSS snippets, plugins |
-| **Mobile** | Full-featured React Native app with swipe navigation, board view, graph view |
+| [Getting started](getting-started/index.md) | Signing up, installing on a phone or computer, your first vault, the interface, keyboard shortcuts |
+| [Editor](editor/index.md) | Live, Source and View modes, split editor, focus and zen modes, Vim mode, the formatting toolbar |
+| [Features](features/index.md) | Links, tags, search, templates, daily notes, bookmarks, core plugins, offline use, conflicts, import and export, the web clipper and more |
+| [Views](views/index.md) | Graph, calendar, Kanban board, slides, canvas, drawing and the PDF viewer |
+| [Sync](sync/index.md) | Keeping a vault in a Git repository (GitHub, GitLab, Gitea, Forgejo…) or on a WebDAV server |
+| [Plugins](plugins/index.md) | Core plugins, community plugins, writing your own |
+| [Themes](themes/index.md) | Built-in themes, accent colours, custom themes, CSS snippets |
+| [Phone and tablet](mobile/index.md) | Installing on Android and iOS, the phone layout, Quick note, offline |
+| [Desktop app](desktop.md) | How the desktop app differs: vaults as folders, shortcuts, local Git |
+| [Reference](reference/index.md) | Markdown syntax, frontmatter, callouts, file types |
+| [MCP server](mcp/index.md) | Letting AI assistants read and write a vault folder on your computer |
+| [FAQ](faq.md) | Common questions |
 
-## Links
+## In short
 
-- **GitHub**: [github.com/thejacedev/Noteriv](https://github.com/thejacedev/Noteriv)
-- **Website**: [noteriv.com](https://www.noteriv.com)
-- **MCP Server**: [npmjs.com/package/noteriv-mcp](https://www.npmjs.com/package/noteriv-mcp)
-- **Plugins**: [github.com/thejacedev/NoterivPlugins](https://github.com/thejacedev/NoterivPlugins)
-- **Themes**: [github.com/thejacedev/NoterivThemes](https://github.com/thejacedev/NoterivThemes)
-- **CSS Snippets**: [github.com/thejacedev/NoterivSnippets](https://github.com/thejacedev/NoterivSnippets)
+- **Your notes are Markdown.** Every note is a `.md` file in a vault. Export a vault as a zip at any time, or keep it in a Git repository with [sync](sync/index.md).
+- **Links make the structure.** `[[Note name]]` links to another note; each note shows its [backlinks](features/wiki-links.md); the [graph](views/graph-view.md) draws them.
+- **Plugins add the rest.** Seventeen [core plugins](features/core-plugins.md) ship with the app — calendar, templates, flashcards, graph, Kanban board, canvas and more — and you turn them on and off in **Settings → Core plugins**. [Community plugins](plugins/index.md) run in a sandbox with the permissions you grant.
+- **It works on the go.** [Install it](getting-started/installation.md) on your phone, capture a thought with [Quick note](mobile/index.md#quick-note), and keep reading and editing recent notes [offline](features/offline.md).
+- **Nothing is overwritten silently.** If a note changed somewhere else while you were editing it, your version is saved next to it as a [conflict copy](features/conflicts.md).
+- **English and Vietnamese.** The interface follows your browser's language; change it in **Settings → General → Language** ([details](features/language.md)).
 
-## Getting Help
-
-If you cannot find what you are looking for in the documentation:
-
-- **Search**: Use the search function to find pages by keyword.
-- **FAQ**: Check the [FAQ](./faq.md) for answers to the 20 most common questions.
-- **GitHub Issues**: Open an issue on the [GitHub repository](https://github.com/thejacedev/Noteriv/issues) for bug reports and feature requests.
-- **GitHub Discussions**: Start a discussion for general questions, ideas, and community conversation.
-
-## About Noteriv
-
-Noteriv is designed around a few core principles:
-
-- **Your notes are yours.** Plain markdown files on your filesystem. No cloud requirement, no proprietary format, no lock-in. Move your notes to another app at any time by simply copying the files.
-- **Local-first, sync-optional.** Everything works offline. Sync is available when you want it (GitHub, folder sync, WebDAV) but never required.
-- **Keyboard-driven.** Over 70 keyboard shortcuts, a command palette, Vim mode, and focus mode for writers who prefer to keep their hands on the keyboard.
-- **Extensible.** Plugins, themes, and CSS snippets let you customize every aspect of the application without forking the codebase.
-- **Open source.** MIT licensed. Read the code, modify it, contribute to it.
-
-## License
-
-Noteriv is released under the MIT License.
+New here? Start with the [quickstart](getting-started/quickstart.md).

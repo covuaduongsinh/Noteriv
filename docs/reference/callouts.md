@@ -38,7 +38,7 @@ A helpful suggestion or best practice.
 
 ```markdown
 > [!tip] Pro Tip
-> You can use Ctrl+P to open the command palette from anywhere.
+> You can use Ctrl+Shift+P to open the command palette from anywhere.
 ```
 
 Icon: Flame. Color: Teal.

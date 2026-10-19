@@ -1,6 +1,6 @@
 # Chặng 4: Quốc tế hoá, người mới, di động
 
-> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.8 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (4.1–4.9 xong) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 2 xong (chuỗi giao diện đã trung lập); nên xong 3.2 (E2E) để bắt lỗi khi rút chuỗi.
 
@@ -78,15 +78,22 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
    - ribbon thành thanh dưới.
 5. Hướng dẫn "Cài lên điện thoại" (Android Chrome, iOS Safari).
 
-## Phiên 4.9: Tài liệu người dùng tiếng Anh
+## Phiên 4.9: Tài liệu người dùng tiếng Anh (xong)
+
+**Chủ dự án chốt (2026-10-18):** web là chính, desktop ghi chú riêng (trang `docs/desktop.md`); xoá các trang mô tả thứ không có trên web, mobile React Native thay bằng trang Điện thoại/PWA; làm hết trong một phiên; sửa luôn wiki-link không bấm được (phát hiện khi đối chiếu).
+
 
 - Chỉnh các trang sẵn có trong `docs/getting-started`, `docs/features`, `docs/editor`, `docs/sync`, `docs/plugins`, `docs/themes`, `docs/views` cho đúng bản web hiện tại (nhiều trang viết cho desktop của upstream).
 - Viết lại hoặc bỏ `docs/mobile` (viết cho app React Native, không còn).
 
 ### Xong khi (cả chặng)
-- Chuyển ngôn ngữ en ↔ vi không còn chuỗi lẫn ngôn ngữ trên các màn hình chính (web + desktop); test khoá đầy đủ xanh.
-- Người dùng mới có vault mẫu; PWA cài được trên Android và iOS; Ghi nhanh đạt mục tiêu thời gian.
-- Ngân sách JS tải đầu vẫn đạt (`npm run perf:web`, `npm run perf:desktop`).
+- Chuyển ngôn ngữ en ↔ vi không còn chuỗi lẫn ngôn ngữ trên các màn hình chính (web + desktop); test khoá đầy đủ xanh. — **Đạt** (4.1–4.5; test catalog bắt buộc dịch đủ).
+- Người dùng mới có vault mẫu; PWA cài được trên Android và iOS; Ghi nhanh đạt mục tiêu thời gian. — **Đạt**, trừ phần thử trên máy thật:
+  - vault mẫu có từ 4.6;
+  - PWA đạt "installable" trên Chromium (4.7), **chưa thử trên Android/iOS thật**;
+  - Ghi nhanh mở nguội ~0,93 s (4.7);
+  - thêm đọc/ghi offline (4.8).
+- Ngân sách JS tải đầu vẫn đạt (`npm run perf:web`, `npm run perf:desktop`). — **Đạt** cho web: 236,6 KB gzip ở 4.8 (≤ 374). `perf:desktop` không đo lại trong chặng.
 
 ## Ước lượng
 3–5 buổi.
@@ -102,5 +109,5 @@ Lấy từ phiên 5.2 của lộ trình cũ (`2026-10-14-giai-doan-5-dong-bo-di-
 | 4.5 Rút chuỗi (phần 4: trang ngoài, pháp lý), đổi mặc định, ô Language | Xong, đã lên production (PR #13 merge `9dd0844`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-5-ngon-ngu.md); ngôn ngữ theo lựa chọn → trình duyệt/hệ điều hành → `en`; ô Language hai app; người cũ giữ ngôn ngữ đang thấy (web `vi` qua migration, desktop `en`), tên mặc định theo ngôn ngữ (chủ dự án chốt); E2E chạy tiếng Anh; 475 test, E2E 10/10, smoke desktop 17/17, JS tải đầu 231,3 KB |
 | 4.6 Người mới | Xong, đã lên production (PR #14 merge `f3b5396`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-6-nguoi-moi.md); vault mẫu "Getting started"/"Bắt đầu" (web tự tạo khi đăng ký qua đường nhập, desktop có ô trong wizard), trạng thái rỗng có gợi ý, mặc định core plugin giữ nguyên (chủ dự án chốt); sửa wizard desktop ghi vào `~`; 486 test, E2E 11/11, smoke desktop 17/17, JS tải đầu 231,9 KB |
 | 4.7 PWA (cài như app), Ghi nhanh, giao diện điện thoại | Xong, đã lên production (PR #15 merge `cc049a3`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-7-pwa.md); manifest + icon + SW tự viết (vỏ app, trang offline), `/quick` (API `quick-note`, mở nguội ~0,9 s), `/install`, ribbon thành thanh dưới, sidebar thành ngăn kéo, báo khi lưu lỗi; tách 4.7/4.8 (chủ dự án chốt); 494 test, E2E 16/16, smoke desktop 17/17, JS tải đầu 233,8 KB |
-| 4.8 Đọc và ghi offline | Xong, chờ lên production | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-8-offline.md); kho IndexedDB (vault, cây file, note mở gần đây ≤ 300 / 25 MB, bản sửa chờ gửi), trang vault mở được khi offline, bản sửa offline gửi lại khi có mạng; PATCH có `baseHash`, khác thì tạo bản "(conflict …)" thay vì ghi đè, áp mọi lần lưu (chủ dự án chốt); 503 test, E2E 21/21, smoke desktop chưa chạy (thiếu bộ nhớ), JS tải đầu 236,6 KB |
-| 4.9 Tài liệu tiếng Anh | Chưa làm | | |
+| 4.8 Đọc và ghi offline | Xong, đã lên production (PR #16 merge `6832ef5`) | 2026-10-18 | [Bản ghi](2026-10-18-phien-4-8-offline.md); kho IndexedDB (vault, cây file, note mở gần đây ≤ 300 / 25 MB, bản sửa chờ gửi), trang vault mở được khi offline, bản sửa offline gửi lại khi có mạng; PATCH có `baseHash`, khác thì tạo bản "(conflict …)" thay vì ghi đè, áp mọi lần lưu (chủ dự án chốt); 503 test, E2E 21/21, smoke desktop chưa chạy (thiếu bộ nhớ), JS tải đầu 236,6 KB |
+| 4.9 Tài liệu tiếng Anh | Xong, chờ lên production | 2026-10-19 | [Bản ghi](2026-10-19-phien-4-9-tai-lieu.md); tài liệu người dùng viết lại cho web (khoảng 60 trang, 7 trang xoá, 10 trang mới gồm `desktop.md`), web là chính và desktop ghi chú riêng (chủ dự án chốt); sửa wiki-link bấm được (Live/View) và link ngoài mở tab mới; 508 test, E2E 22/22, smoke desktop chưa chạy (thiếu bộ nhớ) |

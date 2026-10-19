@@ -9,48 +9,21 @@ CSS snippets let you fine-tune the visual appearance of Noteriv beyond what them
 
 ## How Snippets Work
 
-Each snippet is a `.css` file stored in your vault's `.noteriv/snippets/` directory. When a snippet is enabled, its CSS is injected into the application's `<head>` as a `<style>` element. This means snippets can override any CSS rule in the interface, from font sizes and spacing to hiding UI elements entirely.
+Snippets belong to the vault and are stored with it on the server, so they apply on every device. Manage them in the **CSS Snippets** window: ribbon → **More tools ⋯** → **CSS Snippets**, **Settings → Ecosystem → CSS Snippets**, or the command palette. When a snippet is enabled, its CSS is injected into the application's `<head>` as a `<style>` element. This means snippets can override any CSS rule in the interface, from font sizes and spacing to hiding UI elements entirely.
 
-Snippets are applied after the theme, so they take precedence over theme styles. Multiple enabled snippets are applied in alphabetical order by filename.
+Snippets are applied after the theme, so they take precedence over theme styles. Multiple enabled snippets are applied in alphabetical order by name.
 
 ## Creating a Snippet
 
-### From Settings
+1. Open the **CSS Snippets** window.
+2. Choose **New Snippet** and enter a name (e.g. "Wider Editor").
+3. Write your CSS in the editor and choose **Save**.
 
-1. Open **Settings** and navigate to the **CSS Snippets** section.
-2. Click **New Snippet**.
-3. Enter a name for the snippet (e.g., "Wider Editor").
-4. Write your CSS in the editor.
-5. Click **Save**.
-
-The snippet is saved as a `.css` file in `.noteriv/snippets/` and is initially disabled.
-
-### Manually
-
-Create a `.css` file directly in your vault's `.noteriv/snippets/` directory:
-
-```
-your-vault/
-  .noteriv/
-    snippets/
-      wider-editor.css
-      custom-fonts.css
-      hide-statusbar.css
-```
-
-The filename (without the `.css` extension) becomes the snippet ID. The display name is derived from the filename by replacing hyphens and underscores with spaces and capitalizing words.
+> **Desktop app:** snippets are `.css` files in the vault's `.noteriv/snippets/` folder; you can also create them there.
 
 ## Enabling and Disabling Snippets
 
-Open **Settings** > **CSS Snippets** to see all available snippets. Each one has a toggle switch. Enable a snippet to apply it immediately. Disable it to remove its styles. Changes take effect in real time without a restart.
-
-The enabled/disabled state is stored in `.noteriv/snippet-config.json`:
-
-```json
-{
-  "enabled": ["wider-editor", "custom-fonts"]
-}
-```
+The **Installed** tab of the **CSS Snippets** window lists the vault's snippets, each with a toggle switch. Enable a snippet to apply it immediately; disable it to remove its styles.
 
 ## Example Snippets
 
@@ -184,11 +157,7 @@ Available CSS variables from the active theme:
 
 The [NoterivSnippets](https://github.com/thejacedev/NoterivSnippets) repository hosts a curated collection of community-contributed CSS snippets. You can browse and install them from Settings:
 
-1. Open **Settings** > **CSS Snippets**.
-2. Click **Browse Community Snippets**.
-3. Preview snippets and click **Install** to add them to your vault.
-
-Installed community snippets are saved to `.noteriv/snippets/` just like manually created ones. You can edit them after installation.
+Open the **Community** tab of the **CSS Snippets** window, preview a snippet and choose **Install**. Installed snippets are stored with the vault like your own, and you can edit them afterwards.
 
 Community snippets are organized by category:
 
@@ -206,24 +175,21 @@ To contribute a snippet to the community repository, follow the contributing gui
 
 To edit an existing snippet:
 
-1. Open **Settings** > **CSS Snippets**.
-2. Click the **Edit** button next to the snippet.
+1. Open the **CSS Snippets** window.
+2. Choose **Edit snippet** next to the snippet.
 3. Modify the CSS in the editor.
 4. Click **Save**.
 
 Changes apply immediately if the snippet is enabled.
 
-You can also edit the `.css` files directly in any text editor. The app picks up file changes the next time you open the snippets settings panel.
-
 ## Deleting Snippets
 
 To delete a snippet:
 
-1. Open **Settings** > **CSS Snippets**.
-2. Click the **Delete** button next to the snippet.
-3. Confirm the deletion.
+1. Open the **CSS Snippets** window.
+2. Choose **Delete** next to the snippet.
 
-This removes the `.css` file from `.noteriv/snippets/` and removes it from the enabled list. The change takes effect immediately.
+The change takes effect immediately.
 
 ## Order of Application
 
@@ -232,13 +198,13 @@ Styles are applied in this order:
 1. **Base styles** -- Noteriv's built-in CSS.
 2. **Theme** -- The active theme's CSS custom properties.
 3. **Accent color** -- The selected accent color override.
-4. **CSS snippets** -- Enabled snippets in alphabetical order by filename.
+4. **CSS snippets** -- Enabled snippets in alphabetical order by name.
 
 Because snippets come last, they can override anything. Use `!important` only when necessary, as it can make it harder to override your snippet with another one.
 
 ## Tips
 
 - Keep snippets small and focused. One snippet per visual change makes it easy to toggle individual tweaks.
-- Name your snippet files descriptively: `wider-editor.css` is better than `fix.css`.
+- Name your snippets descriptively: "Wider editor" is better than "fix".
 - Test snippets with multiple themes to make sure they look good everywhere. Use `var(--bg-primary)` instead of hard-coded colors.
-- If a snippet causes visual issues, disable it from Settings. If you cannot access Settings, delete the `.css` file from `.noteriv/snippets/` manually.
+- If a snippet causes visual issues, disable it in the **CSS Snippets** window. If a snippet hides the ribbon, open the window from the command palette (`Ctrl+Shift+P` → "CSS Snippets").

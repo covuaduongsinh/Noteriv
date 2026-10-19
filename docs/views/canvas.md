@@ -9,7 +9,7 @@ The canvas is an infinite whiteboard for spatial thinking. Unlike the linear Mar
 
 ## File Format
 
-Canvas data is stored in `.canvas` files as JSON. The format is simple and human-readable:
+Canvas data is stored as JSON — on the web inside a note marked `canvas: true`, in the desktop app in `.canvas` files. The format is simple and human-readable:
 
 ```json
 {
@@ -40,9 +40,9 @@ Each node has a unique 16-character hex ID, a type, position (x, y), dimensions 
 
 ## Creating a Canvas
 
-- **File menu**: File > New Canvas, or use the command palette and search for "New Canvas".
-- **File explorer**: Right-click a folder and select "New Canvas".
-- **Keyboard**: No default shortcut, but you can assign one in the hotkey settings.
+Canvas comes with the **Canvas** [core plugin](../features/core-plugins.md), which is **off by default**: turn it on in **Settings → Core plugins** first. Then run **New canvas** from the command palette (`Ctrl+Shift+P`). It creates `Canvas.md` at the root of the vault (`Canvas 2.md` and so on if taken) and opens it.
+
+On the web a canvas is a note whose frontmatter says `canvas: true`, followed by the canvas data; Source mode (`Ctrl+E`) shows that text.
 
 New canvases open with an empty viewport and a dot-grid background.
 
@@ -167,7 +167,7 @@ Double-click a text node or sticky note to enter edit mode. Type your content an
 
 ## Saving
 
-Canvas files are saved automatically when you make changes. The JSON structure is serialized with 2-space indentation for readability. The file is written through the same file system layer as Markdown notes, so it participates in version control (git sync) and backup (folder sync) alongside your other vault files.
+A canvas saves itself half a second after each change. It is an ordinary note of the vault, so it syncs, exports and is kept in [file recovery](../features/file-recovery.md) like any other.
 
 ## Dot-Grid Background
 
@@ -180,8 +180,7 @@ The canvas viewport displays a subtle dot-grid pattern (24px spacing) that adapt
 | `Delete` / `Backspace` | Delete selected node |
 | `Escape` | Deselect / exit edit mode |
 | `Ctrl+A` | Select all nodes |
-| `Ctrl+Z` | Undo |
-| `Ctrl+Shift+Z` | Redo |
+| `Ctrl+D` | Duplicate the selected nodes |
 | Double-click | Edit text node |
 | Scroll wheel | Zoom |
 
@@ -191,7 +190,7 @@ The canvas renders using DOM elements positioned with CSS transforms, not an HTM
 
 ## Limitations
 
-- Canvas files are JSON-only. They cannot be edited meaningfully in a plain text editor (though the format is readable).
+- The canvas data is JSON. It is readable in Source mode but not meant to be edited by hand.
 - There is no snap-to-grid or alignment guides. Nodes are positioned freely.
 - Collaborative editing is not supported on canvases. Only one user should edit a canvas at a time.
-- The canvas is not available on the mobile app in the current version. Mobile users can view canvas files as raw JSON.
+- On a phone the canvas works, but it is easier to use on a larger screen.

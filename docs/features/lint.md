@@ -9,7 +9,7 @@ The markdown linting panel checks your notes for common structural issues: broke
 
 ## Opening the Lint Panel
 
-Press `Ctrl+Shift+L` (or `Cmd+Shift+L` on macOS) to toggle the lint panel. You can also open it from the command palette (`Ctrl+Shift+P`, search for "Toggle Lint Warnings").
+Markdown lint is a [core plugin](./core-plugins.md) that is **off by default**: turn it on in **Settings → Core plugins**. Then press `Ctrl+Shift+L` (`Cmd+Shift+L` on a Mac), or run **Lint: toggle panel** from the command palette, to show or hide the panel on the right of the editor.
 
 ## Lint Rules
 

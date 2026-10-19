@@ -56,7 +56,7 @@
       "remove": "Remove bookmark"
     },
     "conflict": {
-      "banner": "This is a conflict copy of {original}: the other version, saved by sync on {stamp} (UTC) when both sides had changed it.",
+      "banner": "This is a conflict copy of {original}: a second version, kept on {stamp} (UTC) because the note was changed in two places at once.",
       "compare": "Compare",
       "hideCompare": "Hide comparison",
       "keepOriginal": "Keep the original (delete this copy)",
