@@ -1104,7 +1104,8 @@
         "hidden": "hidden file",
         "tooBig": "larger than 25 MB",
         "quota": "out of attachment storage",
-        "unreadable": "could not read the file"
+        "unreadable": "could not read the file",
+        "unverified": "email not verified yet"
       },
       "phase": {
         "attachments": "Uploading attachments",
@@ -1178,7 +1179,8 @@
       "verifying": "Checking the link…",
       "verifyDone": "Your email is verified. Thank you!",
       "emailChangedDone": "Your email was changed. Sign in with the new address.",
-      "continue": "Continue"
+      "continue": "Continue",
+      "captchaFailed": "The bot check did not pass. Try again."
     },
     "vaultList": {
       "title": "Your vaults",
@@ -1282,6 +1284,9 @@
         "one": "{count} edit made offline hasn't reached the server yet; signing out on this device discards it. Click Sign out again to sign out anyway.",
         "other": "{count} edits made offline haven't reached the server yet; signing out on this device discards them. Click Sign out again to sign out anyway."
       }
+    },
+    "account": {
+      "verifyFirst": "Verify your email first: open the link we emailed you. Your vaults → Account can send it again."
     }
   },
   "desktop": {

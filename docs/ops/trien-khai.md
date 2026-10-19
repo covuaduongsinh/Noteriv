@@ -60,6 +60,15 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 ## 7. Đăng ký và quản trị (từ Phiên 0.4)
 
 - `REGISTRATION_MODE` (env của `noteriv-api`): `invite` (mặc định, cần mã mời), `open` (ai cũng đăng ký) hoặc `closed` (đóng). **Giá trị lạ hoặc rỗng = đóng**, để gõ sai không vô tình mở đăng ký. Đổi trong Dokploy rồi deploy lại.
+- **Trước khi bật `open` ở production** (chủ dự án chốt ở phiên 5.2: giữ `invite` tới lúc đủ các điều kiện sau):
+  - đã bật email (mục 8), để người mới xác minh được địa chỉ;
+  - đã bật Turnstile (dưới đây);
+  - xong phiên 5.6 (điều khoản và quyền riêng tư quốc tế);
+  - sao lưu tay ngay trước khi đổi.
+  Đổi bằng cách đặt `REGISTRATION_MODE=open` trong env Dokploy rồi deploy lại; quay về `invite` cũng vậy.
+- **Turnstile** (Cloudflare, từ phiên 5.2): kiểm tra chống bot ở form đăng ký và quên mật khẩu. Bật khi có đủ `TURNSTILE_SITE_KEY` (công khai, trang lấy qua `GET /api/v1/auth/registration`) và `TURNSTILE_SECRET_KEY` (bí mật). Tạo widget trong Cloudflare dashboard → Turnstile, chế độ *Managed*, hostname `noteriv.dsc.edu.vn` và `staging-noteriv.dsc.edu.vn`. Cloudflare không trả lời thì form từ chối (lỗi thì chặn). Key thử luôn đạt để chạy E2E tại máy: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.
+- **Tài khoản chưa xác minh** (từ phiên 5.2, chỉ khi email đang bật): không tạo được kết nối đồng bộ và lệnh GitHub, không tải đính kèm, không tạo token web clipper, không xuất PDF (403 `email_unverified`, audit `blocked_unverified`). Mã: `web/server/src/lib/emailGate.ts`.
+- **Email lưu bằng chữ thường** (từ phiên 5.2, `emailField` trong `web/server/src/lib/registration.ts`; migration `20261019140000_lowercase_emails`, chỉ sửa dữ liệu, áp trước khi deploy).
 - `ADMIN_EMAILS` (cùng chỗ): danh sách email (cách nhau dấu phẩy) được quản lý mã mời. Rỗng = không ai là admin. Production: `duongsinhchess@gmail.com`.
 - Tạo mã mời: đăng nhập bằng email admin → **Vault của bạn → Quản lý mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
 - Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.

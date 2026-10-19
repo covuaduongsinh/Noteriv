@@ -10,8 +10,8 @@ Noteriv runs in any modern browser — Chrome, Edge, Firefox or Safari, on a com
 ## Create an account
 
 1. Open your Noteriv address and choose **Sign up** on the sign-in page.
-2. While Noteriv is in its trial phase, sign-up is by invitation: enter the **Invite code** you were given.
-3. Enter a display name, your email address and a password (at least 8 characters), accept the Terms of Use and the Privacy Policy, and choose **Sign up**.
+2. If the page asks for an **Invite code**, sign-up on this server is by invitation: enter the code you were given. Otherwise anyone can sign up.
+3. Enter a display name, your email address and a password (at least 8 characters), accept the Terms of Use and the Privacy Policy, and choose **Sign up**. Some servers show a short check that you are not a bot (Cloudflare Turnstile) above the button; it usually passes by itself.
 
 Your account opens on **Your vaults**, with a **Getting started** vault already there. The [quickstart](quickstart.md) takes it from here.
 

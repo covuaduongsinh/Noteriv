@@ -75,7 +75,7 @@
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
 | 5.1 Email và tài khoản | Xong, đã lên production | 2026-10-19 | PR #18, merge `4a03f9d`; Resend, xác minh, quên mật khẩu, đổi email; [bản ghi](2026-10-19-phien-5-1-email.md). Email tắt ở production cho tới khi chủ dự án tạo domain Resend và đặt env |
-| 5.2 Mở đăng ký | Chưa làm | | |
+| 5.2 Mở đăng ký | Xong, chờ lên production | 2026-10-19 | Nhánh `covuaduongsinh/chang5-signup`; Turnstile (đăng ký, quên mật khẩu), chặn 4 việc khi chưa xác minh, email chữ thường; production vẫn `invite`; [bản ghi](2026-10-19-phien-5-2-mo-dang-ky.md) |
 | 5.3 Gói và hạn mức | Chưa làm | | |
 | 5.4 Trang quản trị | Chưa làm | | |
 | 5.5 Vận hành | Chưa làm | | |

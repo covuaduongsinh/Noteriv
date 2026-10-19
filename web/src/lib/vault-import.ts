@@ -5,7 +5,7 @@
  * attachment download URL, then sends the notes to the server in batches.
  */
 
-import { webApi, ApiError } from "@/lib/webApi";
+import { webApi, ApiError, isEmailUnverified } from "@/lib/webApi";
 import { getAttachmentType, markdownLinkForAttachment } from "@/lib/attachment-utils";
 import { t } from "@noteriv/ui/i18n";
 
@@ -243,6 +243,8 @@ export async function runImport(
 
   let done = 0;
   let quotaHit = false;
+  // An account whose email is not verified may not upload (web/server/src/lib/emailGate.ts): stop after the first no.
+  let unverified = false;
   onProgress({ phase: "attachments", done, total: scan.attachments.length });
   await pool(
     scan.attachments,
@@ -250,6 +252,10 @@ export async function runImport(
     async (item) => {
       if (quotaHit) {
         report.failures.push({ path: item.path, error: t("web.import.reason.quota") });
+        return;
+      }
+      if (unverified) {
+        report.failures.push({ path: item.path, error: t("web.import.reason.unverified") });
         return;
       }
       const filename = item.path.split("/").pop()!;
@@ -271,6 +277,11 @@ export async function runImport(
         if (!byName.has(filename.toLowerCase())) byName.set(filename.toLowerCase(), ref);
       } catch (err) {
         if (err instanceof ApiError && err.status === 413) quotaHit = true;
+        if (isEmailUnverified(err)) {
+          unverified = true;
+          report.failures.push({ path: item.path, error: t("web.import.reason.unverified") });
+          return;
+        }
         report.failures.push({ path: item.path, error: err instanceof ApiError ? t("web.import.errorStatus", { status: err.status }) : t("web.import.uploadFailed") });
       } finally {
         done++;

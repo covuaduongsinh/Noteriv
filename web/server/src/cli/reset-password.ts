@@ -9,7 +9,8 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../lib/password.js";
 
-const email = process.argv[2]?.trim();
+// Stored in lower case since session 5.2 (routes/auth.ts emailField).
+const email = process.argv[2]?.trim().toLowerCase();
 if (!email) {
   console.error("usage: node dist/cli/reset-password.js <email>   (new password on stdin)");
   process.exit(2);

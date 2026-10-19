@@ -5,6 +5,7 @@ import { createHash, randomBytes } from "node:crypto";
 import TurndownService from "turndown";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { logAudit } from "../lib/auditLog.js";
+import { requireVerifiedEmail } from "../lib/emailGate.js";
 
 // Web clipper: a bookmarklet on any page POSTs the selection/article to /api/v1/clip
 // with a personal clip token. The token is deliberately weak in power: it can only
@@ -42,7 +43,7 @@ export async function clipTokenRoutes(fastify: FastifyInstance) {
     );
   });
 
-  fastify.post("/me/clip-tokens", async (request, reply) => {
+  fastify.post("/me/clip-tokens", { preHandler: requireVerifiedEmail(prisma, "clip_token_create") }, async (request, reply) => {
     const parsed = createTokenSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
     try {

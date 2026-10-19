@@ -1,4 +1,5 @@
 import { randomInt } from "node:crypto";
+import { z } from "zod";
 
 /** Bump when Terms or Privacy change in a way users must re-accept; stored per user at registration. */
 export const TERMS_VERSION = "2026-10-15";
@@ -34,6 +35,12 @@ export function generateInviteCode(length = 10): string {
   for (let i = 0; i < length; i++) out += CODE_ALPHABET[randomInt(CODE_ALPHABET.length)];
   return out;
 }
+
+/**
+ * Emails are stored and matched in lower case (since session 5.2), so "Ana@x.com" and "ana@x.com" are one account.
+ * Every schema that takes an email address uses this.
+ */
+export const emailField = z.string().trim().toLowerCase().pipe(z.string().email());
 
 /** Codes are typed by hand, so tolerate case, spaces and dashes. */
 export function normalizeInviteCode(input: string): string {

@@ -12,8 +12,9 @@ import { hashToken } from "../lib/tokenHash.js";
 import { randomUUID } from "node:crypto";
 import { logAudit } from "../lib/auditLog.js";
 import { Prisma } from "@prisma/client";
-import { isAdminEmail, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
+import { emailField, isAdminEmail, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
 import { emailEnabled } from "../lib/email/send.js";
+import { turnstileEnabled, turnstileSiteKey, verifyTurnstile } from "../lib/turnstile.js";
 import { consumeEmailToken } from "../lib/emailTokens.js";
 import { sendEmailChangedNotice, sendPasswordResetEmail, sendVerificationEmail } from "../lib/accountEmails.js";
 
@@ -21,16 +22,17 @@ import { sendEmailChangedNotice, sendPasswordResetEmail, sendVerificationEmail }
 const localeField = z.enum(["en", "vi"]).optional();
 
 const registerSchema = z.object({
-  email: z.string().email(),
+  email: emailField,
   password: z.string().min(8).max(200),
   displayName: z.string().min(1).max(100),
   inviteCode: z.string().max(64).optional(),
   // The client must send an explicit `true`: agreeing to the Terms is not something to default.
   acceptTerms: z.literal(true),
   locale: localeField,
+  captchaToken: z.string().max(4096).optional(),
 });
 
-const forgotPasswordSchema = z.object({ email: z.string().email(), locale: localeField });
+const forgotPasswordSchema = z.object({ email: emailField, locale: localeField, captchaToken: z.string().max(4096).optional() });
 const tokenField = z.string().min(1).max(200);
 const resetPasswordSchema = z.object({ token: tokenField, password: z.string().min(8).max(200) });
 const verifyEmailSchema = z.object({ token: tokenField });
@@ -39,7 +41,7 @@ const verifyEmailSchema = z.object({ token: tokenField });
 class InviteRejected extends Error {}
 
 const loginSchema = z.object({
-  email: z.string().email(),
+  email: emailField,
   password: z.string().min(1),
 });
 
@@ -89,6 +91,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const mode = registrationMode();
     if (mode === "closed") {
       return reply.code(403).send({ error: "registration_closed" });
+    }
+    // Before anything that reads the database, so a bot learns nothing (not even "email taken") without passing it.
+    if (turnstileEnabled() && !(await verifyTurnstile(parsed.data.captchaToken, request.ip))) {
+      return reply.code(400).send({ error: "captcha_failed" });
     }
 
     const existing = await prisma.user.findUnique({ where: { email } });
@@ -153,10 +159,10 @@ export default async function authRoutes(fastify: FastifyInstance) {
     return reply.code(201).send({ id: user.id, email: user.email, displayName: user.displayName });
   });
 
-  // Public: lets the register page decide whether to show the invite-code field, and the sign-in page whether
-  // "Forgot password?" can work.
+  // Public: lets the register page decide whether to show the invite-code field and the bot check, and the sign-in
+  // page whether "Forgot password?" can work.
   fastify.get("/registration", async (_request, reply) => {
-    return reply.send({ mode: registrationMode(), emailEnabled: emailEnabled() });
+    return reply.send({ mode: registrationMode(), emailEnabled: emailEnabled(), turnstileSiteKey: turnstileSiteKey() });
   });
 
   // Same answer whether or not the address has an account, and the email goes out in the background so the response
@@ -165,6 +171,9 @@ export default async function authRoutes(fastify: FastifyInstance) {
     const parsed = forgotPasswordSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
     if (!emailEnabled()) return reply.code(503).send({ error: "email_disabled" });
+    if (turnstileEnabled() && !(await verifyTurnstile(parsed.data.captchaToken, request.ip))) {
+      return reply.code(400).send({ error: "captcha_failed" });
+    }
 
     const user = await prisma.user.findUnique({ where: { email: parsed.data.email } });
     if (user) {

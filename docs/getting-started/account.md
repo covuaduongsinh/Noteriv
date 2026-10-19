@@ -15,10 +15,21 @@ Until you do, **Account** shows *Your email is not verified yet.* with **Send th
 
 The emails are written in the language of the page you were on when you asked for them.
 
+## Before your email is verified
+
+Until you follow the verification link, a few things that reach outside Noteriv or use a lot of server resources wait:
+
+- adding [attachments](../features/attachments-and-trash.md) (an [import](../features/import-export.md) still brings in the notes; the attachments are listed as not uploaded);
+- adding a [sync connection](../sync/index.md) and anything that talks to GitHub, including **New vault from GitHub…**;
+- creating a [web clipper](../features/web-clipper.md) bookmarklet;
+- **Download PDF** and **Preview PDF** (**Print…** works).
+
+Trying one of them says *Verify your email first*. Everything else — notes, folders, search, plugins, themes — works right away. Your email address is not case-sensitive: `Ana@Example.com` and `ana@example.com` are the same account.
+
 ## Forgot your password
 
 1. On the sign-in page, choose **Forgot password?**.
-2. Enter your account's email and choose **Send link**. The page answers the same way whether or not the address has an account, so it cannot be used to find out who uses Noteriv.
+2. Enter your account's email and choose **Send link** (some servers first show a short bot check). The page answers the same way whether or not the address has an account, so it cannot be used to find out who uses Noteriv.
 3. Open the email **Reset your Noteriv password** and choose **Reset password**.
 4. Enter a new password (at least 8 characters) and choose **Save new password**.
 

@@ -70,6 +70,7 @@ const DATE_TIME: Intl.DateTimeFormatOptions = { dateStyle: "short", timeStyle: "
 function describeError(err: unknown, fallback: string): string {
   if (err instanceof ApiError) {
     const body = err.body as { message?: string; error?: string } | null;
+    if (body?.error === "email_unverified") return t("web.account.verifyFirst");
     if (body?.message) return body.message;
     if (body?.error === "forbidden") return t("web.sync.forbidden");
   }

@@ -7,6 +7,7 @@ import { testGitRemote, getRemoteState } from "../lib/gitSync.js";
 import { webdavTest } from "../lib/webdavSync.js";
 import { syncQueue } from "../lib/syncQueue.js";
 import { logAudit } from "../lib/auditLog.js";
+import { requireVerifiedEmail } from "../lib/emailGate.js";
 import { SCRATCH_ROOT } from "../lib/syncRunner.js";
 import path from "node:path";
 import {
@@ -119,7 +120,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/:vid/sync-connections", async (request, reply) => {
+  fastify.post("/:vid/sync-connections", { preHandler: requireVerifiedEmail(prisma, "sync_connection_create") }, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     const parsed = createSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
@@ -418,7 +419,10 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     throw err;
   }
 
-  fastify.post("/:vid/github/user", async (request, reply) => {
+  // The GitHub helpers call api.github.com with a token the user pastes: the same rule as creating a connection.
+  const githubGuard = { preHandler: requireVerifiedEmail(prisma, "github_api") };
+
+  fastify.post("/:vid/github/user", githubGuard, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     try {
       const token = await resolveGithubToken(vid, request.user!.id, request.body);
@@ -428,7 +432,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/:vid/github/repos", async (request, reply) => {
+  fastify.post("/:vid/github/repos", githubGuard, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     try {
       const token = await resolveGithubToken(vid, request.user!.id, request.body);
@@ -439,7 +443,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/:vid/github/repos/create", async (request, reply) => {
+  fastify.post("/:vid/github/repos/create", githubGuard, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     const body = z
       .object({ name: z.string().regex(/^[A-Za-z0-9_.-]{1,100}$/), private: z.boolean().default(true) })
@@ -455,7 +459,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     }
   });
 
-  fastify.post("/:vid/github/branches", async (request, reply) => {
+  fastify.post("/:vid/github/branches", githubGuard, async (request, reply) => {
     const { vid } = request.params as { vid: string };
     const body = z.object({ fullName: z.string().max(200) }).safeParse(request.body);
     if (!body.success) return reply.code(400).send({ error: "invalid_body" });
