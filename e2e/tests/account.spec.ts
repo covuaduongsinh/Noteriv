@@ -134,8 +134,10 @@ test("the verification link verifies the email, once", async () => {
   await expect(page.getByText(`Signed in as ${firstEmail}`)).toBeVisible();
   await expect(page.getByText("Your email is not verified yet.", { exact: false })).toHaveCount(0);
 
-  // Verified, the same upload goes through.
-  expect((await upload(await firstVaultId())).status()).toBe(201);
+  // Verified, the same upload gets past the check (what storage then says depends on the server: CI has no S3).
+  const after = await upload(await firstVaultId());
+  expect(after.status()).not.toBe(403);
+  expect(await after.text()).not.toContain("email_unverified");
 });
 
 test("the email is matched whatever its capitals", async () => {

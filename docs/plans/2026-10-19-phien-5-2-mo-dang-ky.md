@@ -75,6 +75,14 @@
   - màn hình trang đăng ký có widget: tiếng Anh, tiếng Việt, và tiếng Việt ở bề rộng 390 px (widget cỡ gọn); nút "Sign up" khoá cho tới khi đủ điều kiện;
   - `REGISTRATION_MODE=open`: không có ô mã mời; đăng ký được và vào `/vaults`.
 - **Dọn dẹp:** đã xoá tài khoản thử còn sót trong DB dev.
+- **CI lần đầu (PR #19): job `e2e` hỏng vì hai lỗi, đã sửa:**
+  1. **Test của phiên này:** CI không có S3, nên sau khi xác minh, tải đính kèm trả 500 thay vì 201. Test giờ kiểm "không còn 403 `email_unverified`", không phụ thuộc kho lưu trữ.
+  2. **Lỗi có từ 4.7 (`web/src/components/Ribbon.tsx`):**
+     - menu "More tools" được vẽ một khung hình ở vị trí mặc định (`bottom: 8`, đè lên thanh dưới của điện thoại), rồi một `useEffect` mới đặt lại vị trí;
+     - test điện thoại đo trúng khung hình đó: menu kết thúc ở 836 = 844 − 8;
+     - sửa bằng `useLayoutEffect`: vị trí được tính trước khi trình duyệt vẽ, người dùng cũng không còn thấy menu nháy.
+  - Sau khi sửa: build lại bản production, E2E toàn bộ **ba lần liền 29/29**.
+  - Hai test chập chờn trên CI (đạt khi chạy lại) không liên quan tới phiên này: "reloading restores the open tabs" và "open a vault and two notes while online".
 
 ## Việc của chủ dự án
 
