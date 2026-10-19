@@ -7,6 +7,7 @@ import { limitsOf, usageFor } from "../lib/plans.js";
 import { deleteAccount } from "../lib/accounts.js";
 import { emailEnabled } from "../lib/email/send.js";
 import { sendPasswordResetEmail } from "../lib/accountEmails.js";
+import { usageStats } from "../lib/activity.js";
 
 const USERS_PAGE_SIZE = 50;
 const AUDIT_PAGE_SIZE = 100;
@@ -78,6 +79,11 @@ export default async function adminRoutes(fastify: FastifyInstance) {
       }))
     );
     return reply.send({ users, total, page: query.data.page, pageSize: USERS_PAGE_SIZE });
+  });
+
+  // Counts only (no emails): sign-ups, active accounts and retention from user_activity_days (lib/activity.ts).
+  fastify.get("/stats", async (_request, reply) => {
+    return reply.send(await usageStats(prisma));
   });
 
   fastify.get("/plans", async (_request, reply) => {

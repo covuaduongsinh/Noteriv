@@ -6,6 +6,6 @@ export const OPERATOR_NAME = "Phùng Đức Tường"; // individual operating N
 export const CONTACT_EMAIL = "covuaduongsinh@gmail.com"; // public contact address for privacy / deletion requests
 
 export const TERMS_VERSION = "2026-10-15";
-export const LAST_UPDATED = "2026-10-17";
+export const LAST_UPDATED = "2026-10-19";
 
 export const isDraft = !OPERATOR_NAME || !CONTACT_EMAIL;

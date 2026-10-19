@@ -19,6 +19,10 @@ import { parseCookie } from "cookie";
 import jwt from "jsonwebtoken";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { snapshotBeforeOverwrite } from "../lib/noteSnapshots.js";
+import { captureError, initSentry } from "../lib/sentry.js";
+
+// Uncaught exceptions and unhandled rejections go to Sentry when it is configured (the SDK's default handlers).
+initSentry("collab");
 
 const MESSAGE_SYNC = 0;
 const MESSAGE_AWARENESS = 1;
@@ -138,6 +142,7 @@ async function persistRoom(room: Room): Promise<void> {
     await recomputeBacklinksForNote(prisma, room.vaultId, room.noteId, content);
   } catch (err) {
     console.error(`[collab-server] failed to persist note ${room.noteId}:`, err);
+    captureError(err, { tags: { step: "persist" } });
   }
 }
 

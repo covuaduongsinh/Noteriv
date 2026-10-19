@@ -44,6 +44,7 @@ Production: compose `noteriv-prod`; staging: `noteriv-staging` (**giá trị ri�
 - **GitHub deploy key** của repo `noteriv-backups` (quyền ghi, chỉ repo đó).
 - **healthchecks.io, UptimeRobot:** tài khoản của chủ dự án; bật xác thực hai bước.
 - **Resend** (từ phiên 5.1): tài khoản của chủ dự án, giữ domain gửi thư `noteriv.dsc.edu.vn`; bật xác thực hai bước. Bản key cục bộ: `~/.config/noteriv/resend.key`.
+- **Sentry** (từ phiên 5.5): tài khoản của chủ dự án, vùng dữ liệu EU; bật xác thực hai bước. `SENTRY_DSN` chỉ cho phép *gửi* lỗi vào project (trang web nào cũng thấy nó), không đọc được gì. Lộ DSN thì người khác có thể gửi lỗi giả làm tốn hạn mức: tạo key mới trong Project Settings → Client Keys, đặt env, deploy lại, rồi tắt key cũ. Bản cục bộ: `~/.config/noteriv/sentry.dsn`.
 
 ## 5. Phụ thuộc có cảnh báo `npm audit` chưa vá được (đã chấp nhận, ngày 2026-10-15)
 

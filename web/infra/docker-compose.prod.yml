@@ -89,6 +89,12 @@ services:
       # "Tải PDF" is rendered by the internal noteriv-pdf service (headless Chromium).
       PDF_SERVICE_URL: http://noteriv-pdf:4003
       PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN:?set PDF_SERVICE_TOKEN}
+      # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
+      # Public status page (UptimeRobot) linked in the page footers; unset = no link.
+      STATUS_PAGE_URL: ${STATUS_PAGE_URL:-}
     depends_on:
       noteriv-postgres:
         condition: service_healthy
@@ -114,6 +120,10 @@ services:
       ATTACHMENTS_S3_BUCKET: noteriv-attachments
       ATTACHMENTS_S3_ACCESS_KEY_ID: ${ATTACHMENTS_S3_ACCESS_KEY_ID:-}
       ATTACHMENTS_S3_SECRET_ACCESS_KEY: ${ATTACHMENTS_S3_SECRET_ACCESS_KEY:-}
+      # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
     depends_on:
       noteriv-postgres:
         condition: service_healthy
@@ -197,6 +207,10 @@ services:
       COLLAB_PORT: "4002"
       DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
     depends_on:
       noteriv-postgres:
         condition: service_healthy

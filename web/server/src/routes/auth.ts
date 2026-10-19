@@ -15,6 +15,7 @@ import { Prisma } from "@prisma/client";
 import { emailField, isAdmin, normalizeInviteCode, registrationMode, TERMS_VERSION } from "../lib/registration.js";
 import { emailEnabled } from "../lib/email/send.js";
 import { turnstileEnabled, turnstileSiteKey, verifyTurnstile } from "../lib/turnstile.js";
+import { recordActivity } from "../lib/activity.js";
 import { consumeEmailToken } from "../lib/emailTokens.js";
 import { sendEmailChangedNotice, sendPasswordResetEmail, sendVerificationEmail } from "../lib/accountEmails.js";
 
@@ -77,6 +78,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
 
     reply.setCookie(ACCESS_COOKIE, accessToken, cookieOpts(ACCESS_TOKEN_TTL_SECONDS));
     reply.setCookie(REFRESH_COOKIE, refreshToken, cookieOpts(REFRESH_TOKEN_TTL_SECONDS));
+    // Sign-up, sign-in and every refresh pass here, so this is the "used the app today" mark for the usage stats.
+    await recordActivity(prisma, userId, fastify.log);
   }
 
   const bruteForceGuard = { config: { rateLimit: { max: 10, timeWindow: "1 minute" } } };

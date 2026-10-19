@@ -11,6 +11,7 @@
  */
 
 import type { Locale } from "@noteriv/ui/i18n";
+import { setReportingUser } from "./error-reporting";
 
 export interface ApiUser {
   id: string;
@@ -35,6 +36,14 @@ export interface ApiInvite {
   revokedAt: string | null;
   createdAt: string;
   status: "active" | "used_up" | "expired" | "revoked";
+}
+
+/** Usage counts for the admin Stats tab (web/server/src/lib/activity.ts). Retention is a share 0..1, null until known. */
+export interface ApiUsageStats {
+  users: { total: number; verified: number; locked: number; new7: number; new30: number };
+  active: { day1: number; day7: number; day30: number };
+  content: { vaults: number; notes: number; attachmentBytes: number };
+  weeks: { week: string; signups: number; active: number; retentionWeek1: number | null; retentionWeek4: number | null }[];
 }
 
 /** A row of the admin users list (web/server/src/routes/admin.ts). */
@@ -466,8 +475,13 @@ export const webApi = {
       request<{ ok: true; purpose: "verify_email" | "change_email" }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
     login: (data: { email: string; password: string }) =>
       request<ApiUser>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
-    logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
-    me: () => request<ApiUser>("/auth/me"),
+    logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }).finally(() => setReportingUser(null)),
+    // Error reports name the signed-in account by id only (lib/error-reporting.ts).
+    me: () =>
+      request<ApiUser>("/auth/me").then((u) => {
+        setReportingUser(u.id);
+        return u;
+      }),
   },
 
   vaults: {
@@ -712,6 +726,7 @@ export const webApi = {
       remove: (id: string) => request<{ ok: true }>(`/admin/users/${id}`, { method: "DELETE" }),
     },
     plans: () => request<{ id: string; name: string }[]>("/admin/plans"),
+    stats: () => request<ApiUsageStats>("/admin/stats"),
     audit: (filter: { action?: string; email?: string; before?: string }) =>
       request<{ entries: ApiAuditEntry[]; next: string | null }>(
         `/admin/audit?${new URLSearchParams(Object.entries(filter).filter((e): e is [string, string] => !!e[1]))}`

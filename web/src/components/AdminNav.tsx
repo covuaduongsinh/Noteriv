@@ -8,9 +8,10 @@ const TABS = [
   { href: "/admin", key: "users" },
   { href: "/admin/invites", key: "invites" },
   { href: "/admin/audit", key: "audit" },
+  { href: "/admin/stats", key: "stats" },
 ] as const;
 
-/** Title, way back and tabs shared by the admin pages (users, invite codes, audit log). */
+/** Title, way back and tabs shared by the admin pages (users, invite codes, audit log, usage stats). */
 export default function AdminNav({ active }: { active: (typeof TABS)[number]["key"] }) {
   useLocale();
   return (

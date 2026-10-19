@@ -82,3 +82,24 @@
 - Kết nối cộng tác **đang mở** của người bị khoá chỉ đứt khi token hết hạn (tối đa 15 phút), vì collab-server là tiến trình riêng.
 - Audit của một admin đã bị xoá hiện người thực hiện là "—", vì khoá ngoại `SetNull`.
 - Phân trang nhật ký theo thời gian: hai dòng cùng một mili-giây ở ranh giới trang có thể bị bỏ sót. Chấp nhận được với một trang tra cứu.
+
+## Lên production (2026-10-19)
+
+- **CI của PR #21:** xanh cả 4 job ngay lần đầu.
+- **Staging:**
+  - gộp vào `next`, deploy `done`, `prisma migrate deploy`;
+  - `/`, `/login`, `/admin`, `/admin/audit`, `/api/v1/healthz` trả 200;
+  - API admin khi chưa đăng nhập trả 401.
+  - Khi quay lại nhánh có gặp một file `index.lock` sót lại; file tự mất, không có tiến trình git nào đang chạy.
+- **Production:**
+  1. Sao lưu tay: `/root/noteriv-manual-backups/pre-5-4-20261019T070530Z.dump` trên VPS.
+  2. Áp `migration.sql` bằng `psql -1` (`CREATE TYPE`, `ALTER TABLE`, `CREATE INDEX`). Đếm: 1 người dùng vai trò `user`; vẫn là admin nhờ `ADMIN_EMAILS`.
+  3. Gộp PR #21 (merge `dae66bb`); deploy `done` (07:05 → 07:15 UTC).
+  4. `prisma migrate resolve --applied 20261019180000_admin`; `migrate status` báo up to date.
+  5. Kiểm: 9 container chạy; `/`, `/login`, `/admin`, `/admin/audit`, `/api/v1/healthz` trả 200; API admin khi chưa đăng nhập trả 401.
+- `next` đặt bằng `main` (cây mã trùng nhau); chờ staging deploy xong rồi `compose.stop`.
+- **Lần deploy staging theo `main` (07:15) báo `error`:**
+  - lỗi ở `next build` trong Docker: `Cannot find module '../lightningcss.linux-x64-musl.node'`, tức gói native tuỳ chọn không được tải về khi `npm install`;
+  - cùng cây mã đã build thành công ở production (07:05–07:15) và ở staging trước đó (06:45), nên đây là lỗi tải gói chập chờn, không phải lỗi mã;
+  - staging vẫn đã `compose.stop` (0 container); production 9 container;
+  - lần push `next` sau sẽ build lại. Nếu lỗi lặp lại, xem bước cài `lightningcss` / optional deps trong `web/Dockerfile`.
