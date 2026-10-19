@@ -65,3 +65,18 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.
 - Trang `/terms` và `/privacy` hiện nhãn **Bản nháp** cho tới khi điền `OPERATOR_NAME` và `CONTACT_EMAIL` trong `web/src/lib/legal.ts`.
 - Migration `20261015120000_invite_codes` (đã áp dụng ở production ngày 2026-10-15). **Quy tắc rút ra:** khi migration chỉ *thêm* bảng/cột nullable mà mã mới đọc cột đó ở mọi truy vấn (ở đây là `users`), áp migration **trước** khi deploy (sao lưu thủ công, rồi `psql -1` file `migration.sql` vào Postgres), deploy, rồi `prisma migrate resolve --applied <tên>` để Prisma ghi nhận. Nếu làm ngược lại, đăng nhập lỗi cho tới khi migration chạy. Staging thì chạy `migrate deploy` bình thường.
+
+## 8. Email tài khoản (từ Phiên 5.1)
+
+- Thư xác minh email, đặt lại mật khẩu và xác nhận đổi email gửi qua **Resend** từ `no-reply@noteriv.dsc.edu.vn`. Mã: `web/server/src/lib/email/` (gửi, mẫu thư en/vi), `lib/emailTokens.ts` (token một lần), `lib/accountEmails.ts`.
+- Biến của `noteriv-api` (đặt trong env compose Dokploy):
+  - `EMAIL_PROVIDER`: `resend` để bật; `file` (ghi thư ra `EMAIL_OUTBOX_DIR`, chỉ dùng cho dev/E2E); rỗng = **tắt** (giao diện ẩn "Forgot password?", trang Quên mật khẩu báo chưa có).
+  - `RESEND_API_KEY`: bí mật (xem `bi-mat.md`). Thiếu key thì coi như tắt.
+  - `EMAIL_FROM`: mặc định `Noteriv <no-reply@noteriv.dsc.edu.vn>`. Đổi khi đổi tên miền ở Chặng 6 (thêm domain mới vào Resend trước).
+  - `APP_ORIGIN`: gốc của liên kết trong thư; compose đặt bằng `PUBLIC_ORIGIN`, nên staging tự trỏ về staging.
+- **DNS:** domain `noteriv.dsc.edu.vn` phải được Resend xác minh (các bản ghi SPF, DKIM, MX mà Resend đưa ra trong mục Domains). Chưa xác minh thì Resend trả lỗi 403 và log API có dòng `email not sent` (không có nội dung thư).
+- **Thử nhanh** (staging): bấm **Forgot password?** với email của mình, xem thư tới; hoặc đăng ký tài khoản thử và xem thư xác minh.
+- **Hạn và giới hạn:** liên kết xác minh và đổi email 24 giờ, đặt lại mật khẩu 1 giờ, mỗi liên kết dùng một lần; mỗi người một thư mỗi loại mỗi phút; `forgot-password` 5 lần/phút/IP. Đổi mật khẩu hay đổi email thì mọi phiên bị thu hồi (token truy cập cũ còn sống tối đa 15 phút).
+- **Khi email hỏng hoặc người dùng không nhận được thư:** vẫn đặt lại mật khẩu bằng CLI như cũ (đầu file `web/server/src/cli/reset-password.ts`).
+- Migration `20261019120000_email_accounts` thêm cột `users.email_verified_at` (tài khoản có sẵn được ghi là đã xác minh) và bảng `email_tokens`. Như mục 7: áp **trước** khi deploy ở production.
+- Dev/E2E: chạy API với `EMAIL_PROVIDER=file`; thư nằm ở `web/server/.email-outbox/` (đã gitignore), `e2e/tests/account.spec.ts` đọc liên kết từ đó.

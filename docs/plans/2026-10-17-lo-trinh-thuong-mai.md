@@ -57,7 +57,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | **1** | Hợp nhất nhánh về `main` | [chang-1](2026-10-17-chang-1-hop-nhat-nhanh.md) | 1–2 buổi | Production có core plugin, mở nhanh hơn |
 | **2** | Định vị lại, gỡ dấu vết cờ khỏi lõi | [chang-2](2026-10-17-chang-2-dinh-vi-lai.md) | 1–2 buổi | README/điều khoản trung lập |
 | **3** | Rà soát chất lượng và hoàn thiện | [chang-3](2026-10-17-chang-3-ra-soat-hoan-thien.md) | 3–5 buổi | Ít lỗi hơn, không mất dữ liệu khi xung đột đồng bộ |
-| **4** | Quốc tế hoá, người mới, di động (PWA) | [chang-4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) | 3–5 buổi | Giao diện tiếng Anh/Việt, vault mẫu, cài lên điện thoại |
+| **4** | Quốc tế hoá, người mới, di động (PWA) — **xong 2026-10-19** | [chang-4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) | 9 phiên | Giao diện tiếng Anh/Việt, vault mẫu, cài lên điện thoại, Ghi nhanh, offline, không ghi đè khi sửa hai nơi, tài liệu tiếng Anh |
 | **5** | Nền tảng thương mại | [chang-5](2026-10-17-chang-5-nen-tang-thuong-mai.md) | 4–6 buổi | Tự đăng ký, quên mật khẩu, gói và hạn mức |
 | **6** | Thương hiệu, hạ tầng riêng, ra mắt | [chang-6](2026-10-17-chang-6-thuong-hieu-ra-mat.md) | 3–5 buổi + liên tục | Tên mới, trang giới thiệu, trang giá |
 
@@ -109,8 +109,8 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | 1 Hợp nhất nhánh | Xong | 2026-10-17 | Production chạy Giai đoạn 1–2, tag `v-core-plugins-2026-10-17`; nhánh đã dọn, `next` = `main` |
 | 2 Định vị lại | Xong | 2026-10-17 | PR #3 (`e8c1f7d`): README tiếng Anh, `/privacy` trung lập, `NOTICE.md`, xoá `phone/`, ẩn "cỡ bàn cờ"; bản ghi `2026-10-17-phien-chang-2.md` |
 | 3 Rà soát, hoàn thiện | Xong | 2026-10-17 | PR #4–#8 (merge cuối `e7af3dc`): sync không mất dữ liệu, xung đột, bảo mật, E2E trong CI, CSP desktop, `docs/qa/checklist.md` |
-| 4 Quốc tế hoá, người mới | Đang làm | 2026-10-18 | 4.1 hạ tầng i18n xong ([bản ghi](2026-10-18-phien-4-1-i18n.md)) |
-| 5 Nền tảng thương mại | Chưa làm | | |
+| 4 Quốc tế hoá, người mới | Xong | 2026-10-19 | PR #9–#17 (merge cuối `b059018`): i18n en/vi, vault mẫu, PWA, offline, chống ghi đè, tài liệu tiếng Anh; bản ghi cuối `2026-10-19-phien-4-9-tai-lieu.md` |
+| 5 Nền tảng thương mại | Đang làm | 2026-10-19 | 5.1 email và tài khoản ([bản ghi](2026-10-19-phien-5-1-email.md)) |
 | 6 Thương hiệu, ra mắt | Chưa làm | | |
 
 ## 8. Giải thích thuật ngữ

@@ -10,11 +10,15 @@
  * gets added once enough surface area exists (Phase 2+).
  */
 
+import type { Locale } from "@noteriv/ui/i18n";
+
 export interface ApiUser {
   id: string;
   email: string;
   displayName: string;
   avatarUrl?: string | null;
+  /** Only set by /auth/me: true once the user followed a link sent to `email`. */
+  emailVerified?: boolean;
   /** Only set by /auth/me: true when the email is in the server's ADMIN_EMAILS list. */
   isAdmin?: boolean;
 }
@@ -271,6 +275,14 @@ class ApiError extends Error {
   }
 }
 
+/** The `error` code of a failed API call (e.g. "email_taken"), or null. */
+export function apiErrorCode(err: unknown): string | null {
+  if (err instanceof ApiError && err.body && typeof err.body === "object" && "error" in err.body) {
+    return String((err.body as { error: unknown }).error);
+  }
+  return null;
+}
+
 // The access token (15min TTL, see server/src/lib/jwt.ts) expires mid-session
 // on any long-lived tab. A single in-flight refresh is shared across
 // concurrent 401s so a burst of requests doesn't each race their own
@@ -392,9 +404,17 @@ function syncListShared(vaultId: string): Promise<ApiSyncConnection[]> {
 
 export const webApi = {
   auth: {
-    register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true }) =>
+    register: (data: { email: string; password: string; displayName: string; inviteCode?: string; acceptTerms: true; locale?: Locale }) =>
       request<ApiUser>("/auth/register", { method: "POST", body: JSON.stringify(data) }),
-    registration: () => request<{ mode: RegistrationMode }>("/auth/registration"),
+    registration: () => request<{ mode: RegistrationMode; emailEnabled?: boolean }>("/auth/registration"),
+    /** Always answers ok for a well-formed address, whether or not it has an account. */
+    forgotPassword: (data: { email: string; locale?: Locale }) =>
+      request<{ ok: true }>("/auth/forgot-password", { method: "POST", body: JSON.stringify(data) }),
+    resetPassword: (data: { token: string; password: string }) =>
+      request<{ ok: true }>("/auth/reset-password", { method: "POST", body: JSON.stringify(data) }),
+    /** Verifies the sign-up address or confirms a new one, whichever link the token came from. */
+    verifyEmail: (token: string) =>
+      request<{ ok: true; purpose: "verify_email" | "change_email" }>("/auth/verify-email", { method: "POST", body: JSON.stringify({ token }) }),
     login: (data: { email: string; password: string }) =>
       request<ApiUser>("/auth/login", { method: "POST", body: JSON.stringify(data) }),
     logout: () => request<{ ok: true }>("/auth/logout", { method: "POST" }),
@@ -476,6 +496,11 @@ export const webApi = {
   users: {
     exportData: () => request<Record<string, unknown>>("/users/me/export"),
     deleteAccount: () => request<{ ok: true }>("/users/me", { method: "DELETE" }),
+    resendVerification: (locale?: Locale) =>
+      request<{ ok: true; alreadyVerified?: boolean }>("/users/me/verification-email", { method: "POST", body: JSON.stringify({ locale }) }),
+    /** Sends a confirmation link to `newEmail`; the address changes once it is followed. */
+    changeEmail: (data: { newEmail: string; password: string; locale?: Locale }) =>
+      request<{ ok: true }>("/users/me/email", { method: "POST", body: JSON.stringify(data) }),
   },
 
   workspace: {

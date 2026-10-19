@@ -83,3 +83,14 @@ Nguyên tắc khi viết:
 
 - Hướng dẫn tự host bằng tiếng Anh (hiện chỉ có `docs/ops/` tiếng Việt).
 - Các tính năng ở mục "Chưa có trên web" phía trên.
+
+## Lên production (2026-10-19)
+
+- Không có migration. CI của PR #17 xanh cả 4 job. Staging: `/`, `/login`, `/vaults`, `/api/v1/healthz` trả 200.
+- Gộp PR #17 (merge `b059018`), deploy production `done`; các đường dẫn trên trả 200; 9 container chạy.
+- `next` đưa về `main`, chờ staging deploy xong rồi `compose.stop`.
+- **Chặng 4 xong.** Còn treo:
+  - thử cài PWA trên Android/iOS thật (việc của chủ dự án);
+  - smoke desktop của 4.8 và 4.9 chưa chạy vì máy thiếu bộ nhớ.
+
+  Nên chạy `CARGO_BUILD_JOBS=2 npx tauri build --no-bundle` rồi `node e2e/desktop/smoke.mjs` ở đầu phiên kế tiếp, khi máy rảnh.

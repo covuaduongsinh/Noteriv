@@ -1,6 +1,6 @@
 # Chặng 5: Nền tảng thương mại
 
-> Ngày lập: 2026-10-17 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (5.1 từ 2026-10-19) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 3 xong (nhất là 3.5 xung đột đồng bộ). Nên xong Chặng 4 (email, trang tài khoản cần đa ngôn ngữ).
 
@@ -74,7 +74,7 @@
 
 | Phiên | Trạng thái | Ngày | Commit / ghi chú |
 |---|---|---|---|
-| 5.1 Email và tài khoản | Chưa làm | | |
+| 5.1 Email và tài khoản | Xong, chờ lên production | 2026-10-19 | Nhánh `covuaduongsinh/chang5-email`; Resend, xác minh, quên mật khẩu, đổi email; [bản ghi](2026-10-19-phien-5-1-email.md). Gửi thư thật chờ chủ dự án tạo domain Resend |
 | 5.2 Mở đăng ký | Chưa làm | | |
 | 5.3 Gói và hạn mức | Chưa làm | | |
 | 5.4 Trang quản trị | Chưa làm | | |

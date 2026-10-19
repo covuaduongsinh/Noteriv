@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { ApiError, webApi, type ApiVault } from "@/lib/webApi";
+import { ApiError, webApi, type ApiUser, type ApiVault } from "@/lib/webApi";
+import AccountEmail from "@/components/AccountEmail";
 import { clearCachedPages } from "@/components/ServiceWorkerRegister";
 import { isNetworkError } from "@/lib/offline";
 import { claimOfflineData, clearOfflineData, kvGet, kvSet, pendingEdits } from "@/lib/offline-store";
@@ -20,7 +21,7 @@ export default function VaultsPage() {
   const [creating, setCreating] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
-  const [isAdmin, setIsAdmin] = useState(false);
+  const [me, setMe] = useState<ApiUser | null>(null);
   const [unreachable, setUnreachable] = useState(false);
   /** Edits kept on this device that signing out would lose; set when the first click on Sign out found some. */
   const [unsentEdits, setUnsentEdits] = useState(0);
@@ -48,7 +49,7 @@ export default function VaultsPage() {
     webApi.auth
       .me()
       .then((u) => {
-        setIsAdmin(!!u.isAdmin);
+        setMe(u);
         void claimOfflineData(u.id);
       })
       .catch(() => undefined);
@@ -175,7 +176,8 @@ export default function VaultsPage() {
 
       <div className="w-full max-w-md flex flex-col gap-2 mt-8 pt-6 border-t border-[var(--border)]">
         <h2 className="text-sm font-medium text-[var(--text-secondary)]">{t("web.vaultList.account")}</h2>
-        {isAdmin && (
+        {me && <AccountEmail user={me} />}
+        {me?.isAdmin && (
           <Link
             href="/admin/invites"
             className="px-3 py-2 rounded-lg text-sm text-[var(--accent)] hover:bg-[var(--bg-secondary)]"

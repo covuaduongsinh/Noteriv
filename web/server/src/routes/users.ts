@@ -2,6 +2,19 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
 import { deleteObjectsBestEffort } from "../lib/attachments.js";
+import { verifyPassword } from "../lib/password.js";
+import { sendEmailChangeConfirmation, sendVerificationEmail, type SendResult } from "../lib/accountEmails.js";
+
+const localeField = z.enum(["en", "vi"]).optional();
+const resendVerificationSchema = z.object({ locale: localeField });
+const changeEmailSchema = z.object({ newEmail: z.string().email(), password: z.string().min(1), locale: localeField });
+
+/** How a send that the user asked for directly is answered; "sent" is the only 200. */
+function sendFailure(result: Exclude<SendResult, "sent">): { code: number; error: string } {
+  if (result === "throttled") return { code: 429, error: "throttled" };
+  if (result === "disabled") return { code: 503, error: "email_disabled" };
+  return { code: 502, error: "email_failed" };
+}
 
 const ACCESS_COOKIE = "noteriv_access";
 const REFRESH_COOKIE = "noteriv_refresh";
@@ -122,6 +135,49 @@ export default async function userRoutes(fastify: FastifyInstance) {
     logAudit(prisma, { userId, action: "account_deleted", metadata: { attachmentFiles: keys.length, attachmentFilesFailed: failed }, ip: request.ip });
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
+    return reply.send({ ok: true });
+  });
+
+  fastify.post("/me/verification-email", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const parsed = resendVerificationSchema.safeParse(request.body ?? {});
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
+    if (!user) return reply.code(404).send({ error: "not_found" });
+    if (user.emailVerifiedAt) return reply.send({ ok: true, alreadyVerified: true });
+
+    const result = await sendVerificationEmail(prisma, request.log, user, parsed.data.locale);
+    if (result !== "sent") {
+      const { code, error } = sendFailure(result);
+      return reply.code(code).send({ error });
+    }
+    logAudit(prisma, { userId: user.id, action: "email_verification_sent", ip: request.ip });
+    return reply.send({ ok: true });
+  });
+
+  // The address only changes when the link sent to the new one is followed (POST /auth/verify-email). The current
+  // password is asked so a session left open on a shared computer cannot hand the account to someone else.
+  fastify.post("/me/email", { config: { rateLimit: { max: 5, timeWindow: "1 minute" } } }, async (request, reply) => {
+    const parsed = changeEmailSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    const { newEmail, password, locale } = parsed.data;
+
+    const user = await prisma.user.findUnique({ where: { id: request.user!.id } });
+    if (!user) return reply.code(404).send({ error: "not_found" });
+    if (!user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      logAudit(prisma, { userId: user.id, action: "email_change_rejected", metadata: { reason: "wrong_password" }, ip: request.ip });
+      return reply.code(403).send({ error: "wrong_password" });
+    }
+    if (newEmail === user.email) return reply.code(400).send({ error: "same_email" });
+    if (await prisma.user.findUnique({ where: { email: newEmail }, select: { id: true } })) {
+      return reply.code(409).send({ error: "email_taken" });
+    }
+
+    const result = await sendEmailChangeConfirmation(prisma, request.log, user, newEmail, locale);
+    if (result !== "sent") {
+      const { code, error } = sendFailure(result);
+      return reply.code(code).send({ error });
+    }
+    logAudit(prisma, { userId: user.id, action: "email_change_requested", ip: request.ip });
     return reply.send({ ok: true });
   });
 

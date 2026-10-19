@@ -13,7 +13,7 @@ These pages describe the **web app**. Where the [desktop app](desktop.md) behave
 
 | Section | What it covers |
 |---|---|
-| [Getting started](getting-started/index.md) | Signing up, installing on a phone or computer, your first vault, the interface, keyboard shortcuts |
+| [Getting started](getting-started/index.md) | Signing up, installing on a phone or computer, your first vault, the interface, keyboard shortcuts, your account (email, password) |
 | [Editor](editor/index.md) | Live, Source and View modes, split editor, focus and zen modes, Vim mode, the formatting toolbar |
 | [Features](features/index.md) | Links, tags, search, templates, daily notes, bookmarks, core plugins, offline use, conflicts, import and export, the web clipper and more |
 | [Views](views/index.md) | Graph, calendar, Kanban board, slides, canvas, drawing and the PDF viewer |

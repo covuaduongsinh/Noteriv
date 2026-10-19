@@ -72,6 +72,12 @@ services:
       # Signups: invite (default) | open | closed. ADMIN_EMAILS may manage invite codes.
       REGISTRATION_MODE: ${REGISTRATION_MODE:-invite}
       ADMIN_EMAILS: ${ADMIN_EMAILS:-}
+      # Account emails (verification, password reset, email change). EMAIL_PROVIDER=resend with RESEND_API_KEY
+      # turns them on; unset = off, and the web app hides "Forgot password?". Links point at APP_ORIGIN.
+      EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+      RESEND_API_KEY: ${RESEND_API_KEY:-}
+      EMAIL_FROM: ${EMAIL_FROM:-Noteriv <no-reply@noteriv.dsc.edu.vn>}
+      APP_ORIGIN: ${PUBLIC_ORIGIN:-https://noteriv.dsc.edu.vn}
       ATTACHMENTS_S3_ENDPOINT: http://noteriv-garage:3900
       ATTACHMENTS_S3_REGION: garage
       ATTACHMENTS_S3_BUCKET: noteriv-attachments

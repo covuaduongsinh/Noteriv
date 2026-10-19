@@ -19,7 +19,7 @@ Noteriv is a Markdown note-taking app that runs in your browser and installs on 
 
 ### Your account
 
-You sign in to Noteriv with an email address and password. While Noteriv is in its trial phase, signing up needs an invite code. Your vaults belong to your account, so they are there on every device you sign in from.
+You sign in to Noteriv with an email address and password. While Noteriv is in its trial phase, signing up needs an invite code. Your vaults belong to your account, so they are there on every device you sign in from. Verifying your email, resetting a forgotten password and changing your email are covered in [Your account](account.md).
 
 ### Vaults
 
@@ -50,5 +50,6 @@ Sync is optional. On the web your notes are already stored with your account; sy
 - **[Signing up and installing](installation.md)** — create your account and put Noteriv on your phone or computer.
 - **[Quickstart](quickstart.md)** — your first notes in five minutes.
 - **[Vaults](vaults.md)** — creating, importing, exporting and deleting vaults.
+- **[Your account](account.md)** — verifying your email, a forgotten password, changing your email, downloading your data.
 - **[Interface](interface.md)** — the parts of the screen.
 - **[Keyboard shortcuts](keyboard-shortcuts.md)** — every default shortcut.

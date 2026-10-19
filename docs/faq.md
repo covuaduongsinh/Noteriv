@@ -13,6 +13,10 @@ A Markdown note-taking app that runs in your browser, installs on your phone or 
 
 Noteriv is in a trial phase: sign-up needs an invite code. With one, choose **Sign up** on the sign-in page. See [Signing up and installing](getting-started/installation.md).
 
+## I forgot my password
+
+Choose **Forgot password?** on the sign-in page and follow the link we email you. See [Your account](getting-started/account.md#forgot-your-password).
+
 ## Where are my notes stored?
 
 On the web, in your account on the Noteriv server: each note is a Markdown text, attachments are stored as files. Vaults you open on a device are also kept on that device for [offline use](features/offline.md). In the [desktop app](desktop.md), a vault is a folder on your computer.

@@ -18,6 +18,7 @@ Production: compose `noteriv-prod`; staging: `noteriv-staging` (**giá trị ri�
 | `BACKUP_DEPLOY_KEY_B64` | backup (đẩy vào repo `noteriv-backups`) | Tạo lại | Xem mục 6 của `sao-luu-khoi-phuc.md` |
 | `BACKUP_HEALTHCHECK_URL` | backup (ping healthchecks.io) | Tạo lại check | Lộ = ai đó gửi được tín hiệu "ổn" giả; tạo URL mới trên healthchecks.io |
 | `REGISTRATION_MODE`, `ADMIN_EMAILS` | api | — | Không phải bí mật nhưng quyết định ai đăng ký/quản trị được; chỉ sửa trong Dokploy |
+| `RESEND_API_KEY` (từ phiên 5.1) | api (gửi thư tài khoản qua Resend) | Không mất dữ liệu; thư ngừng gửi (quên mật khẩu, xác minh) cho tới khi có key mới | Lộ = người khác gửi thư dưới tên miền của mình. Tạo key mới (quyền *Sending access*) trên resend.com, đưa vào env, deploy lại, rồi xoá key cũ |
 
 ## 2. Bí mật của chủ dự án (nằm trên máy cá nhân, `~/.config/noteriv/`)
 
@@ -41,6 +42,7 @@ Production: compose `noteriv-prod`; staging: `noteriv-staging` (**giá trị ri�
 - **GitHub:** hai webhook của repo `Noteriv` có URL chứa token deploy của Dokploy (production và staging). Lộ = ai đó kích deploy được. Đổi bằng cách tạo lại token compose trong Dokploy rồi cập nhật webhook.
 - **GitHub deploy key** của repo `noteriv-backups` (quyền ghi, chỉ repo đó).
 - **healthchecks.io, UptimeRobot:** tài khoản của chủ dự án; bật xác thực hai bước.
+- **Resend** (từ phiên 5.1): tài khoản của chủ dự án, giữ domain gửi thư `noteriv.dsc.edu.vn`; bật xác thực hai bước. Bản key cục bộ: `~/.config/noteriv/resend.key`.
 
 ## 5. Phụ thuộc có cảnh báo `npm audit` chưa vá được (đã chấp nhận, ngày 2026-10-15)
 

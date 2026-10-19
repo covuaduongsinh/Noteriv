@@ -15,6 +15,8 @@ Noteriv runs in any modern browser — Chrome, Edge, Firefox or Safari, on a com
 
 Your account opens on **Your vaults**, with a **Getting started** vault already there. The [quickstart](quickstart.md) takes it from here.
 
+Noteriv also emails you a link to verify your address. If you forget your password later, **Forgot password?** on the sign-in page sends a reset link. See [Your account](account.md).
+
 The sign-in and sign-up pages offer **English · Tiếng Việt** at the bottom; the language you choose there becomes your account's language. See [Language](../features/language.md).
 
 ## Install it like an app
