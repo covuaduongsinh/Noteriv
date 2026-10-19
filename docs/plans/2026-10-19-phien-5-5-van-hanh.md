@@ -106,3 +106,31 @@
   - Người dùng thật không bị ảnh hưởng: ở production mỗi IP thật có bucket riêng (`trustProxy`).
 - **CI lần hai:** vẫn 429, lần này ở `ops.spec.ts`. Cả bộ 46 test chạy từ một IP trong khoảng 2,5 phút, vượt 300/phút. Đây là giới hạn của môi trường test.
   - Sửa: thêm env `RATE_LIMIT_PER_MINUTE` (mặc định 300, production giữ nguyên); job e2e của CI đặt 3000.
+
+## Lên production (2026-10-19)
+
+- **CI của PR #22:**
+  - lần 1 và lần 2 hỏng ở job e2e vì 429 (xem hai mục "CI lần đầu" và "CI lần hai" ở trên);
+  - lần 3 xanh cả 4 job.
+- **Staging:**
+  - gộp `next` bằng nhánh tạm; deploy `done`;
+  - `prisma migrate deploy` (bảng mới có 3 dòng từ dữ liệu cũ);
+  - `/`, `/login`, `/admin/stats`, `/privacy`, `/api/v1/config`, `/api/v1/healthz` trả 200;
+  - API admin khi chưa đăng nhập trả 401; tunnel trả 404 (chưa có DSN).
+- **Production:**
+  1. Sao lưu tay: `/root/noteriv-manual-backups/pre-5-5-20261019T101626Z.dump` trên VPS; `pg_restore -l` đọc được 21 bảng có dữ liệu.
+  2. Áp `migration.sql` bằng `psql -1` (`CREATE TABLE`, `CREATE INDEX`, `ALTER TABLE`, `INSERT 0 3`).
+  3. Gộp PR #22 (merge `08d8e54`); deploy `done`.
+  4. `prisma migrate resolve --applied 20261019200000_activity`; `migrate status` báo up to date.
+  5. Kiểm:
+     - 9 container chạy;
+     - `/`, `/login`, `/admin/stats`, `/privacy`, `/api/v1/config`, `/api/v1/healthz` trả 200;
+     - `/api/v1/config` trả `errorReporting: null`, `statusPageUrl: null`;
+     - stats khi chưa đăng nhập trả 401; tunnel trả 404;
+     - RAM: api 67 MB / 256, worker 47 / 384, collab 34 / 256;
+     - `user_activity_days` có 3 dòng.
+- `next` gộp `main` (cây mã trùng `main`, push thường, không force); chờ staging deploy xong rồi `compose.stop`.
+- **Còn chờ chủ dự án** (`docs/ops/giam-sat.md` mục 6–7):
+  - tạo Sentry ở vùng EU, lưu DSN vào `~/.config/noteriv/sentry.dsn`;
+  - tạo status page trên UptimeRobot và gửi link.
+  - Khi có, một phiên sẽ hỏi trước rồi đặt `SENTRY_DSN` / `STATUS_PAGE_URL` trong Dokploy và deploy lại.
