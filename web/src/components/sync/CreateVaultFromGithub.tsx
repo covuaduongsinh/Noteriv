@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { webApi } from "@/lib/webApi";
+import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { GithubWizard } from "@/components/sync/SyncSection";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
@@ -21,7 +22,7 @@ export default function CreateVaultFromGithub({
 }) {
   useLocale();
   const [vaultId, setVaultId] = useState<string | null>(null);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<React.ReactNode>("");
   const finishedRef = useRef(false);
   const vaultRef = useRef<string | null>(null);
 
@@ -37,7 +38,7 @@ export default function CreateVaultFromGithub({
         vaultRef.current = v.id;
         setVaultId(v.id);
       })
-      .catch(() => setError(t("web.newVaultGithub.createFailed")));
+      .catch((err) => setError(planLimitNotice(err) ?? t("web.newVaultGithub.createFailed")));
     return () => {
       cancelled = true;
       // Wizard abandoned before a repo was connected: don't leave an empty vault behind.

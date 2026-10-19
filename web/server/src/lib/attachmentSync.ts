@@ -12,7 +12,8 @@ import { createHash } from "node:crypto";
 import { pipeline } from "node:stream/promises";
 import type { Readable } from "node:stream";
 import path from "node:path";
-import { getObjectStream, putObject, makeStorageKey, getVaultUsage, ATTACHMENT_QUOTA_BYTES } from "./attachments.js";
+import { getObjectStream, putObject, makeStorageKey } from "./attachments.js";
+import { limitsOf, ownerOfVault, planForUser, usageFor } from "./plans.js";
 import { isAssetFile, MAX_ASSET_BYTES } from "./attachmentLinks.js";
 
 /** What went wrong with attachments during one sync; the note sync itself carries on. */
@@ -146,7 +147,10 @@ export async function importAttachmentsFromDir(
   const bySyncPath = new Map(existing.filter((a) => a.syncPath).map((a) => [a.syncPath!.toLowerCase(), a]));
   const unplaced = existing.filter((a) => !a.syncPath);
   const idByPath = new Map<string, string>();
-  let used = await getVaultUsage(prisma, vaultId);
+  // The vault owner's whole-account storage against their plan; Infinity when the plan sets no limit.
+  const owner = await ownerOfVault(prisma, vaultId);
+  let used = owner ? (await usageFor(prisma, owner)).attachmentBytes : 0;
+  const quota = (owner ? limitsOf(await planForUser(prisma, owner)).attachmentBytes : null) ?? Infinity;
 
   for (const f of found) {
     const key = f.rel.toLowerCase();
@@ -156,7 +160,7 @@ export async function importAttachmentsFromDir(
       const exported = exportedHashes?.get(key);
       if (exported && !storageDown) {
         const bytes = await readFile(f.full);
-        if (sha256(bytes) !== exported && used - known.size + f.size <= ATTACHMENT_QUOTA_BYTES) {
+        if (sha256(bytes) !== exported && used - known.size + f.size <= quota) {
           try {
             await putObject(known.storageKey, bytes, known.mimeType);
             await prisma.attachment.update({ where: { id: known.id }, data: { size: f.size } });
@@ -181,7 +185,7 @@ export async function importAttachmentsFromDir(
       idByPath.set(key, a.id);
       continue;
     }
-    if (used + f.size > ATTACHMENT_QUOTA_BYTES) continue; // over quota: leave the file in the repo, don't fail the sync
+    if (used + f.size > quota) continue; // over quota: leave the file in the repo, don't fail the sync
     const ext = filename.split(".").pop()?.toLowerCase() ?? "";
     const mimeType = MIME_BY_EXT[ext] ?? "application/octet-stream";
     if (storageDown) {

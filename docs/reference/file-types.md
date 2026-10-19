@@ -116,7 +116,7 @@ Noteriv can display and manage various attachment file types within your vault:
 | Video | `.mp4`, `.webm` | Played with the built-in video player |
 | Other | Any extension | Listed in the attachment manager, downloadable |
 
-On the web, attachments are added in the attachment manager (ribbon → More tools → Attachments) and stored with the vault, up to 500 MB per vault; insert a link to one by clicking it. In an exported zip or a Git repository they appear as files next to the notes, with relative links. See [Attachments and trash](../features/attachments-and-trash.md).
+On the web, attachments are added in the attachment manager (ribbon → More tools → Attachments) and stored with the vault, within your account's attachment storage (see [Plan and usage](../getting-started/account.md#plan-and-usage)); insert a link to one by clicking it. In an exported zip or a Git repository they appear as files next to the notes, with relative links. See [Attachments and trash](../features/attachments-and-trash.md).
 
 ## Vault settings
 

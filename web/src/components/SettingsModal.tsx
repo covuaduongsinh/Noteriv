@@ -13,6 +13,7 @@ import ThemePicker from "@/components/ThemePicker";
 import SyncSection from "@/components/sync/SyncSection";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import ClipperSection from "@/components/ClipperSection";
+import PlanSection from "@/components/PlanSection";
 import type { PluginPanelRef } from "@noteriv/ui/plugins/sandbox";
 import type { MirrorEvent } from "@noteriv/ui/plugins/sandbox";
 import { CorePluginsSection, type HostPanel } from "@noteriv/ui/plugins";
@@ -21,12 +22,12 @@ import { t, tOr } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyAutomaticLanguage, applyLanguage } from "@/lib/i18n";
 
-type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper";
+type BuiltInSection = "general" | "appearance" | "editor" | "shortcuts" | "sync" | "corePlugins" | "ecosystem" | "clipper" | "plan";
 /** Plugin settings tabs are addressed as `plugin:<pluginDbId>:<tabId>`. */
 type Section = BuiltInSection | `plugin:${string}`;
 
 /** Built-in sections in nav order; their names are `settings.sections.<id>` in the i18n catalog. */
-const SECTIONS: BuiltInSection[] = ["general", "appearance", "editor", "shortcuts", "sync", "corePlugins", "ecosystem", "clipper"];
+const SECTIONS: BuiltInSection[] = ["general", "appearance", "editor", "shortcuts", "sync", "corePlugins", "ecosystem", "clipper", "plan"];
 
 export interface EditorSettings {
   editorFont: string;
@@ -422,6 +423,7 @@ export default function SettingsModal({
     ),
     ecosystem: renderEcosystem,
     clipper: () => <ClipperSection vaultId={vaultId} vaultName={vaultName ?? t("settings.thisVault")} />,
+    plan: () => <PlanSection />,
   };
 
   const navItems: { id: Section; label: string }[] = [

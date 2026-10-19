@@ -15,7 +15,7 @@ Press `Ctrl+Shift+H` (or run **Time scrubber** from the command palette) with a 
 - `Space` plays the history like a film; `Esc` closes;
 - **Restore this version** replaces the current content with the version on screen.
 
-The snapshots are the same as [File recovery](./file-recovery.md): taken by the server about every 10 minutes while the note changes, 50 per note. A new note has no history yet; keep writing and the timeline builds up.
+The snapshots are the same as [File recovery](./file-recovery.md): taken by the server about every 10 minutes while the note changes, as many per note as your plan keeps (50 on the Free plan). A new note has no history yet; keep writing and the timeline builds up.
 
 ## Git history
 

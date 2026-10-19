@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { webApi, isEmailUnverified, type ApiAttachment } from "@/lib/webApi";
+import { planLimitText, UPGRADE_MAILTO } from "@/lib/plan";
 import { getAttachmentType, formatFileSize, markdownLinkForAttachment, type AttachmentType } from "@/lib/attachment-utils";
 import "@/styles/attachments.css";
 import { t } from "@noteriv/ui/i18n";
@@ -35,7 +36,10 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
   useLocale();
   const [attachments, setAttachments] = useState<ApiAttachment[]>([]);
   const [usedBytes, setUsedBytes] = useState(0);
-  const [quotaBytes, setQuotaBytes] = useState(0);
+  // The vault owner's whole-account limit; null = no limit.
+  const [quotaBytes, setQuotaBytes] = useState<number | null>(null);
+  // Set when the last upload hit the plan's storage limit: the message then offers the contact link.
+  const [overPlan, setOverPlan] = useState(false);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>("all");
   const [sortBy, setSortBy] = useState<SortField>("name");
@@ -69,6 +73,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
       if (files.length === 0) return;
       setImporting(true);
       setError(null);
+      setOverPlan(false);
       try {
         for (const file of files) {
           await webApi.attachments.upload(vaultId, file);
@@ -76,7 +81,11 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
         await load();
       } catch (err) {
         const apiErr = err as { body?: { message?: string } };
-        setError(isEmailUnverified(err) ? t("web.account.verifyFirst") : (apiErr?.body?.message ?? t("web.attachments.uploadFailed")));
+        const overLimit = planLimitText(err);
+        setOverPlan(!!overLimit);
+        setError(
+          overLimit ?? (isEmailUnverified(err) ? t("web.account.verifyFirst") : (apiErr?.body?.message ?? t("web.attachments.uploadFailed")))
+        );
       }
       setImporting(false);
     },
@@ -163,7 +172,7 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
     return () => document.removeEventListener("keydown", handleKeyDown);
   }, [onClose, viewerOpen]);
 
-  const usedPct = quotaBytes > 0 ? Math.min(100, (usedBytes / quotaBytes) * 100) : 0;
+  const usedPct = quotaBytes ? Math.min(100, (usedBytes / quotaBytes) * 100) : 0;
 
   return (
     <>
@@ -180,7 +189,11 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
 
         <div style={{ padding: "4px 14px 0" }}>
           <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, color: "var(--text-muted)", marginBottom: 4 }}>
-            <span>{t("web.attachments.used", { used: formatFileSize(usedBytes), quota: formatFileSize(quotaBytes) })}</span>
+            <span>
+              {quotaBytes === null
+                ? t("web.attachments.usedNoLimit", { used: formatFileSize(usedBytes) })
+                : t("web.attachments.used", { used: formatFileSize(usedBytes), quota: formatFileSize(quotaBytes) })}
+            </span>
             {usedPct > 85 && <span style={{ color: "var(--error, #e06c75)" }}>{t("web.attachments.nearlyFull")}</span>}
           </div>
           <div style={{ height: 4, borderRadius: 2, background: "var(--bg-tertiary)", overflow: "hidden" }}>
@@ -193,7 +206,19 @@ export default function AttachmentManager({ vaultId, onInsert, onClose, onView, 
               }}
             />
           </div>
-          {error && <div style={{ color: "var(--error, #e06c75)", fontSize: 11, marginTop: 4 }}>{error}</div>}
+          {error && (
+            <div style={{ color: "var(--error, #e06c75)", fontSize: 11, marginTop: 4 }}>
+              {error}
+              {overPlan && (
+                <>
+                  {" "}
+                  <a href={UPGRADE_MAILTO} style={{ color: "var(--accent)" }}>
+                    {t("web.plan.needMore")}
+                  </a>
+                </>
+              )}
+            </div>
+          )}
         </div>
 
         <div className="am-toolbar">

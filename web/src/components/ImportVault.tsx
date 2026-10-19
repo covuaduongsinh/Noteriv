@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { webApi } from "@/lib/webApi";
+import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { formatFileSize } from "@/lib/attachment-utils";
 import {
   scanFolder,
@@ -44,7 +45,7 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
 
   const [scan, setScan] = useState<ImportScan | null>(null);
   const [scanning, setScanning] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState<React.ReactNode>("");
   const [onConflict, setOnConflict] = useState<"skip" | "overwrite">("skip");
   const [newName, setNewName] = useState("");
   const [running, setRunning] = useState(false);
@@ -89,8 +90,8 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
       }
       const rep = await runImport(target, scan, { onConflict }, setProgress, controller.signal);
       setReport(rep);
-    } catch {
-      setError(t("web.import.interrupted"));
+    } catch (err) {
+      setError(planLimitNotice(err) ?? t("web.import.interrupted"));
     } finally {
       setRunning(false);
       abortRef.current = null;

@@ -56,8 +56,11 @@ model User {
   /// When the user proved they own `email` (verification link, reset link or a confirmed email change). Accounts
   /// created before email existed were marked verified by the migration that added this column.
   emailVerifiedAt  DateTime? @map("email_verified_at")
+  /// The plan whose limits apply to what this user owns (lib/plans.ts). Changed with the CLI (cli/plan.ts).
+  planId           String    @default("free") @map("plan_id")
 
   invitedWith     InviteCode?        @relation("InviteUsedBy", fields: [inviteCodeId], references: [id], onDelete: SetNull)
+  plan            Plan               @relation(fields: [planId], references: [id])
   createdInvites   InviteCode[]       @relation("InviteCreatedBy")
   ownedWorkspaces  Workspace[]        @relation("WorkspaceOwner")
   memberships      WorkspaceMember[]
@@ -71,6 +74,27 @@ model User {
   emailTokens      EmailToken[]
 
   @@map("users")
+}
+
+/// A plan and its limits (session 5.3). Null means no limit. Limits apply to what the user owns: the vaults in their
+/// workspaces, the attachments and sync connections of those vaults. Payment is not part of this yet.
+model Plan {
+  id                       String   @id
+  name                     String
+  maxVaults                Int?     @map("max_vaults")
+  maxAttachmentBytes       BigInt?  @map("max_attachment_bytes")
+  maxSyncConnections       Int?     @map("max_sync_connections")
+  maxSnapshotsPerNote      Int?     @map("max_snapshots_per_note")
+  /// Reserved: not enforced until sharing vaults with other accounts exists.
+  maxCollaboratorsPerVault Int?     @map("max_collaborators_per_vault")
+  /// Reserved: not enforced until AI features exist.
+  aiRequestsPerMonth       Int?     @map("ai_requests_per_month")
+  createdAt                DateTime @default(now()) @map("created_at")
+  updatedAt                DateTime @updatedAt @map("updated_at")
+
+  users User[]
+
+  @@map("plans")
 }
 
 enum EmailTokenPurpose {

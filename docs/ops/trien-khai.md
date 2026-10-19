@@ -89,3 +89,29 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - **Khi email hỏng hoặc người dùng không nhận được thư:** vẫn đặt lại mật khẩu bằng CLI như cũ (đầu file `web/server/src/cli/reset-password.ts`).
 - Migration `20261019120000_email_accounts` thêm cột `users.email_verified_at` (tài khoản có sẵn được ghi là đã xác minh) và bảng `email_tokens`. Như mục 7: áp **trước** khi deploy ở production.
 - Dev/E2E: chạy API với `EMAIL_PROVIDER=file`; thư nằm ở `web/server/.email-outbox/` (đã gitignore), `e2e/tests/account.spec.ts` đọc liên kết từ đó.
+
+## 9. Gói và hạn mức (từ Phiên 5.3)
+
+- Mỗi người dùng thuộc một **gói** (`users.plan_id`, mặc định `free`). Hạn mức tính cho **chủ workspace** chứa vault, gồm mọi thứ trong các vault người đó sở hữu. Mã: `web/server/src/lib/plans.ts`.
+- **Các cột** của bảng `plans` (null = không giới hạn):
+
+  | Cột | Ý nghĩa | `free` | `unlimited` |
+  |---|---|---|---|
+  | `maxVaults` | Số vault | 10 | không giới hạn |
+  | `maxAttachmentBytes` | Tổng dung lượng đính kèm của cả tài khoản (byte); mỗi tệp vẫn tối đa 25 MB | 1073741824 (1 GiB) | không giới hạn |
+  | `maxSyncConnections` | Số kết nối đồng bộ trên mọi vault | 3 | không giới hạn |
+  | `maxSnapshotsPerNote` | Số bản lịch sử giữ cho mỗi note (null vẫn giữ 50) | 50 | 200 |
+  | `maxCollaboratorsPerVault`, `aiRequestsPerMonth` | Để dành, chưa kiểm | — | — |
+
+- **Vượt hạn mức:** API trả 403 `{ error: "plan_limit", limit, max, used }`, và không thêm gì. Hạ hạn mức không xoá dữ liệu đang có; riêng bản lịch sử thừa sẽ bị cắt ở lần chụp kế tiếp của note đó. Giới hạn cũ theo vault (`ATTACHMENT_QUOTA_BYTES_PER_VAULT`) đã bỏ.
+- **CLI** (trong container API; mọi thay đổi ghi audit `plan_assigned` / `plan_changed`, có hiệu lực ngay):
+  ```bash
+  docker exec <noteriv-api> node dist/cli/plan.js list
+  docker exec <noteriv-api> node dist/cli/plan.js assign <email> unlimited
+  docker exec <noteriv-api> node dist/cli/plan.js set free maxVaults 20        # hoặc: unlimited
+  docker exec <noteriv-api> node dist/cli/plan.js create team "Team"           # gói mới, chưa có hạn mức
+  ```
+- **Tài khoản chủ dự án** đang ở gói `unlimited` (gán khi lên production 5.3). Trang quản trị ở 5.4 sẽ gán gói bằng giao diện.
+- **Nút "Need more room? Contact us"** mở email tới `CONTACT_EMAIL` (`web/src/lib/legal.ts`), tiêu đề "Noteriv: more room". Thay bằng trang giá ở Chặng 6.
+- **Lưu ý dung lượng VPS:** kho Garage trên VPS dùng chung chỉ có khoảng 3 GB. Gói free cho 1 GB mỗi tài khoản, nên trước khi mở đăng ký rộng phải xem lại con số này hoặc chuyển sang máy chủ riêng (Chặng 6).
+- E2E: `web/server/scripts/e2e-plan.ts <email>` đưa tài khoản test sang gói `e2e-tight` (2 vault, 1000 byte, 0 kết nối, 3 bản lịch sử). **Không chạy với production.**

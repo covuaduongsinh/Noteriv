@@ -49,7 +49,7 @@ Besides notes and folders, each vault has its own:
 - theme, accent colour, custom themes and CSS snippets;
 - core plugin choices and community plugins;
 - bookmarks;
-- attachments (images, PDFs, audio — up to 500 MiB per vault) and trash;
+- attachments (images, PDFs, audio — storage is shared by all your vaults, see [Plan and usage](account.md#plan-and-usage)) and trash;
 - sync connections.
 
 Your open tabs are remembered per vault and per account, so a vault opens where you left it.

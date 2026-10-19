@@ -4,6 +4,7 @@ import { Prisma } from "@prisma/client";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { logAudit } from "../lib/auditLog.js";
 import { deleteObjectsBestEffort } from "../lib/attachments.js";
+import { checkLimit, PlanLimitError, planLimitReply } from "../lib/plans.js";
 
 const createVaultSchema = z.object({
   name: z.string().min(1).max(200),
@@ -51,6 +52,15 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
       if (!membership || membership.role === "viewer") {
         return reply.code(403).send({ error: "forbidden" });
       }
+    }
+
+    // The vault counts for the owner of the workspace it goes into.
+    const workspace = await prisma.workspace.findUniqueOrThrow({ where: { id: targetWorkspaceId }, select: { ownerId: true } });
+    try {
+      await checkLimit(prisma, workspace.ownerId, "vaults");
+    } catch (err) {
+      if (err instanceof PlanLimitError) return planLimitReply(reply, err);
+      throw err;
     }
 
     const vault = await prisma.vault.create({

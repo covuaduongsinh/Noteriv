@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { VaultChevronIcon, PlusIcon, RenameIcon, TrashIcon } from "@/components/icons";
 import { webApi, type ApiVault } from "@/lib/webApi";
+import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 
@@ -25,7 +26,7 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
   const [renameValue, setRenameValue] = useState("");
   // Two-click delete (no window.confirm — project rule): first click arms, second deletes.
   const [armedDeleteId, setArmedDeleteId] = useState<string | null>(null);
-  const [actionError, setActionError] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<React.ReactNode>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -52,7 +53,13 @@ export default function VaultSwitcher({ vaults, activeVault, onVaultsChanged, on
     e.preventDefault();
     const name = newVaultName.trim();
     if (!name) return;
-    const vault = await webApi.vaults.create({ name });
+    let vault: ApiVault;
+    try {
+      vault = await webApi.vaults.create({ name });
+    } catch (err) {
+      setActionError(planLimitNotice(err) ?? t("web.newVaultGithub.createFailed"));
+      return;
+    }
     setCreating(false);
     setNewVaultName("");
     setOpen(false);

@@ -1,7 +1,8 @@
 import type { FastifyInstance } from "fastify";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { requireVerifiedEmail } from "../lib/emailGate.js";
-import { ATTACHMENT_QUOTA_BYTES, getVaultUsage, makeStorageKey, putObject, getObjectStream, deleteObject, formatBytes } from "../lib/attachments.js";
+import { makeStorageKey, putObject, getObjectStream, deleteObject } from "../lib/attachments.js";
+import { checkLimit, limitsOf, ownerOfVault, planForUser, PlanLimitError, planLimitReply, usageFor } from "../lib/plans.js";
 
 export default async function attachmentRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
@@ -12,8 +13,11 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
     try {
       await requireVaultAccess(prisma, vid, request.user!.id);
       const attachments = await prisma.attachment.findMany({ where: { vaultId: vid }, orderBy: { createdAt: "desc" } });
-      const usedBytes = attachments.reduce((sum, a) => sum + a.size, 0);
-      return reply.send({ attachments, usedBytes, quotaBytes: ATTACHMENT_QUOTA_BYTES });
+      // Storage is counted for the whole account of the vault's owner, not this vault alone. quotaBytes null = no limit.
+      const owner = await ownerOfVault(prisma, vid);
+      const usedBytes = owner ? (await usageFor(prisma, owner)).attachmentBytes : 0;
+      const quotaBytes = owner ? limitsOf(await planForUser(prisma, owner)).attachmentBytes : null;
+      return reply.send({ attachments, usedBytes, quotaBytes });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
       throw err;
@@ -31,15 +35,8 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
 
       const buffer = await file.toBuffer();
 
-      const usedBytes = await getVaultUsage(prisma, vid);
-      if (usedBytes + buffer.length > ATTACHMENT_QUOTA_BYTES) {
-        return reply.code(413).send({
-          error: "quota_exceeded",
-          message: `Vault attachment storage quota exceeded (${formatBytes(ATTACHMENT_QUOTA_BYTES)} limit).`,
-          usedBytes,
-          quotaBytes: ATTACHMENT_QUOTA_BYTES,
-        });
-      }
+      const owner = await ownerOfVault(prisma, vid);
+      if (owner) await checkLimit(prisma, owner, "attachmentBytes", buffer.length);
 
       const storageKey = makeStorageKey(vid, file.filename);
       await putObject(storageKey, buffer, file.mimetype);
@@ -57,6 +54,7 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
       return reply.code(201).send(attachment);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      if (err instanceof PlanLimitError) return planLimitReply(reply, err);
       throw err;
     }
   });

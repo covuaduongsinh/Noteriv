@@ -48,6 +48,19 @@ Your email changes only when you follow that link (within 24 hours); until then 
 - you sign in with the new address, and every device has to sign in again;
 - the old address gets an email saying the change happened. If you did not make it, contact us at the address in the Privacy Policy.
 
+## Plan and usage
+
+Every account is on a plan; new accounts are on **Free**. **Settings → Plan and usage** shows your plan and how much of it you use:
+
+| | Free plan |
+|---|---|
+| Vaults | 10 |
+| Attachment storage, for all your vaults together | 1 GB (each file up to 25 MB) |
+| Sync connections, across all your vaults | 3 |
+| History versions kept per note ([note history](../features/note-history.md)) | 50 |
+
+When something would go past a limit — a new vault, an attachment, a sync connection — Noteriv says so and nothing is added; what you already have stays. Delete what you no longer need, or choose **Need more room? Contact us**, which opens an email to us.
+
 ## Download your data or delete the account
 
 - **Download all my data (JSON)** saves your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file; attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).

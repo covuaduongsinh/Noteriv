@@ -8,6 +8,7 @@ import { webdavTest } from "../lib/webdavSync.js";
 import { syncQueue } from "../lib/syncQueue.js";
 import { logAudit } from "../lib/auditLog.js";
 import { requireVerifiedEmail } from "../lib/emailGate.js";
+import { checkLimit, ownerOfVault, PlanLimitError, planLimitReply } from "../lib/plans.js";
 import { SCRATCH_ROOT } from "../lib/syncRunner.js";
 import path from "node:path";
 import {
@@ -126,6 +127,8 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
     try {
       await writableVault(vid, request.user!.id);
+      const owner = await ownerOfVault(prisma, vid);
+      if (owner) await checkLimit(prisma, owner, "syncConnections");
 
       const data = parsed.data;
       const shared = {
@@ -169,6 +172,7 @@ export default async function syncConnectionRoutes(fastify: FastifyInstance) {
       return reply.code(201).send(toPublic(conn));
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      if (err instanceof PlanLimitError) return planLimitReply(reply, err);
       if (err instanceof TokenError) return reply.code(400).send({ error: err.code, message: err.message });
       throw err;
     }

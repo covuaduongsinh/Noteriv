@@ -209,8 +209,19 @@ export interface ApiAttachment {
 
 export interface ApiAttachmentList {
   attachments: ApiAttachment[];
+  /** Attachment storage of the vault owner's whole account (not this vault alone). */
   usedBytes: number;
-  quotaBytes: number;
+  /** The owner's plan limit; null = no limit. */
+  quotaBytes: number | null;
+}
+
+export type PlanLimitKind = "vaults" | "attachmentBytes" | "syncConnections";
+
+/** GET /users/me/plan: the plan's limits (null = no limit) and what the account uses (web/server/src/lib/plans.ts). */
+export interface ApiPlan {
+  plan: { id: string; name: string };
+  limits: { vaults: number | null; attachmentBytes: number | null; syncConnections: number | null; snapshotsPerNote: number };
+  usage: { vaults: number; attachmentBytes: number; syncConnections: number };
 }
 
 export interface ApiNoteSnapshot {
@@ -281,6 +292,13 @@ export function apiErrorCode(err: unknown): string | null {
     return String((err.body as { error: unknown }).error);
   }
   return null;
+}
+
+/** The server refused because a plan limit was reached: which one, the limit and what is used. */
+export function planLimit(err: unknown): { limit: PlanLimitKind; max: number; used: number } | null {
+  if (apiErrorCode(err) !== "plan_limit") return null;
+  const body = (err as ApiError).body as { limit: PlanLimitKind; max: number; used: number };
+  return { limit: body.limit, max: body.max, used: body.used };
 }
 
 /** The server refused because the account's email is not verified yet (web/server/src/lib/emailGate.ts). */
@@ -500,6 +518,7 @@ export const webApi = {
   users: {
     exportData: () => request<Record<string, unknown>>("/users/me/export"),
     deleteAccount: () => request<{ ok: true }>("/users/me", { method: "DELETE" }),
+    plan: () => request<ApiPlan>("/users/me/plan"),
     resendVerification: (locale?: Locale) =>
       request<{ ok: true; alreadyVerified?: boolean }>("/users/me/verification-email", { method: "POST", body: JSON.stringify({ locale }) }),
     /** Sends a confirmation link to `newEmail`; the address changes once it is followed. */
