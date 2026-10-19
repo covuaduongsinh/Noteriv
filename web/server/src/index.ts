@@ -24,6 +24,10 @@ import trashRoutes from "./routes/trash.js";
 import attachmentRoutes from "./routes/attachments.js";
 import { syncQueue } from "./lib/syncQueue.js";
 import adminRoutes from "./routes/admin.js";
+import opsRoutes from "./routes/ops.js";
+import { captureError, initSentry } from "./lib/sentry.js";
+
+initSentry("api");
 
 // Trust X-Forwarded-For only from proxies on private addresses (Traefik, the web container,
 // localhost in dev). `trustProxy: true` trusted the whole header, so a client could put any
@@ -60,6 +64,17 @@ await fastify.register(cookie);
 await fastify.register(multipart, { limits: { fileSize: 25 * 1024 * 1024 } });
 await fastify.register(authPlugin);
 
+// Server errors (5xx) go to Sentry when it is configured (lib/sentry.ts): tagged with the route pattern, never the
+// real URL (it can hold ids and query strings), and the account id only.
+fastify.addHook("onError", async (request, reply, error) => {
+  const status = error.statusCode ?? reply.statusCode;
+  if (status < 500) return;
+  captureError(error, {
+    tags: { method: request.method, route: request.routeOptions.url ?? "unknown" },
+    userId: request.user?.id,
+  });
+});
+
 await fastify.register(authRoutes, { prefix: "/api/v1/auth" });
 await fastify.register(vaultRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(noteRoutes, { prefix: "/api/v1/vaults" });
@@ -76,6 +91,7 @@ await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(diagnosticsRoutes, { prefix: "/api/v1/diagnostics" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
 await fastify.register(adminRoutes, { prefix: "/api/v1/admin" });
+await fastify.register(opsRoutes, { prefix: "/api/v1" });
 
 void warnIfGitMissing((m) => fastify.log.warn(m));
 

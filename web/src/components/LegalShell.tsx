@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { CONTACT_EMAIL, LAST_UPDATED, OPERATOR_NAME, isDraft } from "@/lib/legal";
+import StatusLink from "@/components/StatusLink";
 
 /**
  * Common frame for the legal pages: draft banner, English / Vietnamese jump links, cross links. The texts are written
@@ -27,6 +28,7 @@ export default function LegalShell({ title, children }: { title: string; childre
             <Link href="/privacy" className="hover:text-[var(--text-primary)]">
               Privacy
             </Link>
+            <StatusLink label="Status" separator={false} />
           </nav>
         </div>
 

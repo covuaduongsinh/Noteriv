@@ -128,3 +128,25 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - **Nút "Need more room? Contact us"** mở email tới `CONTACT_EMAIL` (`web/src/lib/legal.ts`), tiêu đề "Noteriv: more room". Thay bằng trang giá ở Chặng 6.
 - **Lưu ý dung lượng VPS:** kho Garage trên VPS dùng chung chỉ có khoảng 3 GB. Gói free cho 1 GB mỗi tài khoản, nên trước khi mở đăng ký rộng phải xem lại con số này hoặc chuyển sang máy chủ riêng (Chặng 6).
 - E2E: `web/server/scripts/e2e-plan.ts <email>` đưa tài khoản test sang gói `e2e-tight` (2 vault, 1000 byte, 0 kết nối, 3 bản lịch sử). **Không chạy với production.**
+
+## 10. Theo dõi lỗi, số liệu sử dụng, trang trạng thái (từ Phiên 5.5)
+
+- **Sentry** (vùng EU) nhận báo cáo lỗi của web, API, worker và collab. Desktop chưa gửi. Mã: `web/server/src/lib/sentry.ts` (server), `web/src/lib/error-reporting.ts` (trình duyệt), `web/server/src/routes/ops.ts` (tunnel và cấu hình công khai).
+- Biến (env compose Dokploy; `noteriv-api`, `noteriv-worker`, `noteriv-collab` dùng chung):
+  - `SENTRY_DSN`: rỗng = **tắt** hẳn (trình duyệt cũng không tải SDK). DSN không phải bí mật nặng (trang nào cũng đọc được qua `GET /api/v1/config`), nhưng vẫn không đưa vào repo.
+  - `SENTRY_ENVIRONMENT`: mặc định `production`; staging đặt `staging`.
+  - `SENTRY_RELEASE`: compose tự lấy từ `SOURCE_COMMIT`.
+- **Gửi gì:**
+  - API chỉ báo lỗi 5xx, gắn tag route mẫu (không phải URL thật) và id tài khoản;
+  - worker báo job lỗi, tag theo queue;
+  - collab báo lỗi lưu note và lỗi không bắt được;
+  - trình duyệt báo lỗi không bắt được và lỗi trang (`app/error.tsx`, `app/global-error.tsx`).
+- **Lọc dữ liệu** (cả hai phía):
+  - bỏ cookie, header, body, query string;
+  - người dùng chỉ còn id;
+  - email, token `Bearer` và phần `user:pass@` trong URL bị thay thế;
+  - không gửi breadcrumb console và click.
+- Trình duyệt gửi qua **tunnel** `POST /api/v1/errors/browser` (cùng origin, không phải sửa CSP), có rate limit 30/phút. Tunnel chỉ chuyển tiếp envelope có đúng DSN của máy chủ, lọc lại lần nữa, và bỏ mọi loại item khác ngoài `event`/`client_report`.
+- **Số liệu sử dụng:** bảng `user_activity_days`, mỗi tài khoản một dòng mỗi ngày (UTC) có đăng ký, đăng nhập hoặc refresh phiên. Job dọn rác hằng ngày xoá dòng cũ hơn 400 ngày. Xem ở **Quản trị → Số liệu** (`/admin/stats`, `GET /api/v1/admin/stats`), chỉ có con số, không có email. Migration `20261019200000_activity` chỉ thêm bảng, nhưng vẫn áp theo quy trình mục 7.
+- **Trang trạng thái:** `STATUS_PAGE_URL` (env `noteriv-api`) là link status page UptimeRobot. Khi có, chân trang đăng nhập, trang Vault và trang pháp lý hiện link **Status**; rỗng thì ẩn. Đọc lúc chạy, nên đổi env chỉ cần deploy lại, không phải build lại web.
+- **E2E:** stub `e2e/sentry-stub.mjs` (cổng 4010) đứng thay Sentry; API chạy với `SENTRY_DSN=http://e2e@127.0.0.1:4010/1`; `e2e/tests/ops.spec.ts` đọc envelope trong `web/server/.sentry-outbox/`.

@@ -22,7 +22,11 @@ export default function PrivacyPage() {
           <li>Content you create: notes, folders, attachments, settings, plugins you install.</li>
           <li>Sync credentials (GitHub, WebDAV) if you set them up: encrypted on the server.</li>
           <li>Security log: events such as sign-up, sign-in, failed sign-in, vault creation/deletion, with IP address, to detect abuse.</li>
-          <li>An httpOnly sign-in cookie needed to keep your session. We use no advertising or tracking cookies and no behavioural analytics.</li>
+          <li>
+            Usage records: the days on which you signed in or used the app (kept about 13 months), so we can count active users and how many
+            come back. They are counted on our own server; we use no third-party analytics.
+          </li>
+          <li>An httpOnly sign-in cookie needed to keep your session. We use no advertising or tracking cookies.</li>
         </ul>
 
         <h3>2. Where it is stored and who handles it</h3>
@@ -33,6 +37,11 @@ export default function PrivacyPage() {
             Database backups are kept on a rotation (roughly 7 daily, 4 weekly, 12 monthly).
           </li>
           <li>Monitoring services (UptimeRobot, healthchecks.io) only receive “alive/failed” signals and the site’s public address, never note content or account data.</li>
+          <li>
+            When the app or the server hits an unexpected error, a technical report goes to Sentry, an error-tracking service, stored in the European
+            Union: the error and where in the code it happened, browser and operating system, the page address without its parameters, and your
+            account’s internal id. Email addresses and tokens are removed from it, and it never contains your notes or your IP address.
+          </li>
           <li>
             Account emails (verifying your address, resetting your password, confirming a new address) are sent through Resend, an email delivery
             service. It receives your email address and the message, never your notes.
@@ -85,7 +94,11 @@ export default function PrivacyPage() {
           <li>Nội dung bạn tạo: ghi chú, thư mục, tệp đính kèm, cài đặt, plugin bạn cài.</li>
           <li>Thông tin kết nối đồng bộ (GitHub, WebDAV) nếu bạn tự cấu hình: được mã hoá trên máy chủ.</li>
           <li>Nhật ký bảo mật: các sự kiện như đăng ký, đăng nhập, đăng nhập sai, tạo/xoá vault, kèm địa chỉ IP, để phát hiện lạm dụng.</li>
-          <li>Cookie đăng nhập (httpOnly) cần thiết để giữ phiên. Chúng tôi không dùng cookie quảng cáo hay theo dõi, và không dùng công cụ phân tích hành vi.</li>
+          <li>
+            Dữ liệu sử dụng: những ngày bạn đăng nhập hoặc dùng ứng dụng (giữ khoảng 13 tháng), để đếm số người dùng đang hoạt động và số người
+            quay lại. Việc đếm làm trên máy chủ của chúng tôi; chúng tôi không dùng công cụ phân tích của bên thứ ba.
+          </li>
+          <li>Cookie đăng nhập (httpOnly) cần thiết để giữ phiên. Chúng tôi không dùng cookie quảng cáo hay theo dõi.</li>
         </ul>
 
         <h3>2. Dữ liệu được lưu ở đâu, ai xử lý</h3>
@@ -98,6 +111,11 @@ export default function PrivacyPage() {
           <li>
             Dịch vụ giám sát (UptimeRobot, healthchecks.io) chỉ nhận tín hiệu “còn sống/lỗi” và địa chỉ công khai của trang; chúng
             không nhận nội dung ghi chú hay dữ liệu tài khoản.
+          </li>
+          <li>
+            Khi ứng dụng hoặc máy chủ gặp lỗi không lường trước, một báo cáo kỹ thuật được gửi tới Sentry, một dịch vụ theo dõi lỗi, lưu tại
+            Liên minh châu Âu. Báo cáo gồm: lỗi và vị trí trong mã, trình duyệt và hệ điều hành, địa chỉ trang (không kèm tham số), và mã nội bộ của
+            tài khoản. Địa chỉ email và token được xoá khỏi báo cáo; báo cáo không bao giờ chứa ghi chú hay địa chỉ IP của bạn.
           </li>
           <li>
             Thư của tài khoản (xác minh địa chỉ, đặt lại mật khẩu, xác nhận địa chỉ mới) được gửi qua Resend, một dịch vụ gửi email. Resend nhận

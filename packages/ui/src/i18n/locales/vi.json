@@ -1285,7 +1285,8 @@
       "tabs": {
         "users": "Người dùng",
         "invites": "Mã mời",
-        "audit": "Nhật ký"
+        "audit": "Nhật ký",
+        "stats": "Số liệu"
       },
       "search": "Tìm theo email hoặc tên, rồi nhấn Enter",
       "total": {
@@ -1332,7 +1333,32 @@
         "target": "Đối tượng",
         "details": "Chi tiết",
         "more": "Tải thêm"
+      },
+      "stats": {
+        "users": "Tài khoản",
+        "usersHint": "{verified} đã xác minh · {locked} bị khoá",
+        "newUsers": "Mới trong 7 ngày qua",
+        "newUsersHint": "{count} trong 30 ngày qua",
+        "active": "Hoạt động trong 7 ngày qua",
+        "activeHint": "{today} hôm nay · {month} trong 30 ngày qua",
+        "content": "Dung lượng đính kèm",
+        "contentHint": "{vaults} vault · {notes} ghi chú",
+        "week": "Tuần bắt đầu",
+        "signups": "Đăng ký",
+        "activeWeek": "Hoạt động",
+        "retention1": "Quay lại tuần 2",
+        "retention4": "Quay lại tuần 5",
+        "explain": "Đếm từ dữ liệu của chính máy chủ này: một tài khoản được tính là hoạt động vào ngày nó đăng nhập hoặc còn giữ phiên. \"Quay lại tuần 2\" là tỉ lệ người đăng ký trong tuần đó có hoạt động vào ngày 7–13 sau khi đăng ký; \"Quay lại tuần 5\" là ngày 28–34. Dấu — nghĩa là chưa đủ thời gian. Tuần bắt đầu từ thứ Hai (giờ UTC)."
       }
+    },
+    "errorPage": {
+      "title": "Đã xảy ra lỗi",
+      "body": "Trang này gặp một lỗi không lường trước. Lỗi đã được báo lại nếu tính năng báo lỗi đang bật.",
+      "retry": "Thử lại",
+      "reload": "Tải lại"
+    },
+    "footer": {
+      "status": "Trạng thái"
     }
   },
   "desktop": {

@@ -76,6 +76,7 @@ model User {
   clipTokens       ClipToken[]
   preference       UserPreference?
   emailTokens      EmailToken[]
+  activityDays     UserActivityDay[]
 
   @@map("users")
 }
@@ -177,6 +178,19 @@ model RefreshToken {
 
   @@index([userId])
   @@map("refresh_tokens")
+}
+
+/// One row per user per UTC day they signed in or refreshed a session (routes/auth.ts). Feeds the admin
+/// usage stats (active users, retention); rows older than ~13 months are removed by the daily cleanup job.
+model UserActivityDay {
+  userId String   @map("user_id")
+  day    DateTime @db.Date
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([userId, day])
+  @@index([day])
+  @@map("user_activity_days")
 }
 
 model Workspace {

@@ -13,6 +13,10 @@ import { trashCleanupQueue } from "../lib/trashCleanupQueue.js";
 import { cleanupExpiredTrash } from "../lib/trash.js";
 import { noteSnapshotQueue } from "../lib/noteSnapshotQueue.js";
 import { captureSnapshots } from "../lib/noteSnapshots.js";
+import { pruneActivityDays } from "../lib/activity.js";
+import { captureError, flushSentry, initSentry } from "../lib/sentry.js";
+
+initSentry("worker");
 
 const connection = new Redis(process.env.REDIS_URL ?? "redis://127.0.0.1:56379", {
   maxRetriesPerRequest: null,
@@ -31,6 +35,7 @@ const worker = new Worker<SyncJobData>(
 
 worker.on("failed", (job, err) => {
   console.error(`[sync-worker] job ${job?.id} failed:`, err.message);
+  captureError(err, { tags: { queue: "sync-jobs" } });
 });
 
 // Trash cleanup (Phase C1) — separate queue/worker from sync-jobs above, same
@@ -41,11 +46,13 @@ const trashWorker = new Worker(
   async () => {
     console.log("[sync-worker] running trash cleanup (purge past retention window)");
     await cleanupExpiredTrash(prisma);
+    await pruneActivityDays(prisma);
   },
   { connection, concurrency: 1 }
 );
 trashWorker.on("failed", (job, err) => {
   console.error(`[sync-worker] trash cleanup job ${job?.id} failed:`, err.message);
+  captureError(err, { tags: { queue: "trash-cleanup" } });
 });
 await trashCleanupQueue.add(
   "purge-expired-trash",
@@ -65,6 +72,7 @@ const snapshotWorker = new Worker(
 );
 snapshotWorker.on("failed", (job, err) => {
   console.error(`[sync-worker] snapshot job ${job?.id} failed:`, err.message);
+  captureError(err, { tags: { queue: "note-snapshots" } });
 });
 await noteSnapshotQueue.add(
   "capture-snapshots",
@@ -104,6 +112,7 @@ const autoSyncWorker = new Worker(
 );
 autoSyncWorker.on("failed", (job, err) => {
   console.error(`[sync-worker] auto-sync tick ${job?.id} failed:`, err.message);
+  captureError(err, { tags: { queue: "auto-sync-tick" } });
 });
 await autoSyncQueue.add("tick", {}, { repeat: { every: 60 * 1000 }, jobId: "auto-sync-tick" });
 
@@ -122,5 +131,6 @@ process.on("SIGTERM", async () => {
   await snapshotWorker.close();
   await autoSyncWorker.close();
   await prisma.$disconnect();
+  await flushSentry();
   process.exit(0);
 });
