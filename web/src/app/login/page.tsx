@@ -8,6 +8,7 @@ import { CONTACT_EMAIL } from "@/lib/legal";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import LanguageSwitch from "@/components/LanguageSwitch";
+import StatusLink from "@/components/StatusLink";
 import { safeNext } from "@/lib/safe-next";
 import { claimOfflineData } from "@/lib/offline-store";
 
@@ -97,6 +98,7 @@ export default function LoginPage() {
           <Link href="/install" className="hover:text-[var(--text-primary)]">
             {t("web.install.link")}
           </Link>
+          <StatusLink />
         </p>
         <LanguageSwitch />
       </form>

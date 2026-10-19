@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ApiError, webApi, type ApiUser, type ApiVault } from "@/lib/webApi";
 import AccountEmail from "@/components/AccountEmail";
+import StatusLink from "@/components/StatusLink";
 import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { clearCachedPages } from "@/components/ServiceWorkerRegister";
 import { isNetworkError } from "@/lib/offline";
@@ -213,6 +214,7 @@ export default function VaultsPage() {
           <Link href="/privacy" className="hover:text-[var(--text-primary)]">
             {t("web.auth.privacyPolicy")}
           </Link>
+          <StatusLink />
         </p>
       </div>
     </div>

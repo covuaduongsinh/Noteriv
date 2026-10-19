@@ -96,9 +96,14 @@ export default async function userRoutes(fastify: FastifyInstance) {
       },
     });
 
+    // The usage records kept about the account (lib/activity.ts), as plain days.
+    const activityDays = (await prisma.userActivityDay.findMany({ where: { userId }, orderBy: { day: "asc" }, select: { day: true } })).map(
+      (d) => d.day.toISOString().slice(0, 10)
+    );
+
     logAudit(prisma, { userId, action: "data_export", ip: request.ip });
     reply.header("Content-Disposition", `attachment; filename="noteriv-export-${userId}.json"`);
-    return reply.send({ exportedAt: new Date().toISOString(), user, workspaces });
+    return reply.send({ exportedAt: new Date().toISOString(), user, workspaces, activityDays });
   });
 
   /**

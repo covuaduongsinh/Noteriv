@@ -61,13 +61,17 @@ Every account is on a plan; new accounts are on **Free**. **Settings → Plan an
 
 When something would go past a limit — a new vault, an attachment, a sync connection — Noteriv says so and nothing is added; what you already have stays. Delete what you no longer need, or choose **Need more room? Contact us**, which opens an email to us.
 
+## Is Noteriv down?
+
+When the sign-in page or the vault list shows a **Status** link at the bottom, it opens the public status page, which shows whether the site is up and when it last had a problem.
+
 ## If your account is locked
 
 An administrator can lock an account, for example after abuse is reported. A locked account is signed out everywhere and signing in says *This account is locked.* If you think this is a mistake, write to the address shown there.
 
 ## Download your data or delete the account
 
-- **Download all my data (JSON)** saves your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file; attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).
+- **Download all my data (JSON)** saves your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file, together with the days on which you used the app (what the usage counts are made of); attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).
 - **Delete account** asks for a second click, then permanently removes the account and all its vaults, notes and attachments. It cannot be undone.
 
 > **Desktop app:** the desktop app has no account; its vaults are folders on your computer. See [Desktop app](../desktop.md).

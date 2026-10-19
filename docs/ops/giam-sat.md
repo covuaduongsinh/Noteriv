@@ -1,6 +1,6 @@
 # Giám sát Noteriv: ai báo cho bạn khi có sự cố
 
-> Dành cho chủ dự án (không cần biết lập trình) và cho các phiên Claude. Cập nhật: 2026-10-15 (Phiên 0.3).
+> Dành cho chủ dự án (không cần biết lập trình) và cho các phiên Claude. Cập nhật: 2026-10-19 (Phiên 5.5: Sentry, trang trạng thái).
 > Kỹ thuật: [`web/infra/ops/README.md`](../../web/infra/ops/README.md). Sao lưu: [`sao-luu-khoi-phuc.md`](sao-luu-khoi-phuc.md).
 
 ## 1. Ba "người gác" và việc mỗi người báo
@@ -10,6 +10,7 @@
 | **UptimeRobot** (bên ngoài) | Trang chủ `noteriv.dsc.edu.vn` trả 200; `/api/v1/healthz` trả 200 (nghĩa là API, Postgres, Redis đều trả lời) | 5 phút | Email "Down" / "Up" |
 | **healthchecks.io, check `noteriv-host`** | Đĩa VPS ≤ 90% và RAM khả dụng ≥ 300MB (script cron trên VPS) | 10 phút | Email khi script báo lỗi, **hoặc khi mất tín hiệu** (VPS chết) |
 | **healthchecks.io, check sao lưu** | Sao lưu 02:00 mỗi đêm chạy thành công | 1 ngày | Email khi sao lưu lỗi hoặc không chạy |
+| **Sentry** (từ phiên 5.5, khi đã đặt `SENTRY_DSN`) | Lỗi của web, API, worker, collab | Ngay khi có lỗi mới | Email "New issue" |
 
 `/api/v1/healthz` công khai nhưng chỉ trả `{"ok":true}` hoặc `{"ok":false}`: không lộ phiên bản hay chi tiết lỗi.
 
@@ -41,3 +42,34 @@ Dữ liệu không mất chỉ vì có email cảnh báo: các cảnh báo này 
 
 - Script nằm ở `/usr/local/bin/noteriv-check-host`, cấu hình ở `/etc/noteriv/check-host.env` (URL ping, **không** nằm trong git), cron ở `/etc/cron.d/noteriv-check-host`, log ở `/var/log/noteriv-check-host.log`.
 - Thử đường báo lỗi: `CHECK_HOST_FORCE_FAIL=1 noteriv-check-host` (check chuyển đỏ, chạy lại bình thường để về xanh).
+
+## 6. Sentry: lỗi của ứng dụng (từ Phiên 5.5)
+
+**Việc chủ dự án làm một lần:**
+1. Vào sentry.io → **Sign up** (gói Developer, miễn phí). Khi tạo tổ chức, ở mục **Data Storage Location** chọn **European Union (Germany)**. Mục này không đổi được về sau.
+2. Bật xác thực hai bước (User Settings → Security).
+3. **Create Project** → nền tảng **Node.js** → tên `noteriv`. Một project dùng chung cho web, API, worker và collab; tag `service` phân biệt chúng.
+4. Project Settings → **Client Keys (DSN)** → chép DSN (dạng `https://…@o….ingest.de.sentry.io/…`). Lưu vào `~/.config/noteriv/sentry.dsn` rồi báo phiên Claude. Phiên sẽ hỏi trước khi đặt `SENTRY_DSN` trong Dokploy và deploy lại.
+5. Alerts: giữ luật mặc định **"Alert on new issues"** (email khi có lỗi mới).
+
+**Khi nhận email "New issue":** mở issue trong Sentry, xem các tag:
+- `service`: api / worker / collab, hoặc trình duyệt;
+- `route`: API nào bị lỗi;
+- `queue`: job nào của worker.
+
+Gửi link issue cho một phiên Claude. Lỗi trình duyệt không có source map, nên tên hàm bị rút gọn; dòng lỗi và trang vẫn đủ để lần ra.
+
+**Thử sau khi đặt DSN** (production, trong container api):
+```bash
+docker exec <noteriv-api> node --input-type=module -e "const s = await import('./dist/lib/sentry.js'); s.initSentry('api'); s.captureError(new Error('noteriv sentry test')); await s.flushSentry(5000)"
+```
+Issue "noteriv sentry test" hiện trong Sentry sau ít giây. Đánh dấu **Resolve** sau khi xem.
+
+**Gói miễn phí:** khoảng 5.000 lỗi mỗi tháng. Khi gần hết hạn mức, Sentry gửi email báo; lỗi lặp lại được gom vào một issue.
+
+## 7. Trang trạng thái công khai (từ Phiên 5.5)
+
+**Việc chủ dự án làm một lần:**
+1. UptimeRobot → **Status Pages** → **Add Status Page**, chọn 2 monitor đang có (trang chủ và `/api/v1/healthz`), đặt tên "Noteriv".
+2. Chép link status page (dạng `https://stats.uptimerobot.com/…`) rồi gửi cho phiên Claude. Link này công khai, không phải bí mật.
+3. Phiên sẽ hỏi trước khi đặt `STATUS_PAGE_URL` trong Dokploy và deploy lại; sau đó link **Status** hiện ở chân trang đăng nhập, trang Vault và trang pháp lý.
