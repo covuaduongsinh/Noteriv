@@ -98,3 +98,22 @@
 
 - Tự xoá tài khoản chưa xác minh sau N ngày: để 5.5 (vận hành).
 - Hạn mức theo gói: 5.3.
+
+## Lên production (2026-10-19)
+
+- **CI của PR #19:**
+  - lần đầu, job `e2e` hỏng do 2 lỗi (xem mục Kiểm chứng), đã sửa ở commit `27a2bcd`;
+  - lần hai xanh cả 4 job.
+- **Staging:**
+  - gộp vào `next`, deploy `done`, `prisma migrate deploy`;
+  - `/`, `/login`, `/register`, `/forgot-password`, `/api/v1/healthz` trả 200;
+  - `registration`: `invite`, email tắt, Turnstile tắt.
+- **Production:**
+  1. Sao lưu tay vào `/root/noteriv-manual-backups/pre-5-2-20261019T042655Z.dump` trên VPS.
+  2. Đếm: 0 email trùng khi chuyển về chữ thường, 0 email có chữ hoa.
+  3. Áp `migration.sql` bằng `psql -1` (`UPDATE 0`, `UPDATE 0`).
+  4. Gộp PR #19 (merge `1118361`); deploy `done` (04:27 → 04:33 UTC).
+  5. `prisma migrate resolve --applied 20261019140000_lowercase_emails`; `migrate status` báo up to date.
+  6. Kiểm: 9 container chạy; các trang chính trả 200; `registration` vẫn `invite`, email và Turnstile tắt.
+- `next` đặt bằng `main` (cây mã trùng nhau); chờ staging deploy xong rồi `compose.stop`.
+- **Đăng ký vẫn chỉ bằng mã mời.** Việc chặn tài khoản chưa xác minh chỉ có hiệu lực khi bật email.
