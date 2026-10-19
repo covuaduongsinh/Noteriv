@@ -57,7 +57,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | **1** | Hợp nhất nhánh về `main` | [chang-1](2026-10-17-chang-1-hop-nhat-nhanh.md) | 1–2 buổi | Production có core plugin, mở nhanh hơn |
 | **2** | Định vị lại, gỡ dấu vết cờ khỏi lõi | [chang-2](2026-10-17-chang-2-dinh-vi-lai.md) | 1–2 buổi | README/điều khoản trung lập |
 | **3** | Rà soát chất lượng và hoàn thiện | [chang-3](2026-10-17-chang-3-ra-soat-hoan-thien.md) | 3–5 buổi | Ít lỗi hơn, không mất dữ liệu khi xung đột đồng bộ |
-| **4** | Quốc tế hoá, người mới, di động (PWA) | [chang-4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) | 3–5 buổi | Giao diện tiếng Anh/Việt, vault mẫu, cài lên điện thoại |
+| **4** | Quốc tế hoá, người mới, di động (PWA) — **xong 2026-10-19** | [chang-4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) | 9 phiên | Giao diện tiếng Anh/Việt, vault mẫu, cài lên điện thoại, Ghi nhanh, offline, không ghi đè khi sửa hai nơi, tài liệu tiếng Anh |
 | **5** | Nền tảng thương mại | [chang-5](2026-10-17-chang-5-nen-tang-thuong-mai.md) | 4–6 buổi | Tự đăng ký, quên mật khẩu, gói và hạn mức |
 | **6** | Thương hiệu, hạ tầng riêng, ra mắt | [chang-6](2026-10-17-chang-6-thuong-hieu-ra-mat.md) | 3–5 buổi + liên tục | Tên mới, trang giới thiệu, trang giá |
 
