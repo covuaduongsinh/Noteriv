@@ -59,6 +59,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | **3** | Rà soát chất lượng và hoàn thiện | [chang-3](2026-10-17-chang-3-ra-soat-hoan-thien.md) | 3–5 buổi | Ít lỗi hơn, không mất dữ liệu khi xung đột đồng bộ |
 | **4** | Quốc tế hoá, người mới, di động (PWA) — **xong 2026-10-19** | [chang-4](2026-10-17-chang-4-quoc-te-hoa-nguoi-moi.md) | 9 phiên | Giao diện tiếng Anh/Việt, vault mẫu, cài lên điện thoại, Ghi nhanh, offline, không ghi đè khi sửa hai nơi, tài liệu tiếng Anh |
 | **5** | Nền tảng thương mại | [chang-5](2026-10-17-chang-5-nen-tang-thuong-mai.md) | 4–6 buổi | Tự đăng ký, quên mật khẩu, gói và hạn mức |
+| **K** | Kiểm chứng: dùng thật 6 tuần, so đối thủ, đánh giá mọi mặt (thêm 2026-10-20) | [chang-k](2026-10-20-chang-k-kiem-chung.md) | 6 tuần (21/10–1/12) | Ít lỗi hơn; báo cáo quyết định trong `docs/kiem-chung/` |
 | **6** | Thương hiệu, hạ tầng riêng, ra mắt | [chang-6](2026-10-17-chang-6-thuong-hieu-ra-mat.md) | 3–5 buổi + liên tục | Tên mới, trang giới thiệu, trang giá |
 
 **Phụ thuộc:**
@@ -66,7 +67,8 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 - Chặng 2 và 3 có thể đan xen.
 - Chặng 4 cần Chặng 2 (chuỗi giao diện đã trung lập).
 - Chặng 5 cần Chặng 3 (xung đột đồng bộ đã an toàn).
-- Chặng 6 cần chủ dự án chốt mô hình kinh doanh và tên mới.
+- Chặng K cần Chặng 5 (sản phẩm đã đủ phần thương mại để kiểm chứng).
+- Chặng 6 cần Chặng K xong (có báo cáo quyết định) và chủ dự án chốt mô hình kinh doanh và tên mới.
 
 **Mời nhóm thử nghiệm đầu tiên** (người dùng ngoài trung tâm): sau Chặng 4.
 
@@ -110,8 +112,9 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | 2 Định vị lại | Xong | 2026-10-17 | PR #3 (`e8c1f7d`): README tiếng Anh, `/privacy` trung lập, `NOTICE.md`, xoá `phone/`, ẩn "cỡ bàn cờ"; bản ghi `2026-10-17-phien-chang-2.md` |
 | 3 Rà soát, hoàn thiện | Xong | 2026-10-17 | PR #4–#8 (merge cuối `e7af3dc`): sync không mất dữ liệu, xung đột, bảo mật, E2E trong CI, CSP desktop, `docs/qa/checklist.md` |
 | 4 Quốc tế hoá, người mới | Xong | 2026-10-19 | PR #9–#17 (merge cuối `b059018`): i18n en/vi, vault mẫu, PWA, offline, chống ghi đè, tài liệu tiếng Anh; bản ghi cuối `2026-10-19-phien-4-9-tai-lieu.md` |
-| 5 Nền tảng thương mại | Đang làm | 2026-10-19 | 5.1 email và tài khoản ([bản ghi](2026-10-19-phien-5-1-email.md)) |
-| 6 Thương hiệu, ra mắt | Chưa làm | | |
+| 5 Nền tảng thương mại | Xong | 2026-10-20 | PR #18–#23 (merge cuối `777eddf`): email tài khoản, mở đăng ký (Turnstile), gói và hạn mức, trang quản trị, Sentry + số liệu + trang trạng thái, pháp lý quốc tế; bản ghi cuối `2026-10-20-phien-5-6-phap-ly.md`. Production vẫn `invite` |
+| K Kiểm chứng | Đang làm | 2026-10-20 | Chủ dự án muốn dùng thật, so đối thủ, đánh giá mọi mặt trước khi quyết thương mại; 6 tuần, chỉ chủ dự án dùng thử; đầu ra `docs/kiem-chung/bao-cao-quyet-dinh.md` |
+| 6 Thương hiệu, ra mắt | Chưa làm | | Chờ Chặng K |
 
 ## 8. Giải thích thuật ngữ
 

@@ -2,7 +2,8 @@
 
 > Ngày lập: 2026-10-17 · Trạng thái: **chưa triển khai** · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
-> **Điều kiện bắt đầu:** Chặng 5 xong. Chủ dự án đã qua **cổng quyết định** ở phiên 6.1.
+> **Điều kiện bắt đầu:** Chặng 5 xong. **Chặng K (kiểm chứng) xong**, có [báo cáo quyết định](../kiem-chung/bao-cao-quyet-dinh.md) và chủ dự án chọn phương án A (hoặc phương án có thương mại hoá). Chủ dự án đã qua **cổng quyết định** ở phiên 6.1.
+> Phiên 6.1 dùng báo cáo của Chặng K làm đầu vào (bảng giá đối thủ, chi phí, tra nhãn hiệu sơ bộ); nếu báo cáo khuyên thêm bước kiểm chứng nhu cầu (trang chờ, người dùng thử), làm bước đó trước 6.3.
 
 ## Mục tiêu
 

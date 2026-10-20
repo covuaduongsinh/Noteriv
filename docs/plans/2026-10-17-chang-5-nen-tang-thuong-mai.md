@@ -1,6 +1,6 @@
 # Chặng 5: Nền tảng thương mại
 
-> Ngày lập: 2026-10-17 · Trạng thái: **đang làm** (5.1 từ 2026-10-19) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
+> Ngày lập: 2026-10-17 · Trạng thái: **xong** (5.1 từ 2026-10-19, 5.6 xong 2026-10-20) · Lộ trình: [2026-10-17-lo-trinh-thuong-mai.md](2026-10-17-lo-trinh-thuong-mai.md)
 > **Phiên mới hãy đọc trước:** [2026-10-14-huong-dan-ban-giao-phien.md](2026-10-14-huong-dan-ban-giao-phien.md)
 > **Điều kiện bắt đầu:** Chặng 3 xong (nhất là 3.5 xung đột đồng bộ). Nên xong Chặng 4 (email, trang tài khoản cần đa ngôn ngữ).
 
@@ -79,4 +79,4 @@
 | 5.3 Gói và hạn mức | Xong, đã lên production | 2026-10-19 | PR #20, merge `8bd78c8`; bảng `plans` + `users.plan_id`, free 10 vault / 1 GB / 3 kết nối / 50 bản lịch sử, CLI `cli/plan.ts`, Cài đặt → Plan and usage; [bản ghi](2026-10-19-phien-5-3-goi-han-muc.md) |
 | 5.4 Trang quản trị | Xong, đã lên production | 2026-10-19 | PR #21, merge `dae66bb`; `users.role` + `users.locked_at`, khoá có hiệu lực ngay, `/admin` (người dùng, gói, khoá, quyền admin, đặt lại mật khẩu, xác minh, xoá), `/admin/audit`; [bản ghi](2026-10-19-phien-5-4-quan-tri.md) |
 | 5.5 Vận hành | Xong, đã lên production | 2026-10-19 | PR #22, merge `08d8e54`; Sentry và link Status **đã bật ở production ngày 2026-10-20** (`SENTRY_DSN` vùng EU, `STATUS_PAGE_URL` UptimeRobot); Sentry (EU, bật bằng `SENTRY_DSN`, tunnel `/api/v1/errors/browser`), bảng `user_activity_days` + `/admin/stats`, link Status (`STATUS_PAGE_URL`), sửa `/privacy`; [bản ghi](2026-10-19-phien-5-5-van-hanh.md) |
-| 5.6 Pháp lý quốc tế | Chưa làm | | |
+| 5.6 Pháp lý quốc tế | Xong, đã lên production | 2026-10-20 | PR #23, merge `777eddf`; `/privacy` (cơ sở xử lý, thời hạn lưu, bên xử lý phụ, chuyển dữ liệu, quyền, DPA khi được hỏi) và `/terms` viết lại en + vi; `TERMS_VERSION` `2026-10-20`, hộp thoại đồng ý lại `TermsGate`; audit giữ 12 tháng (`lib/retention.ts`); release Sentry hết `unknown`; nháp thanh toán/hoàn tiền ở `2026-10-20-nhap-dieu-khoan-thanh-toan.md`; [bản ghi](2026-10-20-phien-5-6-phap-ly.md) |
