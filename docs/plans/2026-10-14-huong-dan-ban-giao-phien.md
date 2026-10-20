@@ -6,9 +6,11 @@
 
 Dán câu sau (đổi tên file chặng và số phiên):
 
-> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-17-chang-6-thuong-hieu-ra-mat.md`, rồi lập kế hoạch và triển khai **phiên 6.1 của Chặng 6 (cổng quyết định)** (bản ghi phiên gần nhất `2026-10-20-phien-5-6-phap-ly.md`; tách nhánh từ `covuaduongsinh/chang5-legal-done`).
+> Đọc `docs/plans/2026-10-14-huong-dan-ban-giao-phien.md` và `docs/plans/2026-10-20-chang-k-kiem-chung.md`, rồi làm **việc của tuần hiện tại trong Chặng K (kiểm chứng)** (tài liệu làm việc ở `docs/kiem-chung/`; nhánh `covuaduongsinh/kiem-chung`).
 
-Phiên 6.1 chủ yếu là **quyết định của chủ dự án**: mô hình kinh doanh và bảng giá, merchant of record, tên mới và miền, repo public hay private, có ra kèm Chess edition hay không. Phiên Claude chuẩn bị phương án và hỏi bằng câu hỏi có lựa chọn, không tự quyết. Khi chốt thu phí: đưa nháp `docs/plans/2026-10-20-nhap-dieu-khoan-thanh-toan.md` vào `/terms`, thêm merchant of record vào `/privacy` mục 4–5, tăng `TERMS_VERSION`.
+**Chặng K (từ 2026-10-20, 6 tuần đến 2026-12-01):** chủ dự án dùng thật Noteriv, chạy 20 kịch bản, so 12 đối thủ, đánh giá chi phí/pháp lý/năng lực, rồi mới quyết thương mại. Chỉ chủ dự án dùng thử. Không làm tính năng lớn mới; chỉ sửa lỗi Chặn/Nặng theo phiên nhỏ (nhánh `covuaduongsinh/k-<việc>`). Phiên cuối tuần: đọc `docs/kiem-chung/nhat-ky.md`, phân loại vào `loi-va-gop-y.md`, cập nhật bảng Trạng thái của file chặng. Tiêu chí thành công/dừng và trọng số chấm điểm **không sửa sau khi chốt**. Chặng 6 chỉ bắt đầu sau báo cáo quyết định.
+
+Khi tới Chặng 6 — phiên 6.1 chủ yếu là **quyết định của chủ dự án**: mô hình kinh doanh và bảng giá, merchant of record, tên mới và miền, repo public hay private, có ra kèm Chess edition hay không. Phiên Claude chuẩn bị phương án và hỏi bằng câu hỏi có lựa chọn, không tự quyết. Khi chốt thu phí: đưa nháp `docs/plans/2026-10-20-nhap-dieu-khoan-thanh-toan.md` vào `/terms`, thêm merchant of record vào `/privacy` mục 4–5, tăng `TERMS_VERSION`.
 
 **Chặng 5 xong (2026-10-20).** **5.6 xong, đã lên production** (PR #23, merge `777eddf`; bản ghi `2026-10-20-phien-5-6-phap-ly.md`):
 - `/privacy` và `/terms` viết lại en + vi:
