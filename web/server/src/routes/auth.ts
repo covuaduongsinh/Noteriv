@@ -335,6 +335,8 @@ export default async function authRoutes(fastify: FastifyInstance) {
       avatarUrl: user.avatarUrl,
       emailVerified: user.emailVerifiedAt !== null,
       isAdmin: isAdmin(user),
+      // False until the account accepted the current Terms and Privacy Policy: the app then asks (TermsGate).
+      termsAccepted: user.termsVersion === TERMS_VERSION,
     });
   });
 }

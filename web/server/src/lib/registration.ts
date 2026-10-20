@@ -1,8 +1,11 @@
 import { randomInt } from "node:crypto";
 import { z } from "zod";
 
-/** Bump when Terms or Privacy change in a way users must re-accept; stored per user at registration. */
-export const TERMS_VERSION = "2026-10-15";
+/**
+ * Bump when Terms or Privacy change in a way users must re-accept; stored per user at registration and when they
+ * accept again (POST /users/me/terms). Keep in step with web/src/lib/legal.ts.
+ */
+export const TERMS_VERSION = "2026-10-20";
 
 export type RegistrationMode = "invite" | "open" | "closed";
 
