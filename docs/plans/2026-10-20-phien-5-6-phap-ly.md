@@ -100,6 +100,26 @@
 - Đã chụp hộp thoại ở tiếng Anh và tiếng Việt.
 - Trước khi chạy đã tắt một API cũ (cổng 4001) và `next` (cổng 3457) còn sót từ phiên trước trong worktree này.
 
+## Lên production (2026-10-20)
+
+- **CI của PR #23:** xanh cả 4 job ngay lần đầu (desktop-frontend, e2e, frontend, server).
+- **Staging:**
+  - gộp vào `next` bằng nhánh tạm; deploy `done`;
+  - `/`, `/login`, `/terms`, `/privacy`, `/vaults`, `/quick`, `/api/v1/healthz`, `/api/v1/config` trả 200; không có basic-auth thì 401; không có container backup;
+  - luồng qua API với tài khoản tạm (đã xoá): đăng ký có `termsAccepted: true`; đặt về bản cũ thì `false`; version sai bị 409; đồng ý xong thì `true` và có 1 dòng audit `terms_accepted`;
+  - job dọn dữ liệu chạy theo chu kỳ 24 giờ, nên log worker chưa có dòng "pruned" ngay sau deploy.
+- **Production:**
+  - Không có migration, nên không cần sao lưu tay hay `psql -1`.
+  - Gộp PR #23 (merge `777eddf`); deploy `done`.
+  - Kiểm sau deploy:
+    - 9 container chạy;
+    - `/`, `/login`, `/terms`, `/privacy`, `/vaults`, `/api/v1/healthz`, `/api/v1/config` trả 200;
+    - `migrate status`: 23 migration, up to date;
+    - `SENTRY_RELEASE` rỗng trong container api, `/api/v1/config` trả `release: null` (Sentry và Status vẫn bật);
+    - RAM: api 97 MB / 256, worker 78 / 384, web 39 / 384.
+  - Production có 1 tài khoản, `terms_version` trống (tạo trước phiên 0.4), nên sẽ thấy hộp thoại lần đầu mở app sau deploy.
+- `next` gộp `main` (cây mã trùng `main`, push thường, không force); chờ staging deploy xong rồi `compose.stop`.
+
 ## Việc của chủ dự án
 - Chấp nhận DPA (thoả thuận xử lý dữ liệu) của nhà cung cấp VPS trong bảng điều khiển khách hàng, nếu có. Với Resend, Sentry, Cloudflare, GitHub thì DPA nằm trong điều khoản của họ.
 - Nên nhờ luật sư rà `/terms` và `/privacy` trước khi mở đăng ký rộng. Trang không còn nhãn "Bản nháp" vì đã điền tên chủ thể vận hành.

@@ -110,7 +110,7 @@ Dùng chữ **"Chặng"** để không lẫn với "Giai đoạn 0–6" của l�
 | 2 Định vị lại | Xong | 2026-10-17 | PR #3 (`e8c1f7d`): README tiếng Anh, `/privacy` trung lập, `NOTICE.md`, xoá `phone/`, ẩn "cỡ bàn cờ"; bản ghi `2026-10-17-phien-chang-2.md` |
 | 3 Rà soát, hoàn thiện | Xong | 2026-10-17 | PR #4–#8 (merge cuối `e7af3dc`): sync không mất dữ liệu, xung đột, bảo mật, E2E trong CI, CSP desktop, `docs/qa/checklist.md` |
 | 4 Quốc tế hoá, người mới | Xong | 2026-10-19 | PR #9–#17 (merge cuối `b059018`): i18n en/vi, vault mẫu, PWA, offline, chống ghi đè, tài liệu tiếng Anh; bản ghi cuối `2026-10-19-phien-4-9-tai-lieu.md` |
-| 5 Nền tảng thương mại | Đang làm | 2026-10-19 | 5.1 email và tài khoản ([bản ghi](2026-10-19-phien-5-1-email.md)) |
+| 5 Nền tảng thương mại | Xong | 2026-10-20 | PR #18–#23 (merge cuối `777eddf`): email tài khoản, mở đăng ký (Turnstile), gói và hạn mức, trang quản trị, Sentry + số liệu + trang trạng thái, pháp lý quốc tế; bản ghi cuối `2026-10-20-phien-5-6-phap-ly.md`. Production vẫn `invite` |
 | 6 Thương hiệu, ra mắt | Chưa làm | | |
 
 ## 8. Giải thích thuật ngữ
