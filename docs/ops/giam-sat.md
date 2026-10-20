@@ -10,7 +10,7 @@
 | **UptimeRobot** (bên ngoài) | Trang chủ `noteriv.dsc.edu.vn` trả 200; `/api/v1/healthz` trả 200 (nghĩa là API, Postgres, Redis đều trả lời) | 5 phút | Email "Down" / "Up" |
 | **healthchecks.io, check `noteriv-host`** | Đĩa VPS ≤ 90% và RAM khả dụng ≥ 300MB (script cron trên VPS) | 10 phút | Email khi script báo lỗi, **hoặc khi mất tín hiệu** (VPS chết) |
 | **healthchecks.io, check sao lưu** | Sao lưu 02:00 mỗi đêm chạy thành công | 1 ngày | Email khi sao lưu lỗi hoặc không chạy |
-| **Sentry** (từ phiên 5.5, khi đã đặt `SENTRY_DSN`) | Lỗi của web, API, worker, collab | Ngay khi có lỗi mới | Email "New issue" |
+| **Sentry** (từ phiên 5.5; bật ở production từ 2026-10-20) | Lỗi của web, API, worker, collab | Ngay khi có lỗi mới | Email "New issue" |
 
 `/api/v1/healthz` công khai nhưng chỉ trả `{"ok":true}` hoặc `{"ok":false}`: không lộ phiên bản hay chi tiết lỗi.
 
@@ -45,6 +45,8 @@ Dữ liệu không mất chỉ vì có email cảnh báo: các cảnh báo này 
 
 ## 6. Sentry: lỗi của ứng dụng (từ Phiên 5.5)
 
+**Đã làm xong (2026-10-20):** tổ chức `duong-sinh-chess` (vùng EU), project `noteriv` (Node.js); DSN lưu ở `~/.config/noteriv/sentry.dsn` và đặt làm `SENTRY_DSN` trong env compose production. Lỗi thử "noteriv sentry test" đã tới và đã Resolve. Các bước dưới đây giữ lại để làm lại khi cần.
+
 **Việc chủ dự án làm một lần:**
 1. Vào sentry.io → **Sign up** (gói Developer, miễn phí). Khi tạo tổ chức, ở mục **Data Storage Location** chọn **European Union (Germany)**. Mục này không đổi được về sau.
 2. Bật xác thực hai bước (User Settings → Security).
@@ -68,6 +70,8 @@ Issue "noteriv sentry test" hiện trong Sentry sau ít giây. Đánh dấu **Re
 **Gói miễn phí:** khoảng 5.000 lỗi mỗi tháng. Khi gần hết hạn mức, Sentry gửi email báo; lỗi lặp lại được gom vào một issue.
 
 ## 7. Trang trạng thái công khai (từ Phiên 5.5)
+
+**Đã làm xong (2026-10-20):** status page `https://stats.uptimerobot.com/CHgpIpHgDN` (2 monitor: trang chủ và `/api/v1/healthz`), đặt làm `STATUS_PAGE_URL` trong env compose production.
 
 **Việc chủ dự án làm một lần:**
 1. UptimeRobot → **Status Pages** → **Add Status Page**, chọn 2 monitor đang có (trang chủ và `/api/v1/healthz`), đặt tên "Noteriv".

@@ -130,7 +130,8 @@
      - RAM: api 67 MB / 256, worker 47 / 384, collab 34 / 256;
      - `user_activity_days` có 3 dòng.
 - `next` gộp `main` (cây mã trùng `main`, push thường, không force); chờ staging deploy xong rồi `compose.stop`.
-- **Còn chờ chủ dự án** (`docs/ops/giam-sat.md` mục 6–7):
+- **Đã xong ngày 2026-10-20:** `SENTRY_DSN` (vùng EU, tổ chức `duong-sinh-chess`, project `noteriv`) và `STATUS_PAGE_URL` (UptimeRobot) đã đặt trong env compose production; lỗi thử đã tới Sentry. Release trong Sentry hiện `unknown` (Dokploy không cung cấp `SOURCE_COMMIT`), xử lý ở 5.6.
+- Trước đó **còn chờ chủ dự án** (`docs/ops/giam-sat.md` mục 6–7):
   - tạo Sentry ở vùng EU, lưu DSN vào `~/.config/noteriv/sentry.dsn`;
   - tạo status page trên UptimeRobot và gửi link.
   - Khi có, một phiên sẽ hỏi trước rồi đặt `SENTRY_DSN` / `STATUS_PAGE_URL` trong Dokploy và deploy lại.
