@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import TermsGate from "@/components/TermsGate";
 
 const TABS = [
   { href: "/admin", key: "users" },
@@ -36,6 +37,7 @@ export default function AdminNav({ active }: { active: (typeof TABS)[number]["ke
           </Link>
         ))}
       </nav>
+      <TermsGate />
     </div>
   );
 }

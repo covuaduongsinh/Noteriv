@@ -73,6 +73,7 @@ import {
 import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
 import { useIsPhone } from "@/lib/use-is-phone";
+import TermsGate from "@/components/TermsGate";
 
 const RECENT_COMMANDS_KEY = "noteriv-recent-commands";
 
@@ -1606,6 +1607,7 @@ export default function VaultPage() {
 
   return (
     <div className="web-vault h-screen flex flex-col" data-vault-id={vaultId}>
+      <TermsGate />
       {!zenMode && (
         <VaultHeader
           vault={vault}

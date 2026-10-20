@@ -89,10 +89,11 @@ services:
       # "Tải PDF" is rendered by the internal noteriv-pdf service (headless Chromium).
       PDF_SERVICE_URL: http://noteriv-pdf:4003
       PDF_SERVICE_TOKEN: ${PDF_SERVICE_TOKEN:?set PDF_SERVICE_TOKEN}
-      # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
+      # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit when Dokploy provides
+      # SOURCE_COMMIT, else empty: the SDK reads SENTRY_RELEASE itself, so a placeholder would show up as a release.
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
-      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-}
       # Public status page (UptimeRobot) linked in the page footers; unset = no link.
       STATUS_PAGE_URL: ${STATUS_PAGE_URL:-}
     depends_on:
@@ -123,7 +124,7 @@ services:
       # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
-      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-}
     depends_on:
       noteriv-postgres:
         condition: service_healthy
@@ -210,7 +211,7 @@ services:
       # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}
-      SENTRY_RELEASE: ${SOURCE_COMMIT:-unknown}
+      SENTRY_RELEASE: ${SOURCE_COMMIT:-}
     depends_on:
       noteriv-postgres:
         condition: service_healthy

@@ -14,6 +14,7 @@ import { cleanupExpiredTrash } from "../lib/trash.js";
 import { noteSnapshotQueue } from "../lib/noteSnapshotQueue.js";
 import { captureSnapshots } from "../lib/noteSnapshots.js";
 import { pruneActivityDays } from "../lib/activity.js";
+import { pruneExpiredRecords } from "../lib/retention.js";
 import { captureError, flushSentry, initSentry } from "../lib/sentry.js";
 
 initSentry("worker");
@@ -47,6 +48,8 @@ const trashWorker = new Worker(
     console.log("[sync-worker] running trash cleanup (purge past retention window)");
     await cleanupExpiredTrash(prisma);
     await pruneActivityDays(prisma);
+    const pruned = await pruneExpiredRecords(prisma);
+    console.log(`[sync-worker] pruned ${pruned.auditLogs} audit entries, ${pruned.refreshTokens + pruned.emailTokens} expired tokens`);
   },
   { connection, concurrency: 1 }
 );

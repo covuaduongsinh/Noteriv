@@ -1215,6 +1215,19 @@
       "cancel": "Cancel",
       "admin": "Administration (admin)"
     },
+    "termsGate": {
+      "title": "We updated our Terms and Privacy Policy",
+      "intro": "Please read and accept them to keep using Noteriv. The main changes:",
+      "change1": "Why we process each kind of data, and the legal basis for it.",
+      "change2": "How long we keep each kind of record (the security log is now deleted after 12 months).",
+      "change3": "Which service providers handle data for us, and where (our server is in Singapore).",
+      "change4": "Your rights, including how to object or complain.",
+      "readBefore": "Read the",
+      "accept": "I accept",
+      "accepting": "Saving…",
+      "failed": "Could not save. Check your connection and try again.",
+      "otherwise": "If you do not accept, you can download your data, delete your account or sign out."
+    },
     "invites": {
       "createFailed": "Could not create the code. Try again later.",
       "title": "Invite codes",

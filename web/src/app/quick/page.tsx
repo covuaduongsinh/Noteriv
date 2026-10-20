@@ -7,6 +7,7 @@ import { ApiError, webApi, type ApiVault } from "@/lib/webApi";
 import { isNetworkError } from "@/lib/offline";
 import { formatDate, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import TermsGate from "@/components/TermsGate";
 
 // Quick note: a page that opens fast on a phone (no editor, no vault page) — type, save, done. The text is kept on
 // the device while typing, so nothing is lost when the network drops or the save fails; it is cleared once saved.
@@ -117,6 +118,7 @@ export default function QuickNotePage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center px-4 pt-6 pb-10">
+      <TermsGate />
       <div className="w-full max-w-xl flex flex-col gap-3">
         <div className="flex items-center justify-between gap-3">
           <h1 className="text-lg font-semibold">{t("web.quick.title")}</h1>
