@@ -22,6 +22,8 @@ export interface ApiUser {
   emailVerified?: boolean;
   /** Only set by /auth/me: true when the email is in the server's ADMIN_EMAILS list. */
   isAdmin?: boolean;
+  /** Only set by /auth/me: false until the account accepted the current Terms and Privacy Policy (TermsGate asks). */
+  termsAccepted?: boolean;
 }
 
 export type RegistrationMode = "invite" | "open" | "closed";
@@ -565,6 +567,9 @@ export const webApi = {
     /** Sends a confirmation link to `newEmail`; the address changes once it is followed. */
     changeEmail: (data: { newEmail: string; password: string; locale?: Locale }) =>
       request<{ ok: true }>("/users/me/email", { method: "POST", body: JSON.stringify(data) }),
+    /** Accepts the Terms and Privacy Policy of `version` (lib/legal.ts); 409 terms_outdated when the server has a newer one. */
+    acceptTerms: (version: string) =>
+      request<{ ok: true; version: string }>("/users/me/terms", { method: "POST", body: JSON.stringify({ version }) }),
   },
 
   workspace: {

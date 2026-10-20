@@ -6,6 +6,8 @@ import Link from "next/link";
 import { ApiError, webApi, type ApiUser, type ApiVault } from "@/lib/webApi";
 import AccountEmail from "@/components/AccountEmail";
 import StatusLink from "@/components/StatusLink";
+import TermsGate from "@/components/TermsGate";
+import { deleteMyAccount, downloadMyData } from "@/lib/account-actions";
 import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { clearCachedPages } from "@/components/ServiceWorkerRegister";
 import { isNetworkError } from "@/lib/offline";
@@ -97,17 +99,6 @@ export default function VaultsPage() {
     router.replace("/login");
   }
 
-  async function exportData() {
-    const data = await webApi.users.exportData();
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "noteriv-export.json";
-    a.click();
-    URL.revokeObjectURL(url);
-  }
-
   async function deleteAccount() {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -115,9 +106,7 @@ export default function VaultsPage() {
     }
     setDeletingAccount(true);
     try {
-      await webApi.users.deleteAccount();
-      clearCachedPages();
-      await clearOfflineData();
+      await deleteMyAccount();
       router.replace("/login");
     } finally {
       setDeletingAccount(false);
@@ -193,7 +182,7 @@ export default function VaultsPage() {
           </Link>
         )}
         <button
-          onClick={exportData}
+          onClick={downloadMyData}
           className="text-left px-3 py-2 rounded-lg text-sm text-[var(--text-secondary)] hover:bg-[var(--bg-secondary)] hover:text-[var(--text-primary)]"
         >
           {t("web.vaultList.export")}
@@ -217,6 +206,7 @@ export default function VaultsPage() {
           <StatusLink />
         </p>
       </div>
+      <TermsGate />
     </div>
   );
 }

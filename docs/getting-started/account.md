@@ -69,9 +69,15 @@ When the sign-in page or the vault list shows a **Status** link at the bottom, i
 
 An administrator can lock an account, for example after abuse is reported. A locked account is signed out everywhere and signing in says *This account is locked.* If you think this is a mistake, write to the address shown there.
 
+## When the terms change
+
+When the Terms of Use or the Privacy Policy change in a way that matters, the next time you open your vaults, a vault, **Quick note** or the administration pages, a window titled **We updated our Terms and Privacy Policy** lists the main changes and links to both texts. Choose **I accept** to go on; the window does not come back for that version.
+
+If you do not want to accept, the same window offers **Download all my data (JSON)**, **Delete account** (click twice) and **Sign out**. Sync, collaboration and the web clipper keep working meanwhile; only the app pages wait for your answer.
+
 ## Download your data or delete the account
 
-- **Download all my data (JSON)** saves your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file, together with the days on which you used the app (what the usage counts are made of); attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).
+- **Download all my data (JSON)** saves your account details (email, display name, when you signed up, verified your email and accepted which version of the terms) and your vaults with their folders, notes, plugins and sync settings (without passwords or tokens) as one file, together with the days on which you used the app (what the usage counts are made of); attachments are not in it. To export a single vault as Markdown files, see [Vaults](vaults.md).
 - **Delete account** asks for a second click, then permanently removes the account and all its vaults, notes and attachments. It cannot be undone.
 
 > **Desktop app:** the desktop app has no account; its vaults are folders on your computer. See [Desktop app](../desktop.md).

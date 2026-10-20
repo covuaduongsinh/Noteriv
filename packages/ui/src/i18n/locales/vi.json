@@ -1186,6 +1186,19 @@
       "cancel": "Huỷ",
       "admin": "Quản trị (admin)"
     },
+    "termsGate": {
+      "title": "Chúng tôi đã cập nhật Điều khoản và Chính sách quyền riêng tư",
+      "intro": "Vui lòng đọc và đồng ý để tiếp tục dùng Noteriv. Những thay đổi chính:",
+      "change1": "Vì sao chúng tôi xử lý từng loại dữ liệu, và cơ sở pháp lý cho việc đó.",
+      "change2": "Mỗi loại dữ liệu được giữ bao lâu (nhật ký bảo mật nay tự xoá sau 12 tháng).",
+      "change3": "Những nhà cung cấp dịch vụ xử lý dữ liệu cho chúng tôi, và ở đâu (máy chủ đặt tại Singapore).",
+      "change4": "Quyền của bạn, kể cả cách phản đối hoặc khiếu nại.",
+      "readBefore": "Đọc",
+      "accept": "Tôi đồng ý",
+      "accepting": "Đang lưu…",
+      "failed": "Không lưu được. Kiểm tra kết nối rồi thử lại.",
+      "otherwise": "Nếu không đồng ý, bạn có thể tải dữ liệu về, xoá tài khoản hoặc đăng xuất."
+    },
     "invites": {
       "createFailed": "Không tạo được mã. Thử lại sau.",
       "title": "Mã mời đăng ký",

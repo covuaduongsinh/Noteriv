@@ -3,13 +3,14 @@ import { z } from "zod";
 import { logAudit } from "../lib/auditLog.js";
 import { deleteAccount } from "../lib/accounts.js";
 import { verifyPassword } from "../lib/password.js";
-import { emailField } from "../lib/registration.js";
+import { emailField, TERMS_VERSION } from "../lib/registration.js";
 import { limitsOf, planForUser, snapshotCap, usageFor } from "../lib/plans.js";
 import { sendEmailChangeConfirmation, sendVerificationEmail, type SendResult } from "../lib/accountEmails.js";
 
 const localeField = z.enum(["en", "vi"]).optional();
 const resendVerificationSchema = z.object({ locale: localeField });
 const changeEmailSchema = z.object({ newEmail: emailField, password: z.string().min(1), locale: localeField });
+const acceptTermsSchema = z.object({ version: z.string().min(1).max(32) });
 
 /** How a send that the user asked for directly is answered; "sent" is the only 200. */
 function sendFailure(result: Exclude<SendResult, "sent">): { code: number; error: string } {
@@ -58,7 +59,16 @@ export default async function userRoutes(fastify: FastifyInstance) {
 
     const user = await prisma.user.findUnique({
       where: { id: userId },
-      select: { id: true, email: true, displayName: true, avatarUrl: true, createdAt: true },
+      select: {
+        id: true,
+        email: true,
+        displayName: true,
+        avatarUrl: true,
+        createdAt: true,
+        emailVerifiedAt: true,
+        termsAcceptedAt: true,
+        termsVersion: true,
+      },
     });
     if (!user) {
       return reply.code(404).send({ error: "not_found" });
@@ -121,6 +131,18 @@ export default async function userRoutes(fastify: FastifyInstance) {
     reply.clearCookie(ACCESS_COOKIE, { path: "/" });
     reply.clearCookie(REFRESH_COOKIE, { path: "/" });
     return reply.send({ ok: true });
+  });
+
+  // Accepting the current Terms and Privacy Policy again after they changed (the app's TermsGate). The page sends the
+  // version it showed: an older page open in another tab must not accept a text its user never saw.
+  fastify.post("/me/terms", async (request, reply) => {
+    const parsed = acceptTermsSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    if (parsed.data.version !== TERMS_VERSION) return reply.code(409).send({ error: "terms_outdated", version: TERMS_VERSION });
+    const userId = request.user!.id;
+    await prisma.user.update({ where: { id: userId }, data: { termsAcceptedAt: new Date(), termsVersion: TERMS_VERSION } });
+    logAudit(prisma, { userId, action: "terms_accepted", metadata: { termsVersion: TERMS_VERSION }, ip: request.ip });
+    return reply.send({ ok: true, version: TERMS_VERSION });
   });
 
   // Settings → Plan and usage: the plan's limits (null = no limit) next to what the account uses now.

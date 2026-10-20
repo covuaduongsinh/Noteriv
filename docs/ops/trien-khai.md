@@ -63,7 +63,7 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - **Trước khi bật `open` ở production** (chủ dự án chốt ở phiên 5.2: giữ `invite` tới lúc đủ các điều kiện sau):
   - đã bật email (mục 8), để người mới xác minh được địa chỉ;
   - đã bật Turnstile (dưới đây);
-  - xong phiên 5.6 (điều khoản và quyền riêng tư quốc tế);
+  - ~~xong phiên 5.6 (điều khoản và quyền riêng tư quốc tế)~~: đã xong 2026-10-20; nên nhờ luật sư rà `/terms` và `/privacy` trước khi mở rộng;
   - sao lưu tay ngay trước khi đổi.
   Đổi bằng cách đặt `REGISTRATION_MODE=open` trong env Dokploy rồi deploy lại; quay về `invite` cũng vậy.
 - **Turnstile** (Cloudflare, từ phiên 5.2): kiểm tra chống bot ở form đăng ký và quên mật khẩu. Bật khi có đủ `TURNSTILE_SITE_KEY` (công khai, trang lấy qua `GET /api/v1/auth/registration`) và `TURNSTILE_SECRET_KEY` (bí mật). Tạo widget trong Cloudflare dashboard → Turnstile, chế độ *Managed*, hostname `noteriv.dsc.edu.vn` và `staging-noteriv.dsc.edu.vn`. Cloudflare không trả lời thì form từ chối (lỗi thì chặn). Key thử luôn đạt để chạy E2E tại máy: site `1x00000000000000000000AA`, secret `1x0000000000000000000000000000000AA`.
@@ -85,6 +85,13 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
   - Xử lý yêu cầu hỗ trợ (quên mật khẩu, đổi gói) dùng trang này; các CLI `reset-password` và `plan` vẫn giữ cho lúc giao diện không dùng được.
 - Tạo mã mời: đăng nhập bằng email admin → **Quản trị → Mã mời** (`/admin/invites`) → nhập ghi chú, số lượt dùng, số ngày hiệu lực → **Tạo mã** → **Chép mã** gửi cho người được mời. Thu hồi bằng nút **Thu hồi** (mã không bị xoá, chỉ vô hiệu).
 - Mỗi lần đăng ký lưu `invite_code_id` và thời điểm + phiên bản điều khoản đã đồng ý (`terms_accepted_at`, `terms_version`). Khi sửa điều khoản đáng kể, đổi `TERMS_VERSION` ở **cả** `web/server/src/lib/registration.ts` và `web/src/lib/legal.ts`.
+- **Đồng ý lại** (từ phiên 5.6):
+  - `GET /auth/me` trả `termsAccepted`. Khi `terms_version` của người dùng khác `TERMS_VERSION`, trang Vault, trang vault, Ghi nhanh và các trang quản trị hiện hộp thoại `web/src/components/TermsGate.tsx`. Hộp thoại có các lựa chọn: đồng ý, tải dữ liệu, xoá tài khoản, đăng xuất.
+  - Đồng ý gọi `POST /users/me/terms { version }`. Server ghi lại thời điểm và phiên bản, kèm audit `terms_accepted`. Trang cũ gửi phiên bản khác thì nhận 409 `terms_outdated` và tải lại trang.
+  - API không chặn ai, nên đồng bộ, cộng tác và web clipper vẫn chạy trong lúc chờ.
+  - Đếm số người đã đồng ý (chỉ đếm): `SELECT terms_version, count(*) FROM users GROUP BY 1;`.
+- **Thời hạn lưu** (từ phiên 5.6, `web/server/src/lib/retention.ts`; job dọn rác hằng ngày của worker): nhật ký audit 12 tháng; refresh token và token email xoá 30 ngày sau khi hết hạn. `/privacy` mục 4 ghi đúng các con số này, nên sửa ở đây thì sửa cả trang đó và tăng `TERMS_VERSION`.
+- Nháp điều khoản thanh toán và hoàn tiền (hoàn đủ trong 14 ngày) ở `docs/plans/2026-10-20-nhap-dieu-khoan-thanh-toan.md`, áp dụng khi bật thu phí.
 - Trang `/terms` và `/privacy` hiện nhãn **Bản nháp** cho tới khi điền `OPERATOR_NAME` và `CONTACT_EMAIL` trong `web/src/lib/legal.ts`.
 - Migration `20261015120000_invite_codes` (đã áp dụng ở production ngày 2026-10-15). **Quy tắc rút ra:** khi migration chỉ *thêm* bảng/cột nullable mà mã mới đọc cột đó ở mọi truy vấn (ở đây là `users`), áp migration **trước** khi deploy (sao lưu thủ công, rồi `psql -1` file `migration.sql` vào Postgres), deploy, rồi `prisma migrate resolve --applied <tên>` để Prisma ghi nhận. Nếu làm ngược lại, đăng nhập lỗi cho tới khi migration chạy. Staging thì chạy `migrate deploy` bình thường.
 
@@ -135,7 +142,7 @@ Migration Prisma: chạy trên staging trước (`docker exec <api-staging> npx 
 - Biến (env compose Dokploy; `noteriv-api`, `noteriv-worker`, `noteriv-collab` dùng chung):
   - `SENTRY_DSN`: rỗng = **tắt** hẳn (trình duyệt cũng không tải SDK). DSN không phải bí mật nặng (trang nào cũng đọc được qua `GET /api/v1/config`), nhưng vẫn không đưa vào repo.
   - `SENTRY_ENVIRONMENT`: mặc định `production`; staging đặt `staging`.
-  - `SENTRY_RELEASE`: compose tự lấy từ `SOURCE_COMMIT`.
+  - `SENTRY_RELEASE`: compose lấy từ `SOURCE_COMMIT`. Dokploy hiện không cung cấp biến này nên để trống, và Sentry không gắn release. Trước phiên 5.6 giá trị mặc định là `unknown`, và SDK Node tự đọc biến này nên mọi lỗi mang release `unknown`. Muốn có release thật thì phải ghi commit vào image lúc build (việc tồn).
 - **Gửi gì:**
   - API chỉ báo lỗi 5xx, gắn tag route mẫu (không phải URL thật) và id tài khoản;
   - worker báo job lỗi, tag theo queue;
