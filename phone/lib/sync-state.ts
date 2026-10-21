@@ -15,9 +15,12 @@ const STATE_FILE = '.noteriv/sync-state.json';
 interface StoredState {
   remote: string;
   files: Record<string, string>;
+  /** Remote blob sha per path at the last agreement (GitHub). Lets a sync skip notes unchanged on both sides. */
+  shas?: Record<string, string>;
 }
 
 export type SyncBase = Record<string, string>;
+export type SyncShas = Record<string, string>;
 
 /** FNV-1a over UTF-16 code units, plus the length. Only used to detect change. */
 export function contentHash(content: string): string {
@@ -33,20 +36,35 @@ function stateKey(remote: string, branch?: string): string {
   return `${remote.trim()}#${branch ?? ''}`;
 }
 
-/** The last-synced hashes for this vault, or none if it last synced elsewhere. */
-export async function loadSyncBase(vaultPath: string, remote: string, branch?: string): Promise<SyncBase> {
+async function loadState(vaultPath: string, remote: string, branch?: string): Promise<StoredState | null> {
   const raw = await FS.readFile(vaultFileUri(vaultPath, STATE_FILE));
-  if (!raw) return {};
+  if (!raw) return null;
   try {
     const state = JSON.parse(raw) as StoredState;
-    return state.remote === stateKey(remote, branch) && state.files ? state.files : {};
+    return state.remote === stateKey(remote, branch) ? state : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
-export function saveSyncBase(vaultPath: string, remote: string, branch: string | undefined, files: SyncBase): void {
-  const state: StoredState = { remote: stateKey(remote, branch), files };
+/** The last-synced hashes for this vault, or none if it last synced elsewhere. */
+export async function loadSyncBase(vaultPath: string, remote: string, branch?: string): Promise<SyncBase> {
+  return (await loadState(vaultPath, remote, branch))?.files ?? {};
+}
+
+/** The remote blob shas recorded with the last-synced hashes (empty for state written before they existed). */
+export async function loadSyncShas(vaultPath: string, remote: string, branch?: string): Promise<SyncShas> {
+  return (await loadState(vaultPath, remote, branch))?.shas ?? {};
+}
+
+export function saveSyncBase(
+  vaultPath: string,
+  remote: string,
+  branch: string | undefined,
+  files: SyncBase,
+  shas?: SyncShas
+): void {
+  const state: StoredState = { remote: stateKey(remote, branch), files, ...(shas ? { shas } : {}) };
   FS.writeFile(vaultFileUri(vaultPath, STATE_FILE), JSON.stringify(state));
 }
 

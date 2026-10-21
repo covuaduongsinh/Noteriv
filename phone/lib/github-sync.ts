@@ -3,6 +3,7 @@ import {
   conflictCopyPath,
   contentHash,
   loadSyncBase,
+  loadSyncShas,
   pullAction,
   saveSyncBase,
   shouldDeleteLocal,
@@ -99,17 +100,9 @@ function base64Decode(b64: string): string {
 // --- Remote URL parsing ---
 
 export function parseRemote(url: string): { owner: string; repo: string } | null {
-  // Handle HTTPS: https://github.com/owner/repo.git or https://github.com/owner/repo
-  const httpsMatch = url.match(/github\.com\/([^/]+)\/([^/.]+)/);
-  if (httpsMatch) {
-    return { owner: httpsMatch[1], repo: httpsMatch[2] };
-  }
-  // Handle SSH: git@github.com:owner/repo.git
-  const sshMatch = url.match(/github\.com:([^/]+)\/([^/.]+)/);
-  if (sshMatch) {
-    return { owner: sshMatch[1], repo: sshMatch[2] };
-  }
-  return null;
+  // HTTPS (https://github.com/owner/repo[.git]) or SSH (git@github.com:owner/repo.git). Repo names may contain dots.
+  const match = url.trim().match(/github\.com[/:]([^/]+)\/([^/]+?)(?:\.git)?\/?$/);
+  return match ? { owner: match[1], repo: match[2] } : null;
 }
 
 // --- GitHub API helpers ---
@@ -139,7 +132,7 @@ async function getDefaultBranch(
   token: string
 ): Promise<string> {
   const res = await ghFetch(`/repos/${owner}/${repo}`, token);
-  if (!res.ok) throw new Error(`Failed to get repo info: ${res.status}`);
+  if (!res.ok) throw new Error(`Failed to get repo info: ${await describeFailure(res)}`);
   const data = await res.json();
   return data.default_branch ?? 'main';
 }
@@ -154,9 +147,47 @@ async function getTree(
     `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
     token
   );
-  if (!res.ok) throw new Error(`Failed to get tree: ${res.status}`);
+  // A repository with no commits yet answers 409 ("Git Repository is empty"): nothing to pull, everything to push.
+  if (res.status === 409) return [];
+  if (!res.ok) throw new Error(`Failed to get tree: ${await describeFailure(res)}`);
   const data = await res.json();
   return data.tree ?? [];
+}
+
+/** Status plus GitHub's own message; says so plainly when the hourly API limit is used up. */
+async function describeFailure(res: Response): Promise<string> {
+  if ((res.status === 403 || res.status === 429) && res.headers.get('x-ratelimit-remaining') === '0') {
+    const reset = Number(res.headers.get('x-ratelimit-reset'));
+    const at = reset ? new Date(reset * 1000).toLocaleTimeString() : 'later';
+    return `${res.status} GitHub API rate limit reached, try again after ${at}`;
+  }
+  let message = '';
+  try {
+    message = ((await res.json()) as { message?: string }).message ?? '';
+  } catch {
+    /* no JSON body */
+  }
+  return message ? `${res.status} ${message}` : String(res.status);
+}
+
+/** A blob's text by sha (works for files the contents API refuses as too large). */
+async function getBlobContent(owner: string, repo: string, sha: string, token: string): Promise<string> {
+  const res = await ghFetch(`/repos/${owner}/${repo}/git/blobs/${sha}`, token);
+  if (!res.ok) throw new Error(`Failed to get blob ${sha.slice(0, 7)}: ${await describeFailure(res)}`);
+  const data = (await res.json()) as { content?: string };
+  return base64Decode((data.content ?? '').replace(/\n/g, ''));
+}
+
+/** Runs `fn` over `items` with at most `limit` in flight. */
+async function forEachLimited<T>(items: T[], limit: number, fn: (item: T) => Promise<void>): Promise<void> {
+  let next = 0;
+  const worker = async () => {
+    while (next < items.length) {
+      const item = items[next++];
+      await fn(item);
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
 }
 
 async function getFileContent(
@@ -220,6 +251,15 @@ function encodeRepoPath(path: string): string {
 
 // --- Pull ---
 
+/**
+ * Sync used to download every note on every pull, and again on push to compare: for a vault of a few thousand
+ * notes that is thousands of API calls per sync (the hourly limit is 5,000) and minutes of work. The sync state
+ * now also records each note's remote blob sha at the last agreement, so a note unchanged on both sides costs
+ * nothing; only notes whose sha moved are downloaded, by sha (the blobs API, which also serves files over the
+ * contents API's 1 MB limit).
+ */
+const DOWNLOAD_CONCURRENCY = 6;
+
 export async function pull(
   vaultPath: string,
   token: string,
@@ -238,6 +278,7 @@ export async function pull(
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
     const tree = await getTree(owner, repo, branchName, token);
     const base = await loadSyncBase(vaultPath, remote, branch);
+    const shas = await loadSyncShas(vaultPath, remote, branch);
 
     // Filter to markdown files only, skip .noteriv/
     const remoteFiles = tree.filter(
@@ -264,28 +305,34 @@ export async function pull(
       if (shouldDeleteLocal(localContent, base[rel])) {
         FS.deleteFile(file.filePath);
         delete base[rel];
+        delete shas[rel];
         result.pulled++;
       }
     }
 
-    // Download each file
-    for (const item of remoteFiles) {
+    // Download what changed on the remote
+    await forEachLimited(remoteFiles, DOWNLOAD_CONCURRENCY, async (item) => {
       try {
         const localPath = vaultFileUri(vaultPath, item.path);
         const localContent = await FS.readFile(localPath);
-        const remoteFile = await getFileContent(owner, repo, item.path, token, branchName);
-        const remoteContent = base64Decode(remoteFile.content.replace(/\n/g, ''));
+        // Unchanged on the remote since the last sync: nothing to pull (a local edit is push's job).
+        if (localContent !== null && base[item.path] !== undefined && shas[item.path] === item.sha) return;
+        const remoteContent = await getBlobContent(owner, repo, item.sha, token);
 
         switch (pullAction(localContent, remoteContent, base[item.path])) {
           case 'skip':
             base[item.path] = contentHash(remoteContent);
+            shas[item.path] = item.sha;
             break;
           case 'take-remote':
             FS.writeFile(localPath, remoteContent);
             base[item.path] = contentHash(remoteContent);
+            shas[item.path] = item.sha;
             result.pulled++;
             break;
           case 'keep-local':
+            // The remote still holds the agreed version; push uploads the local edit against this sha.
+            shas[item.path] = item.sha;
             break;
           case 'conflict': {
             // Edited on both sides since the last sync: keep this device's
@@ -303,9 +350,9 @@ export async function pull(
           `Pull ${item.path}: ${err instanceof Error ? err.message : String(err)}`
         );
       }
-    }
+    });
 
-    saveSyncBase(vaultPath, remote, branch, base);
+    saveSyncBase(vaultPath, remote, branch, base, shas);
   } catch (err) {
     result.errors.push(
       `Pull failed: ${err instanceof Error ? err.message : String(err)}`
@@ -334,6 +381,7 @@ export async function push(
   try {
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
     const base = await loadSyncBase(vaultPath, remote, branch);
+    const shas = await loadSyncShas(vaultPath, remote, branch);
 
     // Get the remote tree to know current shas
     const tree = await getTree(owner, repo, branchName, token);
@@ -348,82 +396,50 @@ export async function push(
     // List all local markdown files
     const localFiles = await FS.listAllMarkdownFiles(vaultPath);
 
+    // One file at a time: each upload is a commit on the branch, and parallel ones would race for its head.
     for (const file of localFiles) {
+      const relPath = vaultRelativePath(vaultPath, file.filePath);
       try {
-        const relPath = vaultRelativePath(vaultPath, file.filePath);
-
-        if (shouldSkipPath(relPath)) continue;
+        if (shouldSkipPath(relPath) || relPath.startsWith('.trash/')) continue;
 
         const localContent = await FS.readFile(file.filePath);
         if (localContent === null) continue;
-
-        const remoteSha = remoteFileMap.get(relPath) ??
-          shaCache.get(shaCacheKey(owner, repo, relPath));
+        const localHash = contentHash(localContent);
+        const remoteSha = remoteFileMap.get(relPath);
 
         if (remoteSha) {
-          // File exists on remote - check if content differs
-          try {
-            const remoteFile = await getFileContent(
-              owner,
-              repo,
-              relPath,
-              token,
-              branchName
-            );
-            const remoteContent = base64Decode(
-              remoteFile.content.replace(/\n/g, '')
-            );
+          // Unchanged on both sides since the last sync.
+          if (base[relPath] === localHash && shas[relPath] === remoteSha) continue;
+          if (shas[relPath] !== remoteSha) {
+            // The remote moved, or this device never recorded its sha: compare before writing.
+            const remoteContent = await getBlobContent(owner, repo, remoteSha, token);
             if (remoteContent === localContent) {
-              base[relPath] = contentHash(localContent);
-              continue; // Same content, skip
+              base[relPath] = localHash;
+              shas[relPath] = remoteSha;
+              continue;
             }
-            // Update remote file
-            const { sha } = await putFileContent(
-              owner,
-              repo,
-              relPath,
-              localContent,
-              token,
-              remoteFile.sha,
-              'Sync from Noteriv Mobile'
-            );
-            shaCache.set(shaCacheKey(owner, repo, relPath), sha);
-            base[relPath] = contentHash(localContent);
-            result.pushed++;
-          } catch (err) {
-            result.errors.push(
-              `Push update ${relPath}: ${err instanceof Error ? err.message : String(err)}`
-            );
           }
+          const { sha } = await putFileContent(owner, repo, relPath, localContent, token, remoteSha, 'Sync from Noteriv Mobile');
+          shaCache.set(shaCacheKey(owner, repo, relPath), sha);
+          base[relPath] = localHash;
+          if (sha) shas[relPath] = sha;
+          result.pushed++;
         } else {
           // File doesn't exist on remote - create it
-          try {
-            const { sha } = await putFileContent(
-              owner,
-              repo,
-              relPath,
-              localContent,
-              token,
-              undefined,
-              'Sync from Noteriv Mobile'
-            );
-            shaCache.set(shaCacheKey(owner, repo, relPath), sha);
-            base[relPath] = contentHash(localContent);
-            result.pushed++;
-          } catch (err) {
-            result.errors.push(
-              `Push create ${relPath}: ${err instanceof Error ? err.message : String(err)}`
-            );
-          }
+          const { sha } = await putFileContent(owner, repo, relPath, localContent, token, undefined, 'Sync from Noteriv Mobile');
+          shaCache.set(shaCacheKey(owner, repo, relPath), sha);
+          base[relPath] = localHash;
+          if (sha) shas[relPath] = sha;
+          result.pushed++;
         }
       } catch (err) {
         result.errors.push(
-          `Push ${file.filePath}: ${err instanceof Error ? err.message : String(err)}`
+          `Push ${relPath}: ${err instanceof Error ? err.message : String(err)}`
         );
       }
     }
 
-    saveSyncBase(vaultPath, remote, branch, base);
+    saveSyncBase(vaultPath, remote, branch, base, shas);
   } catch (err) {
     result.errors.push(
       `Push failed: ${err instanceof Error ? err.message : String(err)}`

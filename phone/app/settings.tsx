@@ -43,6 +43,14 @@ const AUTO_SAVE_OPTIONS = [
 
 const TAB_SIZE_OPTIONS = [2, 4, 8];
 
+/** "Pulled: 3, Pushed: 1", plus the error count and the first error's text so a failure says why. */
+function syncSummary(result: GitSync.SyncResult): string {
+  const counts = `Pulled: ${result.pulled}, Pushed: ${result.pushed}`;
+  if (result.errors.length === 0) return counts;
+  return `${counts}, Errors: ${result.errors.length}
+${result.errors[0]}`;
+}
+
 export default function SettingsScreen() {
   const { settings, updateSettings, vault, refreshFiles, refreshVaults } = useApp();
   const { colors } = useTheme();
@@ -153,7 +161,7 @@ export default function SettingsScreen() {
     try {
       const result = await GitSync.sync(vault.path, tokenInput.trim(), selectedRepoUrl, vault.gitBranch || undefined, 'github');
       setLastSyncTime(new Date().toLocaleTimeString());
-      setSyncStatus(`Pulled: ${result.pulled}, Pushed: ${result.pushed}`);
+      setSyncStatus(syncSummary(result));
     } catch (err) {
       setSyncStatus(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -192,13 +200,7 @@ export default function SettingsScreen() {
       refreshFiles();
       const now = new Date().toLocaleTimeString();
       setLastSyncTime(now);
-      if (result.errors.length > 0) {
-        setSyncStatus(
-          `Pulled: ${result.pulled}, Pushed: ${result.pushed}, Errors: ${result.errors.length}`
-        );
-      } else {
-        setSyncStatus(`Pulled: ${result.pulled}, Pushed: ${result.pushed}`);
-      }
+      setSyncStatus(syncSummary(result));
     } catch (err) {
       setSyncStatus(
         `Sync failed: ${err instanceof Error ? err.message : String(err)}`
@@ -224,7 +226,7 @@ export default function SettingsScreen() {
       const result = await GitSync.sync(vault.path, token, remoteInput.trim(), vault.gitBranch || undefined, provider);
       refreshFiles();
       setLastSyncTime(new Date().toLocaleTimeString());
-      setSyncStatus(`Pulled: ${result.pulled}, Pushed: ${result.pushed}${result.errors.length ? `, Errors: ${result.errors.length}` : ''}`);
+      setSyncStatus(syncSummary(result));
     } catch (err) {
       setSyncStatus(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
     } finally {
@@ -256,7 +258,8 @@ export default function SettingsScreen() {
               refreshFiles();
               setLastSyncTime(new Date().toLocaleTimeString());
               if (result.errors.length > 0) {
-                setSyncStatus(`Cloned: ${result.pulled} files, Errors: ${result.errors.length}`);
+                setSyncStatus(`Cloned: ${result.pulled} files, Errors: ${result.errors.length}
+${result.errors[0]}`);
               } else {
                 setSyncStatus(`Fresh clone: ${result.pulled} files downloaded`);
               }

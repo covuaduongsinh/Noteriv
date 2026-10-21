@@ -70,6 +70,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // The sync timers outlive renders, so they read the open folder through a ref.
   const currentDirRef = useRef(currentDir);
   currentDirRef.current = currentDir;
+  // The sync timer outlives renders; it reads the open note through refs, not the values of the render that
+  // started it (which would save stale text over the note).
+  const editorRef = useRef({ isDirty, currentFile, content });
+  editorRef.current = { isDirty, currentFile, content };
 
   // Initialize
   useEffect(() => {
@@ -148,7 +152,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     })();
   }, [vault?.id, vault?.gitRemote]);
 
-  // Auto-sync every 5 seconds (pull + push if changes)
+  // Auto-sync every minute (pull + push if changes)
   useEffect(() => {
     if (autoSyncTimer.current) {
       clearInterval(autoSyncTimer.current);
@@ -164,8 +168,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const token = await GitSync.getVaultToken(vault.id);
         if (!token) return;
         // Save current file before sync
-        if (isDirty && currentFile) {
-          FS.writeFile(currentFile, content);
+        const open = editorRef.current;
+        if (open.isDirty && open.currentFile) {
+          FS.writeFile(open.currentFile, open.content);
           setIsDirty(false);
         }
         const result = await GitSync.sync(vault.path, token, vault.gitRemote!, vault.gitBranch || undefined, vault.gitProvider);
@@ -181,7 +186,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       } finally {
         syncInFlight.current = false;
       }
-    }, 5_000);
+    }, 60_000);
 
     return () => {
       if (autoSyncTimer.current) {
