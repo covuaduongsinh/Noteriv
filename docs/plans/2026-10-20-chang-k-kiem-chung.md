@@ -32,6 +32,20 @@ Chặng 1–5 đã xong; theo lộ trình, bước kế là Chặng 6.1 (chốt 
 - Mỗi việc sửa = một phiên nhỏ theo quy trình cũ (nhánh `covuaduongsinh/k-<việc>` → staging → hỏi trước khi merge vào `main`).
 - Số liệu về đối thủ phải có **nguồn + ngày tra**.
 
+## Ngoại lệ: app mobile (chốt 2026-10-21)
+
+Chủ dự án cần kiểm chứng cả trên **app di động thật**, nên làm lại app ngay trong chặng này. Đây là ngoại lệ có chủ đích cho nguyên tắc "không làm tính năng lớn mới".
+
+- **Cách làm:** khôi phục `phone/` của upstream (Expo 54, RN 0.81, đã bị xoá ở Chặng 2). Mô hình **giống desktop**: vault nằm trên máy, đồng bộ qua GitHub/GitLab/Gitea. **Server không sửa.** Web gặp mobile qua cùng một repo git (sync connection).
+- **Chỉ Android** (cài APK). iPhone để sau.
+- **`phone/` đứng riêng** (lockfile riêng như `web/server`), không vào npm workspaces: RN 0.81 cần `react@19.1.0`, còn web/desktop dùng 19.2.x.
+- **Bốn phiên**, mỗi phiên một nhánh `covuaduongsinh/k-mobile-<việc>` → PR → hỏi trước khi merge:
+  - **M1:** khôi phục, đổi id ứng dụng, build APK debug, chạy trên máy thật.
+  - **M2:** dùng chung logic với `@noteriv/core` (Metro `watchFolders`), tên bản xung đột giống web/desktop, sync hai chiều với desktop/web.
+  - **M3:** i18n en/vi từ catalog chung, theme chung (`packages/core`), vault mẫu, bố cục theo web khổ điện thoại.
+  - **M4:** Ghi nhanh, CI job `phone`, tài liệu, APK release ký bằng keystore riêng.
+- **Không làm trong đợt này** (upstream cũng không có): canvas, vẽ, PDF, vim, ghi âm, cộng tác realtime.
+
 ---
 
 ## Tuần 0 – Chuẩn bị (2026-10-20/21)
@@ -44,7 +58,7 @@ Chặng 1–5 đã xong; theo lộ trình, bước kế là Chặng 6.1 (chốt 
 
 ## Tuần 1–6 – Dùng thật hằng ngày (chủ dự án)
 
-- Mọi ghi chú mới viết trong Noteriv, trên **web, desktop và PWA trên điện thoại thật**.
+- Mọi ghi chú mới viết trong Noteriv, trên **web, desktop và app Android (cùng PWA) trên điện thoại thật**.
 - Mỗi ngày ~2 phút điền [nhat-ky.md](../kiem-chung/nhat-ky.md).
 - Cuối tuần: một phiên với Claude — phân loại mục mới vào [loi-va-gop-y.md](../kiem-chung/loi-va-gop-y.md), chọn việc sửa, cập nhật bảng Trạng thái bên dưới.
 
@@ -93,3 +107,8 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | 4 | Đối thủ (dùng thử 4 app) + mọi mặt | Chưa làm | 11–17/11 | |
 | 5 | Mọi mặt + sửa lỗi cuối | Chưa làm | 18–24/11 | |
 | 6 | Báo cáo quyết định | Chưa làm | 25/11–1/12 | |
+| M1 | App mobile: khôi phục, APK debug | Xong | 2026-10-21 | [Phiên K-M1](2026-10-21-phien-k-m1-khoi-phuc-phone.md); `phone/` lấy từ upstream `013fa8c`; APK chạy trên máy thật |
+| M1b | App mobile: bật/tắt core plugin như web | Đang làm | 2026-10-21 | Nhánh `covuaduongsinh/k-mobile-core-plugins`; chủ dự án yêu cầu sau khi thử M1 |
+| M2 | App mobile: logic chung, sync | Chưa làm | | |
+| M3 | App mobile: i18n, theme, vault mẫu | Chưa làm | | |
+| M4 | App mobile: Ghi nhanh, CI, APK release | Chưa làm | | |
