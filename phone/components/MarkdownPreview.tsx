@@ -12,6 +12,7 @@ import {
 import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '@/context/ThemeContext';
+import { useCorePlugins } from '@/context/CorePluginsContext';
 import { parseQuery, executeQuery, parseNoteData, QueryResult } from '@/lib/dataview';
 import { listAllMarkdownFiles, readFile } from '@/lib/file-system';
 import { getInstalledPlugins, getEnabledPluginIds } from '@/lib/plugins';
@@ -986,6 +987,9 @@ export default function MarkdownPreview({
   onWikiLinkPress,
 }: MarkdownPreviewProps) {
   const { colors } = useTheme();
+  const { isEnabled } = useCorePlugins();
+  const mermaidOn = isEnabled('mermaid');
+  const dataviewOn = isEnabled('dataview');
   const blocks = useMemo(() => parseBlocks(content), [content]);
   const lineHeight = fontSize * 1.65;
   const scrollRef = useRef<ScrollView>(null);
@@ -1084,7 +1088,7 @@ export default function MarkdownPreview({
           );
 
         case 'code_block':
-          if (block.language === 'mermaid') {
+          if (block.language === 'mermaid' && mermaidOn) {
             return (
               <View key={index} style={[styles.codeBlock, { backgroundColor: colors.bgTertiary }]}>
                 <Text style={[styles.codeLang, { color: colors.textMuted }]}>mermaid</Text>
@@ -1092,7 +1096,7 @@ export default function MarkdownPreview({
               </View>
             );
           }
-          if (block.language === 'dataview' && vaultPath) {
+          if (block.language === 'dataview' && dataviewOn && vaultPath) {
             return (
               <View key={index} style={[styles.codeBlock, { backgroundColor: colors.bgTertiary }]}>
                 <Text style={[styles.codeLang, { color: colors.textMuted }]}>dataview</Text>
@@ -1388,7 +1392,7 @@ export default function MarkdownPreview({
           return null;
       }
     },
-    [blocks, colors, fontSize, lineHeight, vaultPath, onLinkPress, onWikiLinkPress, pluginLangMap]
+    [blocks, colors, fontSize, lineHeight, vaultPath, onLinkPress, onWikiLinkPress, pluginLangMap, mermaidOn, dataviewOn]
   );
 
   return (

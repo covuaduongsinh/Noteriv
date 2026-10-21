@@ -11,6 +11,7 @@ import { useRouter, Redirect } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
+import { useCorePlugins } from '@/context/CorePluginsContext';
 import { getOrCreateDailyNote } from '@/lib/daily-note';
 import { getRandomNote } from '@/lib/random-note';
 import NotesList from '@/components/NotesList';
@@ -32,6 +33,7 @@ export default function HomeScreen() {
     refreshFiles,
   } = useApp();
 
+  const { isEnabled } = useCorePlugins();
   const [searchVisible, setSearchVisible] = useState(false);
   const [createVisible, setCreateVisible] = useState(false);
   const [vaultSwitcherVisible, setVaultSwitcherVisible] = useState(false);
@@ -133,30 +135,38 @@ export default function HomeScreen() {
           <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={handleDailyNote}
-          >
-            <Ionicons name="today-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => router.push('/calendar')}
-          >
-            <Ionicons name="calendar-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => router.push('/flashcards')}
-          >
-            <Ionicons name="school-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.headerBtn}
-            onPress={() => router.push('/graph')}
-          >
-            <Ionicons name="git-network-outline" size={22} color={colors.textPrimary} />
-          </TouchableOpacity>
+          {isEnabled('calendar') && (
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={handleDailyNote}
+            >
+              <Ionicons name="today-outline" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          {isEnabled('calendar') && (
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.push('/calendar')}
+            >
+              <Ionicons name="calendar-outline" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          {isEnabled('flashcards') && (
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.push('/flashcards')}
+            >
+              <Ionicons name="school-outline" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
+          {isEnabled('graph') && (
+            <TouchableOpacity
+              style={styles.headerBtn}
+              onPress={() => router.push('/graph')}
+            >
+              <Ionicons name="git-network-outline" size={22} color={colors.textPrimary} />
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.headerBtn}
             onPress={handleRandomNote}

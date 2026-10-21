@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
+import { CorePluginsProvider } from '@/context/CorePluginsContext';
+import { corePluginLabels } from '@/lib/core-plugins';
 import { ThemeDefinition } from '@/constants/theme';
 import { loadCustomThemes } from '@/lib/community';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
@@ -69,6 +71,15 @@ function ThemedNavigation() {
           options={{
             presentation: 'modal',
             title: 'CSS Snippets',
+            headerStyle: { backgroundColor: colors.bgSecondary },
+            headerTintColor: colors.textPrimary,
+          }}
+        />
+        <Stack.Screen
+          name="core-plugins"
+          options={{
+            presentation: 'modal',
+            title: corePluginLabels.title,
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -191,9 +202,11 @@ export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AppProvider>
-        <AppThemeWrapper>
-          <ThemedNavigation />
-        </AppThemeWrapper>
+        <CorePluginsProvider>
+          <AppThemeWrapper>
+            <ThemedNavigation />
+          </AppThemeWrapper>
+        </CorePluginsProvider>
       </AppProvider>
     </GestureHandlerRootView>
   );

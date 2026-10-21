@@ -23,6 +23,8 @@ import * as GitSync from '@/lib/provider-sync';
 import { GitProvider } from '@/types';
 import { loadSnippets } from '@/lib/css-snippets';
 import { getInstalledPlugins, getEnabledPluginIds } from '@/lib/plugins';
+import { useCorePlugins } from '@/context/CorePluginsContext';
+import { CORE_PLUGINS, corePluginLabels } from '@/lib/core-plugins';
 import {
   CommunityThemeEntry,
   fetchCommunityThemes,
@@ -66,6 +68,8 @@ export default function SettingsScreen() {
   // Ecosystem counts
   const [snippetCount, setSnippetCount] = useState(0);
   const [pluginCount, setPluginCount] = useState(0);
+  const corePlugins = useCorePlugins();
+  const corePluginsOn = CORE_PLUGINS.filter((p) => corePlugins.isEnabled(p.id)).length;
   const [enabledPluginCount, setEnabledPluginCount] = useState(0);
 
   // Community themes
@@ -696,6 +700,23 @@ export default function SettingsScreen() {
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
                 {snippetCount} snippet{snippetCount !== 1 ? 's' : ''} installed
+              </Text>
+            </View>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.settingRow, { borderBottomColor: colors.border }]}
+          onPress={() => router.push('/core-plugins')}
+        >
+          <View style={s.ecosystemRow}>
+            <Ionicons name="cube-outline" size={20} color={colors.accent} />
+            <View style={{ flex: 1 }}>
+              <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
+                {corePluginLabels.title}
+              </Text>
+              <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
+                {corePluginLabels.summary(corePluginsOn, CORE_PLUGINS.length)}
               </Text>
             </View>
           </View>

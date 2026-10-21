@@ -18,6 +18,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
+import { useCorePlugins } from '@/context/CorePluginsContext';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import MarkdownPreview from '@/components/MarkdownPreview';
 import BoardView from '@/components/BoardView';
@@ -43,6 +44,8 @@ export default function EditorScreen() {
     vault,
     files,
   } = useApp();
+  const { isEnabled } = useCorePlugins();
+  const showBoard = isEnabled('board') && isBoardContent(content);
 
   const [menuVisible, setMenuVisible] = useState(false);
   const [renameVisible, setRenameVisible] = useState(false);
@@ -275,16 +278,30 @@ export default function EditorScreen() {
             <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Rename</Text>
           </TouchableOpacity>
           <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              setMenuVisible(false);
-              router.push('/templates');
-            }}
-          >
-            <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Templates</Text>
-          </TouchableOpacity>
+          {isEnabled('templates') && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/templates');
+              }}
+            >
+              <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Templates</Text>
+            </TouchableOpacity>
+          )}
+          {isEnabled('note-composer') && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/composer');
+              }}
+            >
+              <Ionicons name="git-merge-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Note Composer</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => {
@@ -300,21 +317,23 @@ export default function EditorScreen() {
             <Ionicons name="link-outline" size={20} color={colors.textPrimary} />
             <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Backlinks</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              setMenuVisible(false);
-              if (currentFile) {
-                router.push({
-                  pathname: '/recovery',
-                  params: { filePath: currentFile },
-                });
-              }
-            }}
-          >
-            <Ionicons name="time-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>File Recovery</Text>
-          </TouchableOpacity>
+          {isEnabled('note-history') && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                if (currentFile) {
+                  router.push({
+                    pathname: '/recovery',
+                    params: { filePath: currentFile },
+                  });
+                }
+              }}
+            >
+              <Ionicons name="time-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>File Recovery</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => {
@@ -340,16 +359,18 @@ export default function EditorScreen() {
             <Ionicons name="globe-outline" size={20} color={colors.textPrimary} />
             <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Publish as HTML</Text>
           </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => {
-              setMenuVisible(false);
-              router.push('/slides');
-            }}
-          >
-            <Ionicons name="easel-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Present as Slides</Text>
-          </TouchableOpacity>
+          {isEnabled('slides') && (
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() => {
+                setMenuVisible(false);
+                router.push('/slides');
+              }}
+            >
+              <Ionicons name="easel-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Present as Slides</Text>
+            </TouchableOpacity>
+          )}
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() => {
@@ -360,10 +381,12 @@ export default function EditorScreen() {
             <Ionicons name="attach-outline" size={20} color={colors.textPrimary} />
             <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Attachments</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem} onPress={handleLint}>
-            <Ionicons name="warning-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Lint</Text>
-          </TouchableOpacity>
+          {isEnabled('markdown-lint') && (
+            <TouchableOpacity style={styles.menuItem} onPress={handleLint}>
+              <Ionicons name="warning-outline" size={20} color={colors.textPrimary} />
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Lint</Text>
+            </TouchableOpacity>
+          )}
           <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
           <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={20} color={colors.red} />
@@ -384,17 +407,21 @@ export default function EditorScreen() {
       )}
 
       {/* Word count bar + note position */}
-      {!focusMode && !isBoardContent(content) && (
+      {!focusMode && !showBoard && (isEnabled('word-count') || siblingNotes.length > 1) && (
         <View style={[styles.statsBar, { backgroundColor: colors.bgSecondary, borderTopColor: colors.border }]}>
-          <Text style={[styles.statsText, { color: colors.textMuted }]}>
-            {content.trim() ? content.trim().split(/\s+/).length : 0} words
-          </Text>
-          <Text style={[styles.statsText, { color: colors.textMuted }]}>
-            {content.length} chars
-          </Text>
-          <Text style={[styles.statsText, { color: colors.textMuted }]}>
-            {content.split('\n').length} lines
-          </Text>
+          {isEnabled('word-count') && (
+            <>
+              <Text style={[styles.statsText, { color: colors.textMuted }]}>
+                {content.trim() ? content.trim().split(/\s+/).length : 0} words
+              </Text>
+              <Text style={[styles.statsText, { color: colors.textMuted }]}>
+                {content.length} chars
+              </Text>
+              <Text style={[styles.statsText, { color: colors.textMuted }]}>
+                {content.split('\n').length} lines
+              </Text>
+            </>
+          )}
           {siblingNotes.length > 1 && currentIndex >= 0 && (
             <Text style={[styles.statsText, { color: colors.textMuted, marginLeft: 'auto' }]}>
               {currentIndex + 1}/{siblingNotes.length} ← swipe →
@@ -406,7 +433,7 @@ export default function EditorScreen() {
       {/* Editor / Preview / Board */}
       <GestureDetector gesture={swipeGesture}>
         <View style={styles.editorContainer}>
-          {isBoardContent(content) ? (
+          {showBoard ? (
             <BoardView content={content} onChange={setContent} />
           ) : workspace.viewMode === 'edit' ? (
             <MarkdownEditor
