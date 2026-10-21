@@ -62,10 +62,30 @@ function explainSpawnError(message: string): string {
   return /ENOENT/.test(message) ? "Máy chủ chưa cài git (spawn git ENOENT) — liên hệ quản trị viên." : message;
 }
 
+/**
+ * The parent environment minus anything that injects git config (`GIT_CONFIG_COUNT`/`_KEY_n`/`_VALUE_n`,
+ * `GIT_CONFIG_PARAMETERS`) or a credential prompt. A tool that launched the server can set e.g.
+ * `credential.interactive=false` this way, which makes git skip our askpass and fail with
+ * "unable to get password from user".
+ */
+export function hostEnvForGit(parent: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
+  const env: NodeJS.ProcessEnv = {};
+  for (const [key, value] of Object.entries(parent)) {
+    if (/^GIT_CONFIG_/i.test(key) || /^GIT_ASKPASS$/i.test(key)) continue;
+    env[key] = value;
+  }
+  return env;
+}
+
 function runGit(args: string[], cwd: string, creds?: GitCredentials | null, timeoutMs?: number): Promise<GitRunResult> {
   return new Promise((resolve) => {
     const env: NodeJS.ProcessEnv = {
-      ...process.env,
+      ...hostEnvForGit(process.env),
+      // Ignore the host's global and system git config too: on a dev machine ~/.gitconfig can hold a
+      // URL-specific credential helper (e.g. `gh auth git-credential` for github.com) that `-c credential.helper=`
+      // does not reset, so git would push with the developer's account instead of the connection's token.
+      GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
+      GIT_CONFIG_NOSYSTEM: "1",
       GIT_SSH_COMMAND: "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new",
       GIT_TERMINAL_PROMPT: "0",
       SSH_ASKPASS: "",
@@ -337,7 +357,18 @@ export async function ensureWorkingCopy(
   const fetch = await runGit(["fetch", effectiveUrl(remoteUrl, creds), branch], dir, creds);
   if (fetch.success) {
     okOrThrow(await runGit(["checkout", "-B", branch, "FETCH_HEAD"], dir));
+  } else if (!isMissingRemoteBranch(fetch.stderr)) {
+    // Only an empty remote (or one without this branch) may start a fresh history here. On any other failure
+    // (auth, network) keeping the new repo would make the next sync commit the vault as a root unrelated to the
+    // remote's history; start over next time instead.
+    await rm(path.join(dir, ".git"), { recursive: true, force: true });
+    throw new Error(`Sync failed: could not fetch the remote. ${fetch.stderr || "unknown git fetch error"}`);
   }
+}
+
+/** git's answer when the remote is empty or lacks the branch: a fresh history is then correct. */
+function isMissingRemoteBranch(stderr: string): boolean {
+  return /couldn't find remote ref/i.test(stderr);
 }
 
 const DEFAULT_GITIGNORE = [".DS_Store", "Thumbs.db", ".trash/", "*.tmp", ""].join("\n");
@@ -425,7 +456,12 @@ export async function gitSyncCore(
     // An empty remote (no branch yet) fails here; there is simply nothing to merge.
     const fetch = await runGit(["fetch", pullUrl, branch], dir, creds);
     if (fetch.success) {
-      const merge = await runGit(["merge", "--no-edit", "FETCH_HEAD"], dir);
+      let merge = await runGit(["merge", "--no-edit", "FETCH_HEAD"], dir);
+      if (!merge.success && /unrelated histories/i.test(merge.stderr)) {
+        // A working copy whose first fetch failed (before ensureWorkingCopy stopped allowing that) started its own
+        // history. Join the two: notes on both sides with different content become conflict copies below.
+        merge = await runGit(["merge", "--no-edit", "--allow-unrelated-histories", "FETCH_HEAD"], dir);
+      }
       if (!merge.success) {
         if (!(await mergeInProgress(dir))) {
           throw new Error(`Sync paused: could not merge remote changes. ${merge.stderr}`);

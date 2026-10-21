@@ -12,7 +12,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { encryptJson } from "../src/lib/crypto.js";
 import { runSyncJob, formatCommitMessage } from "../src/lib/syncRunner.js";
-import { askpassBody, conflictCopyPath } from "../src/lib/gitSync.js";
+import { askpassBody, conflictCopyPath, ensureWorkingCopy, gitSyncCore, hostEnvForGit } from "../src/lib/gitSync.js";
 import { importDirToNotes } from "../src/lib/vaultFs.js";
 import { putObject, makeStorageKey, deleteObject, getObjectStream } from "../src/lib/attachments.js";
 import { toRelativeLinks, fromRelativeLinks } from "../src/lib/attachmentLinks.js";
@@ -304,6 +304,67 @@ async function main() {
   } else {
     check("askpass script generated (the .sh variant is executed on Linux CI only)", body.includes("case"));
   }
+  const hostEnv = hostEnvForGit({
+    PATH: "/bin",
+    GIT_CONFIG_COUNT: "1",
+    GIT_CONFIG_KEY_0: "credential.interactive",
+    GIT_CONFIG_VALUE_0: "false",
+    GIT_CONFIG_PARAMETERS: "'credential.interactive'='false'",
+    GIT_ASKPASS: "/somewhere/else",
+  });
+  check(
+    "host git config and askpass are not inherited (they made git skip our askpass)",
+    JSON.stringify(hostEnv) === JSON.stringify({ PATH: "/bin" }),
+    JSON.stringify(hostEnv)
+  );
+
+  // A working copy whose first fetch failed started its own history; the next sync joins it with the remote's.
+  const upstream = path.join(root, "unrelated.git");
+  git(root, "init", "--bare", "-b", "main", upstream);
+  const seed = path.join(root, "unrelated-seed");
+  git(root, "clone", upstream, seed);
+  writeFileSync(path.join(seed, "r.md"), "remote only");
+  writeFileSync(path.join(seed, "same.md"), "remote side");
+  git(seed, "add", "-A");
+  git(seed, "commit", "-m", "remote history");
+  git(seed, "push", "origin", "HEAD:main");
+  const wc = path.join(root, "unrelated-wc");
+  mkdirSync(wc);
+  git(wc, "init", "-b", "main");
+  git(wc, "remote", "add", "origin", upstream);
+  writeFileSync(path.join(wc, "w.md"), "web only");
+  writeFileSync(path.join(wc, "same.md"), "web side");
+  git(wc, "add", "-A");
+  git(wc, "commit", "-m", "own history");
+  const joined = await gitSyncCore(wc, "main", null, "web").then(
+    (r) => r,
+    (e: Error) => e
+  );
+  const sameCopy = existsSync(wc) ? execFileSync("git", ["ls-files"], { cwd: wc, encoding: "utf8" }).split("\n").find((f) => f.startsWith("same (conflict ")) : undefined;
+  check(
+    "unrelated histories: joined, both sides kept",
+    !(joined instanceof Error) &&
+      readFileSync(path.join(wc, "r.md"), "utf8") === "remote only" &&
+      readFileSync(path.join(wc, "w.md"), "utf8") === "web only" &&
+      readFileSync(path.join(wc, "same.md"), "utf8") === "web side" &&
+      !!sameCopy &&
+      readFileSync(path.join(wc, sameCopy), "utf8") === "remote side",
+    joined instanceof Error ? joined.message : String(sameCopy)
+  );
+  git(seed, "pull", "origin", "main");
+  check("unrelated histories: pushed to the remote", existsSync(path.join(seed, "w.md")));
+
+  // A first fetch that fails for another reason (auth, network, wrong URL) leaves no half-made repo behind.
+  const wcBad = path.join(root, "bad-remote-wc");
+  const badErr = await ensureWorkingCopy(wcBad, path.join(root, "missing.git"), "main", null).then(
+    () => null,
+    (e: Error) => e
+  );
+  check(
+    "failed first fetch: error, and no fresh history left to commit into",
+    badErr !== null && !existsSync(path.join(wcBad, ".git")),
+    badErr?.message ?? "no error"
+  );
 
   await prisma.vault.delete({ where: { id: vault.id } }).catch(() => undefined);
   await prisma.workspace.delete({ where: { id: ws.id } }).catch(() => undefined);
