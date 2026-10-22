@@ -79,7 +79,7 @@ Review không tìm thấy XSS (mọi chỗ render dùng `textContent`). Sự ki�
 
 ## Kiểm thử
 
-- core 375/375, ui 132/132, plugins 94/94; `tsc` sạch cho web và desktop.
+- core 374/374, ui 132/132, plugins 94/94; `tsc` sạch cho web và desktop.
 - E2E web trên bản build production: **57/57**, có test mới: tạo thuộc tính, bật plugin, chèn khối view, thấy bảng, sửa ô và note được lưu.
 - Smoke desktop: **20/20**.
 
