@@ -54,8 +54,31 @@
     "vaultSearch": {
       "placeholder": "Search across all notes…",
       "noResults": "No results found",
-      "hint": "Start typing to search across all notes",
-      "noResultsHint": "Try fewer or different words, or search for a #tag."
+      "hint": "Type to search. Operators: OR, -word, \"phrase\", /regex/, file:, path:, tag:, line:(…), match-case:, [property:value]",
+      "noResultsHint": "Try fewer or different words, or search for a #tag.",
+      "replace": "Replace",
+      "replaceToggle": "Show or hide replace",
+      "replacePlaceholder": "Replace with…",
+      "replaceAll": "Replace all",
+      "replaceConfirm": {
+        "one": "Click again to replace in {count} note",
+        "other": "Click again to replace in {count} notes"
+      },
+      "replaceFailed": "Could not replace: the search failed",
+      "replaceNoTarget": "Replace needs one word, phrase or /regex/ to change (filters like path: are fine; no OR).",
+      "replaced": {
+        "one": "Replaced in {count} note",
+        "other": "Replaced in {count} notes"
+      },
+      "replacedSome": "Replaced in {count} notes; {failed} could not be changed",
+      "invalid": "Check the search: {what}",
+      "errors": {
+        "quote": "a quote is not closed",
+        "regex": "the /regex/ is not valid",
+        "paren": "a parenthesis is not closed",
+        "bracket": "a [property] is not closed",
+        "operator": "an operator has no value"
+      }
     },
     "bookmarks": {
       "title": "Bookmarks",

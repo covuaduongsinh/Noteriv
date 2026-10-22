@@ -81,7 +81,11 @@ export default async function noteRoutes(fastify: FastifyInstance) {
         where: {
           vaultId: vid,
           deletedAt: null,
-          OR: parsed.data.terms.map((term) => ({ content: { contains: term, mode: "insensitive" as const } })),
+          // Text or file name: a search word may match only the name.
+          OR: parsed.data.terms.flatMap((term) => [
+            { content: { contains: term, mode: "insensitive" as const } },
+            { name: { contains: term, mode: "insensitive" as const } },
+          ]),
         },
         select: { id: true, name: true, path: true, content: true },
         take: CONTAINING_LIMIT + 1,

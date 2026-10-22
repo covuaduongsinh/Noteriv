@@ -54,8 +54,31 @@
     "vaultSearch": {
       "placeholder": "Tìm trong nội dung các note…",
       "noResults": "Không có kết quả",
-      "hint": "Gõ để tìm trong toàn bộ vault",
-      "noResultsHint": "Thử ít từ hơn hoặc từ khác, hoặc tìm theo #thẻ."
+      "hint": "Gõ để tìm. Toán tử: OR, -từ, \"cụm từ\", /regex/, file:, path:, tag:, line:(…), match-case:, [thuộc_tính:giá_trị]",
+      "noResultsHint": "Thử ít từ hơn hoặc từ khác, hay tìm theo #thẻ.",
+      "replace": "Thay thế",
+      "replaceToggle": "Hiện hoặc ẩn ô thay thế",
+      "replacePlaceholder": "Thay bằng…",
+      "replaceAll": "Thay tất cả",
+      "replaceConfirm": {
+        "one": "Bấm lần nữa để thay trong {count} note",
+        "other": "Bấm lần nữa để thay trong {count} note"
+      },
+      "replaceFailed": "Không thay được: tìm kiếm bị lỗi",
+      "replaceNoTarget": "Thay thế cần đúng một từ, cụm từ hoặc /regex/ để thay (được kèm bộ lọc như path:, không dùng OR).",
+      "replaced": {
+        "one": "Đã thay trong {count} note",
+        "other": "Đã thay trong {count} note"
+      },
+      "replacedSome": "Đã thay trong {count} note; {failed} note không đổi được",
+      "invalid": "Hãy xem lại ô tìm: {what}",
+      "errors": {
+        "quote": "thiếu dấu nháy đóng",
+        "regex": "/regex/ không hợp lệ",
+        "paren": "thiếu dấu ngoặc đóng",
+        "bracket": "thiếu dấu ] của [thuộc tính]",
+        "operator": "toán tử chưa có giá trị"
+      }
     },
     "bookmarks": {
       "title": "Bookmarks",

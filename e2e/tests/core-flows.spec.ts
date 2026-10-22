@@ -285,6 +285,33 @@ test("search finds the matching line as you type and opens the note there", asyn
   await expect(page.locator(".cm-content").first()).not.toContainText("ZHello");
 });
 
+test("search operators narrow results, and replace changes the text in every matching note", async () => {
+  await page.getByTitle("Search in vault").click();
+  const box = page.getByPlaceholder("Search across all notes…");
+  await box.fill('"e2e world" file:first');
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("option").first()).toContainText("First");
+
+  // Replace there and back (later tests read the original words).
+  const replaceAll = async (from: string, to: string) => {
+    await box.fill(from);
+    await expect(page.getByRole("option").first()).toBeVisible();
+    await page.locator(".search-replace-input").fill(to);
+    const saved = noteSaved(to);
+    await page.locator(".search-replace-btn").click();
+    await expect(page.locator(".search-replace-btn")).toHaveText(/again/);
+    await page.locator(".search-replace-btn").click();
+    await expect(page.getByText(/Replaced in 1 note/)).toBeVisible();
+    await saved;
+  };
+  await page.locator(".search-replace-toggle").click();
+  await replaceAll('"e2e world"', "e2e planet");
+  await replaceAll('"e2e planet"', "e2e world");
+  await box.press("Escape");
+  await sidebarItem("First").click();
+  await expect(editor()).toContainText("Hello e2e world");
+});
+
 test("switching a core plugin on adds its feature", async () => {
   await sidebarItem("First").click();
   await page.keyboard.press("Control+Comma"); // Settings (the ribbon button can sit under the dev-mode badge)

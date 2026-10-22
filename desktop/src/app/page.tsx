@@ -2449,6 +2449,7 @@ export default function Home() {
           adapter={vaultAdapter}
           onOpen={(ref, line) => void openFileAtLine(ref.id, line)}
           onClose={() => setShowVaultSearch(false)}
+          editNote={editNoteInTabs}
         />
       )}
 
