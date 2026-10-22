@@ -721,6 +721,8 @@ export default function VaultPage() {
       return ok;
     },
     onVaultChanged: refreshIndex,
+    // `vault.edit` (views, …): a note open in a tab is changed there.
+    editNote: editNoteInTabs,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);

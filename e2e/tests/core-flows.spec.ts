@@ -195,6 +195,51 @@ test("embedding a note shows its content; the embed's title opens it", async () 
   await expect(page.locator(".tab-active")).toContainText("Second");
 });
 
+test("a ```view block shows notes by their properties, and a cell edits the note", async () => {
+  // Second gets a status; First holds the view.
+  await sidebarItem("Second").click();
+  const props = page.locator(".fm-editor").first();
+  const created = noteSaved("tags: []");
+  await props.getByRole("button", { name: "Add properties" }).click();
+  await created;
+  if (!(await props.locator(".fm-body").isVisible())) await props.locator(".fm-header").click();
+  await props.getByRole("button", { name: "Add property" }).click();
+  await page.getByPlaceholder("Property name...").fill("status");
+  await page.getByPlaceholder("Property name...").press("Enter");
+  const statusSaved = noteSaved("status: active");
+  const status = props.locator(".fm-property", { has: page.locator(".fm-property-key", { hasText: "status" }) }).locator("input.fm-property-input");
+  await status.fill("active");
+  await status.press("Enter");
+  await statusSaved;
+
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  const toggle = page.locator('[data-core-plugin="views"]').getByRole("switch");
+  if ((await toggle.getAttribute("aria-checked")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+
+  await sidebarItem("First").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const viewSaved = noteSaved("where: status exists");
+  // insertText: typed backticks would be paired by the editor.
+  await page.keyboard.insertText("\n\n```view\nwhere: status exists\ncolumns: [file, status]\n```\n");
+  await viewSaved;
+  await page.keyboard.press("Control+Home"); // off the block, so it renders
+  const view = page.locator(".cm-content .nv-view").first();
+  await expect(view.locator("tbody tr")).toHaveCount(1);
+  await expect(view).toContainText("Second");
+  await expect(view).toContainText("active");
+
+  const edited = noteSaved("status: done");
+  await view.locator(".nv-editable").first().click();
+  await view.locator(".nv-input").fill("done");
+  await view.locator(".nv-input").press("Enter");
+  await edited;
+  await expect(view).toContainText("done");
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

@@ -31,7 +31,9 @@ import {
   unregisterAllCodeBlockProcessorsForPlugin,
   unregisterCodeBlockProcessor,
 } from "@noteriv/core/markdown-code-block-registry";
+import { frontmatterBlock } from "@noteriv/core/properties";
 import { getLocale, onLocaleChange, t } from "../i18n";
+import { adapterNoteEditor, mapLimited, type NoteEditor } from "../panels/note-edit";
 
 export interface CorePluginHostServices {
   adapter: VaultAdapter;
@@ -48,6 +50,11 @@ export interface CorePluginHostServices {
   closeView?(types: string[]): void;
   /** A plugin created, changed or deleted notes: the app refreshes its file tree / index. */
   onVaultChanged?(): void;
+  /**
+   * How `vault.edit` changes a note: through its open tab when it has one (the app's editNoteInTabs). Absent: read and
+   * written through the adapter, never over a newer version.
+   */
+  editNote?: NoteEditor;
   /** Shows or hides a core plugin's sidebar panel (namespaced key). Absent: `ui.toggleSidebarPanel` does nothing. */
   toggleSidebarPanel?(key: string): void;
   /** Draws markdown read-only into `el` (the editor's live preview); returns the cleanup. Absent: plain text. */
@@ -276,6 +283,22 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           noteList = null;
           services.onVaultChanged?.();
           return true;
+        },
+        async edit(path, transform) {
+          const ref = await findNote(path);
+          if (!ref) return false;
+          const changed = await (services.editNote ?? adapterNoteEditor(adapter))(ref.id, transform);
+          if (changed) services.onVaultChanged?.();
+          return changed;
+        },
+        async frontmatter() {
+          const heads = adapter.frontmatterHeads
+            ? await adapter.frontmatterHeads()
+            : await mapLimited(await listNotes(), 8, async (ref) => ({ ref, head: (await adapter.readNote(ref.id)) ?? "" }));
+          return heads.flatMap(({ ref, head }) => {
+            const block = frontmatterBlock(head);
+            return block ? [{ path: ref.path, block }] : [];
+          });
         },
         async list(dir) {
           return listVaultEntries(await listNotes(), dir);

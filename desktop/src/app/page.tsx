@@ -1840,6 +1840,8 @@ export default function Home() {
       return true;
     },
     onVaultChanged: () => setSidebarRefresh((k) => k + 1),
+    // `vault.edit` (views, …): a note open in a tab is changed there.
+    editNote: editNoteInTabs,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
