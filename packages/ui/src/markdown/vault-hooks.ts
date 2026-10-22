@@ -27,6 +27,42 @@ export function getLocalImageLoader(): LocalImageLoader | null {
 }
 
 /**
+ * What `![[…]]` embeds show: the app finds the note (or image) a target names, from the note being viewed, and opens
+ * it when the embed's title is clicked.
+ */
+export interface EmbedSource {
+  /** Note text (with its vault path), an image URL, or null when nothing in the vault matches. */
+  load(note: string): Promise<{ path: string; content: string } | { image: string } | null>;
+  /** Opens what a full target (`Note#Heading`) names, like clicking a link to it. */
+  open(target: string): void;
+}
+
+let embedSource: EmbedSource | null = null;
+
+export function setEmbedSource(source: EmbedSource | null): void {
+  embedSource = source;
+  embedVersion++;
+}
+
+/**
+ * Bumped by the app when notes may have changed (a save, a sync, a rename): embeds made before it are redrawn the
+ * next time the editor redraws, and the app's own caches for embeds key on it.
+ */
+let embedVersion = 0;
+
+export function bumpEmbedVersion(): void {
+  embedVersion++;
+}
+
+export function getEmbedVersion(): number {
+  return embedVersion;
+}
+
+export function getEmbedSource(): EmbedSource | null {
+  return embedSource;
+}
+
+/**
  * Runs the core plugins' markdown post-processors (`markdown.registerPostProcessor`) over a piece of rendered note
  * DOM. The app registers its plugin host's runner; rendered widgets call it on the element they own (CodeMirror's
  * own line DOM is redrawn at will, so it is not handed to plugins).

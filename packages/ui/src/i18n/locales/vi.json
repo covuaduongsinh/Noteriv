@@ -30,6 +30,15 @@
     "toc": {
       "title": "Mục lục",
       "empty": "Không có heading nào"
+    },
+    "embed": {
+      "open": "Mở note này",
+      "loading": "Đang tải…",
+      "notFound": "Vault chưa có “{target}”",
+      "anchorNotFound": "Note này không có “{anchor}”",
+      "loop": "Note này đã hiện ở phía trên (nó tự nhúng chính nó)",
+      "tooDeep": "Nhúng lồng quá sâu, không hiển thị",
+      "unavailable": "Không hiển thị được note nhúng ở đây"
     }
   },
   "panels": {

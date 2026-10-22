@@ -27,9 +27,10 @@ import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
-import { setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
+import { bumpEmbedVersion, getEmbedVersion, setEmbedSource, setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
 import { baseName, refFromAbsolutePath, relativeVaultPath, toPosixPath } from "@noteriv/core/vault-adapter";
-import { notesMovedByRename, rewriteLinksForMoves, updateLinksAfterMove } from "@noteriv/core/link-rename";
+import { notesMovedByRename, resolveLinkTarget, rewriteLinksForMoves, updateLinksAfterMove } from "@noteriv/core/link-rename";
+import { anchorLine, parseLinkTarget, type Anchor } from "@noteriv/core/note-embed";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
@@ -597,6 +598,8 @@ export default function Home() {
     if (appState !== "app" || !window.electronAPI?.onVaultChanged) return;
     const unsub = window.electronAPI.onVaultChanged((changedPath: string) => {
       setSidebarRefresh((n) => n + 1);
+      bumpEmbedVersion(); // embeds of the changed note load again
+
       setTabs((prev) => {
         const tab = prev.find((t) => t.filePath === changedPath);
         if (!tab) return prev;
@@ -1277,14 +1280,17 @@ export default function Home() {
     }
   }, [zenMode]);
 
-  /** A line to jump to once its file is open in the editor (from a search result). */
-  const pendingJumpRef = useRef<{ filePath: string; line: number } | null>(null);
+  /** A line to jump to once its file is open in the editor (a search result), or a heading/block a link names. */
+  const pendingJumpRef = useRef<{ filePath: string; line?: number; anchor?: Anchor } | null>(null);
   const jumpIfPending = useCallback(() => {
     const pending = pendingJumpRef.current;
     const view = editorViewRef.current;
     if (!pending || !view || activeTabRef.current !== pending.filePath) return;
+    const target = pending.line ?? (pending.anchor ? anchorLine(view.state.doc.toString(), pending.anchor) : null);
+    // The editor may still hold the previous note's text: keep the jump for when this note's text arrives.
+    if (!target) return;
     pendingJumpRef.current = null;
-    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    const line = view.state.doc.line(Math.min(Math.max(target, 1), view.state.doc.lines));
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
     view.focus();
   }, []);
@@ -1293,14 +1299,85 @@ export default function Home() {
     jumpIfPending();
   }, [jumpIfPending]);
   const openFileAtLine = useCallback(
-    async (filePath: string, line?: number) => {
-      if (line !== undefined) pendingJumpRef.current = { filePath, line };
+    async (filePath: string, line?: number, anchor?: Anchor) => {
+      if (line !== undefined || anchor) pendingJumpRef.current = { filePath, line, anchor };
       await openFile(filePath);
       // The editor may already be showing this file (no new view): try now, then once the content has landed.
       setTimeout(jumpIfPending, 50);
     },
     [openFile, jumpIfPending]
   );
+
+  /**
+   * Opens what a `[[link]]` names: the note (resolved from the open note, like the editor's links), at the heading or
+   * block after `#` when there is one; `[[#Heading]]` jumps within the open note.
+   */
+  const openWikilinkTarget = useCallback(
+    async (raw: string) => {
+      if (!window.electronAPI || !activeVault) return;
+      const parsed = parseLinkTarget(raw);
+      const anchor = parsed.heading || parsed.block ? { heading: parsed.heading, block: parsed.block } : undefined;
+      const current = activeTabRef.current;
+      if (!parsed.note) {
+        if (anchor && current) {
+          pendingJumpRef.current = { filePath: current, anchor };
+          jumpIfPending();
+        }
+        return;
+      }
+      const files = await window.electronAPI.listAllFiles(activeVault.path);
+      const rels = files.map((f) => relativeVaultPath(activeVault.path, f.filePath));
+      const from = current ? relativeVaultPath(activeVault.path, current) : "";
+      const path = resolveLinkTarget(parsed.note, from, rels);
+      const match = path ? files[rels.indexOf(path)] : undefined;
+      if (match) await openFileAtLine(match.filePath, undefined, anchor);
+    },
+    [activeVault, openFileAtLine, jumpIfPending]
+  );
+
+  // `![[…]]` embeds read notes through this window: an open tab's text (unsaved edits included), else the file.
+  // `![[pic.png]]` is loaded like the editor's local images.
+  const embedStateRef = useRef({ openWikilinkTarget });
+  embedStateRef.current = { openWikilinkTarget };
+  useEffect(() => {
+    if (!activeVault) return;
+    const vaultPath = activeVault.path;
+    const images = createDesktopImageLoader(vaultPath);
+    // The vault's file list, kept until notes change (the vault watcher bumps the embed version): a page of embeds
+    // lists the vault once, not once per embed.
+    let listing: { version: number; files: Promise<{ filePath: string }[]> } | null = null;
+    const vaultFiles = () => {
+      if (!listing || listing.version !== getEmbedVersion()) {
+        listing = { version: getEmbedVersion(), files: window.electronAPI.listAllFiles(vaultPath) };
+      }
+      return listing.files;
+    };
+    setEmbedSource({
+      async load(note) {
+        if (!window.electronAPI) return null;
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(note)) {
+          const abs = images.resolve(note);
+          const data = abs ? await images.load(abs) : null;
+          const ext = note.slice(note.lastIndexOf(".") + 1).toLowerCase();
+          const mime = ext === "svg" ? "image/svg+xml" : ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+          return data ? { image: `data:${mime};base64,${data}` } : null;
+        }
+        const files = await vaultFiles();
+        const rels = files.map((f) => relativeVaultPath(vaultPath, f.filePath));
+        const current = activeTabRef.current;
+        const from = current ? relativeVaultPath(vaultPath, current) : "";
+        const path = resolveLinkTarget(note || from, from, rels);
+        if (!path) return null;
+        const file = files[rels.indexOf(path)].filePath;
+        const key = (p: string) => toPosixPath(p).toLowerCase();
+        const tab = tabsRef.current.find((t) => !t.kind && key(t.filePath) === key(file));
+        const content = tab ? tab.content : await window.electronAPI.readFile(file);
+        return content === null ? null : { path, content };
+      },
+      open: (target) => void embedStateRef.current.openWikilinkTarget(target),
+    });
+    return () => setEmbedSource(null);
+  }, [activeVault]);
 
   // Wiki link click handler — global mousedown capture
   useEffect(() => {
@@ -1314,21 +1391,12 @@ export default function Home() {
 
       e.stopImmediatePropagation();
       e.preventDefault();
-
-      const normalized = linkTarget.replace(/\.md$/i, "").toLowerCase();
-      window.electronAPI.listAllFiles(activeVault.path).then((files) => {
-        const match = files.find((f) => {
-          const rel = f.relativePath.replace(/\.(md|markdown)$/i, "").toLowerCase();
-          const name = (f.filePath.split("/").pop() || "").replace(/\.(md|markdown)$/i, "").toLowerCase();
-          return name === normalized || rel === normalized;
-        });
-        if (match) openFile(match.filePath);
-      });
+      void openWikilinkTarget(linkTarget);
     };
 
     document.addEventListener("mousedown", handleWikiClick, true);
     return () => document.removeEventListener("mousedown", handleWikiClick, true);
-  }, [activeVault, openFile]);
+  }, [activeVault, openWikilinkTarget]);
 
   // External link click handler — open in system browser
   useEffect(() => {

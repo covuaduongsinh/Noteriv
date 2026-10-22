@@ -179,6 +179,22 @@ test("unlinked mentions can be turned into links; Outgoing links lists what a no
   await page.locator(".ol-panel .bl-close").click();
 });
 
+test("embedding a note shows its content; the embed's title opens it", async () => {
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const saved = noteSaved("![[Second#Second]]");
+  await page.keyboard.type("\n\n![[Second#Second");
+  await page.keyboard.press("Escape");
+  await saved;
+  await page.keyboard.press("Control+Home"); // off the embed's line, so it renders
+  const embed = page.locator(".cm-content .md-note-embed").first();
+  await expect(embed).toContainText("The second note.");
+  await expect(embed.locator(".md-note-embed-title")).toHaveText("Second › Second");
+  await embed.locator(".md-note-embed-title").click();
+  await expect(page.locator(".tab-active")).toContainText("Second");
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();

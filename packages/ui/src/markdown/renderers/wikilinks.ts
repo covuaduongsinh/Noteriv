@@ -1,4 +1,7 @@
 import type { InlineRenderer, InlineReplacement } from "../types";
+import { isNoteEmbedTarget } from "./note-embed";
+
+const IMAGE_FILE = /\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i;
 
 // Obsidian-style wikilinks: [[page]] or [[page|display text]]
 export const wikilinkRenderer: InlineRenderer = {
@@ -42,7 +45,11 @@ export const embedRenderer: InlineRenderer = {
       results.push({
         from: offset + match.index,
         to: offset + match.index + match[0].length,
-        html: `<span class="md-embed"><span class="md-embed-icon">&#8689;</span> ${target}</span>`,
+        // Inside a line of text an embed stays a chip; one naming a note opens it like a link (a file such as an
+        // image or PDF does not: there is no note to open, and the link would create one).
+        html: isNoteEmbedTarget(target) && !IMAGE_FILE.test(target.split(/[#|]/)[0])
+          ? `<span class="md-embed md-wikilink" data-target="${target}"><span class="md-embed-icon">&#8689;</span> ${target}</span>`
+          : `<span class="md-embed"><span class="md-embed-icon">&#8689;</span> ${target}</span>`,
         className: "md-embed-wrapper",
       });
     }

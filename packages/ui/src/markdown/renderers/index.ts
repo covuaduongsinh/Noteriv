@@ -17,6 +17,7 @@ export { tagRenderer } from "./tags";
 export { inlineRenderers } from "./inline";
 export { HtmlBlockTracker, inlineHtmlRenderer } from "./html";
 export { CodeBlockTracker } from "./code-blocks";
+export { noteEmbedRenderer, blockIdRenderer, createEmbedElement, isNoteEmbedTarget } from "./note-embed";
 
 import { registerBlockRenderer, registerInlineRenderer } from "../registry";
 import { horizontalRuleRenderer } from "./horizontal-rule";
@@ -37,6 +38,7 @@ import { inlineMathRenderer } from "./math";
 import { tagRenderer } from "./tags";
 import { inlineHtmlRenderer } from "./html";
 import { inlineRenderers } from "./inline";
+import { noteEmbedRenderer, blockIdRenderer } from "./note-embed";
 
 /**
  * Register all built-in renderers.
@@ -55,6 +57,7 @@ export function registerBuiltinRenderers() {
   registerBlockRenderer(tableRenderer);
   registerBlockRenderer(footnoteDefRenderer);
   registerBlockRenderer(definitionListRenderer);
+  registerBlockRenderer(noteEmbedRenderer);
 
   // Inline renderers — sorted by priority
   registerInlineRenderer(inlineHtmlRenderer);     // 3
@@ -71,5 +74,6 @@ export function registerBuiltinRenderers() {
   for (const r of inlineRenderers) {              // 50
     registerInlineRenderer(r);
   }
+  registerInlineRenderer(blockIdRenderer);        // 60
   registerInlineRenderer(tagRenderer);            // 90
 }

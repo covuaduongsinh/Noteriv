@@ -84,7 +84,9 @@ import {
 } from "@/lib/hotkeys";
 import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
-import { rewriteLinksForMoves, updateLinksAfterMove, type LinkUpdateResult, type PathMove } from "@noteriv/core/link-rename";
+import { resolveLinkTarget, rewriteLinksForMoves, updateLinksAfterMove, type LinkUpdateResult, type PathMove } from "@noteriv/core/link-rename";
+import { anchorLine, parseLinkTarget, type Anchor } from "@noteriv/core/note-embed";
+import { bumpEmbedVersion, getEmbedVersion, setEmbedSource } from "@noteriv/ui/markdown/vault-hooks";
 import { useIsPhone } from "@/lib/use-is-phone";
 import TermsGate from "@/components/TermsGate";
 
@@ -205,7 +207,7 @@ export default function VaultPage() {
   /** The vault search box (shared VaultSearch, as on desktop). */
   const [searchVisible, setSearchVisible] = useState(false);
   /** A line to jump to once the note it belongs to is open in the editor (from a search result). */
-  const pendingJumpRef = useRef<{ noteId: string; line: number } | null>(null);
+  const pendingJumpRef = useRef<{ noteId: string; line?: number; anchor?: Anchor } | null>(null);
   /** Asks the sidebar to put a just-created note into rename mode. */
   const [sidebarRenameRequest, setSidebarRenameRequest] = useState<{ id: string; name: string; nonce: number } | null>(null);
   const clearSidebarRenameRequest = useCallback(() => setSidebarRenameRequest(null), []);
@@ -832,13 +834,18 @@ export default function VaultPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  // Search results open a note at a line: move the cursor there once that note's editor is ready.
+  // Search results open a note at a line, links to a heading or block (`[[Note#Goals]]`) at that place: move the
+  // cursor there once that note's editor is ready.
   useEffect(() => {
     const pending = pendingJumpRef.current;
     const view = editorViewRef.current;
     if (!pending || pending.noteId !== activeTabId || !view) return;
+    // A heading or block is looked up in the note's own text: wait until the editor holds it (not the previous note's).
+    if (pending.anchor && view.state.doc.toString() !== draft) return;
+    const target = pending.line ?? (pending.anchor ? anchorLine(draft, pending.anchor) : null);
     pendingJumpRef.current = null;
-    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    if (!target) return;
+    const line = view.state.doc.line(Math.min(Math.max(target, 1), view.state.doc.lines));
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
     view.focus();
   }, [activeTabId, editorViewVersion, draft]);
@@ -1443,15 +1450,29 @@ export default function VaultPage() {
    * is none yet, as the link promises.
    */
   async function openWikilink(raw: string) {
-    const target = raw.split("|")[0].split("#")[0].trim();
-    if (!target) return;
-    const wanted = target.replace(/\.md$/i, "").toLowerCase();
+    const parsed = parseLinkTarget(raw);
+    const anchor = parsed.heading || parsed.block ? { heading: parsed.heading, block: parsed.block } : undefined;
+    // `[[#Heading]]`: a place in the note being viewed.
+    if (!parsed.note) {
+      if (anchor && activeTabId) {
+        pendingJumpRef.current = { noteId: activeTabId, anchor };
+        setEditorViewVersion((v) => v + 1);
+      }
+      return;
+    }
+    const target = parsed.note;
+    // Resolved like the editor's links and embeds (same folder first when names repeat).
     const notes = index?.notes ?? [];
-    const base = (p: string) => p.replace(/\.md$/i, "").toLowerCase();
-    const hit =
-      notes.find((n) => base(n.path) === wanted) ??
-      (wanted.includes("/") ? undefined : notes.find((n) => base(n.name) === wanted));
-    if (hit) return openNote(hit.id);
+    const path = resolveLinkTarget(target, activeTab?.path ?? "", notes.map((n) => n.path));
+    const hit = path ? notes.find((n) => n.path === path) : undefined;
+    if (hit) {
+      if (anchor) {
+        pendingJumpRef.current = { noteId: hit.id, anchor };
+        // Already open: nothing else changes, so nudge the jump effect.
+        if (hit.id === activeTabId) setEditorViewVersion((v) => v + 1);
+      }
+      return openNote(hit.id);
+    }
     try {
       const created = await vaultAdapter.createNote(`${target.replace(/\.md$/i, "")}.md`);
       refreshIndex();
@@ -1460,6 +1481,60 @@ export default function VaultPage() {
       setPageNotice(isNetworkError(err) ? t("web.offline.needsNetwork") : t("web.notice.newNoteFailed"));
     }
   }
+
+  // `![[…]]` embeds read notes through this page: an open tab's text (unsaved edits included), else the server's.
+  // `![[pic.png]]` is matched to an attachment by file name.
+  const embedStateRef = useRef({ index, activePath: "", openWikilink });
+  embedStateRef.current = { index, activePath: activeTab?.path ?? "", openWikilink };
+  // A new index means notes changed (saved, renamed, synced): embeds load again.
+  useEffect(() => {
+    if (index) bumpEmbedVersion();
+  }, [index]);
+  useEffect(() => {
+    const noteCache = new Map<string, Promise<string>>();
+    let images: { at: number; list: Promise<{ name: string; url: string }[]> } | null = null;
+    const imageList = () => {
+      if (!images || Date.now() - images.at > 10_000) {
+        images = {
+          at: Date.now(),
+          list: webApi.attachments
+            .list(vaultId)
+            .then(({ attachments }) => attachments.map((a) => ({ name: a.filename, url: webApi.attachments.downloadUrl(vaultId, a.id) })))
+            .catch(() => []),
+        };
+      }
+      return images.list;
+    };
+    setEmbedSource({
+      async load(note) {
+        const { index: idx, activePath } = embedStateRef.current;
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(note)) {
+          const file = note.slice(note.lastIndexOf("/") + 1).toLowerCase();
+          const hit = (await imageList()).find((a) => a.name.toLowerCase() === file);
+          return hit ? { image: hit.url } : null;
+        }
+        const notes = idx?.notes ?? [];
+        const path = resolveLinkTarget(note || activePath, activePath, notes.map((n) => n.path));
+        const hit = path ? notes.find((n) => n.path === path) : undefined;
+        if (!hit) return null;
+        const tab = tabsRef.current.find((t) => t.noteId === hit.id);
+        if (tab) return { path: hit.path, content: tab.content };
+        // Kept until notes change (the version moves on every index refresh, i.e. after saves), so redrawing a page
+        // of embeds does not fetch every note again.
+        const key = `${getEmbedVersion()}:${hit.id}`;
+        let text = noteCache.get(key);
+        if (!text) {
+          if (noteCache.size > 200) noteCache.clear();
+          text = webApi.notes.get(vaultId, hit.id).then((n) => n.content);
+          noteCache.set(key, text);
+          text.catch(() => noteCache.delete(key));
+        }
+        return { path: hit.path, content: await text };
+      },
+      open: (target) => void embedStateRef.current.openWikilink(target),
+    });
+    return () => setEmbedSource(null);
+  }, [vaultId]);
 
   function openNoteByPath(path: string) {
     const note = index?.notes.find((n) => n.path === path);
