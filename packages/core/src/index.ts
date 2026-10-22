@@ -9,6 +9,7 @@ export * from "./link-mentions";
 export * from "./note-embed";
 export * from "./properties";
 export * from "./views";
+export * from "./search-query";
 export * from "./sanitize-html";
 export * from "./slide-utils";
 export * from "./calendar-utils";

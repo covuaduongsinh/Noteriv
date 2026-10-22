@@ -2108,6 +2108,7 @@ export default function VaultPage() {
             openNote(ref.id);
           }}
           onClose={() => setSearchVisible(false)}
+          editNote={editNoteInTabs}
         />
       )}
 
