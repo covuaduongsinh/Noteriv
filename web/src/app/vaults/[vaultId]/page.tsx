@@ -72,6 +72,7 @@ import {
 } from "@/lib/hotkeys";
 import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
+import { rewriteLinksForMoves, updateLinksAfterMove, type LinkUpdateResult, type PathMove } from "@noteriv/core/link-rename";
 import { useIsPhone } from "@/lib/use-is-phone";
 import TermsGate from "@/components/TermsGate";
 
@@ -382,6 +383,64 @@ export default function VaultPage() {
     setPageNotice(t("web.offline.conflict", { name: stale.copy.name }));
     refreshIndex();
     void openNoteRef.current(stale.copy.id);
+  }
+
+  /**
+   * Notes moved or renamed in the file tree: rewrite the links that pointed at their old paths (setting "Update links
+   * when renaming", on by default). A tab with unsaved edits is not written from here: its text gets the same rewrite
+   * and its own save sends it, against the base it started from.
+   */
+  async function handleNotesMoved(moves: PathMove[], before: string[]) {
+    const renamed = new Map(moves.map((m) => [m.from, m.to]));
+    const backToBefore = new Map(moves.map((m) => [m.to, m.from]));
+    setTabs((prev) =>
+      prev.map((tab) => {
+        const to = renamed.get(tab.path);
+        return to ? { ...tab, path: to, name: to.slice(to.lastIndexOf("/") + 1) } : tab;
+      })
+    );
+    if (!editorSettingsRef.current.autoUpdateLinks) return;
+    const unsavedIds = new Set(tabsRef.current.filter((tab) => tab.content !== tab.savedContent).map((tab) => tab.noteId));
+    let result: LinkUpdateResult;
+    try {
+      result = await updateLinksAfterMove(vaultAdapter, moves, before, (ref) => unsavedIds.has(ref.id));
+    } catch {
+      setPageNotice(t("shell.files.linksNotUpdated"));
+      return;
+    }
+    const byId = new Map(result.changed.map((c) => [c.id, c]));
+    for (const note of result.changed) {
+      serverBaseRef.current[note.id] = note.content;
+      void storeNote({ id: note.id, vaultId, path: note.path, name: note.name, content: note.content });
+    }
+    const rewriteTab = (tab: { path: string; content: string }) => {
+      const sourceAfter = renamed.get(tab.path) ?? tab.path;
+      const sourceBefore = backToBefore.get(sourceAfter) ?? sourceAfter;
+      return rewriteLinksForMoves(tab.content, { sourceBefore, sourceAfter, moves, before });
+    };
+    // A tab with no unsaved text shows the server's new text. One with unsaved text (from before the rename, or typed
+    // while it ran) keeps it, rewritten the same way, and saves it through the usual debounced path; its base is the
+    // server's new text, so that save is not taken for a stale one.
+    const rewritten = new Map<string, string>();
+    for (const tab of tabsRef.current) {
+      if (tab.content === tab.savedContent || !(unsavedIds.has(tab.noteId) || byId.has(tab.noteId))) continue;
+      const content = rewriteTab(tab);
+      if (content !== tab.content) rewritten.set(tab.noteId, content);
+    }
+    setTabs((prev) =>
+      prev.map((tab) => {
+        const note = byId.get(tab.noteId);
+        if (note && tab.content === tab.savedContent) return { ...tab, content: note.content, savedContent: note.content };
+        if (!note && !unsavedIds.has(tab.noteId)) return tab;
+        const content = rewriteTab(tab);
+        return content === tab.content ? tab : { ...tab, content };
+      })
+    );
+    for (const [noteId, content] of rewritten) scheduleSave(noteId, content);
+    const count = result.changed.length + Array.from(rewritten.keys()).filter((id) => !byId.has(id)).length;
+    if (result.failed.length > 0) setPageNotice(t("shell.files.linksNotUpdated"));
+    else if (count > 0) setPageNotice(t("shell.files.linksUpdated", { count }));
+    refreshIndex();
   }
 
   /**
@@ -1730,6 +1789,7 @@ export default function VaultPage() {
               onNewNote={handleQuickNewNote}
               renameRequest={sidebarRenameRequest}
               onRenameRequestHandled={clearSidebarRenameRequest}
+              onMoved={(moves, before) => void handleNotesMoved(moves, before)}
             />
           ))}
 

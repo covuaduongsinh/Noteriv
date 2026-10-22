@@ -38,6 +38,8 @@ export const DEFAULT_EDITOR_SETTINGS = {
   pdfColumnLayout: 2 as 1 | 2,
   // No UI in the general product (still applied to PDF export); the chess edition plugin will expose it.
   pdfChessboardWidth: 75 as 75 | 100,
+  /** Renaming or moving a note rewrites the links that point to it. */
+  autoUpdateLinks: true,
   /** Collapse the sidebar automatically on narrow windows. */
   autoCollapseSidebar: true,
   /** Interface language; unset = the app default (web/src/lib/i18n.ts). */

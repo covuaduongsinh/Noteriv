@@ -5,6 +5,7 @@ import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
 import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
 import { createUntitledNote } from "@/lib/note-names";
+import { expandFolderMove, type PathMove } from "@noteriv/core/link-rename";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 
@@ -256,6 +257,8 @@ interface SidebarProps {
   renameRequest?: { id: string; name: string; nonce: number } | null;
   /** Called once the request is taken, so it is not replayed when the sidebar mounts again. */
   onRenameRequestHandled?: () => void;
+  /** Notes that moved (renamed, dragged, or inside a renamed folder), with every note path from before the move. */
+  onMoved?: (moves: PathMove[], before: string[]) => void;
 }
 
 /**
@@ -277,6 +280,7 @@ export default function Sidebar({
   onNewNote,
   renameRequest,
   onRenameRequestHandled,
+  onMoved,
 }: SidebarProps) {
   useLocale();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -308,6 +312,15 @@ export default function Sidebar({
     }, 600);
   }, []);
 
+  /** `index` still holds the paths from before the move: report them with the moves. */
+  function reportMoves(moves: PathMove[]) {
+    if (index && moves.length > 0) onMoved?.(moves, index.notes.map((n) => n.path));
+  }
+
+  function reportFolderMove(oldPath: string, newPath: string) {
+    if (index && oldPath !== newPath) reportMoves(expandFolderMove(oldPath, newPath, index.notes.map((n) => n.path)));
+  }
+
   async function moveNode(payload: DragPayload, targetFolderId: string | null) {
     if (hoverTimer.current) clearTimeout(hoverTimer.current);
     setMoveError("");
@@ -315,11 +328,13 @@ export default function Sidebar({
       if (payload.type === "note") {
         const note = index?.notes.find((n) => n.id === payload.id);
         if (!note || note.folderId === targetFolderId) return;
-        await webApi.notes.update(vaultId, payload.id, { folderId: targetFolderId });
+        const moved = await webApi.notes.update(vaultId, payload.id, { folderId: targetFolderId });
+        reportMoves([{ from: note.path, to: moved.path }]);
       } else {
         const folder = index?.folders.find((f) => f.id === payload.id);
         if (!folder || folder.parentId === targetFolderId || payload.id === targetFolderId) return;
-        await webApi.folders.update(vaultId, payload.id, { parentId: targetFolderId });
+        const moved = await webApi.folders.update(vaultId, payload.id, { parentId: targetFolderId });
+        reportFolderMove(folder.path, moved.path);
       }
       if (targetFolderId) setExpandedFolders((prev) => new Set(prev).add(targetFolderId));
       onRefresh();
@@ -359,12 +374,16 @@ export default function Sidebar({
     if (!target || !value || value === target.name) return;
     try {
       if (target.type === "folder") {
-        await webApi.folders.update(vaultId, target.id, { name: value });
+        const oldPath = index?.folders.find((f) => f.id === target.id)?.path;
+        const renamed = await webApi.folders.update(vaultId, target.id, { name: value });
+        if (oldPath) reportFolderMove(oldPath, renamed.path);
       } else {
         const newName = /\.(md|markdown)$/i.test(value) ? value : `${value}.md`;
         const current = /\.(md|markdown)$/i.test(target.name) ? target.name : `${target.name}.md`;
         if (newName === current) return;
-        await webApi.notes.update(vaultId, target.id, { name: newName });
+        const oldPath = index?.notes.find((n) => n.id === target.id)?.path;
+        const renamed = await webApi.notes.update(vaultId, target.id, { name: newName });
+        if (oldPath) reportMoves([{ from: oldPath, to: renamed.path }]);
       }
       onRefresh();
     } catch (err) {

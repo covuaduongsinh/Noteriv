@@ -1,5 +1,6 @@
 import type { NoteBacklink, NoteRef, NoteSearchHit, VaultAdapter } from "@noteriv/core/vault-adapter";
-import { webApi, type ApiBacklink, type ApiNoteSummary } from "./webApi";
+import { ApiError, apiErrorCode, webApi, type ApiBacklink, type ApiNoteSummary } from "./webApi";
+import { contentHash } from "./content-hash";
 
 const toRef = (n: { id: string; name: string; path: string }): NoteRef => ({ id: n.id, name: n.name, path: n.path });
 
@@ -83,6 +84,35 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
     async backlinks(id): Promise<NoteBacklink[]> {
       const found: ApiBacklink[] = await webApi.notes.backlinks(vaultId, id);
       return found.map((b) => ({ ref: toRef(b) }));
+    },
+
+    // The server takes up to 200 terms per request (a renamed folder can move more notes than that). An answer cut at
+    // the server's cap is an error: the caller then reads every note rather than miss some.
+    async notesContaining(terms) {
+      const byId = new Map<string, { ref: NoteRef; content: string }>();
+      for (let i = 0; i < terms.length; i += 200) {
+        const { notes, truncated } = await webApi.notes.containing(vaultId, terms.slice(i, i + 200));
+        if (truncated) throw new Error("Too many matching notes");
+        for (const n of notes) byId.set(n.id, { ref: toRef(n), content: n.content });
+      }
+      return Array.from(byId.values());
+    },
+
+    async writeNoteIfUnchanged(id, content, expected) {
+      const expectHash = await contentHash(expected);
+      if (!expectHash) {
+        // No WebCrypto (plain-http page): compare just before writing instead.
+        if ((await webApi.notes.get(vaultId, id)).content !== expected) return false;
+        await webApi.notes.update(vaultId, id, { content });
+        return true;
+      }
+      try {
+        await webApi.notes.update(vaultId, id, { content, expectHash });
+        return true;
+      } catch (err) {
+        if (err instanceof ApiError && apiErrorCode(err) === "changed") return false;
+        throw err;
+      }
     },
 
     async noteDates() {

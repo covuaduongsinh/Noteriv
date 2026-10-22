@@ -19,6 +19,7 @@ export interface AppSettings {
   autoUpdate: boolean; // check for and install updates automatically
   autoCollapseSidebar: boolean;
   sidebarCollapseWidth: number;
+  autoUpdateLinks: boolean; // renaming or moving a note rewrites the links that point to it
   pdfColumnLayout: 1 | 2;       // number of print columns for PDF export
   pdfChessboardWidth: 75 | 100; // chessboard width as % of column width; no UI in the general product, the chess edition plugin will expose it
   language?: "en" | "vi" | "auto"; // interface language; "auto" follows the system (src/lib/i18n.ts)
@@ -43,6 +44,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoUpdate: true,
   autoCollapseSidebar: true,
   sidebarCollapseWidth: 800,
+  autoUpdateLinks: true,
   pdfColumnLayout: 2,
   pdfChessboardWidth: 75,
 };

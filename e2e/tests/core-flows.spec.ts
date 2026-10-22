@@ -137,6 +137,22 @@ test("clicking a wiki-link opens the note, or creates it when it does not exist 
   await expect(page.locator(".tab-active")).toContainText("Third idea");
 });
 
+test("renaming a note rewrites the links that point to it", async () => {
+  // "Second" (open in a tab, saved) links to [[Third idea]].
+  const rewritten = noteSaved("[[Third thought]]");
+  await renameViaContextMenu("Third idea", "Third thought");
+  await rewritten;
+  await expect(page.getByText("Updated links in 1 note")).toBeVisible();
+  await sidebarItem("Second").click();
+  await expect(editor()).toContainText("Third thought");
+  await expect(editor()).not.toContainText("Third idea");
+  // The link still resolves: Third thought lists Second as a backlink (the panel may still be open from above).
+  await sidebarItem("Third thought").click();
+  const backlinks = page.locator(".bl-panel .bl-list");
+  if (!(await page.locator(".bl-panel").isVisible())) await page.getByTitle("Backlinks", { exact: true }).click();
+  await expect(backlinks).toContainText("Second");
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();

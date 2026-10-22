@@ -17,7 +17,9 @@ Trạng thái: `Mở` · `Đang sửa (nhánh …)` · `Đã sửa (PR #…)` ·
 
 | # | Ngày | Nguồn | Mức | Mô tả ngắn | Nơi (web/desktop/PWA) | Số lần gặp | Trạng thái |
 |---|---|---|---|---|---|---|---|
-| | | | | | | | |
+| 1 | 2026-10-22 | Smoke desktop (phiên K-O1) | Nặng | Trên Windows, đổi tên và kéo-thả di chuyển file trong cây thư mục im lặng thất bại. Nguyên nhân: đường dẫn chỉ được tách theo `/`, trong khi danh sách file trả về `…\tên.md` | desktop | 1 | Đang sửa (nhánh `covuaduongsinh/k-obs-doi-ten-link`) |
+| 2 | 2026-10-22 | Đọc code (phiên K-O1) | Nhẹ | Cùng nguyên nhân với #1, còn sót ở: tên file khi xuất PDF, tên tab của vùng chia, tiêu đề tài liệu, gợi ý wiki-link (`desktop/src/app/page.tsx` các chỗ `split("/").pop()`). Có thể hiện cả đường dẫn thay vì tên | desktop | 0 | Mở |
+| 3 | 2026-10-22 | Đọc code (phiên K-O1) | Nhẹ | Đổi tên ảnh hoặc tệp đính kèm trên desktop không sửa `![[ảnh.png]]`, vì `listAllFiles` chỉ liệt kê `.md` | desktop | 0 | Mở |
 
 ## Phiên sửa đã làm
 

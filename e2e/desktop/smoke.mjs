@@ -173,6 +173,27 @@ try {
   }
   check("auto-save writes the note while editing", saved);
 
+  // Renaming a note rewrites the links to it (Alpha links to [[Beta]])
+  let renameError = "";
+  try {
+    await label("Beta").click({ button: "right" });
+    await shot("4a-menu");
+    await page.locator(".ctx-menu .ctx-item").filter({ hasText: "Rename" }).first().click({ timeout: 5000 });
+    const renameBox = page.locator("input.sb-rename").first();
+    await renameBox.fill("Gamma", { timeout: 5000 });
+    await shot("4a-input");
+    await renameBox.press("Enter");
+  } catch (err) {
+    renameError = String(err).split("\n")[0];
+  }
+  let relinked = false;
+  for (let i = 0; i < 40 && !relinked && !renameError; i++) {
+    await sleep(1000);
+    relinked = readFileSync(path.join(vault, "Alpha.md"), "utf8").includes("[[Gamma]]");
+  }
+  check("renaming a note rewrites the links to it", relinked, renameError || readFileSync(path.join(vault, "Alpha.md"), "utf8").split("\n")[2]);
+  await shot("4b-rename");
+
   // Community plugin sidebar panel
   await page.getByTitle("Hello panel").click().catch(() => undefined);
   await sleep(1500);
