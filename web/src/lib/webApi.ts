@@ -534,6 +534,9 @@ export const webApi = {
       request<{ id: string; path: string }>(`/vaults/${vaultId}/quick-note`, { method: "POST", body: JSON.stringify(data) }),
     backlinks: (vaultId: string, noteId: string) =>
       request<ApiBacklink[]>(`/vaults/${vaultId}/notes/${noteId}/backlinks`),
+    /** The start of every note with front matter (enough to hold the block), for the Properties view. */
+    frontmatterHeads: (vaultId: string) =>
+      request<{ id: string; name: string; path: string; head: string }[]>(`/vaults/${vaultId}/frontmatter`),
     /** Notes whose text contains any of `terms` (case-insensitive, at most 200 terms), with that text; `truncated` past the server's cap. */
     containing: (vaultId: string, terms: string[]) =>
       request<{ notes: { id: string; name: string; path: string; content: string }[]; truncated: boolean }>(`/vaults/${vaultId}/notes/containing`, {

@@ -30,6 +30,7 @@ export type HotkeyAction =
   | "toggleTags"
   | "toggleBacklinks"
   | "toggleOutgoingLinks"
+  | "toggleProperties"
   | "toggleCollab"
   | "exportPDF"
   | "previewPDF"
@@ -98,6 +99,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleOutgoingLinks", label: "Toggle Outgoing links", keys: "", category: "View" },
+  { action: "toggleProperties", label: "Toggle All properties", keys: "", category: "View" },
   { action: "toggleCollab", label: "Toggle Collaboration", keys: "", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },

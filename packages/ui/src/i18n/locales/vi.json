@@ -730,7 +730,8 @@
         "devToolsHint": "Công cụ nhà phát triển (F12)",
         "reloadApp": "Tải lại trang",
         "diagnostics": "Chẩn đoán…",
-        "toggleOutgoingLinks": "Liên kết đi ra"
+        "toggleOutgoingLinks": "Liên kết đi ra",
+        "toggleProperties": "Tất cả thuộc tính"
       }
     },
     "noteToolbar": {
@@ -1854,7 +1855,8 @@
     "reloadApp": "Tải lại trang (lưu trước)",
     "diagnostics": "Chẩn đoán (server, đồng bộ, plugin)…",
     "devToolsHint": "Mở công cụ nhà phát triển của trình duyệt (F12)",
-    "toggleOutgoingLinks": "Bật/tắt Liên kết đi ra"
+    "toggleOutgoingLinks": "Bật/tắt Liên kết đi ra",
+    "toggleProperties": "Bật/tắt Tất cả thuộc tính"
   },
   "snippets": {
     "loadFailed": "Không tải được snippet cộng đồng. Kiểm tra kết nối mạng.",
@@ -2006,5 +2008,33 @@
   "files": {
     "untitled": "Chưa đặt tên",
     "newFolder": "Thư mục mới"
+  },
+  "properties": {
+    "types": {
+      "text": "Văn bản",
+      "list": "Danh sách",
+      "number": "Số",
+      "checkbox": "Hộp chọn",
+      "date": "Ngày",
+      "datetime": "Ngày & giờ",
+      "tags": "Thẻ"
+    },
+    "typeTitle": "Kiểu thuộc tính (áp dụng cho mọi note trong vault)",
+    "complex": "Sửa ở chế độ Source",
+    "addValue": "Thêm…",
+    "removeItem": "Bỏ",
+    "view": {
+      "title": "Tất cả thuộc tính",
+      "empty": "Chưa note nào có thuộc tính.",
+      "failed": "Không đọc được thuộc tính của các note. Hãy thử lại sau.",
+      "rename": "Đổi tên",
+      "renameHint": "Bấm để xem các note, bấm đúp để đổi tên",
+      "renamed": {
+        "one": "Đã đổi tên trong {count} note",
+        "other": "Đã đổi tên trong {count} note"
+      },
+      "renamedSome": "Đã đổi tên trong {count} note; {skipped} note không đổi được",
+      "invalidName": "Không dùng được tên này cho thuộc tính: không có : # [ ] { } , và không bắt đầu bằng - ? ! & * | > dấu nháy % @ hay backtick."
+    }
   }
 }

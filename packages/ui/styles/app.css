@@ -9826,3 +9826,125 @@ body {
 .note-toolbar-actions > * {
   flex-shrink: 0;
 }
+
+
+/* Typed property controls */
+.fm-type-select {
+  flex-shrink: 0;
+  width: 84px;
+  padding: 1px 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.fm-type-select:hover:not(:disabled),
+.fm-type-select:focus {
+  border-color: var(--border);
+  color: var(--text-primary);
+}
+
+.fm-type-select:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.fm-type-select option {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.fm-checkbox {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.fm-complex {
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.fm-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  cursor: text;
+}
+
+.fm-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  padding: 0 4px 0 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+  border-radius: 10px;
+}
+
+.fm-chip-x {
+  padding: 0 3px;
+  font-size: 12px;
+  line-height: 1;
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+.fm-chip-x:hover {
+  color: var(--text-primary);
+}
+
+.fm-chip-input {
+  flex: 1;
+  min-width: 60px;
+  padding: 2px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: transparent;
+  border: none;
+  outline: none;
+}
+
+/* All properties view */
+.pv-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding-right: 6px;
+}
+
+.pv-key {
+  flex: 1;
+  min-width: 0;
+  justify-content: space-between;
+}
+
+.pv-rename {
+  flex: 1;
+  min-width: 0;
+  margin: 2px 4px;
+  padding: 3px 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: 4px;
+  outline: none;
+}
+
+.pv-notice {
+  margin: 6px 8px 0;
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-radius: 5px;
+  cursor: pointer;
+}

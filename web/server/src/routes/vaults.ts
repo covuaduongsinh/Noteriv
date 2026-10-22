@@ -192,7 +192,40 @@ export default async function vaultRoutes(fastify: FastifyInstance) {
       throw err;
     }
   });
+
+  /**
+   * The start of every note that has front matter (`---` on its first line), for the Properties view: the client
+   * parses the block (packages/core/src/properties.ts). Only the first FRONTMATTER_HEAD characters are sent.
+   */
+  fastify.get("/:id/frontmatter", async (request, reply) => {
+    const { id } = request.params as { id: string };
+    try {
+      await requireVaultAccess(prisma, id, request.user!.id);
+      const rows = await prisma.$queryRaw<Array<{ id: string; name: string; path: string; head: string }>>(Prisma.sql`
+        SELECT id, name, path, substring(content from 1 for ${FRONTMATTER_HEAD}::int) AS head
+        FROM notes
+        WHERE vault_id = ${id} AND deleted_at IS NULL AND (content LIKE '---%' OR content LIKE ${"﻿---%"})
+      `);
+      // Only the block itself goes back (a few hundred bytes, not the note's first 20 000 characters); a block that
+      // does not close within the head is left out.
+      const blocks = rows.flatMap((r) => {
+        const m = FRONTMATTER_BLOCK.exec(r.head);
+        return m ? [{ id: r.id, name: r.name, path: r.path, head: m[0] }] : [];
+      });
+      return reply.send(blocks);
+    } catch (err) {
+      if (err instanceof VaultAccessError) {
+        return reply.code(err.statusCode).send({ error: err.message });
+      }
+      throw err;
+    }
+  });
 }
+
+/** Front matter longer than this is not expected; the Properties view reads at most this much of each note. */
+const FRONTMATTER_HEAD = 20000;
+/** A front matter block at the very start: `---` (after an optional BOM), lines, then `---` or `...`. */
+const FRONTMATTER_BLOCK = /^﻿?---\r?\n(?:[\s\S]*?\r?\n)?(?:---|\.\.\.)(?=\r?\n|$)/;
 
 const MAX_MATCHES_PER_NOTE = 5;
 

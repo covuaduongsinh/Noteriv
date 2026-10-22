@@ -195,6 +195,33 @@ test("embedding a note shows its content; the embed's title opens it", async () 
   await expect(page.locator(".tab-active")).toContainText("Second");
 });
 
+test("typed properties: a number property is set and listed in All properties", async () => {
+  await sidebarItem("Third thought").click();
+  const props = page.locator(".fm-editor").first();
+  const created = noteSaved("tags: []");
+  await props.getByRole("button", { name: "Add properties" }).click();
+  await created;
+  if (!(await props.locator(".fm-body").isVisible())) await props.locator(".fm-header").click();
+  await props.getByRole("button", { name: "Add property" }).click();
+  await page.getByPlaceholder("Property name...").fill("rating");
+  await page.getByPlaceholder("Property name...").press("Enter");
+  const row = props.locator(".fm-property", { has: page.locator(".fm-property-key", { hasText: "rating" }) });
+  await row.locator(".fm-type-select").selectOption("number");
+  await expect(row).toHaveAttribute("data-type", "number");
+  const saved = noteSaved("rating: 5");
+  await row.locator("input.fm-property-input").fill("5");
+  await row.locator("input.fm-property-input").press("Enter");
+  await saved;
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("All properties");
+  await page.keyboard.press("Enter");
+  const view = page.locator(".pv-panel");
+  await expect(view).toContainText("rating");
+  await expect(view.locator(".pv-row", { hasText: "rating" }).locator(".fm-type-select")).toHaveValue("number");
+  await view.locator(".bl-close").click();
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();

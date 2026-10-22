@@ -752,7 +752,8 @@
         "devToolsHint": "Toggle Developer Tools (F12)",
         "reloadApp": "Reload Window",
         "diagnostics": "Diagnostics…",
-        "toggleOutgoingLinks": "Outgoing links"
+        "toggleOutgoingLinks": "Outgoing links",
+        "toggleProperties": "All properties"
       }
     },
     "noteToolbar": {
@@ -1889,7 +1890,8 @@
     "reloadApp": "Reload page (saves first)",
     "diagnostics": "Diagnostics (server, sync, plugins)…",
     "devToolsHint": "Open browser developer tools (F12)",
-    "toggleOutgoingLinks": "Toggle Outgoing links"
+    "toggleOutgoingLinks": "Toggle Outgoing links",
+    "toggleProperties": "Toggle All properties"
   },
   "snippets": {
     "loadFailed": "Failed to load community snippets. Check your connection.",
@@ -2045,5 +2047,33 @@
   "files": {
     "untitled": "Untitled",
     "newFolder": "New Folder"
+  },
+  "properties": {
+    "types": {
+      "text": "Text",
+      "list": "List",
+      "number": "Number",
+      "checkbox": "Checkbox",
+      "date": "Date",
+      "datetime": "Date & time",
+      "tags": "Tags"
+    },
+    "typeTitle": "Property type (applies to every note in the vault)",
+    "complex": "Edit in Source mode",
+    "addValue": "Add…",
+    "removeItem": "Remove",
+    "view": {
+      "title": "All properties",
+      "empty": "No note has properties yet.",
+      "failed": "Could not read the notes' properties. Try again later.",
+      "rename": "Rename",
+      "renameHint": "Click to list the notes, double-click to rename",
+      "renamed": {
+        "one": "Renamed in {count} note",
+        "other": "Renamed in {count} notes"
+      },
+      "renamedSome": "Renamed in {count} notes; {skipped} could not be changed",
+      "invalidName": "That name cannot be used for a property: no : # [ ] { } , and no leading - ? ! & * | > quote % @ or backtick."
+    }
   }
 }

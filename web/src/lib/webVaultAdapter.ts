@@ -98,6 +98,10 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
       return Array.from(byId.values());
     },
 
+    async frontmatterHeads() {
+      return (await webApi.notes.frontmatterHeads(vaultId)).map((n) => ({ ref: toRef(n), head: n.head }));
+    },
+
     async writeNoteIfUnchanged(id, content, expected) {
       const expectHash = await contentHash(expected);
       if (!expectHash) {
