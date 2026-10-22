@@ -323,6 +323,61 @@ export const markdownRenderTheme = EditorView.baseTheme({
     fontSize: "0.85em",
     opacity: "0.6",
   },
+  "& .md-embed.md-wikilink": {
+    color: "var(--text-secondary)",
+  },
+
+  // Embedded notes: ![[Note]], ![[Note#Heading]], ![[Note#^block]] on a line of their own
+  "& .md-note-embed": {
+    display: "block",
+    margin: "4px 0",
+    borderLeft: "3px solid color-mix(in srgb, var(--accent) 45%, transparent)",
+    background: "color-mix(in srgb, var(--accent) 4%, transparent)",
+    borderRadius: "0 6px 6px 0",
+    padding: "4px 12px 8px",
+    whiteSpace: "normal",
+  },
+  "& .md-note-embed .md-note-embed": {
+    marginLeft: "0",
+  },
+  "& .md-note-embed-header": {
+    display: "flex",
+    alignItems: "center",
+    padding: "2px 0 4px",
+  },
+  "& .md-note-embed-title": {
+    background: "none",
+    border: "none",
+    padding: "0",
+    font: "inherit",
+    fontSize: "0.8em",
+    color: "var(--text-muted)",
+    cursor: "pointer",
+  },
+  "& .md-note-embed-title:hover": {
+    color: "var(--accent)",
+    textDecoration: "underline",
+  },
+  "& .md-note-embed-md > :first-child": {
+    marginTop: "0",
+  },
+  "& .md-note-embed-md > :last-child": {
+    marginBottom: "0",
+  },
+  "& .md-note-embed-message": {
+    fontSize: "0.85em",
+    color: "var(--text-muted)",
+    fontStyle: "italic",
+  },
+  "& .md-note-embed-image": {
+    maxWidth: "100%",
+    borderRadius: "4px",
+  },
+  "& .md-block-id": {
+    color: "var(--text-muted)",
+    opacity: "0.5",
+    fontSize: "0.8em",
+  },
 
   // Highlight
   "& .md-highlight mark": {

@@ -30,6 +30,15 @@
     "toc": {
       "title": "Table of Contents",
       "empty": "No headings found"
+    },
+    "embed": {
+      "open": "Open this note",
+      "loading": "Loading…",
+      "notFound": "“{target}” is not in this vault yet",
+      "anchorNotFound": "“{anchor}” is not in this note",
+      "loop": "This note is already shown above (it embeds itself)",
+      "tooDeep": "Embedded too deep to show",
+      "unavailable": "Embedded notes cannot be shown here"
     }
   },
   "panels": {

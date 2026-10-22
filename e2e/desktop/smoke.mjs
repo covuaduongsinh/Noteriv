@@ -60,6 +60,7 @@ writeFileSync(
   "# Alpha\n\nLink to [[Beta]].\n\nInline math $a^2+b^2$ here.\n\n![pic](pic.png)\n\n![Audio](clip.wav)\n\nsmoke needle line\n"
 );
 writeFileSync(path.join(vault, "Beta.md"), "# Beta\n\nThe second note.\n");
+writeFileSync(path.join(vault, "Embeds.md"), "# Embeds\n\nIntro line.\n\n![[Beta]]\n");
 writeFileSync(path.join(vault, "Alpha (conflict 2026-10-17 0153).md"), "# Alpha\n\nLink to [[Beta]] from the other device.\n");
 writeFileSync(
   path.join(vault, ".noteriv", "plugins", "e2e-panel", "manifest.json"),
@@ -139,6 +140,16 @@ try {
   check("local audio clip plays (has a duration)", !!audioState && audioState.error === null && audioState.duration > 0.5, JSON.stringify(audioState));
   check("word count (core plugin) in the status bar", await page.getByText(/^\d+ words?$/).first().isVisible().catch(() => false));
   await shot("2-note");
+
+  // An embedded note shows its content
+  await label("Embeds").click();
+  await page.locator(".cm-content .md-note-embed").first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await sleep(1000);
+  check(
+    "an embedded note (![[Beta]]) shows its content",
+    (await page.locator(".cm-content .md-note-embed").first().textContent().catch(() => ""))?.includes("The second note.") ?? false
+  );
+  await shot("2b-embed");
 
   // Conflict copy banner
   await label("Alpha (conflict 2026-10-17 0153)").click();
