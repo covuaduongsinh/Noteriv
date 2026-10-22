@@ -32,6 +32,21 @@ Chặng 1–5 đã xong; theo lộ trình, bước kế là Chặng 6.1 (chốt 
 - Mỗi việc sửa = một phiên nhỏ theo quy trình cũ (nhánh `covuaduongsinh/k-<việc>` → staging → hỏi trước khi merge vào `main`).
 - Số liệu về đối thủ phải có **nguồn + ngày tra**.
 
+## Ngoại lệ 2: lấp khoảng trống so với Obsidian (chốt 2026-10-22)
+
+Chủ dự án chọn **làm luôn cả tính năng lớn** còn thiếu so với Obsidian ngay trong chặng này, song song với việc dùng thật.
+
+- **Nguồn:** chỉ dùng nguồn công khai. Điều khoản của Obsidian cấm dịch ngược và cấm dùng để làm sản phẩm cạnh tranh, nên lần thử dùng REA trên Obsidian đã dừng (xem [moi-mat.md](../kiem-chung/moi-mat.md) mục 4). REA chỉ dùng để soi bản build của chính Noteriv.
+- **Bản đồ khoảng trống:** [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md), gồm G1–G19, chia 4 đợt. **Chủ dự án chốt danh sách và thứ tự trước khi code.**
+- **Mỗi việc là một phiên** `covuaduongsinh/k-obs-<việc>`, cắt từ `main` (dùng worktree riêng nếu nhánh mobile đang dở):
+  1. Viết plan phiên, gồm đặc tả hành vi bằng lời của mình.
+  2. Đặt logic ở `packages/core`/`packages/ui`, đóng gói thành core plugin để web và desktop dùng chung.
+  3. Thêm chuỗi chữ vào i18n en/vi.
+  4. Chạy E2E trên bản build production và smoke desktop 16/16.
+  5. Đẩy staging, rồi hỏi trước khi merge.
+  6. Nếu có migration: backup, chạy `psql -1` lên prod, rồi `migrate resolve`.
+- **Ảnh hưởng:** việc dùng thật hằng ngày và lịch báo cáo quyết định (~2026-12-02) giữ nguyên. Nếu khối lượng làm trễ báo cáo thì hỏi chủ dự án trước khi lùi lịch.
+
 ---
 
 ## Tuần 0 – Chuẩn bị (2026-10-20/21)
@@ -93,3 +108,5 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | 4 | Đối thủ (dùng thử 4 app) + mọi mặt | Chưa làm | 11–17/11 | |
 | 5 | Mọi mặt + sửa lỗi cuối | Chưa làm | 18–24/11 | |
 | 6 | Báo cáo quyết định | Chưa làm | 25/11–1/12 | |
+| O0 | Obsidian: bản đồ khoảng trống từ nguồn công khai | Xong | 2026-10-22 | [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md); đã dừng dịch ngược vì điều khoản của Obsidian |
+| O1+ | Obsidian: các phiên lấp khoảng trống | Chờ chủ dự án chốt danh sách | | Đề xuất Đợt 1: G1 cập nhật link khi đổi tên → G3 → G2 → G4 |

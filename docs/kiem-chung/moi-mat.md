@@ -59,6 +59,7 @@ Thời gian vận hành của một người mỗi tuần (ước tính từ 6 t
 | | | | | | | | |
 
 - **Giấy phép**: MIT cho phép bán; điều kiện giữ ghi công (`LICENSE`, `NOTICE.md`).
+- **Nghiên cứu đối thủ**: [Điều khoản của Obsidian](https://obsidian.md/terms) (cập nhật 2025-02-20, tra 2026-10-22) cấm dịch ngược và cấm dùng phần mềm để làm sản phẩm cạnh tranh. Ngày 2026-10-22, một lần chạy REA trên `obsidian.asar` đã dừng ngay lúc bắt đầu và kết quả đã xoá. **Quy tắc:** chỉ nghiên cứu đối thủ qua nguồn công khai (tài liệu, changelog, bảng giá, API công khai), không dịch ngược app độc quyền, không chép giao diện hay chữ. Áp dụng cho cả 12 app trong [doi-thu.md](doi-thu.md). Chi tiết: [obsidian-cong-khai.md](obsidian-cong-khai.md) mục 1.
 - **Thanh toán quốc tế từ Việt Nam**: điều kiện Paddle và Lemon Squeezy với người bán/pháp nhân Việt Nam (có nguồn); hệ quả thuế ở Việt Nam (cần hỏi kế toán — ghi câu hỏi, không tự kết luận).
 - **Dữ liệu cá nhân**: `/privacy`, `/terms` đã có từ 5.6; ghi điểm còn thiếu nếu bán cho EU / Việt Nam (Nghị định 13/2023 về dữ liệu cá nhân).
 

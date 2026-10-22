@@ -39,6 +39,26 @@ Mỗi app một bảng theo mẫu:
 ### Nhóm 1
 <!-- Obsidian, Logseq -->
 
+### Obsidian
+Bản đồ khoảng trống chi tiết: [obsidian-cong-khai.md](obsidian-cong-khai.md). Các ô "chưa xác minh" sẽ điền dần ở Tuần 2–4.
+
+| Mục | Nội dung | Nguồn (link) | Ngày tra |
+|---|---|---|---|
+| Nền tảng (web/Win/Mac/Linux/iOS/Android) | Win, Mac, Linux, iOS, Android. Không có app web | chưa xác minh | |
+| Mô hình (SaaS / mở / tự host / kết hợp) | App miễn phí, chạy trên máy. Thu phí dịch vụ Sync và Publish | https://obsidian.md/pricing | 2026-10-22 |
+| Giấy phép mã nguồn | Độc quyền. Cấm dịch ngược và cấm dùng để làm sản phẩm cạnh tranh. API plugin công khai theo MIT | https://obsidian.md/terms · https://github.com/obsidianmd/obsidian-api | 2026-10-22 |
+| Các gói và giá (USD/tháng, năm) | App $0. Sync $4/tháng trả theo năm, $5 trả theo tháng. Publish $8/$10 mỗi site. Catalyst $25 một lần. Commercial $50/người/năm, tự nguyện | https://obsidian.md/pricing | 2026-10-22 |
+| Định dạng lưu (Markdown thuần? độc quyền?) | Markdown thuần trên máy. Canvas theo chuẩn mở JSON Canvas. Bases lưu ở file `.base` riêng | https://obsidian.md/help/bases | 2026-10-22 |
+| Đồng bộ (dịch vụ riêng, Git, WebDAV, iCloud…) | Obsidian Sync (mã hoá đầu-cuối, lịch sử phiên bản). Git/WebDAV chỉ qua plugin cộng đồng | https://obsidian.md/pricing | 2026-10-22 |
+| Offline | Có (dữ liệu nằm trên máy) | https://obsidian.md/help/bases | 2026-10-22 |
+| Cộng tác thời gian thực | Không. Sync có vault chia sẻ nhưng không sửa cùng lúc | https://obsidian.md/pricing (chỉ nêu "shared vault") | 2026-10-22 |
+| Plugin / API | 29 core plugin. Kho plugin cộng đồng. API TypeScript công khai | https://obsidian.md/help/plugins | 2026-10-22 |
+| AI tích hợp | Không có sẵn (chỉ qua plugin cộng đồng) | chưa xác minh | |
+| Xuất dữ liệu | File là Markdown nên không cần xuất. Có xuất PDF | chưa xác minh | |
+| Quy mô cộng đồng (người dùng, sao GitHub, Reddit) | chưa xác minh | | |
+| Điểm mạnh nổi bật | Bases (bảng/thẻ/kanban/bản đồ trên thuộc tính), hệ sinh thái plugin lớn, dữ liệu là file của mình | https://obsidian.md/help/bases | 2026-10-22 |
+| Người dùng hay phàn nàn (Reddit, review) | chưa xác minh | | |
+
 ### Nhóm 2
 <!-- Notion, Craft -->
 
