@@ -114,5 +114,6 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | O3 | G2: nhúng note, section, khối `^id` | Xong | 2026-10-22 | [Phiên K-O3](2026-10-22-phien-k-o3-nhung-note.md); PR #28, đã lên production |
 | O4 | G4: thuộc tính có kiểu + Tất cả thuộc tính | Xong | 2026-10-22 | [Phiên K-O4](2026-10-22-phien-k-o4-thuoc-tinh.md); PR #29, đã lên production; sửa kèm lỗi mất mục list |
 | O5 | G5 (phần 1): khối ```view bảng/thẻ/danh sách/kanban | Xong | 2026-10-22 | [Phiên K-O5](2026-10-22-phien-k-o5-che-do-xem.md); PR #30, đã lên production; loại file `.view` để phiên sau |
-| O6 | G6: tìm kiếm có toán tử + tìm & thay toàn vault | Đang làm | 2026-10-22 | [Phiên K-O6](2026-10-22-phien-k-o6-tim-kiem.md) |
+| O6 | G6: tìm kiếm có toán tử + tìm & thay toàn vault | Xong | 2026-10-23 | [Phiên K-O6](2026-10-22-phien-k-o6-tim-kiem.md); PR #31, đã lên production |
+| O7 | G5 (phần 2): file chế độ xem `.view` | Đang làm | 2026-10-23 | [Phiên K-O7](2026-10-23-phien-k-o7-file-che-do-xem.md) |
 | O2+ | Obsidian: các khoảng trống còn lại | Chưa làm | | Chủ dự án chốt 2026-10-22: làm đủ 4 đợt theo thứ tự đề xuất (G3 → G2 → G4 → G5 → G6 → Đợt 3 → G12) |

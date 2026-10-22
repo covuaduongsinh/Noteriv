@@ -11,9 +11,12 @@
  *
  * Conditions are `<field> <op> <value>` with = != > >= < <= contains !contains, or `<field> exists` / `!exists`.
  * Fields are property names plus file.name, file.path, file.folder, file.created, file.modified (`file` is the name).
+ *
+ * The same settings can also be a file of their own: `Name.view` on desktop, or a note whose front matter has
+ * `view: true` on web (the settings follow the front matter).
  */
 
-import { readProperties, type PropertyValue } from "./properties";
+import { frontmatterBlock, readProperties, type PropertyValue } from "./properties";
 
 export type ViewLayout = "table" | "cards" | "list" | "kanban";
 export const VIEW_LAYOUTS: ViewLayout[] = ["table", "cards", "list", "kanban"];
@@ -216,4 +219,66 @@ export function runView(spec: ViewSpec, notes: ViewNote[]): ViewResult {
   }
   const keys = [...groups.keys()].sort((a, b) => (a === null ? 1 : b === null ? -1 : a.localeCompare(b, undefined, { numeric: true })));
   return { groups: keys.map((key) => ({ key, rows: groups.get(key)! })), total: rows.length };
+}
+
+/** Extension of a view file on desktop. */
+export const VIEW_FILE_EXT = ".view";
+
+/** Settings of a new view file. */
+export const VIEW_FILE_TEMPLATE = "from: \nwhere: \nlayout: table\ncolumns: [file, status, tags]\nsort: file.name\n";
+
+/** How far into a note a `view: true` line is looked for before parsing the front matter (match runs on every render). */
+const MARKER_SCAN = 4096;
+const MARKER_LINE = /^view:\s*true\b/im;
+
+/** Whether a note's front matter marks it as a view file (`view: true`, the web form). */
+export function isViewNote(content: string): boolean {
+  // Cheap checks first: most notes have no front matter, or no such line near the top.
+  if (!/^﻿?---\r?\n/.test(content) || !MARKER_LINE.test(content.slice(0, MARKER_SCAN))) return false;
+  return readProperties(frontmatterBlock(content)).properties.some((p) => p.key === "view" && p.value === true);
+}
+
+/** Whether a file is a view file: `.view` (desktop) or a note marked `view: true` (web). */
+export function isViewFile(file: { path: string; content: string }): boolean {
+  return file.path.toLowerCase().endsWith(VIEW_FILE_EXT) || isViewNote(file.content);
+}
+
+/**
+ * A view file's front matter with the line break after it, and its settings text. A `.view` file has none, but one
+ * given front matter anyway keeps it apart from the settings too.
+ */
+function splitViewFile(content: string): { head: string; settings: string } {
+  const block = frontmatterBlock(content);
+  if (!block) return { head: "", settings: content };
+  const rest = content.slice(block.length);
+  const eol = /^\r?\n/.exec(rest)?.[0] ?? "";
+  return { head: block + eol, settings: rest.slice(eol.length) };
+}
+
+/** The settings text of a view file, as a ```view block would hold it. */
+export function viewFileSettings(content: string): string {
+  return splitViewFile(content).settings;
+}
+
+/** Settings lines `key: …` (top level). The last one counts, as when the settings are read. */
+const settingLine = (key: string) => new RegExp(`^${key}:.*$`, "gm");
+
+/**
+ * A view file with its `layout` setting changed (added when missing); everything else is kept. Kanban needs a `group`:
+ * when there is none, the first column that is a property is used (else `status`).
+ */
+export function setViewLayout(content: string, layout: ViewLayout): string {
+  const { head, settings } = splitViewFile(content);
+  const eol = settings.includes("\r\n") ? "\r\n" : "\n";
+  const add = (text: string, line: string) => text + (text === "" || text.endsWith("\n") ? "" : eol) + line + eol;
+  let next = settingLine("layout").test(settings) ? settings.replace(settingLine("layout"), `layout: ${layout}`) : add(settings, `layout: ${layout}`);
+  if (layout === "kanban") {
+    const group = readProperties(`---\n${next.replace(/\r\n/g, "\n")}\n---\n`).properties.find((p) => p.key === "group")?.value;
+    if (group == null || String(group).trim() === "") {
+      const parsed = parseViewSpec(next.replace(settingLine("layout"), "layout: table"));
+      const column = parsed.spec?.columns.find((c) => c !== "file" && !c.startsWith("file.")) ?? "status";
+      next = settingLine("group").test(next) ? next.replace(settingLine("group"), `group: ${column}`) : add(next, `group: ${column}`);
+    }
+  }
+  return head + next;
 }

@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from "vitest";
 import type { VaultApi } from "@noteriv/plugin-api";
 import type { ViewNote } from "@noteriv/core/views";
-import { createViewProcessor, createViewSource } from "../src/views";
+import { createViewFileView, createViewProcessor, createViewSource } from "../src/views";
 
 const PENDING = "data-nrv-pending";
 const tick = (ms = 0) => new Promise((r) => setTimeout(r, ms));
@@ -56,7 +56,7 @@ function harness(files?: Record<string, string>) {
     await settled(el);
     return el;
   };
-  return { vault, files: f, open, edit, render };
+  return { vault, files: f, open, edit, render, processor };
 }
 
 /** A drop of one of the view's kanban cards. */
@@ -175,5 +175,50 @@ describe("views plugin", () => {
       ["Projects/Beta.md", 2],
       ["Inbox.md", 0],
     ]);
+  });
+});
+
+describe("view files", () => {
+  const texts = { layouts: { table: "Table", cards: "Cards", list: "List", kanban: "Kanban" }, hint: "Edit in source mode" };
+
+  async function mountFile(content: string, files?: Record<string, string>) {
+    const h = harness(files);
+    const view = createViewFileView(h.processor, texts);
+    const el = document.createElement("div");
+    document.body.appendChild(el);
+    const setContent = vi.fn();
+    const instance = view.mount(el, { path: "Tasks.md", content, setContent }) || {};
+    await settled(el);
+    return { ...h, view, el, setContent, instance };
+  }
+
+  it("shows a note marked view: true as its view, and leaves that note out of the list", async () => {
+    const content = "---\nview: true\n---\ncolumns: [file, status]\nsort: file";
+    const files = { ...NOTES, "Tasks.md": content };
+    const { view, el } = await mountFile(content, files);
+    expect(view.match({ path: "Tasks.md", content })).toBe(true);
+    expect(view.match({ path: "Board.view", content: "" })).toBe(true);
+    expect(view.match({ path: "Alpha.md", content: NOTES["Projects/Alpha.md"] })).toBe(false);
+    expect(cells(el)).toEqual([
+      ["Alpha", "active"],
+      ["Beta", "done"],
+      ["Inbox", ""],
+    ]);
+    expect(el.querySelector(".nv-layout.nv-active")?.textContent).toBe("Table");
+  });
+
+  it("switches the layout by rewriting the file, and draws again when the file changes elsewhere", async () => {
+    const { el, setContent, instance } = await mountFile("from: Projects\nlayout: table\ncolumns: [file, status]");
+    const cards = [...el.querySelectorAll<HTMLButtonElement>(".nv-layout")].find((b) => b.textContent === "Cards")!;
+    cards.click();
+    await settled(el);
+    expect(setContent).toHaveBeenCalledWith("from: Projects\nlayout: cards\ncolumns: [file, status]");
+    expect(el.querySelectorAll(".nv-card")).toHaveLength(2);
+    expect(el.querySelector(".nv-layout.nv-active")?.textContent).toBe("Cards");
+
+    instance.update?.("from: Projects\nlayout: list");
+    await settled(el);
+    expect(el.querySelectorAll(".nv-list li")).toHaveLength(2);
+    expect(el.querySelector(".nv-layout.nv-active")?.textContent).toBe("List");
   });
 });

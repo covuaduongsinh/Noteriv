@@ -76,4 +76,4 @@
 |---|---|
 | Toán tử + thay thế | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #31, đã lên production 2026-10-23 |
