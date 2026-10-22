@@ -90,11 +90,24 @@
       },
       "scanning": "Đang quét vault...",
       "empty": "Chưa có note nào link tới note này.",
-      "line": "Dòng {line}"
+      "line": "Dòng {line}",
+      "unlinked": "Nhắc đến chưa liên kết",
+      "unlinkedEmpty": "Không note nào nhắc tên note này mà chưa có liên kết.",
+      "link": "Liên kết",
+      "linkTitle": "Biến chỗ nhắc đến này thành liên kết",
+      "unlinkedFailed": "Không tìm được các chỗ nhắc đến. Hãy thử lại sau."
     },
     "outline": {
       "title": "Dàn ý",
       "empty": "Không có heading nào"
+    },
+    "outgoing": {
+      "title": "Liên kết đi ra",
+      "empty": "Note này chưa có liên kết nào.",
+      "unresolved": "“{target}” chưa có",
+      "unlinked": "Nhắc đến chưa liên kết",
+      "unlinkedEmpty": "Không thấy tên note nào được nhắc mà chưa liên kết.",
+      "linkTitle": "Liên kết chỗ nhắc đến đầu tiên của {path}"
     }
   },
   "settings": {
@@ -707,7 +720,8 @@
         "cssSnippets": "CSS Snippets…",
         "devToolsHint": "Công cụ nhà phát triển (F12)",
         "reloadApp": "Tải lại trang",
-        "diagnostics": "Chẩn đoán…"
+        "diagnostics": "Chẩn đoán…",
+        "toggleOutgoingLinks": "Liên kết đi ra"
       }
     },
     "noteToolbar": {
@@ -1830,7 +1844,8 @@
     "exportVault": "Xuất vault ra zip",
     "reloadApp": "Tải lại trang (lưu trước)",
     "diagnostics": "Chẩn đoán (server, đồng bộ, plugin)…",
-    "devToolsHint": "Mở công cụ nhà phát triển của trình duyệt (F12)"
+    "devToolsHint": "Mở công cụ nhà phát triển của trình duyệt (F12)",
+    "toggleOutgoingLinks": "Bật/tắt Liên kết đi ra"
   },
   "snippets": {
     "loadFailed": "Không tải được snippet cộng đồng. Kiểm tra kết nối mạng.",

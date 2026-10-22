@@ -92,11 +92,24 @@
       },
       "scanning": "Scanning vault...",
       "empty": "No backlinks found for this note.",
-      "line": "Line {line}"
+      "line": "Line {line}",
+      "unlinked": "Unlinked mentions",
+      "unlinkedEmpty": "No other note names this one without a link.",
+      "link": "Link",
+      "linkTitle": "Turn this mention into a link",
+      "unlinkedFailed": "Could not look for unlinked mentions. Try again later."
     },
     "outline": {
       "title": "Outline",
       "empty": "No headings found"
+    },
+    "outgoing": {
+      "title": "Outgoing links",
+      "empty": "This note has no links.",
+      "unresolved": "“{target}” does not exist yet",
+      "unlinked": "Unlinked mentions",
+      "unlinkedEmpty": "No note names found without a link.",
+      "linkTitle": "Link the first mention of {path}"
     }
   },
   "settings": {
@@ -729,7 +742,8 @@
         "cssSnippets": "CSS Snippets…",
         "devToolsHint": "Toggle Developer Tools (F12)",
         "reloadApp": "Reload Window",
-        "diagnostics": "Diagnostics…"
+        "diagnostics": "Diagnostics…",
+        "toggleOutgoingLinks": "Outgoing links"
       }
     },
     "noteToolbar": {
@@ -1865,7 +1879,8 @@
     "exportVault": "Export vault as zip",
     "reloadApp": "Reload page (saves first)",
     "diagnostics": "Diagnostics (server, sync, plugins)…",
-    "devToolsHint": "Open browser developer tools (F12)"
+    "devToolsHint": "Open browser developer tools (F12)",
+    "toggleOutgoingLinks": "Toggle Outgoing links"
   },
   "snippets": {
     "loadFailed": "Failed to load community snippets. Check your connection.",

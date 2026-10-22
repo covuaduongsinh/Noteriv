@@ -180,10 +180,10 @@ describe("updateLinksAfterMove", () => {
     expect(result.changed).toEqual([{ id: "Index.md", path: "Index.md", name: "Index.md", content: "[[Roadmap]] and more" }]);
   });
 
-  it("falls back to reading every note when the narrowed search fails", async () => {
+  it("reads every note when the narrowed search says its answer is incomplete", async () => {
     const adapter = Object.assign(new MemoryVaultAdapter({ "Index.md": "[[Plan]]", "Roadmap.md": "" }), {
-      async notesContaining(): Promise<{ ref: NoteRef; content: string }[]> {
-        throw new Error("truncated");
+      async notesContaining(): Promise<{ ref: NoteRef; content: string }[] | null> {
+        return null;
       },
     });
     const result = await updateLinksAfterMove(adapter, [{ from: "Plan.md", to: "Roadmap.md" }], ["Index.md", "Plan.md"]);

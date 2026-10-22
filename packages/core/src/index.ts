@@ -5,6 +5,7 @@ export * from "./markdown-lint";
 export * from "./toc-utils";
 export * from "./wiki-link-utils";
 export * from "./link-rename";
+export * from "./link-mentions";
 export * from "./sanitize-html";
 export * from "./slide-utils";
 export * from "./calendar-utils";

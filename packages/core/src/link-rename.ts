@@ -266,17 +266,15 @@ export async function updateLinksAfterMove(
   const movedNotes = notes.filter((n) => backToBefore.has(n.path.toLowerCase()));
 
   const readAll = (refs: NoteRef[]) => Promise.all(refs.map(async (ref) => ({ ref, content: await adapter.readNote(ref.id) })));
-  let candidates: { ref: NoteRef; content: string | null }[] | null = null;
-  if (adapter.notesContaining) {
-    try {
-      const found = await adapter.notesContaining(linkSearchTerms(moves));
-      const seen = new Set(found.map((f) => f.ref.id));
-      candidates = [...found, ...(await readAll(movedNotes.filter((n) => !seen.has(n.id))))];
-    } catch {
-      // The narrowed search failed or was incomplete: read every note instead.
-    }
+  // Narrowed when the adapter can; an incomplete answer (null) means reading every note instead.
+  const found = adapter.notesContaining ? await adapter.notesContaining(linkSearchTerms(moves)) : null;
+  let candidates: { ref: NoteRef; content: string | null }[];
+  if (found) {
+    const seen = new Set(found.map((f) => f.ref.id));
+    candidates = [...found, ...(await readAll(movedNotes.filter((n) => !seen.has(n.id))))];
+  } else {
+    candidates = await readAll(notes);
   }
-  candidates ??= await readAll(notes);
 
   const rewrite = (ref: NoteRef, text: string) =>
     rewriteLinksForMoves(text, { sourceBefore: backToBefore.get(ref.path.toLowerCase()) ?? ref.path, sourceAfter: ref.path, moves, before: beforePaths });

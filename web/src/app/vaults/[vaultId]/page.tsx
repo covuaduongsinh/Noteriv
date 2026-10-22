@@ -5,7 +5,19 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { EditorView } from "@codemirror/view";
 import SplitPane from "@/components/SplitPane";
-import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch } from "@noteriv/ui/panels";
+import {
+  QuickOpen,
+  BacklinksPanel,
+  OutgoingLinksPanel,
+  OutlinePanel,
+  TagPane,
+  CommandPalette,
+  BookmarksPanel,
+  ConflictBanner,
+  VaultSearch,
+  adapterNoteEditor,
+  type NoteEditor,
+} from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, storedLanguage } from "@/lib/i18n";
@@ -186,6 +198,7 @@ export default function VaultPage() {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
+  const [outgoingVisible, setOutgoingVisible] = useState(false);
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
@@ -442,6 +455,20 @@ export default function VaultPage() {
     else if (count > 0) setPageNotice(t("shell.files.linksUpdated", { count }));
     refreshIndex();
   }
+
+  /**
+   * Edits from the link panels: a note open in a tab is changed there (the editor shows it, the usual save sends it);
+   * any other note is read and written by the adapter, never over a newer version.
+   */
+  const editNoteInTabs: NoteEditor = async (id, transform) => {
+    const tab = tabsRef.current.find((t) => t.noteId === id);
+    if (!tab) return adapterNoteEditor(vaultAdapter)(id, transform);
+    const next = transform(tab.content);
+    if (next === null || next === tab.content) return false;
+    setTabs((prev) => prev.map((t) => (t.noteId === id ? { ...t, content: transform(t.content) ?? t.content } : t)));
+    scheduleSave(id, next);
+    return true;
+  };
 
   /**
    * A note's text as a tab: the server's (also kept on this device) or, offline, the copy kept here. An edit still
@@ -1243,6 +1270,9 @@ export default function VaultPage() {
       case "toggleBacklinks":
         setBacklinksVisible((v) => !v);
         break;
+      case "toggleOutgoingLinks":
+        setOutgoingVisible((v) => !v);
+        break;
       case "toggleCollab":
         setCollabVisible((v) => !v);
         break;
@@ -1876,6 +1906,19 @@ export default function VaultPage() {
                       noteId={activeTab.noteId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
+                      editNote={editNoteInTabs}
+                    />
+                  </div>
+                )}
+                {outgoingVisible && (
+                  <div className="web-side-panel w-72 border-l border-[var(--border)] overflow-y-auto">
+                    <OutgoingLinksPanel
+                      adapter={vaultAdapter}
+                      noteId={activeTab.noteId}
+                      content={activeTab.content}
+                      onNoteOpen={openNote}
+                      onClose={() => setOutgoingVisible(false)}
+                      editNote={editNoteInTabs}
                     />
                   </div>
                 )}

@@ -8,7 +8,18 @@ import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
-import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
+import {
+  QuickOpen,
+  CommandPalette,
+  OutlinePanel,
+  BacklinksPanel,
+  OutgoingLinksPanel,
+  TagPane,
+  BookmarksPanel,
+  ConflictBanner,
+  adapterNoteEditor,
+  type NoteEditor,
+} from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, languageForStoredSettings } from "@/lib/i18n";
@@ -146,6 +157,7 @@ export default function Home() {
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showOutline, setShowOutline] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
+  const [showOutgoing, setShowOutgoing] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -905,6 +917,23 @@ export default function Home() {
   }, [activeTab, vaultAdapter, activeVaultPath]);
 
   /**
+   * Edits from the link panels: a note open in a tab is changed there (the editor shows it and autosave writes it;
+   * writing the file under it would let the vault watcher replace unsaved text); any other note goes through the
+   * adapter, never over a newer version.
+   */
+  const editNoteInTabs: NoteEditor = async (id, transform) => {
+    const key = (p: string) => toPosixPath(p).toLowerCase();
+    const tab = tabsRef.current.find((t) => !t.kind && key(t.filePath) === key(id));
+    if (!tab) return vaultAdapter ? adapterNoteEditor(vaultAdapter)(id, transform) : false;
+    const next = transform(tab.content);
+    if (next === null || next === tab.content) return false;
+    setTabs((prev) => prev.map((t) => (t === tab || (!t.kind && key(t.filePath) === key(id)) ? { ...t, content: transform(t.content) ?? t.content } : t)));
+    // A discrete edit, not typing: saved by the 5 s loop rather than the editor auto-save (30 s, or off).
+    quickSaveRef.current.add(tab.filePath);
+    return true;
+  };
+
+  /**
    * After a note or folder is renamed or moved on disk, rewrite the links that pointed at the old paths (setting
    * "Update links when renaming", on by default). A tab with unsaved edits is not written here: its text gets the
    * same rewrite and autosave writes it (the vault watcher would otherwise replace the unsaved text with the file's).
@@ -925,7 +954,9 @@ export default function Home() {
         const sourceBefore = backToBefore.get(sourceAfter.toLowerCase()) ?? sourceAfter;
         return rewriteLinksForMoves(tab.content, { sourceBefore, sourceAfter, moves: plan.moves, before: plan.before });
       };
-      const rewrittenTabs = tabsRef.current.filter((tab) => unsaved.has(key(tab.filePath)) && rewrite(tab) !== tab.content).length;
+      const rewritten = tabsRef.current.filter((tab) => unsaved.has(key(tab.filePath)) && rewrite(tab) !== tab.content);
+      const rewrittenTabs = rewritten.length;
+      for (const tab of rewritten) quickSaveRef.current.add(tab.filePath);
       // Decided against each tab's text at update time: a clean tab shows the file's new text; one with unsaved text
       // (from before, or typed while the rewrite ran) keeps it, rewritten the same way, for autosave to write.
       setTabs((prev) =>
@@ -1419,6 +1450,7 @@ export default function Home() {
       gitSync: handleGitSync,
       toggleOutline: () => setShowOutline((o) => !o),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
+      toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
       toggleTags: () => setShowTagPane((t) => !t),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -1593,6 +1625,7 @@ export default function Home() {
         toggleOutline: () => setShowOutline((o) => !o),
         // New features
         toggleBacklinks: () => setShowBacklinks((b) => !b),
+        toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
         toggleTags: () => setShowTagPane((t) => !t),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -2154,6 +2187,17 @@ export default function Home() {
             noteId={currentTab.filePath}
             onNoteOpen={openFile}
             onClose={() => setShowBacklinks(false)}
+            editNote={editNoteInTabs}
+          />
+        )}
+        {showOutgoing && vaultAdapter && currentTab && !currentTab.kind && (
+          <OutgoingLinksPanel
+            adapter={vaultAdapter}
+            noteId={currentTab.filePath}
+            content={currentTab.content}
+            onNoteOpen={openFile}
+            onClose={() => setShowOutgoing(false)}
+            editNote={editNoteInTabs}
           />
         )}
         <TagPane

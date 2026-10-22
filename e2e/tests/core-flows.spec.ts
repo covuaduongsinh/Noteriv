@@ -153,6 +153,32 @@ test("renaming a note rewrites the links that point to it", async () => {
   await expect(backlinks).toContainText("Second");
 });
 
+test("unlinked mentions can be turned into links; Outgoing links lists what a note links to", async () => {
+  // "Third thought" names "Second" without a link.
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const typed = noteSaved("Back to second.");
+  await page.keyboard.type("\n\nBack to second.");
+  await typed;
+
+  await sidebarItem("Second").click();
+  if (!(await page.locator(".bl-panel").isVisible())) await page.getByTitle("Backlinks", { exact: true }).click();
+  const unlinked = page.locator(".bl-unlinked");
+  await expect(unlinked).toContainText("Third thought");
+  // The mention is in a note open in a tab: it is changed there and saved by the tab itself.
+  const linked = noteSaved("Back to [[second]].");
+  await unlinked.locator(".bl-link-btn").first().click();
+  await linked;
+  await expect(unlinked).toContainText("No other note names this one without a link.");
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Outgoing links");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".ol-panel")).toContainText("Third thought");
+  await page.locator(".ol-panel .bl-close").click();
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();
