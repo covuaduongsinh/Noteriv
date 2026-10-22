@@ -116,10 +116,11 @@ export interface VaultAdapter {
   /** Whether any file (not only a note) exists at this vault path: a `.canvas` on desktop. Optional. */
   fileExists?(path: string): Promise<boolean>;
   /**
-   * Notes whose text contains any of `terms` (case-insensitive), with that text. Optional: a quicker way than reading
-   * every note, used when links are rewritten after a rename (web asks the server instead of fetching each note).
+   * Notes whose text contains any of `terms` (case-insensitive), with that text; null when the answer would be
+   * incomplete (too many matches), so the caller reads every note instead. Optional: a quicker way than reading every
+   * note, for link rewriting and unlinked mentions (web asks the server instead of fetching each note).
    */
-  notesContaining?(terms: string[]): Promise<{ ref: NoteRef; content: string }[]>;
+  notesContaining?(terms: string[]): Promise<{ ref: NoteRef; content: string }[] | null>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

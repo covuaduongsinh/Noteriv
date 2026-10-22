@@ -3101,6 +3101,73 @@ body {
   color: var(--text-primary);
 }
 
+/* Unlinked mentions (Backlinks and Outgoing links panels) */
+.bl-unlinked {
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid var(--border);
+}
+
+.bl-section {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.bl-section-empty {
+  padding: 4px 10px 8px;
+  font-size: 12px;
+  color: var(--text-muted);
+  opacity: 0.6;
+}
+
+.bl-mention {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px 3px 10px;
+  border-radius: 4px;
+}
+
+.bl-mention:hover {
+  background: var(--bg-hover);
+}
+
+.bl-mention .bl-snippet-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.bl-link-btn {
+  flex-shrink: 0;
+  padding: 1px 8px;
+  font-size: 11px;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.bl-link-btn:hover {
+  border-color: var(--accent);
+}
+
+.ol-unresolved {
+  opacity: 0.55;
+  cursor: default;
+}
+
+.ol-unresolved .bl-file-name {
+  font-style: italic;
+}
+
 /* ── bookmarks ── */
 /* ─── Bookmarks Panel ─── */
 

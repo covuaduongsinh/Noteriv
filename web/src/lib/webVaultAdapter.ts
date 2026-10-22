@@ -87,12 +87,12 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
     },
 
     // The server takes up to 200 terms per request (a renamed folder can move more notes than that). An answer cut at
-    // the server's cap is an error: the caller then reads every note rather than miss some.
+    // the server's cap is reported as null: the caller then reads every note rather than miss some.
     async notesContaining(terms) {
       const byId = new Map<string, { ref: NoteRef; content: string }>();
       for (let i = 0; i < terms.length; i += 200) {
         const { notes, truncated } = await webApi.notes.containing(vaultId, terms.slice(i, i + 200));
-        if (truncated) throw new Error("Too many matching notes");
+        if (truncated) return null;
         for (const n of notes) byId.set(n.id, { ref: toRef(n), content: n.content });
       }
       return Array.from(byId.values());

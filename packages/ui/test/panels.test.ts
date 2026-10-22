@@ -2,7 +2,7 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { MemoryVaultAdapter } from "@noteriv/core/memory-vault-adapter";
-import { BacklinksPanel, BookmarksPanel, CommandPalette, QuickOpen, TagPane } from "../src/panels";
+import { BacklinksPanel, BookmarksPanel, CommandPalette, OutgoingLinksPanel, QuickOpen, TagPane } from "../src/panels";
 
 // Panels are rendered for real (react-dom + jsdom) against the in-memory vault, so what is asserted is what a user
 // would see and click, not component internals.
@@ -181,6 +181,47 @@ describe("panels over a VaultAdapter", () => {
 
     await act(async () => el.querySelector<HTMLElement>(".bl-file-header")!.click());
     expect(onNoteOpen).toHaveBeenCalledWith("dir/B.md");
+  });
+
+  it("BacklinksPanel lists unlinked mentions and links one through the host's editor", async () => {
+    const adapter = new MemoryVaultAdapter({ "A.md": "", "C.md": "mentions a here, and `A` in code" });
+    const edits: string[] = [];
+    const editNote = vi.fn(async (id: string, transform: (text: string) => string | null) => {
+      const next = transform((await adapter.readNote(id))!);
+      if (next === null) return false;
+      edits.push(next);
+      await adapter.writeNote(id, next);
+      return true;
+    });
+    const el = await render(createElement(BacklinksPanel, { adapter, noteId: "A.md", onNoteOpen: vi.fn(), onClose: vi.fn(), editNote }));
+    const section = el.querySelector(".bl-unlinked")!;
+    expect(text(section.querySelector(".bl-section span"))).toBe("Unlinked mentions");
+    expect(text(section.querySelector(".bl-section .bl-count"))).toBe("1");
+    expect(text(section.querySelector(".bl-snippet-text"))).toBe("mentions a here, and `A` in code");
+
+    await act(async () => section.querySelector<HTMLElement>(".bl-link-btn")!.click());
+    expect(editNote).toHaveBeenCalledWith("C.md", expect.any(Function));
+    expect(edits).toEqual(["mentions [[a]] here, and `A` in code"]);
+    expect(text(el.querySelector(".bl-unlinked .bl-section-empty"))).toBe("No other note names this one without a link.");
+  });
+
+  it("OutgoingLinksPanel follows the editor text: links (unresolved dimmed) and names to link", async () => {
+    const onNoteOpen = vi.fn();
+    const adapter = vault();
+    const editNote = vi.fn(async () => true);
+    const props = { adapter, noteId: "A.md", onNoteOpen, onClose: vi.fn(), editNote };
+    const el = await render(createElement(OutgoingLinksPanel, { ...props, content: "see [[B]] and [[Nowhere]], about C" }));
+    await act(async () => new Promise((r) => setTimeout(r, 450))); // unlinked mentions wait for typing to pause
+    const rows = Array.from(el.querySelectorAll<HTMLButtonElement>(".bl-list > .bl-file-header"));
+    expect(rows.map((r) => text(r))).toEqual(["L1B", "L1Nowhere"]);
+    expect(rows[1].disabled).toBe(true);
+    await act(async () => rows[0].click());
+    expect(onNoteOpen).toHaveBeenCalledWith("dir/B.md");
+    expect(text(el.querySelector(".bl-unlinked .bl-snippet-text"))).toBe("C");
+
+    await act(async () => el.querySelector<HTMLElement>(".bl-unlinked .bl-link-btn")!.click());
+    const transform = (editNote.mock.calls[0] as unknown as [string, (t: string) => string | null])[1];
+    expect(transform("see [[B]] and [[Nowhere]], about C")).toBe("see [[B]] and [[Nowhere]], about [[C]]");
   });
 
   it("TagPane aggregates tags across the vault and lists the notes of the chosen tag", async () => {

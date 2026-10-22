@@ -1,5 +1,7 @@
 export { default as OutlinePanel } from "./OutlinePanel";
 export { default as BacklinksPanel } from "./BacklinksPanel";
+export { default as OutgoingLinksPanel, type OutgoingLinksPanelProps } from "./OutgoingLinksPanel";
+export { adapterNoteEditor, type NoteEditor } from "./note-edit";
 export { default as TagPane } from "./TagPane";
 export { default as BookmarksPanel, type BookmarksPanelProps, type BookmarksLabels } from "./BookmarksPanel";
 export { default as QuickOpen, type QuickOpenProps, type QuickOpenLabels } from "./QuickOpen";
