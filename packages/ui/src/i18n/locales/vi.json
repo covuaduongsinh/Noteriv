@@ -229,6 +229,10 @@
       "desc": "Ngôn ngữ của giao diện.",
       "autoWeb": "Theo trình duyệt",
       "autoDesktop": "Theo hệ điều hành"
+    },
+    "autoUpdateLinks": {
+      "label": "Cập nhật liên kết khi đổi tên",
+      "desc": "Đổi tên hoặc chuyển chỗ một note sẽ sửa các liên kết trỏ tới nó."
     }
   },
   "plugins": {
@@ -1714,7 +1718,12 @@
       "empty": "Chưa có note nào",
       "createNote": "Tạo một note",
       "resize": "Kéo để đổi độ rộng cây thư mục",
-      "emptyHint": "Viết note đầu tiên, rồi gõ [[ để liên kết tới note khác."
+      "emptyHint": "Viết note đầu tiên, rồi gõ [[ để liên kết tới note khác.",
+      "linksUpdated": {
+        "one": "Đã cập nhật liên kết trong {count} note",
+        "other": "Đã cập nhật liên kết trong {count} note"
+      },
+      "linksNotUpdated": "Không cập nhật được một số liên kết. Hãy xem lại các note từng trỏ tới tên cũ."
     },
     "status": {
       "mode": {

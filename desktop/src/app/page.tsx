@@ -17,7 +17,8 @@ import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
 import { setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
-import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
+import { baseName, refFromAbsolutePath, relativeVaultPath, toPosixPath } from "@noteriv/core/vault-adapter";
+import { notesMovedByRename, rewriteLinksForMoves, updateLinksAfterMove } from "@noteriv/core/link-rename";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
@@ -200,6 +201,13 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "error">("idle");
   /** Shown after a git sync that had to keep both sides of a conflict (click to dismiss). */
   const [syncConflictNotice, setSyncConflictNotice] = useState<string | null>(null);
+  /** "Updated links in N notes" after a rename; hides itself. */
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!linkNotice) return;
+    const timer = setTimeout(() => setLinkNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [linkNotice]);
   /** Community plugin sidebar panel shown in place of the file tree (`<pluginDbId>:<panelId>`), as on the web. */
   const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [gitChanges, setGitChanges] = useState(0);
@@ -881,7 +889,7 @@ export default function Home() {
           return { ...t, filePath: newPath };
         }
         // Handle files inside a renamed folder
-        if (t.filePath.startsWith(oldPath + "/")) {
+        if (t.filePath.startsWith(oldPath + "/") || t.filePath.startsWith(oldPath + "\\")) {
           return { ...t, filePath: t.filePath.replace(oldPath, newPath) };
         }
         return t;
@@ -889,19 +897,64 @@ export default function Home() {
     );
     if (activeTab === oldPath) {
       setActiveTab(newPath);
-    } else if (activeTab?.startsWith(oldPath + "/")) {
+    } else if (activeTab?.startsWith(oldPath + "/") || activeTab?.startsWith(oldPath + "\\")) {
       setActiveTab(activeTab.replace(oldPath, newPath));
     }
-  }, [activeTab]);
+    void updateLinksForRename(oldPath, newPath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, vaultAdapter, activeVaultPath]);
+
+  /**
+   * After a note or folder is renamed or moved on disk, rewrite the links that pointed at the old paths (setting
+   * "Update links when renaming", on by default). A tab with unsaved edits is not written here: its text gets the
+   * same rewrite and autosave writes it (the vault watcher would otherwise replace the unsaved text with the file's).
+   */
+  const updateLinksForRename = async (oldPath: string, newPath: string) => {
+    if (!vaultAdapter || !activeVaultPath || !window.electronAPI || !settingsRef.current.autoUpdateLinks) return;
+    try {
+      const notes = await window.electronAPI.listAllFiles(activeVaultPath);
+      const plan = notesMovedByRename(activeVaultPath, oldPath, newPath, notes.map((n) => n.filePath));
+      if (!plan) return;
+      const key = (p: string) => toPosixPath(p).toLowerCase();
+      const unsaved = new Set(tabsRef.current.filter((tab) => !tab.kind && tab.content !== tab.savedContent).map((tab) => key(tab.filePath)));
+      const result = await updateLinksAfterMove(vaultAdapter, plan.moves, plan.before, (ref) => unsaved.has(key(ref.id)));
+      const written = new Map(result.changed.map((c) => [key(c.id), c.content]));
+      const backToBefore = new Map(plan.moves.map((m) => [m.to.toLowerCase(), m.from]));
+      const rewrite = (tab: { filePath: string; content: string }) => {
+        const sourceAfter = relativeVaultPath(activeVaultPath, tab.filePath);
+        const sourceBefore = backToBefore.get(sourceAfter.toLowerCase()) ?? sourceAfter;
+        return rewriteLinksForMoves(tab.content, { sourceBefore, sourceAfter, moves: plan.moves, before: plan.before });
+      };
+      const rewrittenTabs = tabsRef.current.filter((tab) => unsaved.has(key(tab.filePath)) && rewrite(tab) !== tab.content).length;
+      // Decided against each tab's text at update time: a clean tab shows the file's new text; one with unsaved text
+      // (from before, or typed while the rewrite ran) keeps it, rewritten the same way, for autosave to write.
+      setTabs((prev) =>
+        prev.map((tab) => {
+          const fresh = written.get(key(tab.filePath));
+          if (fresh !== undefined && tab.content === tab.savedContent) return { ...tab, content: fresh, savedContent: fresh };
+          if (fresh === undefined && !unsaved.has(key(tab.filePath))) return tab;
+          const content = rewrite(tab);
+          return content === tab.content ? tab : { ...tab, content };
+        })
+      );
+      const count = result.changed.length + rewrittenTabs;
+      if (result.failed.length > 0) setLinkNotice(t("shell.files.linksNotUpdated"));
+      else if (count > 0) setLinkNotice(t("shell.files.linksUpdated", { count }));
+    } catch {
+      setLinkNotice(t("shell.files.linksNotUpdated"));
+    }
+  };
 
   const handleRenameCurrentFile = useCallback(async (newName: string) => {
     if (!window.electronAPI || !currentTab) return;
     const oldPath = currentTab.filePath;
-    const dir = oldPath.substring(0, oldPath.lastIndexOf("/"));
-    const oldFileName = oldPath.split("/").pop() || "";
+    // Either separator: Windows paths from the file listing end in `\name`.
+    const cut = Math.max(oldPath.lastIndexOf("/"), oldPath.lastIndexOf("\\"));
+    const dir = oldPath.substring(0, cut);
+    const oldFileName = oldPath.substring(cut + 1);
     const ext = oldFileName.match(/\.(md|markdown)$/i)?.[0] || ".md";
     const newFileName = newName + ext;
-    const newPath = `${dir}/${newFileName}`;
+    const newPath = `${dir}${oldPath[cut] ?? "/"}${newFileName}`;
     if (newPath === oldPath) return;
     const success = await window.electronAPI.rename(oldPath, newPath);
     if (success) {
@@ -918,7 +971,7 @@ export default function Home() {
 
   const handleMoveFile = useCallback(async (sourcePath: string, destDir: string) => {
     if (!window.electronAPI) return;
-    const name = sourcePath.split("/").pop() || "";
+    const name = sourcePath.split(/[\\/]/).pop() || "";
     const newPath = `${destDir}/${name}`;
     if (newPath === sourcePath) return;
     const success = await window.electronAPI.rename(sourcePath, newPath);
@@ -2373,8 +2426,18 @@ export default function Home() {
       <div ref={sandboxHost.containerRef} style={{ display: "none" }} />
 
       {/* Notices from plugins (api.ui.showNotice) and from sync */}
-      {corePluginHost.notices.length + sandboxHost.notices.length > 0 || syncConflictNotice ? (
+      {corePluginHost.notices.length + sandboxHost.notices.length > 0 || syncConflictNotice || linkNotice ? (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
+          {linkNotice && (
+            <div
+              onClick={() => setLinkNotice(null)}
+              role="status"
+              className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
+              style={{ maxWidth: 420 }}
+            >
+              {linkNotice}
+            </div>
+          )}
           {syncConflictNotice && (
             <div
               onClick={() => setSyncConflictNotice(null)}

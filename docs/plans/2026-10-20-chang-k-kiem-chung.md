@@ -109,4 +109,5 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | 5 | Mọi mặt + sửa lỗi cuối | Chưa làm | 18–24/11 | |
 | 6 | Báo cáo quyết định | Chưa làm | 25/11–1/12 | |
 | O0 | Obsidian: bản đồ khoảng trống từ nguồn công khai | Xong | 2026-10-22 | [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md); đã dừng dịch ngược vì điều khoản của Obsidian |
-| O1+ | Obsidian: các phiên lấp khoảng trống | Chờ chủ dự án chốt danh sách | | Đề xuất Đợt 1: G1 cập nhật link khi đổi tên → G3 → G2 → G4 |
+| O1 | G1: đổi tên thì cập nhật liên kết | Đang làm | 2026-10-22 | [Phiên K-O1](2026-10-22-phien-k-o1-cap-nhat-lien-ket.md) |
+| O2+ | Obsidian: các khoảng trống còn lại | Chưa làm | | Chủ dự án chốt 2026-10-22: làm đủ 4 đợt theo thứ tự đề xuất (G3 → G2 → G4 → G5 → G6 → Đợt 3 → G12) |

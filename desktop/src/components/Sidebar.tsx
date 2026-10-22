@@ -11,6 +11,9 @@ interface FileEntry {
   isDirectory: boolean;
 }
 
+/** Folder part of a path. Windows paths from the file listing end in `\name` even when the vault path uses `/`. */
+const parentOf = (p: string) => p.substring(0, Math.max(p.lastIndexOf("/"), p.lastIndexOf("\\")));
+
 interface SidebarProps {
   vault: Vault | null;
   currentFile: string | null;
@@ -404,7 +407,7 @@ export default function Sidebar({
     filesToMove.add(source.entry.path);
 
     for (const filePath of filesToMove) {
-      const parent = filePath.substring(0, filePath.lastIndexOf("/"));
+      const parent = parentOf(filePath);
       if (parent === folderPath) continue;
       onMoveFile(filePath, folderPath);
     }
@@ -428,7 +431,7 @@ export default function Sidebar({
       return;
     }
     const { dirPath, index } = indicator;
-    const sourceParent = source.entry.path.substring(0, source.entry.path.lastIndexOf("/"));
+    const sourceParent = parentOf(source.entry.path);
 
     // Collect all files to move: selected files + dragged file
     const filesToMove = new Set(selectedFiles);
@@ -437,7 +440,7 @@ export default function Sidebar({
     if (sourceParent !== dirPath) {
       // Moving to a different directory — move all selected
       for (const filePath of filesToMove) {
-        const parent = filePath.substring(0, filePath.lastIndexOf("/"));
+        const parent = parentOf(filePath);
         if (parent === dirPath) continue;
         onMoveFile(filePath, dirPath);
       }
@@ -532,14 +535,14 @@ export default function Sidebar({
       const c = await window.electronAPI.readFile(p);
       if (c !== null) {
         contents.push(c);
-        names.push(p.split("/").pop()?.replace(/\.(md|markdown)$/i, "") || "");
+        names.push(p.split(/[\\/]/).pop()?.replace(/\.(md|markdown)$/i, "") || "");
       }
     }
     if (contents.length < 2) return;
 
     const merged = contents.join("\n\n---\n\n");
     const mergedName = `Merged - ${names[0]} + ${names.length - 1} more.md`;
-    const dir = paths[0].substring(0, paths[0].lastIndexOf("/"));
+    const dir = parentOf(paths[0]);
     const mergedPath = `${dir}/${mergedName}`;
     await window.electronAPI.writeFile(mergedPath, merged);
     await refreshEntries();
@@ -582,11 +585,13 @@ export default function Sidebar({
       setRenamingPath(null);
       return;
     }
-    const dir = renamingPath.substring(0, renamingPath.lastIndexOf("/"));
-    const oldName = renamingPath.split("/").pop() || "";
+    // Windows paths from the file listing end in `\name` even when the vault path uses `/`: split on either.
+    const cut = Math.max(renamingPath.lastIndexOf("/"), renamingPath.lastIndexOf("\\"));
+    const dir = renamingPath.substring(0, cut);
+    const oldName = renamingPath.substring(cut + 1);
     const ext = oldName.match(/\.(md|markdown)$/i)?.[0] || "";
     const newFileName = renameValue.trim() + ext;
-    const newPath = `${dir}/${newFileName}`;
+    const newPath = `${dir}${renamingPath[cut] ?? "/"}${newFileName}`;
     if (newPath !== renamingPath) {
       const success = await window.electronAPI.rename(renamingPath, newPath);
       if (success) {

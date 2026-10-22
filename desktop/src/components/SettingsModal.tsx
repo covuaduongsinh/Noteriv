@@ -211,6 +211,9 @@ export default function SettingsModal({
       <Row label={t("settings.spellCheck.label")} desc={t("settings.spellCheck.desc")}>
         <Toggle checked={settings.spellCheck} onChange={(v) => update({ spellCheck: v })} />
       </Row>
+      <Row label={t("settings.autoUpdateLinks.label")} desc={t("settings.autoUpdateLinks.desc")}>
+        <Toggle checked={settings.autoUpdateLinks} onChange={(v) => update({ autoUpdateLinks: v })} />
+      </Row>
       <Row label={t("settings.autoCollapse.label")} desc={t("settings.autoCollapse.desc")}>
         <Toggle checked={settings.autoCollapseSidebar} onChange={(v) => update({ autoCollapseSidebar: v })} />
       </Row>

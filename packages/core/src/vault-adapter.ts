@@ -68,6 +68,11 @@ export interface VaultAdapter {
   /** Note body, or null when the note does not exist or cannot be read. */
   readNote(id: string): Promise<string | null>;
   writeNote(id: string, content: string): Promise<void>;
+  /**
+   * Writes only if the note still holds `expected`; false (nothing written) when it changed meanwhile. Optional: for
+   * automatic edits that must not overwrite a newer version (links rewritten after a rename).
+   */
+  writeNoteIfUnchanged?(id: string, content: string, expected: string): Promise<boolean>;
   createNote(path: string, content?: string): Promise<NoteRef>;
   renameNote(id: string, newPath: string): Promise<NoteRef>;
   deleteNote(id: string): Promise<void>;
@@ -110,6 +115,11 @@ export interface VaultAdapter {
   setAttachmentData?(target: string, data: unknown): Promise<void>;
   /** Whether any file (not only a note) exists at this vault path: a `.canvas` on desktop. Optional. */
   fileExists?(path: string): Promise<boolean>;
+  /**
+   * Notes whose text contains any of `terms` (case-insensitive), with that text. Optional: a quicker way than reading
+   * every note, used when links are rewritten after a rename (web asks the server instead of fetching each note).
+   */
+  notesContaining?(terms: string[]): Promise<{ ref: NoteRef; content: string }[]>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

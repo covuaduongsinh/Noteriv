@@ -523,6 +523,8 @@ export const webApi = {
       data: Partial<Pick<ApiNote, "content" | "frontmatter" | "name" | "folderId">> & {
         /** SHA-256 of the text the edit started from; a changed note then answers 409 { error: "stale" } (StaleNote). */
         baseHash?: string;
+        /** SHA-256 the stored text must still have; otherwise nothing is written: 409 { error: "changed" }, no copy. */
+        expectHash?: string;
       }
     ) => request<ApiNote>(`/vaults/${vaultId}/notes/${noteId}`, { method: "PATCH", body: JSON.stringify(data) }),
     remove: (vaultId: string, noteId: string) =>
@@ -532,6 +534,12 @@ export const webApi = {
       request<{ id: string; path: string }>(`/vaults/${vaultId}/quick-note`, { method: "POST", body: JSON.stringify(data) }),
     backlinks: (vaultId: string, noteId: string) =>
       request<ApiBacklink[]>(`/vaults/${vaultId}/notes/${noteId}/backlinks`),
+    /** Notes whose text contains any of `terms` (case-insensitive, at most 200 terms), with that text; `truncated` past the server's cap. */
+    containing: (vaultId: string, terms: string[]) =>
+      request<{ notes: { id: string; name: string; path: string; content: string }[]; truncated: boolean }>(`/vaults/${vaultId}/notes/containing`, {
+        method: "POST",
+        body: JSON.stringify({ terms }),
+      }),
     // D5 — File Recovery / Time Scrubber.
     snapshots: (vaultId: string, noteId: string) =>
       request<ApiNoteSnapshot[]>(`/vaults/${vaultId}/notes/${noteId}/snapshots`),

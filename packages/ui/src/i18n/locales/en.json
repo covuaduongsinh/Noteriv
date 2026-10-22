@@ -236,6 +236,10 @@
       "desc": "Language of the interface.",
       "autoWeb": "Follow the browser",
       "autoDesktop": "Follow the system"
+    },
+    "autoUpdateLinks": {
+      "label": "Update links when renaming",
+      "desc": "Renaming or moving a note rewrites the links that point to it."
     }
   },
   "plugins": {
@@ -1747,7 +1751,12 @@
       "empty": "No notes yet",
       "createNote": "Create a note",
       "resize": "Resize file navigator",
-      "emptyHint": "Write your first note, then type [[ to link it to another."
+      "emptyHint": "Write your first note, then type [[ to link it to another.",
+      "linksUpdated": {
+        "one": "Updated links in {count} note",
+        "other": "Updated links in {count} notes"
+      },
+      "linksNotUpdated": "Some links could not be updated. Check the notes that pointed to the old name."
     },
     "status": {
       "mode": {
