@@ -72,6 +72,10 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     load: () => import("@noteriv/plugins/dataview"),
   },
   {
+    id: "views",
+    load: () => import("@noteriv/plugins/views"),
+  },
+  {
     id: "canvas",
     load: () => import("@noteriv/plugins/canvas"),
   },

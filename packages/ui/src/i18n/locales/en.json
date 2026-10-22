@@ -689,6 +689,20 @@
       "description": "Diagrams from ```mermaid code blocks in the editor, reading view and PDF export. The library loads on the first diagram.",
       "rendering": "Rendering diagram...",
       "error": "Diagram Error"
+    },
+    "views": {
+      "name": "Views",
+      "description": "Show notes by their properties with ```view blocks: a table, cards, a list or a kanban board; edit values in place; Insert view command.",
+      "insert": "Insert view",
+      "notes": {
+        "one": "{count} note",
+        "other": "{count} notes"
+      },
+      "error": "Check the “{setting}” setting of this view.",
+      "empty": "No notes match this view.",
+      "none": "None",
+      "open": "Open note",
+      "edit": "Click to edit"
     }
   },
   "web": {

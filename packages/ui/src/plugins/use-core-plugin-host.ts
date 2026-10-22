@@ -5,6 +5,7 @@ import type { EditorApi, PluginApi, PluginPlatform, ViewState } from "@noteriv/p
 import type { CorePluginDef, PluginStateStore } from "@noteriv/core/plugin-registry";
 import type { VaultAdapter } from "@noteriv/core/vault-adapter";
 import { createCorePluginHost, type CorePluginHost } from "./core-plugin-host";
+import { adapterNoteEditor, type NoteEditor } from "../panels/note-edit";
 
 /** Where a vault keeps core-plugin state. Built by the app per vault (web: vault settings in the DB; desktop: a file). */
 export interface CorePluginStorage {
@@ -29,6 +30,8 @@ export interface CorePluginPorts {
   openFile: (path: string) => boolean | Promise<boolean>;
   /** A plugin created, changed or deleted notes: refresh the file tree / index. */
   onVaultChanged?: () => void;
+  /** How `vault.edit` changes a note: through its open tab when it has one (the app's editNoteInTabs). */
+  editNote?: NoteEditor;
 }
 
 export interface CorePluginNotice {
@@ -109,6 +112,8 @@ export function useCorePluginHost(config: CorePluginHostConfig | null, ports: Co
       },
       closeView: (types) => setActiveView((v) => (v && types.includes(v.type) ? null : v)),
       onVaultChanged: () => portsRef.current.onVaultChanged?.(),
+      editNote: (id, transform) =>
+        portsRef.current.editNote ? portsRef.current.editNote(id, transform) : adapterNoteEditor(config.adapter)(id, transform),
       toggleSidebarPanel: togglePanel,
       renderReadOnly,
       notify: (message, durationMs = 4000) => {

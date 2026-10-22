@@ -9948,3 +9948,171 @@ body {
   border-radius: 5px;
   cursor: pointer;
 }
+
+/* ```view blocks (core plugin "views") */
+.nv-view {
+  margin: 4px 0;
+  padding: 10px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  white-space: normal;
+}
+
+.nv-header {
+  margin-bottom: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  color: var(--accent);
+}
+
+.nv-empty,
+.nv-error {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.nv-error {
+  color: var(--red);
+}
+
+.nv-link {
+  padding: 0;
+  font: inherit;
+  color: var(--accent);
+  text-align: left;
+  background: none;
+  border: none;
+  border-bottom: 1px dashed color-mix(in srgb, var(--accent) 40%, transparent);
+  cursor: pointer;
+}
+
+.nv-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.nv-table th,
+.nv-table td {
+  padding: 4px 8px;
+  text-align: left;
+  vertical-align: top;
+  border-bottom: 1px solid var(--border);
+}
+
+.nv-table th {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.nv-group-row th,
+.nv-group-title {
+  padding-top: 10px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
+.nv-editable {
+  display: inline-block;
+  min-width: 2em;
+  min-height: 1.2em;
+  border-radius: 3px;
+  cursor: text;
+}
+
+.nv-editable:hover {
+  background: var(--bg-hover);
+}
+
+.nv-input {
+  width: 100%;
+  padding: 1px 4px;
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  outline: none;
+}
+
+.nv-check {
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.nv-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 8px;
+}
+
+.nv-card {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.nv-card-row {
+  display: flex;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.nv-card-key {
+  color: var(--text-muted);
+}
+
+.nv-list {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.nv-list-extra {
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.nv-kanban {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.nv-column {
+  flex: 0 0 200px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-height: 60px;
+  padding: 6px;
+  background: var(--bg-secondary);
+  border: 1px solid transparent;
+  border-radius: 6px;
+}
+
+.nv-column.nv-drop {
+  border-color: var(--accent);
+}
+
+.nv-column-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.nv-kanban-card {
+  background: var(--bg-primary);
+  cursor: grab;
+}

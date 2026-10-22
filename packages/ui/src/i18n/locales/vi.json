@@ -667,6 +667,20 @@
       "description": "Vẽ sơ đồ từ khối ```mermaid trong editor, chế độ đọc và khi xuất PDF. Thư viện chỉ tải khi gặp sơ đồ đầu tiên.",
       "rendering": "Đang vẽ sơ đồ...",
       "error": "Lỗi sơ đồ"
+    },
+    "views": {
+      "name": "Chế độ xem",
+      "description": "Hiện note theo thuộc tính bằng khối ```view: bảng, thẻ, danh sách hoặc kanban; sửa giá trị ngay tại chỗ; lệnh Chèn chế độ xem.",
+      "insert": "Chèn chế độ xem",
+      "notes": {
+        "one": "{count} note",
+        "other": "{count} note"
+      },
+      "error": "Hãy xem lại mục “{setting}” của chế độ xem này.",
+      "empty": "Không note nào khớp chế độ xem này.",
+      "none": "Không có",
+      "open": "Mở note",
+      "edit": "Bấm để sửa"
     }
   },
   "web": {
