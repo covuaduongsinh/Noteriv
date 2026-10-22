@@ -141,6 +141,15 @@ try {
   check("word count (core plugin) in the status bar", await page.getByText(/^\d+ words?$/).first().isVisible().catch(() => false));
   await shot("2-note");
 
+  // The properties editor is shown above the note and adds a front matter block to the file
+  await page.locator(".fm-add-frontmatter-btn").first().click().catch(() => undefined);
+  let propsWritten = false;
+  for (let i = 0; i < 20 && !propsWritten; i++) {
+    await sleep(1000);
+    propsWritten = readFileSync(path.join(vault, "Alpha.md"), "utf8").startsWith("---\ntags: []\n---\n");
+  }
+  check("properties editor adds properties to the note", propsWritten);
+
   // An embedded note shows its content
   await label("Embeds").click();
   await page.locator(".cm-content .md-note-embed").first().waitFor({ timeout: 10000 }).catch(() => undefined);

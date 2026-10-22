@@ -47,6 +47,7 @@ export type HotkeyAction =
   // New features
   | "toggleBacklinks"
   | "toggleOutgoingLinks"
+  | "toggleProperties"
   | "toggleTags"
   | "toggleBookmark"
   | "randomNote"
@@ -131,6 +132,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   // New features
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
   { action: "toggleOutgoingLinks", label: "Toggle Outgoing links", keys: "", category: "View" },
+  { action: "toggleProperties", label: "Toggle All properties", keys: "", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "Ctrl+Shift+R", category: "Navigation" },

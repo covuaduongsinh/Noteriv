@@ -14,6 +14,11 @@ import {
   OutlinePanel,
   BacklinksPanel,
   OutgoingLinksPanel,
+  PropertiesEditor,
+  PropertiesView,
+  usePropertyTypes,
+  cleanPropertyTypes,
+  type PropertyTypesStore,
   TagPane,
   BookmarksPanel,
   ConflictBanner,
@@ -46,7 +51,6 @@ import {
   useCorePlugins,
 } from "@noteriv/ui/plugins";
 import { desktopCorePluginConfig } from "@/lib/core-plugins";
-import FrontmatterEditor from "@/components/FrontmatterEditor";
 import { isImageFile } from "@/lib/attachment-utils";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
@@ -159,6 +163,7 @@ export default function Home() {
   const [showOutline, setShowOutline] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showOutgoing, setShowOutgoing] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -168,6 +173,31 @@ export default function Home() {
     () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
     [activeVaultPath]
   );
+  /**
+   * Property types for the vault (one per property name), kept in the vault itself (`.noteriv/property-types.json`):
+   * the adapter's settings are the whole app's on desktop, shared by every vault.
+   */
+  const propertyTypesStore = useMemo<PropertyTypesStore | null>(() => {
+    if (!activeVaultPath) return null;
+    const sep = activeVaultPath.includes("\\") ? "\\" : "/";
+    const dir = `${activeVaultPath.replace(/[\\/]+$/, "")}${sep}.noteriv`;
+    const file = `${dir}${sep}property-types.json`;
+    return {
+      load: async () => {
+        const text = await window.electronAPI?.readFile(file);
+        try {
+          return cleanPropertyTypes(text ? JSON.parse(text) : {});
+        } catch {
+          return {};
+        }
+      },
+      save: async (types) => {
+        await window.electronAPI?.createDir(dir);
+        await window.electronAPI?.writeFile(file, JSON.stringify(types, null, 2));
+      },
+    };
+  }, [activeVaultPath]);
+  const propertyTypes = usePropertyTypes(propertyTypesStore);
   // The live preview loads local images through the active vault.
   useEffect(() => {
     if (!activeVaultPath) return;
@@ -1519,6 +1549,7 @@ export default function Home() {
       toggleOutline: () => setShowOutline((o) => !o),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
       toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
+      toggleProperties: () => setShowProperties((p) => !p),
       toggleTags: () => setShowTagPane((t) => !t),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -1694,6 +1725,7 @@ export default function Home() {
         // New features
         toggleBacklinks: () => setShowBacklinks((b) => !b),
         toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
+        toggleProperties: () => setShowProperties((p) => !p),
         toggleTags: () => setShowTagPane((t) => !t),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -2128,6 +2160,21 @@ export default function Home() {
                     onKeepOriginal={handleDeleteFile}
                     onUseThisVersion={useConflictCopy}
                   />
+                  {!zenMode && !mainFileView && viewMode !== "source" && (
+                    <PropertiesEditor
+                      content={content}
+                      onChange={(next) => {
+                        handleContentChange(next);
+                        // A discrete edit, not typing: saved by the 5 s loop rather than the editor auto-save.
+                        quickSaveRef.current.add(currentTab.filePath);
+                      }}
+                      types={propertyTypes.types}
+                      onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+                      knownKeys={Object.keys(propertyTypes.types)}
+                      collapsed={frontmatterCollapsed}
+                      onToggleCollapse={() => setFrontmatterCollapsed((v) => !v)}
+                    />
+                  )}
                   {!zenMode &&
                     !mainFileView &&
                     viewMode !== "view" && (
@@ -2255,6 +2302,17 @@ export default function Home() {
             noteId={currentTab.filePath}
             onNoteOpen={openFile}
             onClose={() => setShowBacklinks(false)}
+            editNote={editNoteInTabs}
+          />
+        )}
+        {showProperties && vaultAdapter && (
+          <PropertiesView
+            adapter={vaultAdapter}
+            types={propertyTypes.types}
+            onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+            onTypeRename={(from, to) => void propertyTypes.renameType(from, to)}
+            onNoteOpen={openFile}
+            onClose={() => setShowProperties(false)}
             editNote={editNoteInTabs}
           />
         )}

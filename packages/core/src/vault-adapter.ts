@@ -121,6 +121,11 @@ export interface VaultAdapter {
    * note, for link rewriting and unlinked mentions (web asks the server instead of fetching each note).
    */
   notesContaining?(terms: string[]): Promise<{ ref: NoteRef; content: string }[] | null>;
+  /**
+   * The start of every note that has front matter (enough to hold the block), for listing properties across the
+   * vault. Optional: without it, callers read every note.
+   */
+  frontmatterHeads?(): Promise<{ ref: NoteRef; head: string }[]>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

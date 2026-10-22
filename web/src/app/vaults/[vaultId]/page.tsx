@@ -15,6 +15,10 @@ import {
   BookmarksPanel,
   ConflictBanner,
   VaultSearch,
+  PropertiesEditor,
+  PropertiesView,
+  usePropertyTypes,
+  settingsPropertyTypesStore,
   adapterNoteEditor,
   type NoteEditor,
 } from "@noteriv/ui/panels";
@@ -27,7 +31,6 @@ import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
 import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
-import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { createUntitledNote } from "@/lib/note-names";
@@ -168,6 +171,8 @@ export default function VaultPage() {
   const searchParams = useSearchParams();
   const vaultId = params.vaultId;
   const vaultAdapter = useMemo(() => createWebVaultAdapter(vaultId), [vaultId]);
+  /** Property types for the vault (one per property name), kept in the vault settings. */
+  const propertyTypes = usePropertyTypes(useMemo(() => settingsPropertyTypesStore(vaultAdapter), [vaultAdapter]));
   const listNotes = useCallback(() => vaultAdapter.listNotes(), [vaultAdapter]);
 
   const [vault, setVault] = useState<ApiVault | null>(null);
@@ -201,6 +206,7 @@ export default function VaultPage() {
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
   const [outgoingVisible, setOutgoingVisible] = useState(false);
+  const [propertiesVisible, setPropertiesVisible] = useState(false);
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
@@ -1280,6 +1286,9 @@ export default function VaultPage() {
       case "toggleOutgoingLinks":
         setOutgoingVisible((v) => !v);
         break;
+      case "toggleProperties":
+        setPropertiesVisible((v) => !v);
+        break;
       case "toggleCollab":
         setCollabVisible((v) => !v);
         break;
@@ -1729,9 +1738,12 @@ export default function VaultPage() {
           onUseThisVersion={(originalPath) => useConflictCopy(tab, originalPath)}
         />
         {mode !== "source" && (
-          <FrontmatterEditor
+          <PropertiesEditor
             content={content}
             onChange={onChange}
+            types={propertyTypes.types}
+            onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+            knownKeys={Object.keys(propertyTypes.types)}
             collapsed={frontmatterCollapsed}
             onToggleCollapse={() => setFrontmatterCollapsed((v) => !v)}
           />
@@ -1981,6 +1993,19 @@ export default function VaultPage() {
                       noteId={activeTab.noteId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
+                      editNote={editNoteInTabs}
+                    />
+                  </div>
+                )}
+                {propertiesVisible && (
+                  <div className="web-side-panel w-72 border-l border-[var(--border)] overflow-y-auto">
+                    <PropertiesView
+                      adapter={vaultAdapter}
+                      types={propertyTypes.types}
+                      onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+                      onTypeRename={(from, to) => void propertyTypes.renameType(from, to)}
+                      onNoteOpen={openNote}
+                      onClose={() => setPropertiesVisible(false)}
                       editNote={editNoteInTabs}
                     />
                   </div>
