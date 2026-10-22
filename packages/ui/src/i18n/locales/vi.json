@@ -693,8 +693,10 @@
     },
     "views": {
       "name": "Chế độ xem",
-      "description": "Hiện note theo thuộc tính bằng khối ```view: bảng, thẻ, danh sách hoặc kanban; sửa giá trị ngay tại chỗ; lệnh Chèn chế độ xem.",
+      "description": "Hiện note theo thuộc tính bằng khối ```view hoặc file chế độ xem: bảng, thẻ, danh sách hoặc kanban; sửa giá trị ngay tại chỗ; lệnh Chèn chế độ xem và Chế độ xem mới.",
       "insert": "Chèn chế độ xem",
+      "create": "Chế độ xem mới",
+      "failed": "Không tạo được chế độ xem.",
       "notes": {
         "one": "{count} note",
         "other": "{count} note"
@@ -703,7 +705,14 @@
       "empty": "Không note nào khớp chế độ xem này.",
       "none": "Không có",
       "open": "Mở note",
-      "edit": "Bấm để sửa"
+      "edit": "Bấm để sửa",
+      "layouts": {
+        "table": "Bảng",
+        "cards": "Thẻ",
+        "list": "Danh sách",
+        "kanban": "Kanban"
+      },
+      "fileHint": "Đổi nội dung chế độ xem này trong chế độ source."
     }
   },
   "web": {

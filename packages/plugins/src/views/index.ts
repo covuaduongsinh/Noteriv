@@ -1,4 +1,4 @@
-import type { CodeBlockProcessor, CorePlugin, PluginApi, VaultApi } from "@noteriv/plugin-api";
+import type { CodeBlockProcessor, CorePlugin, FileView, PluginApi, VaultApi } from "@noteriv/plugin-api";
 import {
   coerceValue,
   deleteProperty,
@@ -7,9 +7,27 @@ import {
   writeProperty,
   type PropertyValue,
 } from "@noteriv/core/properties";
-import { fieldValue, formatCell, parseViewSpec, runView, type ViewNote, type ViewSpec } from "@noteriv/core/views";
+import {
+  fieldValue,
+  formatCell,
+  isViewFile,
+  parseViewSpec,
+  runView,
+  setViewLayout,
+  viewFileSettings,
+  VIEW_FILE_EXT,
+  VIEW_FILE_TEMPLATE,
+  VIEW_LAYOUTS,
+  type ViewLayout,
+  type ViewNote,
+  type ViewSpec,
+} from "@noteriv/core/views";
 import { pluginT } from "../shared/i18n";
+import { createKindFile } from "../shared/new-file";
 import { listMarkdown } from "../shared/vault";
+
+/** Id of the file view that shows `.view` files (and notes marked `view: true`). */
+export const FILE_VIEW_ID = "view-file";
 
 /** Marks a block still being drawn; export waits for it to go (see core `PENDING_ATTRIBUTE`). */
 const PENDING = "data-nrv-pending";
@@ -66,12 +84,17 @@ export function createViewSource(vault: VaultApi, now: () => number = Date.now) 
   const scan = async (): Promise<ViewNote[]> => {
     const [paths, blocks, stats] = await Promise.all([listMarkdown(vault), vault.frontmatter(), vault.stats().catch(() => ({}) as Awaited<ReturnType<VaultApi["stats"]>>)]);
     const byPath = new Map(blocks.map((b) => [b.path, b.block]));
-    return paths.map((path) => {
-      const properties: Record<string, PropertyValue> = {};
-      for (const p of readProperties(byPath.get(path) ?? "").properties) if (!p.complex) properties[p.key] = p.value;
-      const s = stats[path];
-      return { path, properties, created: s?.createdAt ?? 0, modified: s?.modifiedAt ?? 0 };
-    });
+    return (
+      paths
+        .map((path) => {
+          const properties: Record<string, PropertyValue> = {};
+          for (const p of readProperties(byPath.get(path) ?? "").properties) if (!p.complex) properties[p.key] = p.value;
+          const s = stats[path];
+          return { path, properties, created: s?.createdAt ?? 0, modified: s?.modifiedAt ?? 0 };
+        })
+        // A view file on web is a note marked `view: true`: settings, not one of the notes it lists.
+        .filter((n) => n.properties.view !== true)
+    );
   };
   return {
     get(): Promise<ViewNote[]> {
@@ -359,6 +382,65 @@ export function createViewProcessor(
   };
 }
 
+/** Text the view file's bar shows. */
+export interface ViewFileTexts {
+  layouts: Record<ViewLayout, string>;
+  /** Tells where the settings are changed (the editor's source mode). */
+  hint: string;
+}
+
+/**
+ * Shows a view file: a bar to switch the layout (written into the file), and the view drawn by `processor` from the
+ * file's settings, the same as a ```view block with that text.
+ */
+export function createViewFileView(processor: CodeBlockProcessor, texts: ViewFileTexts): FileView {
+  return {
+    id: FILE_VIEW_ID,
+    match: isViewFile,
+    mount(container, ctx) {
+      let content = ctx.content;
+      const wrap = container.appendChild(el("div", "nv-file"));
+      const bar = wrap.appendChild(el("div", "nv-file-bar"));
+      const body = wrap.appendChild(el("div", "nv-file-body"));
+      let cleanup: void | (() => void);
+      const draw = () => {
+        if (cleanup) cleanup();
+        body.replaceChildren();
+        const settings = viewFileSettings(content);
+        const layout = parseViewSpec(settings).spec?.layout;
+        for (const [l, b] of buttons) {
+          b.classList.toggle("nv-active", l === layout);
+          b.setAttribute("aria-pressed", String(l === layout));
+        }
+        cleanup = processor(settings, body, { source: settings, language: "view", sourcePath: ctx.path });
+      };
+      const buttons = VIEW_LAYOUTS.map((l) => {
+        const b = bar.appendChild(el("button", "nv-layout", texts.layouts[l]));
+        b.type = "button";
+        b.addEventListener("click", () => {
+          const next = setViewLayout(content, l);
+          if (next === content) return;
+          content = next;
+          ctx.setContent(next);
+          draw();
+        });
+        return [l, b] as const;
+      });
+      bar.appendChild(el("span", "nv-file-hint", texts.hint));
+      draw();
+      return {
+        update(next) {
+          content = next;
+          draw();
+        },
+        destroy() {
+          if (cleanup) cleanup();
+        },
+      };
+    },
+  };
+}
+
 /** Views: ```view blocks show notes by their properties as a table, cards, a list or a kanban board, editable. */
 const views: CorePlugin = {
   onload(api: PluginApi) {
@@ -377,9 +459,7 @@ const views: CorePlugin = {
     };
     api.events.on("vault-change", changed);
     api.events.on("file-save", changed);
-    api.markdown.registerCodeBlockProcessor(
-      "view",
-      createViewProcessor(source, {
+    const processor = createViewProcessor(source, {
         open: (path) => void api.workspace.openFile(path),
         edit: (path, transform) => api.vault.edit(path, transform),
         subscribe: (redraw) => {
@@ -394,12 +474,30 @@ const views: CorePlugin = {
           open: t("open"),
           edit: t("edit"),
         },
+      });
+    api.markdown.registerCodeBlockProcessor("view", processor);
+    api.ui.registerFileView(
+      createViewFileView(processor, {
+        layouts: { table: t("layouts.table"), cards: t("layouts.cards"), list: t("layouts.list"), kanban: t("layouts.kanban") },
+        hint: t("fileHint"),
       })
     );
     api.ui.addCommand({
       id: "insert",
       name: t("insert"),
       callback: () => api.editor.insertAtCursor(VIEW_TEMPLATE),
+    });
+    api.ui.addCommand({
+      id: "new",
+      name: t("create"),
+      callback: async () => {
+        try {
+          await createKindFile(api, { base: "View", desktopExt: VIEW_FILE_EXT, marker: "view", body: VIEW_FILE_TEMPLATE });
+        } catch (e) {
+          console.error("[views] create failed:", e);
+          api.ui.showNotice(t("failed"));
+        }
+      },
     });
   },
 };

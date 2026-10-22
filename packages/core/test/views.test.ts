@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatCell, parseViewSpec, runView, type ViewNote } from "../src/views";
+import { formatCell, isViewFile, parseViewSpec, runView, setViewLayout, viewFileSettings, VIEW_FILE_TEMPLATE, type ViewNote } from "../src/views";
 
 const notes: ViewNote[] = [
   { path: "Projects/Alpha.md", properties: { status: "active", due: "2026-11-01", rating: 4, tags: ["work"] }, created: 1, modified: 5 },
@@ -107,5 +107,49 @@ describe("formatCell", () => {
     expect(formatCell(notes[0], "tags")).toBe("work");
     expect(formatCell(notes[1], "tags")).toBe("work, old");
     expect(formatCell(notes[2], "due")).toBe("");
+  });
+});
+
+describe("view files", () => {
+  const web = "---\nview: true\n---\nfrom: Projects\nlayout: table\n";
+
+  it("knows a .view file and a note marked view: true, and nothing else", () => {
+    expect(isViewFile({ path: "Tasks.view", content: "from: Projects" })).toBe(true);
+    expect(isViewFile({ path: "Tasks.md", content: web })).toBe(true);
+    expect(isViewFile({ path: "Tasks.md", content: "---\nview: false\n---\nx" })).toBe(false);
+    expect(isViewFile({ path: "Tasks.md", content: "---\nviewer: true\n---\nx" })).toBe(false);
+    expect(isViewFile({ path: "Tasks.md", content: "view: true" })).toBe(false);
+  });
+
+  it("reads the settings after the front matter, the same as a ```view block", () => {
+    expect(viewFileSettings(web)).toBe("from: Projects\nlayout: table\n");
+    expect(viewFileSettings("from: Projects")).toBe("from: Projects");
+    expect(viewFileSettings(web.replace(/\n/g, "\r\n"))).toBe("from: Projects\r\nlayout: table\r\n");
+    const parsed = parseViewSpec(VIEW_FILE_TEMPLATE);
+    expect(parsed.error).toBeUndefined();
+    expect(parsed.spec?.columns).toEqual(["file", "status", "tags"]);
+  });
+
+  it("changes the layout setting, or adds it, keeping the rest", () => {
+    expect(setViewLayout(web, "cards")).toBe("---\nview: true\n---\nfrom: Projects\nlayout: cards\n");
+    expect(setViewLayout("from: Projects", "list")).toBe("from: Projects\nlayout: list\n");
+    expect(setViewLayout("", "list")).toBe("layout: list\n");
+    expect(setViewLayout("from: x\r\n", "kanban")).toBe("from: x\r\nlayout: kanban\r\ngroup: status\r\n");
+    // A line that only mentions layout further in is not the setting.
+    expect(setViewLayout("where: layout = x\nlayout: table", "cards")).toBe("where: layout = x\nlayout: cards");
+  });
+
+  it("review findings: kanban gets a group, every layout line changes, BOM, CRLF, front matter in a .view file", () => {
+    expect(setViewLayout(VIEW_FILE_TEMPLATE, "kanban")).toContain("layout: kanban\n");
+    expect(setViewLayout(VIEW_FILE_TEMPLATE, "kanban")).toContain("group: status\n");
+    expect(parseViewSpec(setViewLayout("columns: [file, stage]", "kanban")).spec?.group).toBe("stage");
+    expect(setViewLayout("layout: table\ngroup: area", "kanban")).toBe("layout: kanban\ngroup: area");
+    expect(setViewLayout("layout: table\nlayout: list", "cards")).toBe("layout: cards\nlayout: cards");
+    expect(setViewLayout("from: x\r\nlayout: table\r\n", "list")).toBe("from: x\r\nlayout: list\r\n");
+    const bom = "﻿---\nview: true\n---\nlayout: list";
+    expect(isViewFile({ path: "T.md", content: bom })).toBe(true);
+    expect(viewFileSettings(bom)).toBe("layout: list");
+    expect(viewFileSettings("---\ntags: x\n---\nfrom: Projects")).toBe("from: Projects");
+    expect(isViewFile({ path: "T.md", content: '---\nview: "true"\n---\nx' })).toBe(false);
   });
 });

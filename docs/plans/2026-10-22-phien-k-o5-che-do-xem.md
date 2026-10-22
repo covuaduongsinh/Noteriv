@@ -89,5 +89,5 @@ Review không tìm thấy XSS (mọi chỗ render dùng `textContent`). Sự ki�
 |---|---|
 | Khối ```view + API plugin | Xong |
 | Review độc lập | Xong, đã sửa theo góp ý |
-| Loại file `.view` | Phiên sau |
-| Merge vào main | Chờ chủ dự án |
+| Loại file `.view` | [Phiên K-O7](2026-10-23-phien-k-o7-file-che-do-xem.md) |
+| Merge vào main | Xong, PR #30 |

@@ -240,6 +240,22 @@ test("a ```view block shows notes by their properties, and a cell edits the note
   await expect(view).toContainText("done");
 });
 
+test("New view creates a view file that shows notes; its layout buttons rewrite the file", async () => {
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("New view");
+  await page.keyboard.press("Enter");
+  const file = page.locator(".nv-file");
+  await expect(file.locator(".nv-view tbody tr").first()).toBeVisible();
+  await expect(file.locator(".nv-view")).toContainText("Second");
+  await expect(file.locator(".nv-layout.nv-active")).toHaveText("Table");
+
+  const saved = noteSaved("layout: cards");
+  await file.getByRole("button", { name: "Cards" }).click();
+  await saved;
+  await expect(file.locator(".nv-card").first()).toBeVisible();
+  await expect(file.locator(".nv-layout.nv-active")).toHaveText("Cards");
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

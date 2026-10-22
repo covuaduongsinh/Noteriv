@@ -715,8 +715,10 @@
     },
     "views": {
       "name": "Views",
-      "description": "Show notes by their properties with ```view blocks: a table, cards, a list or a kanban board; edit values in place; Insert view command.",
+      "description": "Show notes by their properties with ```view blocks or view files: a table, cards, a list or a kanban board; edit values in place; Insert view and New view commands.",
       "insert": "Insert view",
+      "create": "New view",
+      "failed": "Could not create the view.",
       "notes": {
         "one": "{count} note",
         "other": "{count} notes"
@@ -725,7 +727,14 @@
       "empty": "No notes match this view.",
       "none": "None",
       "open": "Open note",
-      "edit": "Click to edit"
+      "edit": "Click to edit",
+      "layouts": {
+        "table": "Table",
+        "cards": "Cards",
+        "list": "List",
+        "kanban": "Kanban"
+      },
+      "fileHint": "Change what this view shows in source mode."
     }
   },
   "web": {

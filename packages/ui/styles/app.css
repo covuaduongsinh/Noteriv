@@ -10117,6 +10117,47 @@ body {
   cursor: grab;
 }
 
+/* A view file (.view, or a note marked view: true): layout bar above the view */
+.nv-file {
+  min-height: 100%;
+  padding: 16px 24px;
+  background: var(--bg-primary);
+}
+
+.nv-file-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 10px;
+}
+
+.nv-layout {
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--text-secondary);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.nv-layout:hover {
+  color: var(--text-primary);
+}
+
+.nv-layout.nv-active {
+  color: var(--accent);
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+}
+
+.nv-file-hint {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
 /* Vault search: replace row */
 .search-replace-toggle {
   flex-shrink: 0;
