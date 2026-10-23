@@ -109,6 +109,43 @@ export function resolveLinkTarget(target: string, sourcePath: string, files: str
   return pick(files.filter((f) => matches(fileOf(f))), sourcePath);
 }
 
+/**
+ * `resolveLinkTarget` for many links over the same files: the names are indexed once, so resolving a link costs
+ * a lookup instead of a scan (only a path target that is not an exact path still scans, for the suffix match).
+ */
+export function linkResolver(files: string[]): (target: string, sourcePath: string) => string | null {
+  // Lower-cased path, with and without `.md`, to the index of the first file that has it.
+  const byPath = new Map<string, number>();
+  const byName = new Map<string, string[]>();
+  files.forEach((file, i) => {
+    const f = file.toLowerCase();
+    const keys = f.endsWith(".md") ? [f, stripMd(f)] : [f];
+    for (const key of keys) {
+      if (!byPath.has(key)) byPath.set(key, i);
+      const name = fileOf(key);
+      const list = byName.get(name);
+      if (!list) byName.set(name, [file]);
+      else if (list[list.length - 1] !== file) list.push(file);
+    }
+  });
+  return (target, sourcePath) => {
+    const t = target.trim().toLowerCase();
+    if (!t) return null;
+    if (t.includes("/")) {
+      const exact = byPath.get(t);
+      if (exact !== undefined) return files[exact];
+      return pick(
+        files.filter((file) => {
+          const f = file.toLowerCase();
+          return f.endsWith(`/${t}`) || (f.endsWith(".md") && stripMd(f).endsWith(`/${t}`));
+        }),
+        sourcePath
+      );
+    }
+    return pick(byName.get(t) ?? [], sourcePath);
+  };
+}
+
 function pick(candidates: string[], sourcePath: string): string | null {
   if (candidates.length <= 1) return candidates[0] ?? null;
   const dir = dirOf(sourcePath).toLowerCase();

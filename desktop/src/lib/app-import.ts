@@ -3,12 +3,14 @@ import { toBase64, type ImportResult } from "@noteriv/ui/importers/types";
 
 /**
  * Writes what an import from another app produced (Notion, Evernote, HTML) into the vault folder: attachments, then
- * notes. A file already at a path is kept as it is (counted as kept), never overwritten.
+ * notes. A file already at a path is kept as it is (counted as kept), never overwritten. Once `signal` aborts, it
+ * stops before the next file and reports what it did so far.
  */
 export async function writeImportToVault(
   vaultPath: string,
   result: ImportResult,
-  onProgress: (done: number, total: number) => void
+  onProgress: (done: number, total: number) => void,
+  signal?: AbortSignal
 ): Promise<AppImportReport> {
   const api = window.electronAPI;
   const sep = vaultPath.includes("\\") ? "\\" : "/";
@@ -38,6 +40,7 @@ export async function writeImportToVault(
   onProgress(0, total);
 
   for (const file of result.attachments) {
+    if (signal?.aborted) return { ...report, cancelled: true };
     try {
       if (await exists(file.path)) report.kept++;
       else if (await api.writeBinaryFile(abs(file.path), toBase64(file.data))) report.written++;
@@ -48,6 +51,7 @@ export async function writeImportToVault(
     step();
   }
   for (const note of result.notes) {
+    if (signal?.aborted) return { ...report, cancelled: true };
     try {
       if (await exists(note.path)) report.kept++;
       else if (await api.writeFile(abs(note.path), note.content)) report.written++;

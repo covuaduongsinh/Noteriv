@@ -49,6 +49,19 @@ describe("slash commands", () => {
     expect(labels(editor("---\ntitle: x\n---\n/|"))).not.toBeNull();
   });
 
+  it("stays closed inside math, where / divides, and opens again after it", () => {
+    expect(labels(editor("$a /|"))).toBeNull();
+    expect(labels(editor("x $\\frac{1}{2} /|$ y"))).toBeNull();
+    expect(labels(editor("$$\na /|\n$$"))).toBeNull();
+    expect(labels(editor("$$ a /|"))).toBeNull();
+    expect(labels(editor("$a$ and /|"))).not.toBeNull();
+    expect(labels(editor("$$a$$ /|"))).not.toBeNull();
+    expect(labels(editor("$$\na\n$$\n/|"))).not.toBeNull();
+    expect(labels(editor("costs \\$5 /|"))).not.toBeNull();
+    expect(labels(editor("\\\\$x /|"))).toBeNull();
+    expect(labels(editor("from $ to /|"))).not.toBeNull();
+  });
+
   it("filters by name and by English keywords, and closes when nothing matches", () => {
     expect(labels(editor("/tab|"))).toEqual(["Table"]);
     expect(labels(editor("/todo|"))).toEqual(["Task"]);

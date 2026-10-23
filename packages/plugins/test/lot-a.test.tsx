@@ -170,6 +170,23 @@ describe("vault insights", () => {
     expect(data.vaultHealth.withBacklinks).toBe(67);
   });
 
+  it("resolves links as the graph does: headings, blocks, paths and same-named notes in other folders", () => {
+    const data = computeVaultInsights(
+      [
+        { path: "a.md", content: "[[b#Plan]] [[c^x1]] [[Imported/Home|home]]" },
+        { path: "b.md", content: "" },
+        { path: "c.md", content: "" },
+        { path: "Imported/Home.md", content: "[[Note]]" },
+        { path: "Imported/Note.md", content: "" },
+        { path: "Other/Note.md", content: "" },
+      ],
+      {},
+      now
+    );
+    expect(data.totalLinks).toBe(4);
+    expect(data.orphanNotes.map((n) => n.path)).toEqual(["Other/Note.md"]);
+  });
+
   it("counts the daily-note streak up to yesterday or today", () => {
     expect(computeDailyStreak(["2026-10-13.md", "2026-10-14.md", "2026-10-15.md", "x.md"], now)).toEqual({ current: 3, longest: 3, lastDate: "2026-10-15" });
     expect(computeDailyStreak(["2026-10-01.md"], now).current).toBe(0);

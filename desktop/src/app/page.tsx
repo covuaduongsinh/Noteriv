@@ -2456,8 +2456,8 @@ export default function Home() {
 
       {showAppImport && activeVault && (
         <AppImport
-          write={async (result, onProgress) => {
-            const report = await writeImportToVault(activeVault.path, result, onProgress);
+          write={async (result, onProgress, signal) => {
+            const report = await writeImportToVault(activeVault.path, result, onProgress, signal);
             setSidebarRefresh((k) => k + 1);
             return report;
           }}
