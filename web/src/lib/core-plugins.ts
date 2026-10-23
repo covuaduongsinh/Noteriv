@@ -76,6 +76,14 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     load: () => import("@noteriv/plugins/views"),
   },
   {
+    id: "footnotes",
+    load: () => import("@noteriv/plugins/footnotes"),
+  },
+  {
+    id: "unique-note",
+    load: () => import("@noteriv/plugins/unique-note"),
+  },
+  {
     id: "canvas",
     load: () => import("@noteriv/plugins/canvas"),
   },

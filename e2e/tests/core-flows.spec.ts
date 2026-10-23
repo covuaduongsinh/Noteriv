@@ -288,6 +288,47 @@ test("the local graph shows the open note's links, and All notes the whole vault
   await expect(graph).toBeHidden();
 });
 
+test("resting on a link previews the note it names", async () => {
+  await sidebarItem("Third thought").click();
+  await page.keyboard.press("Control+Home");
+  const link = page.locator(".cm-content .md-wikilink", { hasText: "second" }).first();
+  await link.hover();
+  const preview = page.locator(".hp-container");
+  await expect(preview).toContainText("The second note.");
+  // Leaving the link closes it.
+  await page.mouse.move(0, 0);
+  await expect(preview).toBeHidden();
+});
+
+test("Footnotes lists the open note's footnotes; Unique note creator makes a note named by the time", async () => {
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  for (const id of ["footnotes", "unique-note"]) {
+    const toggle = page.locator(`[data-core-plugin="${id}"]`).getByRole("switch");
+    if ((await toggle.getAttribute("aria-checked")) !== "true") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+  }
+  await page.keyboard.press("Escape");
+
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const saved = noteSaved("[^1]: A footnote for e2e");
+  await page.keyboard.insertText("\nWith a note[^1].\n\n[^1]: A footnote for e2e\n");
+  await saved;
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Toggle Footnotes panel");
+  await page.keyboard.press("Enter");
+  const panel = page.locator(".fn-panel");
+  await expect(panel).toContainText("A footnote for e2e");
+  await expect(panel.locator(".fn-count")).toHaveText("1 footnote");
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Create unique note");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".tab-active")).toContainText(/\d{12}/);
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

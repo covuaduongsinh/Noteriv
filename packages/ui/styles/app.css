@@ -10327,3 +10327,120 @@ body {
   font-size: 12px;
   color: var(--text-muted);
 }
+
+/* Hover preview: an image target */
+.hp-image {
+  display: block;
+  max-width: 100%;
+  max-height: 220px;
+  border-radius: 4px;
+}
+
+/* Footnotes panel (core plugin "footnotes") */
+.fn-panel {
+  padding: 8px 12px;
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.fn-count,
+.fn-empty {
+  padding: 4px 0 8px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.fn-empty {
+  padding: 12px;
+}
+
+.fn-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.fn-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+
+.fn-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  gap: 8px;
+  padding: 6px 4px;
+  text-align: left;
+  font-size: 12px;
+  color: inherit;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.fn-main:hover {
+  background: var(--bg-hover);
+}
+
+.fn-label {
+  flex-shrink: 0;
+  min-width: 18px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+}
+
+.fn-text {
+  overflow-wrap: anywhere;
+  color: var(--text-secondary);
+}
+
+.fn-warn {
+  color: var(--text-muted);
+}
+
+.fn-refs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  padding: 6px 0;
+  font-size: 11px;
+}
+
+.fn-ref {
+  padding: 0 4px;
+  font-size: 11px;
+  color: var(--accent);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Unique note creator: its settings, under the plugin's row */
+.un-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 8px 0;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.un-input {
+  padding: 4px 8px;
+  font-size: 12px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+
+.un-hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}

@@ -24,6 +24,7 @@ import {
   ConflictBanner,
   adapterNoteEditor,
   type NoteEditor,
+  NoteHoverPreview,
 } from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
@@ -160,6 +161,19 @@ export default function Home() {
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [showVaultSearch, setShowVaultSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  // A preview of the note a [[link]] names, after the pointer rests on it a moment.
+  const [linkHover, setLinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
+  const linkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleWikilinkHover = useCallback((target: string, x: number, y: number) => {
+    if (linkHoverTimer.current) clearTimeout(linkHoverTimer.current);
+    linkHoverTimer.current = setTimeout(() => setLinkHover({ target, x, y }), 300);
+  }, []);
+  const handleWikilinkLeave = useCallback(() => {
+    if (linkHoverTimer.current) clearTimeout(linkHoverTimer.current);
+    setLinkHover(null);
+  }, []);
+  // Another tab or view mode replaces the editor (and the link) without the pointer leaving it.
+  useEffect(() => handleWikilinkLeave(), [activeTab, viewMode, handleWikilinkLeave]);
   const [showOutline, setShowOutline] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showOutgoing, setShowOutgoing] = useState(false);
@@ -2196,7 +2210,7 @@ export default function Home() {
                     ) : viewMode === "source" ? (
                       <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" />
                     ) : (
-                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} />
+                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} onWikilinkHover={handleWikilinkHover} onWikilinkLeave={handleWikilinkLeave} />
                     )}
                   </div>
                 </div>
@@ -2432,6 +2446,8 @@ export default function Home() {
           onClose={() => setShowSettings(false)}
         />
       )}
+
+      {linkHover && <NoteHoverPreview target={linkHover.target} position={{ x: linkHover.x, y: linkHover.y }} onDismiss={handleWikilinkLeave} />}
 
       {/* Quick open (Ctrl+P) */}
       {showQuickOpen && activeVault && (

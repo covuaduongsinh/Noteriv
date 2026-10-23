@@ -139,6 +139,18 @@ try {
     : null;
   check("local audio clip plays (has a duration)", !!audioState && audioState.error === null && audioState.duration > 0.5, JSON.stringify(audioState));
   check("word count (core plugin) in the status bar", await page.getByText(/^\d+ words?$/).first().isVisible().catch(() => false));
+  // Resting on [[Beta]] previews it
+  // (again if the editor was still drawing the line when the pointer arrived)
+  let hoverText = "";
+  for (let i = 0; i < 3 && !hoverText.includes("The second note."); i++) {
+    await page.mouse.move(0, 0);
+    await page.locator(".cm-content .md-wikilink").first().hover().catch(() => undefined);
+    await page.locator(".hp-container").waitFor({ timeout: 3000 }).catch(() => undefined);
+    hoverText = (await page.locator(".hp-container").textContent().catch(() => "")) ?? "";
+  }
+  await shot("2-hover");
+  check("resting on a link previews the note", hoverText.includes("The second note."), `links=${await page.locator(".cm-content .md-wikilink").count()} preview=${JSON.stringify(hoverText)}`);
+  await page.mouse.move(0, 0);
   await shot("2-note");
 
   // The properties editor is shown above the note and adds a front matter block to the file

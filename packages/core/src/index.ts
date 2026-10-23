@@ -24,6 +24,7 @@ export * from "./memory-vault-adapter";
 export * from "./tag-utils";
 export * from "./outline-utils";
 export * from "./graph-utils";
+export * from "./footnotes";
 export * from "./plugin-registry";
 export * from "./permissions";
 export * from "./note-diff";

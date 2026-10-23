@@ -165,6 +165,13 @@
       "unlinked": "Nhắc đến chưa liên kết",
       "unlinkedEmpty": "Không thấy tên note nào được nhắc mà chưa liên kết.",
       "linkTitle": "Liên kết chỗ nhắc đến đầu tiên của {path}"
+    },
+    "hoverPreview": {
+      "loading": "Đang tải…",
+      "empty": "Note này đang trống.",
+      "notFound": "Không tìm thấy note",
+      "noSection": "Note không có tiêu đề hoặc khối này",
+      "readFailed": "Không tải được nội dung"
     }
   },
   "settings": {
@@ -745,6 +752,34 @@
         "kanban": "Kanban"
       },
       "fileHint": "Đổi nội dung chế độ xem này trong chế độ source."
+    },
+    "footnotes": {
+      "name": "Chú thích cuối trang",
+      "description": "Ô bên cạnh liệt kê chú thích cuối trang (cả chú thích trong dòng) của note đang mở; bấm để tới định nghĩa hoặc chỗ tham chiếu, thấy ngay chú thích thiếu định nghĩa hoặc chưa được dùng.",
+      "title": "Chú thích cuối trang",
+      "command": "Bật/tắt ô Chú thích cuối trang",
+      "noNote": "Mở một note để xem chú thích của nó.",
+      "none": "Note này chưa có chú thích nào.",
+      "count": {
+        "one": "{count} chú thích",
+        "other": "{count} chú thích"
+      },
+      "inline": "trong dòng",
+      "noDefinition": "Chưa có định nghĩa",
+      "unused": "Chưa được dùng",
+      "goToRef": "Tới chỗ tham chiếu {n}"
+    },
+    "uniqueNote": {
+      "name": "Tạo note mã thời gian",
+      "description": "Lệnh tạo note đặt tên theo thời điểm hiện tại (ví dụ 202610231430) trong thư mục bạn chọn, tiện cho cách ghi chép Zettelkasten.",
+      "command": "Tạo note mã thời gian",
+      "failed": "Không tạo được note.",
+      "settings": "Note mã thời gian",
+      "folder": "Thư mục",
+      "folderHint": "Nơi đặt note mới; để trống là gốc vault.",
+      "format": "Định dạng tên",
+      "preview": "Note kế tiếp: {path}",
+      "saveFailed": "Không lưu được cài đặt."
     }
   },
   "web": {
@@ -978,11 +1013,6 @@
       "new": "Vault mới",
       "newFromGithub": "Vault mới từ GitHub…",
       "importZip": "Import thư mục / zip…"
-    },
-    "hoverPreview": {
-      "loading": "Đang tải…",
-      "readFailed": "Không tải được nội dung",
-      "notFound": "Không tìm thấy note"
     },
     "collab": {
       "title": "Cộng tác",
