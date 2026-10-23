@@ -256,6 +256,22 @@ test("New view creates a view file that shows notes; its layout buttons rewrite 
   await expect(file.locator(".nv-layout.nv-active")).toHaveText("Cards");
 });
 
+test("typing / opens the command menu; picking an item formats the line", async () => {
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("\n/h2");
+  const menu = page.locator(".cm-tooltip-autocomplete");
+  await expect(menu).toContainText("Heading 2");
+  // CodeMirror ignores Enter for 75 ms after a menu first opens (so a key meant for the line is not taken).
+  await page.waitForTimeout(100);
+  const saved = noteSaved("## Slash heading");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Slash heading");
+  await saved;
+  await expect(menu).toBeHidden();
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

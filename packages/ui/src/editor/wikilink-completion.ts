@@ -1,6 +1,7 @@
 import { EditorView } from "@codemirror/view";
 import { CompletionContext, autocompletion, type Completion } from "@codemirror/autocomplete";
 import type { VaultAdapter } from "@noteriv/core/vault-adapter";
+import { slashCompletions } from "./slash-commands";
 
 /** What a suggestion is called: the bare file name (web) or the vault-relative path (desktop, where names can repeat). */
 export type WikilinkLabel = "name" | "path";
@@ -84,7 +85,8 @@ export function wikilinkCompletions(getAdapter: () => VaultAdapter | null, label
  */
 export function wikilinkAutocompletion(getAdapter: () => VaultAdapter | null, label: WikilinkLabel = "name") {
   return autocompletion({
-    override: [wikilinkCompletions(getAdapter, label)],
+    // The `/` command menu shares this autocompletion, so the two menus never compete.
+    override: [wikilinkCompletions(getAdapter, label), slashCompletions],
     activateOnTyping: true,
     defaultKeymap: true,
   });

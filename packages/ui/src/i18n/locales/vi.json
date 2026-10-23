@@ -39,6 +39,31 @@
       "loop": "Note này đã hiện ở phía trên (nó tự nhúng chính nó)",
       "tooDeep": "Nhúng lồng quá sâu, không hiển thị",
       "unavailable": "Không hiển thị được note nhúng ở đây"
+    },
+    "slash": {
+      "h1": "Tiêu đề 1",
+      "h2": "Tiêu đề 2",
+      "h3": "Tiêu đề 3",
+      "bullet": "Danh sách gạch đầu dòng",
+      "numbered": "Danh sách đánh số",
+      "task": "Việc cần làm",
+      "quote": "Trích dẫn",
+      "callout": "Khung ghi chú",
+      "code": "Khối code",
+      "math": "Khối công thức",
+      "table": "Bảng",
+      "divider": "Đường kẻ ngang",
+      "bold": "In đậm",
+      "italic": "In nghiêng",
+      "strike": "Gạch ngang chữ",
+      "highlight": "Tô sáng",
+      "inlineCode": "Code trong dòng",
+      "link": "Liên kết",
+      "wikilink": "Liên kết tới note",
+      "embed": "Nhúng note",
+      "footnote": "Chú thích cuối trang",
+      "date": "Ngày hôm nay",
+      "time": "Giờ hiện tại"
     }
   },
   "panels": {

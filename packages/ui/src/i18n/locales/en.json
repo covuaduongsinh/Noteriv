@@ -39,6 +39,31 @@
       "loop": "This note is already shown above (it embeds itself)",
       "tooDeep": "Embedded too deep to show",
       "unavailable": "Embedded notes cannot be shown here"
+    },
+    "slash": {
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "bullet": "Bulleted list",
+      "numbered": "Numbered list",
+      "task": "Task",
+      "quote": "Quote",
+      "callout": "Callout",
+      "code": "Code block",
+      "math": "Math block",
+      "table": "Table",
+      "divider": "Divider",
+      "bold": "Bold",
+      "italic": "Italic",
+      "strike": "Strikethrough",
+      "highlight": "Highlight",
+      "inlineCode": "Inline code",
+      "link": "Link",
+      "wikilink": "Link to note",
+      "embed": "Embed note",
+      "footnote": "Footnote",
+      "date": "Today's date",
+      "time": "Current time"
     }
   },
   "panels": {
