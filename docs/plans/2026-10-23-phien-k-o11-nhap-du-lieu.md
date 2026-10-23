@@ -99,4 +99,4 @@ Lượt đầu kết luận "yêu cầu sửa": không có lỗ hổng bảo m�
 |---|---|
 | Bộ chuyển đổi + hộp thoại | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #36, đã lên production 2026-10-23 |
