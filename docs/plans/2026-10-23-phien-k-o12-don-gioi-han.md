@@ -45,7 +45,7 @@ Review độc lập không tìm thấy lỗi nặng. Fuzz 20 000 lần cho thấ
 - Nút "Mở note đầu tiên" vẫn hiện sau khi huỷ, dù note đó có thể chưa được ghi. Nay nút bị ẩn khi đã huỷ.
 - Zip lồng trong zip bị tính dung lượng hai lần: một lần theo cỡ của chính zip con, một lần theo nội dung bên trong. Nay chỉ tính nội dung.
 - Huỷ nhập trên web bỏ qua bước nối backlink giữa các đợt ghi. Nay vẫn chạy bước này nếu đã ghi được note.
-- Ở `\$x`, dấu `$` không bị escape, vì `\` là một dấu gạch chéo ngược.
+- Ở `\\$x`, dấu `$` không bị escape, vì `\\` là một dấu gạch chéo ngược.
 
 Hai điểm đã chấp nhận, không sửa:
 
