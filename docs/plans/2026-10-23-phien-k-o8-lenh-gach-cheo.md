@@ -68,4 +68,4 @@ Lượt review thứ hai trên bản đã sửa còn thấy một lỗi (MEDIUM)
 |---|---|
 | Menu `/` | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #33, đã lên production 2026-10-23 |

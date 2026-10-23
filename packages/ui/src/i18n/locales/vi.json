@@ -513,8 +513,9 @@
     },
     "graph": {
       "name": "Graph view",
-      "description": "Sơ đồ mọi note và wiki-link giữa chúng; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
+      "description": "Sơ đồ mọi note và wiki-link giữa chúng, hoặc đồ thị cục bộ của note đang mở theo độ sâu chọn được; tô màu theo thư mục; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
       "command": "Mở graph view",
+      "localCommand": "Mở đồ thị cục bộ",
       "title": "Graph view",
       "filter": "Lọc note...",
       "close": "Đóng",
@@ -528,7 +529,13 @@
       },
       "oneWay": "một chiều",
       "reciprocal": "hai chiều",
-      "legend": "Chú thích chiều liên kết"
+      "legend": "Chú thích chiều liên kết",
+      "allNotes": "Tất cả note",
+      "thisNote": "Note này",
+      "noNote": "Hãy mở một note trước",
+      "depth": "Độ sâu",
+      "colorByFolder": "Tô màu theo thư mục",
+      "rootFolder": "(gốc vault)"
     },
     "slides": {
       "name": "Trình chiếu",

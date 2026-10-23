@@ -40,7 +40,9 @@ export function buildLinkGraph(notes: NoteRef[], contents: ReadonlyMap<string, s
     const regex = new RegExp(LINK_REGEX.source, LINK_REGEX.flags);
     let match: RegExpExecArray | null;
     while ((match = regex.exec(content)) !== null) {
-      const targetId = idByLabel.get(match[1].trim().toLowerCase());
+      // `[[Note#Heading]]` and `[[Note^block]]` link to Note; a name that itself has # or ^ (`C# tips`) is tried whole first.
+      const full = match[1].trim().toLowerCase();
+      const targetId = idByLabel.get(full) ?? idByLabel.get(full.split(/[#^]/)[0].trim());
       if (targetId && targetId !== note.id) {
         directed.set(`${note.id}\0${targetId}`, { source: note.id, target: targetId });
       }
@@ -62,4 +64,35 @@ export function buildLinkGraph(notes: NoteRef[], contents: ReadonlyMap<string, s
     connections.set(edge.target, (connections.get(edge.target) ?? 0) + 1);
   }
   return { edges, connections };
+}
+
+/**
+ * The notes within `depth` links of `center`, whichever way the links go (the local graph of a note), `center`
+ * included.
+ */
+export function neighborhood(edges: readonly LinkGraphEdge[], center: string, depth: number): Set<string> {
+  const near = new Map<string, string[]>();
+  const add = (from: string, to: string) => {
+    const list = near.get(from);
+    if (list) list.push(to);
+    else near.set(from, [to]);
+  };
+  for (const e of edges) {
+    add(e.source, e.target);
+    add(e.target, e.source);
+  }
+  const seen = new Set([center]);
+  let ring = [center];
+  for (let d = 0; d < depth && ring.length > 0; d++) {
+    const next: string[] = [];
+    for (const id of ring) {
+      for (const other of near.get(id) ?? []) {
+        if (seen.has(other)) continue;
+        seen.add(other);
+        next.push(other);
+      }
+    }
+    ring = next;
+  }
+  return seen;
 }
