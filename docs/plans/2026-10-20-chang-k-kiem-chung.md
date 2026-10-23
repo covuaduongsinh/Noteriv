@@ -47,6 +47,27 @@ Chủ dự án chọn **làm luôn cả tính năng lớn** còn thiếu so vớ
   6. Nếu có migration: backup, chạy `psql -1` lên prod, rồi `migrate resolve`.
 - **Ảnh hưởng:** việc dùng thật hằng ngày và lịch báo cáo quyết định (~2026-12-02) giữ nguyên. Nếu khối lượng làm trễ báo cáo thì hỏi chủ dự án trước khi lùi lịch.
 
+### Kết quả (2026-10-23)
+
+Xong cả 4 đợt trong 11 phiên (O1–O11, PR #26–#36), tất cả đã lên production.
+
+| Đợt | Việc | Phiên |
+|---|---|---|
+| 1. Liên kết và thuộc tính | Đổi tên thì sửa liên kết (G1), liên kết đi ra + nhắc đến chưa liên kết (G3), nhúng note/mục/khối (G2), thuộc tính có kiểu + Tất cả thuộc tính (G4) | O1–O4 |
+| 2. Xem và tìm | Chế độ xem bảng/thẻ/danh sách/kanban, dạng khối và dạng file `.view` (G5); tìm kiếm có toán tử + tìm & thay toàn vault (G6) | O5–O7 |
+| 3. Tiện ích nhỏ | Lệnh `/` (G7), đồ thị cục bộ (G8), note mã thời gian (G9), ô Chú thích cuối trang (G10), xem trước khi rê chuột trên desktop (G11) | O8–O10 |
+| 4. Thu hút người mới | Nhập từ Notion, Evernote, HTML (G12) | O11 |
+
+**Cách làm đã giữ suốt:**
+- Mỗi phiên có review độc lập. Review đã bắt nhiều lỗi thật: mất dữ liệu ở danh sách khi sửa thuộc tính (O4), thay thế ăn vào giữa từ (O6), thuộc tính gán nhầm khi database có hàng trùng tên (O11)…
+- Mỗi phiên chạy E2E web trên bản build production (57 lên 64 test) và smoke desktop (20 lên 22 kiểm tra).
+- Hỏi chủ dự án trước mỗi lần merge.
+
+**Còn mở, ghi ở các file phiên và [loi-va-gop-y.md](../kiem-chung/loi-va-gop-y.md):**
+- #4: Vault insights phân giải liên kết riêng.
+- Nhập dữ liệu chưa có nút huỷ và chưa giới hạn dung lượng.
+- `/` trong `$…$` vẫn mở menu lệnh.
+
 ---
 
 ## Tuần 0 – Chuẩn bị (2026-10-20/21)
@@ -119,5 +140,5 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | O8 | G7: lệnh gạch chéo `/` trong editor | Xong | 2026-10-23 | [Phiên K-O8](2026-10-23-phien-k-o8-lenh-gach-cheo.md); PR #33, đã lên production |
 | O9 | G8: đồ thị cục bộ, độ sâu, màu theo thư mục | Xong | 2026-10-23 | [Phiên K-O9](2026-10-23-phien-k-o9-do-thi-cuc-bo.md); PR #34, đã lên production |
 | O10 | G9 note mã thời gian, G10 ô Chú thích cuối trang, G11 xem trước khi rê chuột trên desktop | Xong | 2026-10-23 | [Phiên K-O10](2026-10-23-phien-k-o10-tien-ich-nho.md); PR #35, đã lên production; hết Đợt 3 |
-| O11 | G12: nhập từ Notion, Evernote, HTML | Đang làm | 2026-10-23 | [Phiên K-O11](2026-10-23-phien-k-o11-nhap-du-lieu.md) |
-| O2+ | Obsidian: các khoảng trống còn lại | Chưa làm | | Chủ dự án chốt 2026-10-22: làm đủ 4 đợt theo thứ tự đề xuất (G3 → G2 → G4 → G5 → G6 → Đợt 3 → G12) |
+| O11 | G12: nhập từ Notion, Evernote, HTML | Xong | 2026-10-23 | [Phiên K-O11](2026-10-23-phien-k-o11-nhap-du-lieu.md); PR #36, đã lên production; hết Đợt 4 |
+| O2+ | Obsidian: các khoảng trống của 4 đợt | Xong | 2026-10-23 | Làm đủ 4 đợt theo thứ tự chủ dự án chốt (O1–O11). G13–G19 để Chặng 6 hoặc chỉ ghi nhận, theo bản đồ khoảng trống |
