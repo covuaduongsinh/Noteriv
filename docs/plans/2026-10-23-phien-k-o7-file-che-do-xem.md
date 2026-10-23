@@ -51,4 +51,4 @@ Review không có lỗi CRITICAL hay HIGH. Đã sửa:
 |---|---|
 | File `.view` + note `view: true` | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #32, đã lên production 2026-10-23 |
