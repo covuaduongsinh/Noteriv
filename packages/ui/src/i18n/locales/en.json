@@ -167,6 +167,13 @@
       "unlinked": "Unlinked mentions",
       "unlinkedEmpty": "No note names found without a link.",
       "linkTitle": "Link the first mention of {path}"
+    },
+    "hoverPreview": {
+      "loading": "Loading…",
+      "empty": "This note is empty.",
+      "notFound": "Note not found",
+      "noSection": "This heading or block is not in the note",
+      "readFailed": "Could not load the content"
     }
   },
   "settings": {
@@ -767,6 +774,34 @@
         "kanban": "Kanban"
       },
       "fileHint": "Change what this view shows in source mode."
+    },
+    "footnotes": {
+      "name": "Footnotes",
+      "description": "A side panel listing the open note's footnotes and inline footnotes; click one to go to its definition or a reference, see the ones missing a definition or never referred to.",
+      "title": "Footnotes",
+      "command": "Toggle Footnotes panel",
+      "noNote": "Open a note to see its footnotes.",
+      "none": "This note has no footnotes.",
+      "count": {
+        "one": "{count} footnote",
+        "other": "{count} footnotes"
+      },
+      "inline": "inline",
+      "noDefinition": "No definition",
+      "unused": "Not referred to",
+      "goToRef": "Go to reference {n}"
+    },
+    "uniqueNote": {
+      "name": "Unique note creator",
+      "description": "A command that creates a note named by the current time (like 202610231430), in a folder you choose: handy for Zettelkasten-style notes.",
+      "command": "Create unique note",
+      "failed": "Could not create the note.",
+      "settings": "Unique notes",
+      "folder": "Folder",
+      "folderHint": "Where new notes go; empty for the vault root.",
+      "format": "Name format",
+      "preview": "Next note: {path}",
+      "saveFailed": "Could not save the setting."
     }
   },
   "web": {
@@ -1004,11 +1039,6 @@
       "new": "New vault",
       "newFromGithub": "New vault from GitHub…",
       "importZip": "Import folder / zip…"
-    },
-    "hoverPreview": {
-      "loading": "Loading…",
-      "readFailed": "Could not load the content",
-      "notFound": "Note not found"
     },
     "collab": {
       "title": "Collaboration",

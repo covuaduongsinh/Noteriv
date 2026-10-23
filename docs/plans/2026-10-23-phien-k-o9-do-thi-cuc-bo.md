@@ -53,4 +53,4 @@ Còn để lại: plugin "Vault insights" có cách phân giải liên kết ri�
 |---|---|
 | Đồ thị cục bộ, độ sâu, màu theo thư mục | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #34, đã lên production 2026-10-23 |

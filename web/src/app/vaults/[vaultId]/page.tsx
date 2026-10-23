@@ -21,6 +21,7 @@ import {
   settingsPropertyTypesStore,
   adapterNoteEditor,
   type NoteEditor,
+  NoteHoverPreview,
 } from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
@@ -35,7 +36,6 @@ import StatusBar from "@/components/StatusBar";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { createUntitledNote } from "@/lib/note-names";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
-import HoverPreview from "@/components/HoverPreview";
 import { setImageLightboxHandler } from "@noteriv/ui/markdown/renderers/images";
 import { setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
 import { CloseIcon } from "@/components/icons";
@@ -1455,6 +1455,11 @@ export default function VaultPage() {
     if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
     setWikilinkHover(null);
   }
+  // Another tab or view mode replaces the editor (and the link) without the pointer leaving it.
+  useEffect(() => {
+    if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
+    setWikilinkHover(null);
+  }, [activeTabId, viewMode]);
 
   /**
    * Opens the note a clicked `[[link]]` names — by path, else by name — or creates it (folders included) when there
@@ -2293,13 +2298,7 @@ export default function VaultPage() {
       )}
 
       {wikilinkHover && (
-        <HoverPreview
-          target={wikilinkHover.target}
-          vaultId={vaultId}
-          index={index}
-          position={{ x: wikilinkHover.x, y: wikilinkHover.y }}
-          onDismiss={handleWikilinkLeave}
-        />
+        <NoteHoverPreview target={wikilinkHover.target} position={{ x: wikilinkHover.x, y: wikilinkHover.y }} onDismiss={handleWikilinkLeave} />
       )}
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}

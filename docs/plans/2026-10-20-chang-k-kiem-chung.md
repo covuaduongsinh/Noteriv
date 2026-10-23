@@ -117,5 +117,6 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | O6 | G6: tìm kiếm có toán tử + tìm & thay toàn vault | Xong | 2026-10-23 | [Phiên K-O6](2026-10-22-phien-k-o6-tim-kiem.md); PR #31, đã lên production |
 | O7 | G5 (phần 2): file chế độ xem `.view` | Xong | 2026-10-23 | [Phiên K-O7](2026-10-23-phien-k-o7-file-che-do-xem.md); PR #32, đã lên production |
 | O8 | G7: lệnh gạch chéo `/` trong editor | Xong | 2026-10-23 | [Phiên K-O8](2026-10-23-phien-k-o8-lenh-gach-cheo.md); PR #33, đã lên production |
-| O9 | G8: đồ thị cục bộ, độ sâu, màu theo thư mục | Đang làm | 2026-10-23 | [Phiên K-O9](2026-10-23-phien-k-o9-do-thi-cuc-bo.md) |
+| O9 | G8: đồ thị cục bộ, độ sâu, màu theo thư mục | Xong | 2026-10-23 | [Phiên K-O9](2026-10-23-phien-k-o9-do-thi-cuc-bo.md); PR #34, đã lên production |
+| O10 | G9 note mã thời gian, G10 ô Chú thích cuối trang, G11 xem trước khi rê chuột trên desktop | Đang làm | 2026-10-23 | [Phiên K-O10](2026-10-23-phien-k-o10-tien-ich-nho.md) |
 | O2+ | Obsidian: các khoảng trống còn lại | Chưa làm | | Chủ dự án chốt 2026-10-22: làm đủ 4 đợt theo thứ tự đề xuất (G3 → G2 → G4 → G5 → G6 → Đợt 3 → G12) |
