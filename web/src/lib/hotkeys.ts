@@ -64,6 +64,7 @@ export type HotkeyAction =
   | "importVault"
   | "exportVault"
   | "importNewVault"
+  | "importFromApp"
   | "newVaultFromGithub"
   | "randomNote"
   | "zenMode"
@@ -114,6 +115,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "themePicker", label: "Themes", keys: "", category: "Ecosystem" },
   { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
+  { action: "importFromApp", label: "Import from Notion, Evernote, HTML…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },

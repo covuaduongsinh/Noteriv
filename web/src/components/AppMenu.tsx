@@ -32,6 +32,7 @@ const SECTIONS: MenuSection[] = [
       "sep",
       { action: "importVault" },
       { action: "importNewVault" },
+      { action: "importFromApp" },
       { action: "newVaultFromGithub" },
       { action: "exportVault" },
       "sep",

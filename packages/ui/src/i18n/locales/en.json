@@ -174,6 +174,59 @@
       "notFound": "Note not found",
       "noSection": "This heading or block is not in the note",
       "readFailed": "Could not load the content"
+    },
+    "appImport": {
+      "title": "Import from another app",
+      "close": "Close",
+      "source": "Import from",
+      "sources": {
+        "notion": {
+          "name": "Notion",
+          "hint": "The .zip from Notion's Export with \"Markdown & CSV\": pages, sub-pages, databases, files."
+        },
+        "evernote": {
+          "name": "Evernote",
+          "hint": "One or more .enex files (export a notebook from Evernote): notes, tags, dates, pictures and files."
+        },
+        "html": {
+          "name": "HTML pages",
+          "hint": "A folder or .zip of HTML pages (Bear, Google Keep from Takeout, saved web pages); Markdown files in it too."
+        }
+      },
+      "pickZip": "Choose file…",
+      "pickEnex": "Choose .enex files…",
+      "pickFolder": "Choose folder…",
+      "reading": "Reading the export…",
+      "found": "Found {notes} notes and {files} attachments.",
+      "skipped": {
+        "one": "{count} file left out",
+        "other": "{count} files left out"
+      },
+      "reasons": {
+        "unsupported": "not a kind of file this import takes",
+        "unreadable": "could not be read",
+        "empty": "empty"
+      },
+      "folder": "Put them in the folder",
+      "folderHint": "A new folder keeps them apart from your notes; nothing already in the vault is overwritten (a note with a taken name gets a number).",
+      "import": "Import",
+      "importing": "Importing… {done}/{total}",
+      "done": {
+        "one": "Imported {count} item.",
+        "other": "Imported {count} items."
+      },
+      "kept": {
+        "one": "{count} item was already at its place in the vault and kept as it was.",
+        "other": "{count} items were already at their place in the vault and kept as they were."
+      },
+      "failed": {
+        "one": "{count} item could not be imported",
+        "other": "{count} items could not be imported"
+      },
+      "open": "Open the first note",
+      "nothing": "No notes in what you picked. Check that it is an export of this kind.",
+      "readFailed": "Could not read what you picked.",
+      "writeFailed": "The import stopped: nothing more could be written. Try again."
     }
   },
   "settings": {
@@ -866,7 +919,8 @@
         "reloadApp": "Reload Window",
         "diagnostics": "Diagnostics…",
         "toggleOutgoingLinks": "Outgoing links",
-        "toggleProperties": "All properties"
+        "toggleProperties": "All properties",
+        "importFromApp": "Import from Notion, Evernote, HTML…"
       }
     },
     "noteToolbar": {
@@ -1999,7 +2053,8 @@
     "diagnostics": "Diagnostics (server, sync, plugins)…",
     "devToolsHint": "Open browser developer tools (F12)",
     "toggleOutgoingLinks": "Toggle Outgoing links",
-    "toggleProperties": "Toggle All properties"
+    "toggleProperties": "Toggle All properties",
+    "importFromApp": "Import from Notion, Evernote, HTML…"
   },
   "snippets": {
     "loadFailed": "Failed to load community snippets. Check your connection.",

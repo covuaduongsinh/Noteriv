@@ -10444,3 +10444,186 @@ body {
   font-size: 11px;
   color: var(--text-muted);
 }
+
+/* Import from another app (Notion, Evernote, HTML) */
+.aimp-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: color-mix(in srgb, var(--bg-primary) 60%, transparent);
+}
+
+.aimp-dialog {
+  width: 520px;
+  max-width: 100%;
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 18px 20px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-secondary);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  box-shadow: 0 12px 40px color-mix(in srgb, var(--bg-primary) 70%, transparent);
+}
+
+.aimp-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.aimp-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.aimp-close {
+  padding: 2px 8px;
+  font-size: 18px;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.aimp-sources {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0 0 12px;
+  padding: 0;
+  border: none;
+}
+
+.aimp-sources legend {
+  margin-bottom: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.aimp-source {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.aimp-source.active {
+  border-color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+}
+
+.aimp-source input {
+  grid-row: span 2;
+  margin-top: 3px;
+}
+
+.aimp-source-name {
+  font-weight: 600;
+}
+
+.aimp-hint,
+.aimp-folder small {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.aimp-pick,
+.aimp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.aimp-btn {
+  padding: 6px 12px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.aimp-btn:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.aimp-primary {
+  color: var(--bg-primary);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+
+.aimp-status {
+  margin-bottom: 12px;
+  color: var(--text-muted);
+}
+
+.aimp-summary {
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.aimp-summary details {
+  margin-top: 6px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.aimp-summary ul {
+  max-height: 160px;
+  overflow: auto;
+  margin: 4px 0 0;
+  padding-left: 18px;
+}
+
+.aimp-progress {
+  height: 6px;
+  overflow: hidden;
+  background: var(--bg-primary);
+  border-radius: 3px;
+}
+
+.aimp-progress > div {
+  height: 100%;
+  background: var(--accent);
+}
+
+.aimp-folder {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.aimp-folder input {
+  padding: 6px 8px;
+  font-size: 13px;
+  color: var(--text-primary);
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.aimp-error {
+  margin-top: 8px;
+  font-size: 12px;
+  color: var(--red);
+}

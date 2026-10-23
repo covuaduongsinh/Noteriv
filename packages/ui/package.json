@@ -13,6 +13,7 @@
     "./editor/*": "./src/editor/*.ts",
     "./panels": "./src/panels/index.ts",
     "./panels/*": "./src/panels/*.ts",
+    "./importers/*": "./src/importers/*.ts",
     "./hooks": "./src/hooks/index.ts",
     "./i18n": "./src/i18n/index.ts",
     "./i18n/react": "./src/i18n/react.ts",
@@ -31,7 +32,8 @@
     "@noteriv/core": "*",
     "katex": "^0.19.0",
     "@noteriv/plugin-api": "*",
-    "dompurify": "^3.4.13"
+    "dompurify": "^3.4.13",
+    "jszip": "^3.10.2"
   },
   "peerDependencies": {
     "@codemirror/autocomplete": "^6.20.1",
