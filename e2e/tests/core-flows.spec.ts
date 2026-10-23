@@ -272,6 +272,22 @@ test("typing / opens the command menu; picking an item formats the line", async 
   await expect(menu).toBeHidden();
 });
 
+test("the local graph shows the open note's links, and All notes the whole vault", async () => {
+  await sidebarItem("Second").click();
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Open local graph");
+  await page.keyboard.press("Enter");
+  const graph = page.locator(".graph-container");
+  await expect(graph.locator(".graph-scope-btn.active")).toHaveText("This note");
+  const notes = graph.locator(".graph-stat-value").first();
+  await expect(notes).not.toHaveText("0");
+  const local = Number(await notes.textContent());
+  await graph.getByRole("button", { name: "All notes" }).click();
+  await expect.poll(async () => Number(await notes.textContent())).toBeGreaterThan(local);
+  await graph.locator(".graph-close-btn").click();
+  await expect(graph).toBeHidden();
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

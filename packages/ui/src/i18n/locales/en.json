@@ -532,8 +532,9 @@
     },
     "graph": {
       "name": "Graph view",
-      "description": "Every note and the wiki-links between them; click a note to open it. Ctrl+G or the ribbon button.",
+      "description": "Every note and the wiki-links between them, or the local graph of the open note to a chosen depth; color by folder; click a note to open it. Ctrl+G or the ribbon button.",
       "command": "Open graph view",
+      "localCommand": "Open local graph",
       "title": "Graph View",
       "filter": "Filter nodes...",
       "close": "Close",
@@ -548,7 +549,13 @@
       },
       "oneWay": "one-way",
       "reciprocal": "reciprocal",
-      "legend": "Link direction legend"
+      "legend": "Link direction legend",
+      "allNotes": "All notes",
+      "thisNote": "This note",
+      "noNote": "Open a note first",
+      "depth": "Depth",
+      "colorByFolder": "Color by folder",
+      "rootFolder": "(vault root)"
     },
     "slides": {
       "name": "Slides",

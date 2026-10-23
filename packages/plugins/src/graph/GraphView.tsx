@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import type { VaultApi } from "@noteriv/plugin-api";
-import { buildLinkGraph } from "@noteriv/core/graph-utils";
+import { buildLinkGraph, neighborhood } from "@noteriv/core/graph-utils";
 import { scanVault } from "../shared/vault";
 
 // ── Types ──
@@ -17,6 +17,14 @@ export interface GraphLabels {
   oneWay: string;
   reciprocal: string;
   legend: string;
+  allNotes: string;
+  thisNote: string;
+  /** Shown on "This note" when no note is open. */
+  noNote: string;
+  depth: string;
+  colorByFolder: string;
+  /** Name of the vault's top level in the folder legend. */
+  rootFolder: string;
 }
 
 export interface GraphViewProps {
@@ -26,6 +34,8 @@ export interface GraphViewProps {
   onNoteSelect: (path: string) => void;
   onClose: () => void;
   labels: GraphLabels;
+  /** Open on the local graph of the current note (its links, and theirs up to the depth) rather than the whole vault. */
+  local?: boolean;
 }
 
 /** Notes and link edges of a vault; node ids are vault-relative paths. */
@@ -51,6 +61,20 @@ interface GraphEdge {
   target: string;       // node id
   reciprocal: boolean;
 }
+
+/** The top-level folder of a note ("" at the vault root): what "Color by folder" groups by. */
+function folderOf(path: string): string {
+  const slash = path.indexOf("/");
+  return slash < 0 ? "" : path.slice(0, slash);
+}
+
+/** A colour per folder, spread around the hue circle; readable on light and dark themes alike. */
+function folderColor(index: number): string {
+  return `hsl(${Math.round((index * 137.5) % 360)}, 55%, 55%)`;
+}
+
+/** Folder legend entries shown at most; the rest are summed up as "…". */
+const MAX_LEGEND = 8;
 
 interface TooltipInfo {
   x: number;
@@ -106,7 +130,7 @@ function drawArrowHead(
 
 // ── Component ──
 
-export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onClose, labels }: GraphViewProps) {
+export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onClose, labels, local: startLocal = false }: GraphViewProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
@@ -121,6 +145,9 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
   const [searchQuery, setSearchQuery] = useState("");
   const [hoveredNode, setHoveredNode] = useState<string | null>(null);
   const [tooltip, setTooltip] = useState<TooltipInfo | null>(null);
+  const [local, setLocal] = useState(startLocal && !!currentNoteId);
+  const [depth, setDepth] = useState(1);
+  const [byFolder, setByFolder] = useState(false);
 
   // Camera: stored in refs for perf (used every frame)
   const cameraRef = useRef({ x: 0, y: 0, zoom: 1 });
@@ -190,9 +217,52 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
   }, [vault]);
 
   // ── Computed values ──
+  /** Whether the open file is a note of the graph (not a canvas, a PDF, or a note made since the graph was built). */
+  const canLocal = useMemo(() => !!currentNoteId && nodes.some((n) => n.id === currentNoteId), [nodes, currentNoteId]);
+  const isLocal = local && canLocal;
+  /** The notes shown: all of them, or the local graph of the open note. */
+  const visible = useMemo(
+    () => (isLocal && currentNoteId ? neighborhood(edges, currentNoteId, depth) : null),
+    [isLocal, currentNoteId, edges, depth]
+  );
+  const visibleRef = useRef<Set<string> | null>(null);
+  useEffect(() => {
+    visibleRef.current = visible;
+    // The notes just shown gather near the middle instead of staying where the whole vault had spread them.
+    if (!visible) return;
+    const rect = canvasRef.current?.getBoundingClientRect();
+    const cx = rect ? rect.width / 2 : window.innerWidth / 2;
+    const cy = rect ? rect.height / 2 : window.innerHeight / 2;
+    for (const n of nodesRef.current) {
+      if (!visible.has(n.id)) continue;
+      const centre = n.id === currentNoteId;
+      n.x = centre ? cx : cx + (Math.random() - 0.5) * 200;
+      n.y = centre ? cy : cy + (Math.random() - 0.5) * 200;
+      n.vx = 0;
+      n.vy = 0;
+    }
+    cameraRef.current = { x: 0, y: 0, zoom: 1 };
+  }, [visible, currentNoteId, nodes]);
+
+  /** Folder → colour, over every note so a folder keeps its colour whatever is shown. */
+  const folders = useMemo(() => {
+    const names = [...new Set(nodes.map((n) => folderOf(n.id)))].sort();
+    return new Map(names.map((name, i) => [name, folderColor(i)]));
+  }, [nodes]);
+  /** The legend: folders of the notes shown. */
+  const shownFolders = useMemo(
+    () => [...folders].filter(([name]) => !visible || nodes.some((n) => visible.has(n.id) && folderOf(n.id) === name)),
+    [folders, visible, nodes]
+  );
+  const foldersRef = useRef<Map<string, string> | null>(null);
+  useEffect(() => {
+    foldersRef.current = byFolder ? folders : null;
+  }, [byFolder, folders]);
+
   const stats = useMemo(() => {
-    return { noteCount: nodes.length, edgeCount: edges.length };
-  }, [nodes, edges]);
+    if (!visible) return { noteCount: nodes.length, edgeCount: edges.length };
+    return { noteCount: visible.size, edgeCount: edges.filter((e) => visible.has(e.source) && visible.has(e.target)).length };
+  }, [nodes, edges, visible]);
 
   // ── CSS variable resolution (cached) ──
   const colorsRef = useRef({
@@ -250,8 +320,10 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
     function tick() {
       if (!running || !ctx || !canvas) return;
 
-      const ns = nodesRef.current;
-      const es = edgesRef.current;
+      const shown = visibleRef.current;
+      const ns = shown ? nodesRef.current.filter((n) => shown.has(n.id)) : nodesRef.current;
+      const es = shown ? edgesRef.current.filter((e) => shown.has(e.source) && shown.has(e.target)) : edgesRef.current;
+      const folderColors = foldersRef.current;
       const cam = cameraRef.current;
       const hovered = hoveredRef.current;
       const search = searchRef.current.toLowerCase();
@@ -420,7 +492,7 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
           ctx.lineWidth = 2;
           ctx.stroke();
         } else {
-          ctx.fillStyle = colors.bgSurface;
+          ctx.fillStyle = folderColors?.get(folderOf(n.id)) ?? colors.bgSurface;
           ctx.fill();
           ctx.strokeStyle = colors.accent;
           ctx.lineWidth = isConnected && hovered ? 1.5 : 1;
@@ -470,7 +542,8 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
       const worldX = (sx - W / 2) / cam.zoom + W / 2 - cam.x;
       const worldY = (sy - H / 2) / cam.zoom + H / 2 - cam.y;
 
-      const ns = nodesRef.current;
+      const shown = visibleRef.current;
+      const ns = shown ? nodesRef.current.filter((n) => shown.has(n.id)) : nodesRef.current;
       const mc = Math.max(...ns.map((n) => n.connections), 1);
 
       for (let i = ns.length - 1; i >= 0; i--) {
@@ -622,6 +695,55 @@ export function GraphView({ vault, currentPath: currentNoteId, onNoteSelect, onC
             onChange={(e) => setSearchQuery(e.target.value)}
             autoFocus
           />
+        </div>
+
+        <div className="graph-side">
+        <div className="graph-controls">
+          <div className="graph-scope" role="group" aria-label={`${labels.allNotes} / ${labels.thisNote}`}>
+            <button type="button" className={`graph-scope-btn ${isLocal ? "" : "active"}`} aria-pressed={!isLocal} onClick={() => setLocal(false)}>
+              {labels.allNotes}
+            </button>
+            <button
+              type="button"
+              className={`graph-scope-btn ${isLocal ? "active" : ""}`}
+              aria-pressed={isLocal}
+              aria-disabled={!canLocal}
+              title={canLocal ? undefined : labels.noNote}
+              onClick={() => canLocal && setLocal(true)}
+            >
+              {labels.thisNote}
+            </button>
+          </div>
+          {!canLocal && !loading && <span className="graph-hint">{labels.noNote}</span>}
+          {isLocal && (
+            <label className="graph-depth">
+              {labels.depth}
+              <select value={depth} onChange={(e) => setDepth(Number(e.target.value))}>
+                {[1, 2, 3].map((d) => (
+                  <option key={d} value={d}>
+                    {d}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <label className="graph-color-toggle">
+            <input type="checkbox" checked={byFolder} onChange={(e) => setByFolder(e.target.checked)} />
+            {labels.colorByFolder}
+          </label>
+        </div>
+
+        {byFolder && (
+          <ul className="graph-folder-legend">
+            {shownFolders.slice(0, MAX_LEGEND).map(([name, color]) => (
+              <li key={name}>
+                <span className="graph-folder-swatch" style={{ background: color }} />
+                {name || labels.rootFolder}
+              </li>
+            ))}
+            {shownFolders.length > MAX_LEGEND && <li>…</li>}
+          </ul>
+        )}
         </div>
 
         <button className="graph-close-btn" onClick={onClose} title={labels.close} aria-label={labels.close}>
