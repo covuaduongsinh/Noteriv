@@ -329,6 +329,42 @@ test("Footnotes lists the open note's footnotes; Unique note creator makes a not
   await expect(page.locator(".tab-active")).toContainText(/\d{12}/);
 });
 
+test("Import from another app brings in a Notion export and an Evernote notebook", async () => {
+  const JSZip = (await import("jszip")).default;
+  const id1 = "0123456789abcdef0123456789abcdef";
+  const id2 = "fedcba9876543210fedcba9876543210";
+  const zip = new JSZip();
+  zip.file(`Export/Wiki home ${id1}.md`, `# Wiki home\n\nSee [Roadmap](Wiki%20home%20${id1}/Roadmap%20${id2}.md) for e2e.\n`);
+  zip.file(`Export/Wiki home ${id1}/Roadmap ${id2}.md`, "# Roadmap\n\nQ4 e2e plans.\n");
+  const notion = await zip.generateAsync({ type: "nodebuffer" });
+
+  const openDialog = async () => {
+    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.type("Import from Notion");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".aimp-dialog")).toBeVisible();
+  };
+  await openDialog();
+  const dialog = page.locator(".aimp-dialog");
+  await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Export.zip", mimeType: "application/zip", buffer: notion });
+  await expect(dialog.locator(".aimp-summary")).toContainText("Found 2 notes");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(dialog).toContainText("Imported 2 items.");
+  await dialog.getByRole("button", { name: "Open the first note" }).click();
+  await expect(page.locator(".tab-active")).toContainText("Wiki home");
+  await expect(editor()).toContainText("for e2e");
+  await expect(page.locator(".cm-content .md-wikilink", { hasText: "Roadmap" })).toBeVisible();
+
+  const enex = `<?xml version="1.0" encoding="UTF-8"?><en-export><note><title>Evernote e2e</title><created>20261001T083000Z</created><tag>imported</tag><content><![CDATA[<en-note><div>From <b>Evernote</b></div></en-note>]]></content></note></en-export>`;
+  await openDialog();
+  await dialog.locator(".aimp-source", { hasText: "Evernote" }).click();
+  await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Book.enex", mimeType: "application/xml", buffer: Buffer.from(enex) });
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await dialog.getByRole("button", { name: "Open the first note" }).click();
+  await expect(page.locator(".tab-active")).toContainText("Evernote e2e");
+  await expect(editor()).toContainText("From Evernote");
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

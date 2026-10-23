@@ -25,7 +25,9 @@ import {
   adapterNoteEditor,
   type NoteEditor,
   NoteHoverPreview,
+  AppImport,
 } from "@noteriv/ui/panels";
+import { writeImportToVault } from "@/lib/app-import";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, languageForStoredSettings } from "@/lib/i18n";
@@ -161,6 +163,7 @@ export default function Home() {
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [showVaultSearch, setShowVaultSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showAppImport, setShowAppImport] = useState(false);
   // A preview of the note a [[link]] names, after the pointer rests on it a moment.
   const [linkHover, setLinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
   const linkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -1578,6 +1581,7 @@ export default function Home() {
       publishNote: handlePublish,
       startCollab: () => setShowCollab(true),
       openTrash: () => setShowTrash(true),
+      importFromApp: () => setShowAppImport(true),
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
@@ -1754,6 +1758,7 @@ export default function Home() {
         publishNote: handlePublish,
         startCollab: () => setShowCollab(true),
         openTrash: () => setShowTrash(true),
+        importFromApp: () => setShowAppImport(true),
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
         closeSplit: handleCloseSplit,
@@ -2448,6 +2453,22 @@ export default function Home() {
       )}
 
       {linkHover && <NoteHoverPreview target={linkHover.target} position={{ x: linkHover.x, y: linkHover.y }} onDismiss={handleWikilinkLeave} />}
+
+      {showAppImport && activeVault && (
+        <AppImport
+          write={async (result, onProgress) => {
+            const report = await writeImportToVault(activeVault.path, result, onProgress);
+            setSidebarRefresh((k) => k + 1);
+            return report;
+          }}
+          existingPaths={async () => (await window.electronAPI.listAllFiles(activeVault.path)).map((f) => relativeVaultPath(activeVault.path, f.filePath))}
+          onClose={() => setShowAppImport(false)}
+          onOpen={(path) => {
+            const sep = activeVault.path.includes("\\") ? "\\" : "/";
+            void openFile(`${activeVault.path.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+          }}
+        />
+      )}
 
       {/* Quick open (Ctrl+P) */}
       {showQuickOpen && activeVault && (

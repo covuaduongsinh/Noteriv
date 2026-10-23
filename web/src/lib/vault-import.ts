@@ -118,6 +118,36 @@ export async function scanZip(zipFile: File): Promise<ImportScan> {
   return finalizeScan(scan);
 }
 
+/**
+ * Puts what an import from another app produced (Notion, Evernote, HTML: notes and attachments at vault paths) through
+ * the same import as a folder: attachments uploaded, links to them rewritten, notes sent in batches. Notes already
+ * at a path are kept.
+ */
+export async function importConverted(
+  vaultId: string,
+  result: { notes: { path: string; content: string }[]; attachments: { path: string; data: Uint8Array }[] },
+  onProgress: (done: number, total: number) => void
+): Promise<{ written: number; kept: number; failed: { path: string; error: string }[] }> {
+  const scan: ImportScan = {
+    rootName: "",
+    notes: result.notes.map((n) => ({ path: n.path, size: n.content.length, read: async () => new Blob([n.content], { type: "text/markdown" }) })),
+    attachments: result.attachments.map((a) => ({ path: a.path, size: a.data.length, read: async () => new Blob([a.data as BlobPart]) })),
+    skipped: [],
+  };
+  const files = scan.attachments.length;
+  const total = files + scan.notes.length;
+  const report = await runImport(vaultId, finalizeScan(scan), { onConflict: "skip" }, (p) => {
+    if (p.phase === "attachments") onProgress(p.done, total);
+    else if (p.phase === "notes") onProgress(files + p.done, total);
+    else onProgress(total, total);
+  });
+  return {
+    written: report.notesCreated + report.notesUpdated + report.attachmentsUploaded + report.attachmentsReused,
+    kept: report.notesSkipped,
+    failed: [...report.failures, ...scan.skipped.map((s) => ({ path: s.path, error: s.reason }))],
+  };
+}
+
 // ── link rewriting ──
 
 function posixDirname(p: string): string {

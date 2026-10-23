@@ -226,6 +226,32 @@ try {
   check("renaming a note rewrites the links to it", relinked, renameError || readFileSync(path.join(vault, "Alpha.md"), "utf8").split("\n")[2]);
   await shot("4b-rename");
 
+  // Import from another app: an Evernote notebook lands in the vault folder
+  let imported = false;
+  let importDetail = "";
+  try {
+    await page.locator(".cm-content").first().click();
+    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.type("Import from Notion");
+    await page.keyboard.press("Enter");
+    const dialog = page.locator(".aimp-dialog");
+    await dialog.waitFor({ timeout: 5000 });
+    await dialog.locator(".aimp-source", { hasText: "Evernote" }).click();
+    const enex = `<?xml version="1.0"?><en-export><note><title>Smoke import</title><content><![CDATA[<en-note><div>From the smoke enex</div></en-note>]]></content></note></en-export>`;
+    await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Smoke.enex", mimeType: "application/xml", buffer: Buffer.from(enex) });
+    await dialog.getByRole("button", { name: "Import", exact: true }).click();
+    await dialog.getByText("Imported 1 item.").waitFor({ timeout: 10000 });
+    await dialog.getByRole("button", { name: "Close" }).last().click();
+    const file = path.join(vault, "Evernote", "Smoke import.md");
+    for (let i = 0; i < 10 && !imported; i++) {
+      await sleep(500);
+      imported = existsSync(file) && readFileSync(file, "utf8").includes("From the smoke enex");
+    }
+  } catch (err) {
+    importDetail = String(err).split("\n")[0];
+  }
+  check("importing an Evernote notebook writes its notes into the vault", imported, importDetail);
+
   // Community plugin sidebar panel
   await page.getByTitle("Hello panel").click().catch(() => undefined);
   await sleep(1500);

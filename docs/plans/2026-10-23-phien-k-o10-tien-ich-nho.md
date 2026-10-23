@@ -86,4 +86,4 @@ Không có lỗi CRITICAL hay HIGH, không có XSS hay đường dẫn thoát kh
 | G10 ô Chú thích cuối trang | Xong |
 | G11 xem trước khi rê chuột trên desktop | Xong |
 | Review độc lập | Xong, đã sửa |
-| Merge vào main | Chờ chủ dự án |
+| Merge vào main | Xong, PR #35, đã lên production 2026-10-23 |

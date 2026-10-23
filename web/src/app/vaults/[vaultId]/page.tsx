@@ -143,6 +143,7 @@ const PluginManager = dynamic(() => import("@/components/PluginManager"), { ssr:
 const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
 const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
 const ImportVault = dynamic(() => import("@/components/ImportVault"), { ssr: false });
+const AppImport = dynamic(() => import("@noteriv/ui/panels").then((m) => m.AppImport), { ssr: false });
 const DiagnosticsModal = dynamic(() => import("@/components/DiagnosticsModal"), { ssr: false });
 const CreateVaultFromGithub = dynamic(() => import("@/components/sync/CreateVaultFromGithub"), { ssr: false });
 const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
@@ -272,6 +273,7 @@ export default function VaultPage() {
   // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
+  const [showAppImport, setShowAppImport] = useState(false);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -1366,6 +1368,9 @@ export default function VaultPage() {
       case "importNewVault":
         setImportMode("new");
         break;
+      case "importFromApp":
+        setShowAppImport(true);
+        break;
       case "newVaultFromGithub":
         setShowNewFromGithub(true);
         break;
@@ -2342,6 +2347,30 @@ export default function VaultPage() {
             setImportMode(null);
             if (id !== vaultId) router.push(`/vaults/${id}`);
             else refreshIndex();
+          }}
+        />
+      )}
+
+      {showAppImport && (
+        <AppImport
+          write={async (result, onProgress) => {
+            const { importConverted } = await import("@/lib/vault-import");
+            const report = await importConverted(vaultId, result, onProgress);
+            refreshIndex();
+            return report;
+          }}
+          existingPaths={async () => (await webApi.vaults.index(vaultId)).notes.map((n) => n.path)}
+          onClose={() => setShowAppImport(false)}
+          onOpen={(path) => {
+            // The index in this render predates the import: the note is looked up in a fresh one.
+            void webApi.vaults
+              .index(vaultId)
+              .then((idx) => {
+                setIndex(idx);
+                const note = idx.notes.find((n) => n.path === path);
+                if (note) openNote(note.id);
+              })
+              .catch(() => undefined);
           }}
         />
       )}

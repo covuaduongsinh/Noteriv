@@ -63,6 +63,7 @@ export type HotkeyAction =
   | "publishNote"
   | "startCollab"
   | "openTrash"
+  | "importFromApp"
   | "togglePinTab"
   | "splitEditor"
   | "closeSplit";
@@ -151,6 +152,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   // PDF
   // Trash
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
+  { action: "importFromApp", label: "Import from Notion, Evernote, HTML…", keys: "", category: "File" },
   // Tab pinning
   { action: "togglePinTab", label: "Pin/Unpin Tab", keys: "Ctrl+Shift+T", category: "File" },
   // Note history & lint

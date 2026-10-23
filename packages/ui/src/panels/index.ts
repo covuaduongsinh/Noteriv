@@ -2,6 +2,7 @@ export { default as OutlinePanel } from "./OutlinePanel";
 export { default as BacklinksPanel } from "./BacklinksPanel";
 export { default as OutgoingLinksPanel, type OutgoingLinksPanelProps } from "./OutgoingLinksPanel";
 export { default as NoteHoverPreview, type NoteHoverPreviewProps } from "./NoteHoverPreview";
+export { default as AppImport, type AppImportProps, type AppImportReport, type ImportSource } from "./AppImport";
 export { adapterNoteEditor, type NoteEditor } from "./note-edit";
 export { default as PropertiesEditor, type PropertiesEditorProps } from "./PropertiesEditor";
 export { default as PropertiesView, type PropertiesViewProps } from "./PropertiesView";
