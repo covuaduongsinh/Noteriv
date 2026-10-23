@@ -126,8 +126,9 @@ export async function scanZip(zipFile: File): Promise<ImportScan> {
 export async function importConverted(
   vaultId: string,
   result: { notes: { path: string; content: string }[]; attachments: { path: string; data: Uint8Array }[] },
-  onProgress: (done: number, total: number) => void
-): Promise<{ written: number; kept: number; failed: { path: string; error: string }[] }> {
+  onProgress: (done: number, total: number) => void,
+  signal?: AbortSignal
+): Promise<{ written: number; kept: number; failed: { path: string; error: string }[]; cancelled: boolean }> {
   const scan: ImportScan = {
     rootName: "",
     notes: result.notes.map((n) => ({ path: n.path, size: n.content.length, read: async () => new Blob([n.content], { type: "text/markdown" }) })),
@@ -140,11 +141,12 @@ export async function importConverted(
     if (p.phase === "attachments") onProgress(p.done, total);
     else if (p.phase === "notes") onProgress(files + p.done, total);
     else onProgress(total, total);
-  });
+  }, signal);
   return {
     written: report.notesCreated + report.notesUpdated + report.attachmentsUploaded + report.attachmentsReused,
     kept: report.notesSkipped,
     failed: [...report.failures, ...scan.skipped.map((s) => ({ path: s.path, error: s.reason }))],
+    cancelled: report.cancelled,
   };
 }
 
@@ -364,7 +366,11 @@ export async function runImport(
     }
   }
   await flush();
-  if (stop()) return { ...report, cancelled: true };
+  if (stop()) {
+    // The notes written before the cancel stay: their links across batches still get their backlinks.
+    if (report.notesCreated + report.notesUpdated > 0) await webApi.vaultTransfer.finalize(vaultId).catch(() => undefined);
+    return { ...report, cancelled: true };
+  }
 
   // 3) backlinks across batches
   onProgress({ phase: "finalize", done: 0, total: 1 });

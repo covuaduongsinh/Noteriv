@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { MemoryVaultAdapter } from "../src/memory-vault-adapter";
 import type { NoteRef } from "../src/vault-adapter";
-import { expandFolderMove, linkSearchTerms, notesMovedByRename, rewriteLinksForMoves, updateLinksAfterMove } from "../src/link-rename";
+import { expandFolderMove, linkResolver, linkSearchTerms, notesMovedByRename, resolveLinkTarget, rewriteLinksForMoves, updateLinksAfterMove } from "../src/link-rename";
 
 const before = ["Index.md", "projects/Plan.md", "projects/Notes.md", "archive/Notes.md", "img/photo.png"];
 
@@ -195,5 +195,16 @@ describe("updateLinksAfterMove", () => {
     const result = await updateLinksAfterMove(adapter, [{ from: "Plan.md", to: "Roadmap.md" }], ["Index.md", "B.md", "Plan.md"], (ref) => ref.path === "B.md");
     expect(result.changed.map((c) => c.path)).toEqual(["Index.md"]);
     expect(await adapter.readNote("B.md")).toBe("[[Plan]]");
+  });
+});
+
+describe("linkResolver", () => {
+  it("resolves every target the way resolveLinkTarget does", () => {
+    const files = ["A.md", "dir/B.md", "dir/a.md", "x/y/B.md", "img/a.png", "Notes/C# tips.md", "C.MD", "deep/dir/B.md", "dir/b"];
+    const targets = ["a", "A.md", "b", "B", "dir/b", "dir/B.md", "y/b", "dir/B", "a.png", "img/a.png", "c# tips", "c", "nope", "", " b ", "x/nope"];
+    const resolve = linkResolver(files);
+    for (const source of ["A.md", "dir/z.md", "x/y/z.md", "other/z.md"]) {
+      for (const t of targets) expect([t, source, resolve(t, source)]).toEqual([t, source, resolveLinkTarget(t, source, files)]);
+    }
   });
 });

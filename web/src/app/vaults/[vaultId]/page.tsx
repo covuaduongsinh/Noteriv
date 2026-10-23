@@ -2353,9 +2353,9 @@ export default function VaultPage() {
 
       {showAppImport && (
         <AppImport
-          write={async (result, onProgress) => {
+          write={async (result, onProgress, signal) => {
             const { importConverted } = await import("@/lib/vault-import");
-            const report = await importConverted(vaultId, result, onProgress);
+            const report = await importConverted(vaultId, result, onProgress, signal);
             refreshIndex();
             return report;
           }}

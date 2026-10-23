@@ -10568,6 +10568,10 @@ body {
 }
 
 .aimp-status {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
   margin-bottom: 12px;
   color: var(--text-muted);
 }

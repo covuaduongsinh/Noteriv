@@ -7,6 +7,8 @@
 import type { NoteStats } from "@noteriv/plugin-api";
 import { parseTags } from "@noteriv/core/tag-utils";
 import { hasFrontmatter } from "@noteriv/core/frontmatter-utils";
+import { wikiLinkTargets } from "@noteriv/core/graph-utils";
+import { linkResolver } from "@noteriv/core/link-rename";
 
 export interface HeatmapDay {
   date: string;
@@ -77,7 +79,6 @@ interface Entry {
   stats?: NoteStats;
 }
 
-const LINK_REGEX = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 const DAILY_NOTE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
@@ -133,36 +134,21 @@ export function buildHeatmap(files: Entry[], now = new Date()): HeatmapDay[] {
 }
 
 function buildLinkGraph(files: Entry[]) {
-  const labelToPath = new Map<string, string>();
-  for (const f of files) labelToPath.set(stripExt(f.name).toLowerCase(), f.path);
-
-  const outgoing = new Map<string, Set<string>>();
+  const resolve = linkResolver(files.map((f) => f.path));
+  const outgoing = new Map<string, string[]>();
   const incoming = new Map<string, Set<string>>();
-  for (const f of files) {
-    outgoing.set(f.path, new Set());
-    incoming.set(f.path, new Set());
-  }
+  for (const f of files) incoming.set(f.path, new Set());
   let totalLinks = 0;
   for (const f of files) {
-    const seen = new Set<string>();
-    LINK_REGEX.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = LINK_REGEX.exec(f.content)) !== null) {
-      const target = match[1].split("#")[0].trim().toLowerCase();
-      if (!target || seen.has(target)) continue;
-      seen.add(target);
-      const targetPath = labelToPath.get(target);
-      if (targetPath && targetPath !== f.path) {
-        outgoing.get(f.path)!.add(targetPath);
-        incoming.get(targetPath)!.add(f.path);
-        totalLinks++;
-      }
-    }
+    const targets = wikiLinkTargets(f.content, f.path, resolve);
+    outgoing.set(f.path, targets);
+    for (const t of targets) incoming.get(t)!.add(f.path);
+    totalLinks += targets.length;
   }
 
   const connections: HubNote[] = files.map((f) => {
     const inc = incoming.get(f.path)?.size || 0;
-    const out = outgoing.get(f.path)?.size || 0;
+    const out = outgoing.get(f.path)?.length || 0;
     return { path: f.path, name: stripExt(f.name), incomingCount: inc, outgoingCount: out, totalConnections: inc + out };
   });
   connections.sort((a, b) => b.totalConnections - a.totalConnections);

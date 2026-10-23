@@ -190,6 +190,27 @@ function context(state: EditorState, pos: number): "text" | "table" | "off" {
   return table ? "table" : "text";
 }
 
+/**
+ * Whether `pos` is inside math: between `$$` lines (as the math preview finds them), or after a `$` on the line
+ * that opens inline math (followed by a non-space, not escaped) and has not been closed yet. A `/` there is a
+ * division sign. A lone `$5` before the cursor counts as open math too; the menu just does not show.
+ */
+function inMath(state: EditorState, pos: number): boolean {
+  const doc = state.doc;
+  const here = doc.lineAt(pos);
+  let block = false;
+  for (let i = 1; i < here.number; i++) if (doc.line(i).text.trim() === "$$") block = !block;
+  if (block) return true;
+  // Escaped dollars (`\$`) are blanked, then closed `$$…$$` and `$…$` pairs dropped: what is left opens math.
+  const open = here.text
+    .slice(0, pos - here.from)
+    // `\\` is a backslash, so in `\\$` the dollar is not escaped.
+    .replace(/\\[\\$]/g, "  ")
+    .replace(/\$\$.*?\$\$/g, "")
+    .replace(/\$(?=[^\s$])[^$]*\$/g, "");
+  return /\$\$|\$(?=\S)/.test(open);
+}
+
 /** The names shown for each item, in the current language. */
 const nameOf = (id: string) => t(`editor.slash.${id}`);
 
@@ -201,7 +222,7 @@ export function slashCompletions(ctx: CompletionContext): CompletionResult | nul
   // Inside `[[…` the `/` belongs to a note name: the note menu is open there.
   if (!match || /\[\[[^\]]*$/.test(before)) return null;
   const where = context(ctx.state, ctx.pos);
-  if (where === "off") return null;
+  if (where === "off" || inMath(ctx.state, ctx.pos)) return null;
   const query = fold(match[1]);
   const scored = ITEMS.filter((item) => where === "text" || item.kind === "inline")
     .map((item, index) => {

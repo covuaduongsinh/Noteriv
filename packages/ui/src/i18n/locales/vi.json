@@ -224,7 +224,14 @@
       "open": "Mở note đầu tiên",
       "nothing": "Không có note nào trong thứ bạn chọn. Hãy kiểm tra đó có đúng là bản xuất loại này không.",
       "readFailed": "Không đọc được thứ bạn chọn.",
-      "writeFailed": "Việc nhập đã dừng vì không ghi thêm được. Hãy thử lại."
+      "writeFailed": "Việc nhập đã dừng vì không ghi thêm được. Hãy thử lại.",
+      "cancel": "Huỷ",
+      "stopped": {
+        "one": "Đã dừng. {count} mục nhập trước đó vẫn nằm trong vault.",
+        "other": "Đã dừng. {count} mục nhập trước đó vẫn nằm trong vault."
+      },
+      "tooLarge": "Bản xuất này quá lớn để nhập một lần (trên {max}). Hãy xuất thành nhiều phần, hoặc mỗi lần vài thư mục.",
+      "tooManyFiles": "Bản xuất này có quá nhiều file để nhập một lần (trên {max}). Hãy xuất thành nhiều phần, hoặc mỗi lần vài thư mục."
     }
   },
   "settings": {

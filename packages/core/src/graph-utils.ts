@@ -3,6 +3,7 @@
  * each other in either direction. Pure: contents are read by the caller.
  */
 
+import { linkResolver } from "./link-rename";
 import type { NoteRef } from "./vault-adapter";
 
 export interface LinkGraphEdge {
@@ -20,32 +21,41 @@ export interface LinkGraph {
 
 const LINK_REGEX = /\[\[([^\]|]+)(?:\|[^\]]+)?\]\]/g;
 
-/** `[[Target|alias]]` points at the note whose name (without .md, case-insensitive) is `Target`. */
-function labelOf(name: string): string {
-  return name.replace(/\.md$/i, "").toLowerCase();
+/**
+ * The files `content` (the note at `sourcePath`) wiki-links to, each once, in order; `resolve` comes from
+ * `linkResolver` over the vault's files. `[[Note#Heading]]` and `[[Note^block]]` link to Note; a name that itself
+ * has # or ^ (`C# tips`) is tried whole first. Unknown targets and links to the note itself are left out.
+ */
+export function wikiLinkTargets(
+  content: string,
+  sourcePath: string,
+  resolve: (target: string, sourcePath: string) => string | null
+): string[] {
+  const out = new Set<string>();
+  for (const match of content.matchAll(LINK_REGEX)) {
+    const full = match[1].trim();
+    const target = resolve(full, sourcePath) ?? resolve(full.split(/[#^]/)[0], sourcePath);
+    if (target && target !== sourcePath) out.add(target);
+  }
+  return [...out];
 }
 
 /**
- * `contents` maps note id to its text (a missing id counts as empty). Links to unknown notes and to the note
+ * `contents` maps note id to its text (a missing id counts as empty). Links resolve as everywhere else in the
+ * app (`linkResolver`: bare names, paths, the source's folder first). Links to unknown notes and to the note
  * itself are ignored. Edges keep the direction of the first link seen for a pair; the pair appears once.
  */
 export function buildLinkGraph(notes: NoteRef[], contents: ReadonlyMap<string, string>): LinkGraph {
-  const idByLabel = new Map<string, string>();
-  for (const n of notes) idByLabel.set(labelOf(n.name), n.id);
+  const idByPath = new Map<string, string>();
+  for (const n of notes) idByPath.set(n.path, n.id);
+  const resolve = linkResolver(notes.map((n) => n.path));
 
   // Directed links first, so reciprocal pairs can be collapsed into one edge afterwards.
   const directed = new Map<string, { source: string; target: string }>();
   for (const note of notes) {
-    const content = contents.get(note.id) ?? "";
-    const regex = new RegExp(LINK_REGEX.source, LINK_REGEX.flags);
-    let match: RegExpExecArray | null;
-    while ((match = regex.exec(content)) !== null) {
-      // `[[Note#Heading]]` and `[[Note^block]]` link to Note; a name that itself has # or ^ (`C# tips`) is tried whole first.
-      const full = match[1].trim().toLowerCase();
-      const targetId = idByLabel.get(full) ?? idByLabel.get(full.split(/[#^]/)[0].trim());
-      if (targetId && targetId !== note.id) {
-        directed.set(`${note.id}\0${targetId}`, { source: note.id, target: targetId });
-      }
+    for (const path of wikiLinkTargets(contents.get(note.id) ?? "", note.path, resolve)) {
+      const targetId = idByPath.get(path)!;
+      directed.set(`${note.id}\0${targetId}`, { source: note.id, target: targetId });
     }
   }
 

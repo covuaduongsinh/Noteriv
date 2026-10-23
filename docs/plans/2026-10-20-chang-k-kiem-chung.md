@@ -63,10 +63,7 @@ Xong cả 4 đợt trong 11 phiên (O1–O11, PR #26–#36), tất cả đã lê
 - Mỗi phiên chạy E2E web trên bản build production (57 lên 64 test) và smoke desktop (20 lên 22 kiểm tra).
 - Hỏi chủ dự án trước mỗi lần merge.
 
-**Còn mở, ghi ở các file phiên và [loi-va-gop-y.md](../kiem-chung/loi-va-gop-y.md):**
-- #4: Vault insights phân giải liên kết riêng.
-- Nhập dữ liệu chưa có nút huỷ và chưa giới hạn dung lượng.
-- `/` trong `$…$` vẫn mở menu lệnh.
+**Đã dọn ở [phiên K-O12](2026-10-23-phien-k-o12-don-gioi-han.md) (PR #38):** #4 (đồ thị và Vault insights dùng chung một cách phân giải liên kết, nay hiểu cả liên kết dạng đường dẫn), menu `/` không mở trong `$…$`, và nhập dữ liệu có nút huỷ cùng giới hạn dung lượng (1 GB đã chọn, 2 GB sau giải nén, 50 000 file).
 
 ---
 
@@ -141,4 +138,5 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | O9 | G8: đồ thị cục bộ, độ sâu, màu theo thư mục | Xong | 2026-10-23 | [Phiên K-O9](2026-10-23-phien-k-o9-do-thi-cuc-bo.md); PR #34, đã lên production |
 | O10 | G9 note mã thời gian, G10 ô Chú thích cuối trang, G11 xem trước khi rê chuột trên desktop | Xong | 2026-10-23 | [Phiên K-O10](2026-10-23-phien-k-o10-tien-ich-nho.md); PR #35, đã lên production; hết Đợt 3 |
 | O11 | G12: nhập từ Notion, Evernote, HTML | Xong | 2026-10-23 | [Phiên K-O11](2026-10-23-phien-k-o11-nhap-du-lieu.md); PR #36, đã lên production; hết Đợt 4 |
+| O12 | Dọn giới hạn còn lại: #4, `/` trong công thức, huỷ và giới hạn khi nhập | Xong | 2026-10-23 | [Phiên K-O12](2026-10-23-phien-k-o12-don-gioi-han.md); PR #38 |
 | O2+ | Obsidian: các khoảng trống của 4 đợt | Xong | 2026-10-23 | Làm đủ 4 đợt theo thứ tự chủ dự án chốt (O1–O11). G13–G19 để Chặng 6 hoặc chỉ ghi nhận, theo bản đồ khoảng trống |

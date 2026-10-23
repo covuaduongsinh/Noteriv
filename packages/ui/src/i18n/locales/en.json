@@ -226,7 +226,14 @@
       "open": "Open the first note",
       "nothing": "No notes in what you picked. Check that it is an export of this kind.",
       "readFailed": "Could not read what you picked.",
-      "writeFailed": "The import stopped: nothing more could be written. Try again."
+      "writeFailed": "The import stopped: nothing more could be written. Try again.",
+      "cancel": "Cancel",
+      "stopped": {
+        "one": "Stopped. {count} item was imported before that and stays in the vault.",
+        "other": "Stopped. {count} items were imported before that and stay in the vault."
+      },
+      "tooLarge": "This export is too large to import at once (over {max}). Export it in parts, or a few folders at a time.",
+      "tooManyFiles": "This export has too many files to import at once (over {max}). Export it in parts, or a few folders at a time."
     }
   },
   "settings": {

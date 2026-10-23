@@ -45,6 +45,12 @@ describe("local graph", () => {
     expect(g.edges.map((e) => e.target)).toEqual(["C# tips.md", "C.md"]);
   });
 
+  it("follows links written as paths, and prefers the same-named note in the linking note's folder", () => {
+    const named = [ref("x/Home.md"), ref("x/Note.md"), ref("y/Note.md"), ref("y/Other.md")];
+    const g = buildLinkGraph(named, new Map([["x/Home.md", "[[y/Note]] [[Note]]"], ["y/Other.md", "[[Note]]"]]));
+    expect(g.edges.map((e) => `${e.source}>${e.target}`)).toEqual(["x/Home.md>y/Note.md", "x/Home.md>x/Note.md", "y/Other.md>y/Note.md"]);
+  });
+
   it("finds the notes within a depth of links, whichever way they point", () => {
     // A → B → C → D: from B, depth 1 is A and C; depth 2 adds D.
     const g = graph({ "A.md": "[[B]]", "dir/B.md": "[[C]]", "C.md": "[[D]]", "D.md": "" });

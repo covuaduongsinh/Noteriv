@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/react";
 import { importEnex } from "../importers/enex";
 import { importHtml } from "../importers/html-folder";
-import { readPicked } from "../importers/input";
+import { ImportLimitError, readPicked } from "../importers/input";
 import { importNotion } from "../importers/notion";
 import { safeName, type ImportOptions, type ImportResult, type InputFile } from "../importers/types";
 
@@ -16,11 +16,13 @@ export interface AppImportReport {
   /** Items not written because something was already at their path (left as it was). */
   kept: number;
   failed: { path: string; error: string }[];
+  /** True when the person stopped the import: what was written before stays. */
+  cancelled?: boolean;
 }
 
 export interface AppImportProps {
-  /** Writes the converted notes and attachments into the vault, reporting progress. */
-  write(result: ImportResult, onProgress: (done: number, total: number) => void): Promise<AppImportReport>;
+  /** Writes the converted notes and attachments into the vault, reporting progress; stops between items once `signal` aborts. */
+  write(result: ImportResult, onProgress: (done: number, total: number) => void, signal: AbortSignal): Promise<AppImportReport>;
   /** Vault paths already taken: imported notes get other names (`Note 2.md`) instead of being skipped. */
   existingPaths?(): Promise<string[]>;
   onClose(): void;
@@ -58,6 +60,14 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
   const folderInput = useRef<HTMLInputElement>(null);
   const busy = step.kind === "reading" || step.kind === "importing";
   const dialog = useRef<HTMLDivElement>(null);
+  // The running read or import; Cancel aborts it. Closing the dialog aborts it too.
+  const running = useRef<AbortController | null>(null);
+  useEffect(() => () => running.current?.abort(), []);
+
+  const limitMessage = (e: ImportLimitError) =>
+    e.limit === "files"
+      ? t("panels.appImport.tooManyFiles", { max: e.max.toLocaleString() })
+      : t("panels.appImport.tooLarge", { max: `${Math.round(e.max / 1024 ** 3)} GB` });
 
   // Focus starts in the dialog; Escape closes it unless an import is running.
   useEffect(() => {
@@ -86,19 +96,32 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
     if (files.length === 0) return;
     setError("");
     setStep({ kind: "reading" });
+    const controller = new AbortController();
+    running.current = controller;
     try {
-      const inputs = await readPicked(files);
+      const inputs = await readPicked(files, { signal: controller.signal });
       const preview = await CONVERT[source](inputs, safeName(folder.trim() || DEFAULT_FOLDER[source]));
+      // Cancelled while converting: the dialog is back at the start, the result is dropped.
+      if (controller.signal.aborted) return;
       if (preview.notes.length === 0) {
         setError(t("panels.appImport.nothing"));
         setStep({ kind: "pick" });
         return;
       }
       setStep({ kind: "ready", files: inputs, notes: preview.notes.length, attachments: preview.attachments.length, skipped: preview.skipped });
-    } catch {
-      setError(t("panels.appImport.readFailed"));
+    } catch (e) {
+      if (controller.signal.aborted) return;
+      setError(e instanceof ImportLimitError ? limitMessage(e) : t("panels.appImport.readFailed"));
       setStep({ kind: "pick" });
+    } finally {
+      if (running.current === controller) running.current = null;
     }
+  }
+
+  function cancel() {
+    running.current?.abort();
+    // A read just stops; an import ends when `write` returns, with what it wrote so far.
+    if (step.kind === "reading") setStep({ kind: "pick" });
   }
 
   async function start() {
@@ -106,16 +129,21 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
     const target = safeName(folder.trim() || DEFAULT_FOLDER[source]);
     const ready = step;
     setStep({ kind: "importing", done: 0, total: 1 });
+    const controller = new AbortController();
+    running.current = controller;
     try {
       // Converted again: links and paths depend on the folder (which may have changed) and on what the vault holds.
       const taken = (await existingPaths?.().catch(() => [])) ?? [];
       const result = await CONVERT[source](ready.files, target, { taken });
-      const report = await write(result, (done, total) => setStep({ kind: "importing", done, total }));
-      const first = result.notes.find((n) => !report.failed.some((f) => f.path === n.path))?.path ?? null;
+      const report = await write(result, (done, total) => setStep({ kind: "importing", done, total }), controller.signal);
+      // After a cancel the first note may not have been written: no Open button then.
+      const first = report.cancelled ? null : result.notes.find((n) => !report.failed.some((f) => f.path === n.path))?.path ?? null;
       setStep({ kind: "done", report, first });
     } catch {
       setError(t("panels.appImport.writeFailed"));
       setStep(ready);
+    } finally {
+      if (running.current === controller) running.current = null;
     }
   }
 
@@ -178,7 +206,14 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
               />
             </div>
 
-            {step.kind === "reading" && <div className="aimp-status">{t("panels.appImport.reading")}</div>}
+            {step.kind === "reading" && (
+              <div className="aimp-status">
+                {t("panels.appImport.reading")}
+                <button type="button" className="aimp-btn" onClick={cancel}>
+                  {t("panels.appImport.cancel")}
+                </button>
+              </div>
+            )}
 
             {(step.kind === "ready" || step.kind === "importing") && (
               <>
@@ -215,6 +250,11 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
                   <button type="button" className="aimp-btn aimp-primary" disabled={busy || step.kind !== "ready"} onClick={() => void start()}>
                     {step.kind === "importing" ? t("panels.appImport.importing", { done: step.done, total: step.total }) : t("panels.appImport.import")}
                   </button>
+                  {step.kind === "importing" && (
+                    <button type="button" className="aimp-btn" onClick={cancel}>
+                      {t("panels.appImport.cancel")}
+                    </button>
+                  )}
                 </div>
               </>
             )}
@@ -223,7 +263,7 @@ export default function AppImport({ write, existingPaths, onClose, onOpen }: App
 
         {step.kind === "done" && (
           <div className="aimp-summary">
-            <div>{t("panels.appImport.done", { count: step.report.written })}</div>
+            <div>{t(step.report.cancelled ? "panels.appImport.stopped" : "panels.appImport.done", { count: step.report.written })}</div>
             {step.report.kept > 0 && <div>{t("panels.appImport.kept", { count: step.report.kept })}</div>}
             {step.report.failed.length > 0 && (
               <details open>
