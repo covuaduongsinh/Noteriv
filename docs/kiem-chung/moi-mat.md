@@ -7,12 +7,12 @@
 
 | Chỉ số | Giá trị | Ngày đo | Cách đo |
 |---|---|---|---|
-| Số tài khoản / vault / note trên production | | | `/admin/stats` |
-| Đĩa VPS dùng / còn | | | `df -h /` |
-| RAM / swap dùng | | | `free -h` |
-| RAM các container `noteriv-*` | | | `docker stats --no-stream` |
+| Số tài khoản / vault / note trên production | Chưa đo: Claude không được đọc database production. Chủ dự án xem ở `/admin/stats` | | `/admin/stats` |
+| Đĩa VPS dùng / còn | 95 GB / 145 GB (66%), còn 50 GB | 2026-10-26 | `df -h /` |
+| RAM / swap dùng | RAM 4,8 / 7,8 GiB (còn khả dụng 3,0 GiB); swap 8,8 / 15 GiB | 2026-10-26 | `free -h` |
+| RAM các container `noteriv-*` | Production khoảng 340 MiB cộng lại: api 76, worker 77, collab 55, postgres 50, web 39, redis 33, garage 6, pdf 2, backup 1. Dev (postgres, redis, garage) khoảng 12 MiB | 2026-10-26 | `docker stats --no-stream` |
 | Dung lượng Garage (đính kèm) | | | |
-| Kích thước bản sao lưu gần nhất | | | |
+| Kích thước bản sao lưu gần nhất | Bản sao thủ công gần nhất (`pre-5-5`, 2026-10-19) là 16,6 MB. Bản sao tự động đẩy lên repo `noteriv-backups`, chưa đo | 2026-10-26 | `ls /root/noteriv-manual-backups` |
 | Thời gian mở vault thật của chủ dự án | | | Trình duyệt, tải lại trang, đến khi thấy cây thư mục |
 | Số lỗi Sentry 7 ngày qua | | | Sentry |
 | Uptime 30 ngày | | | UptimeRobot |

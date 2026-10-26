@@ -40,8 +40,8 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 
 | # | Kịch bản | Ai | Bước chính | Kết quả | Thời gian | Ghi chú |
 |---|---|---|---|---|---|---|
-| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | | | |
-| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | | | |
+| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | Chưa chạy | | 2026-10-26: cần ghi vault thử vào database dev dùng chung (hoặc staging). Lần chạy bị hệ thống quyền chặn; chờ chủ dự án cho phép. Script đo bằng Playwright đã viết (chưa vào repo vì chưa chạy được). |
+| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | Chưa chạy | | Như 16 |
 
 ## E. Vận hành
 
@@ -49,7 +49,7 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 |---|---|---|---|---|---|---|
 | 18 | Diễn tập khôi phục | A | Bản sao lưu mới nhất → khôi phục lên staging → đăng nhập, mở note | | | |
 | 19 | Máy chủ API sập | A | Dừng API trên staging → người dùng thấy gì; bật lại → tự hồi phục, không mất chữ | | | |
-| 20 | Kiểm thử tự động toàn bộ | A | E2E CI xanh; smoke desktop 16/16; unit test | | | |
+| 20 | Kiểm thử tự động toàn bộ | A | E2E CI xanh; smoke desktop 16/16; unit test | Đạt có vướng | 2026-10-26 | Unit test: core 409/409, ui 176/176, plugins 106/106. Typecheck sạch cho mọi workspace. CI của PR #44: cả 5 job xanh (server, frontend, desktop-frontend, e2e, phone). Giả lập sync của phone 48/48. **Vướng:** smoke desktop chưa chạy lại từ 2026-10-23 (máy thiếu RAM khi build Tauri). Hai test trượt vì chạy quá thời gian khi máy bận: `markdown-renderers` trên CI (PR #42), `i18n-all-plugins` trên máy. Chạy lại thì cả hai qua. |
 
 ## Tổng hợp
 
