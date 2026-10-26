@@ -10,6 +10,10 @@ are preserved here unchanged.
 The original copyright notice and licence text are kept in [LICENSE](LICENSE), with an
 additional copyright line for the contributions made in this fork.
 
+The mobile app in `phone/` was removed from this fork on 2026-10-17 and restored on
+2026-10-21 from upstream `main` at commit `013fa8c` (Copyright (c) 2026 Jace, MIT). Changes
+made here after that point (application id, shared code, design) are part of this fork.
+
 ## What this fork adds
 
 Work done in this repository after the fork point, including the web application

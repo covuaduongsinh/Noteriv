@@ -1,0 +1,384 @@
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import { AppSettings, Vault, WorkspaceState, FileEntry } from '@/types';
+import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings';
+import * as VaultOps from '@/lib/vault';
+import * as FS from '@/lib/file-system';
+import * as GitSync from '@/lib/provider-sync';
+import { vaultRelativePath, writeConflictCopy } from '@/lib/sync-state';
+
+interface AppContextType {
+  // Vault
+  vault: Vault | null;
+  vaults: Vault[];
+  switchVault: (id: string) => Promise<void>;
+  createVault: (name: string) => Promise<Vault>;
+  deleteVault: (id: string) => Promise<void>;
+  refreshVaults: () => Promise<void>;
+
+  // Settings
+  settings: AppSettings;
+  updateSettings: (updates: Partial<AppSettings>) => Promise<void>;
+
+  // Workspace
+  workspace: WorkspaceState;
+  updateWorkspace: (updates: Partial<WorkspaceState>) => void;
+
+  // File operations
+  currentFile: string | null;
+  content: string;
+  setCurrentFile: (path: string | null) => void;
+  setContent: (content: string) => void;
+  saveFile: () => Promise<boolean>;
+  files: FileEntry[];
+  currentDir: string;
+  setCurrentDir: (dir: string) => void;
+  refreshFiles: () => void;
+
+  // Setup
+  setupComplete: boolean;
+  completeSetup: () => Promise<void>;
+
+  // State
+  isLoading: boolean;
+  isDirty: boolean;
+}
+
+const AppContext = createContext<AppContextType | null>(null);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [vault, setVault] = useState<Vault | null>(null);
+  const [vaults, setVaults] = useState<Vault[]>([]);
+  const [settings, setSettings] = useState<AppSettings>(DEFAULT_SETTINGS);
+  const [workspace, setWorkspace] = useState<WorkspaceState>({
+    openTabs: [],
+    activeTab: null,
+    expandedFolders: [],
+    viewMode: 'edit',
+    bookmarks: [],
+  });
+  const [currentFile, setCurrentFileState] = useState<string | null>(null);
+  const [content, setContentState] = useState('');
+  const [files, setFiles] = useState<FileEntry[]>([]);
+  const [currentDir, setCurrentDirState] = useState('');
+  const [setupComplete, setSetupComplete] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isDirty, setIsDirty] = useState(false);
+  const autoSaveTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const autoSyncTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const hasPulledOnOpen = useRef(false);
+  // A sync downloads every note and can outlast the 5s tick; never run two at once.
+  const syncInFlight = useRef(false);
+  // The sync timers outlive renders, so they read the open folder through a ref.
+  const currentDirRef = useRef(currentDir);
+  currentDirRef.current = currentDir;
+  // The sync timer outlives renders; it reads the open note through refs, not the values of the render that
+  // started it (which would save stale text over the note).
+  const editorRef = useRef({ isDirty, currentFile, content, vaultPath: vault?.path ?? '' });
+  editorRef.current = { isDirty, currentFile, content, vaultPath: vault?.path ?? '' };
+  // The open note's text as last read from or written to disk, to tell when a sync changed it underneath.
+  const diskText = useRef<string | null>(null);
+
+  // Every sync, whoever starts it (the timers below, Settings), saves the open note first and checks it after.
+  useEffect(() => {
+    GitSync.setSyncHooks({
+      before: async () => {
+        const open = editorRef.current;
+        if (open.isDirty && open.currentFile && FS.writeFile(open.currentFile, open.content)) {
+          setIsDirty(false);
+        }
+        // What is on disk now, as read back: the comparison after the sync must not trip over the write itself.
+        if (open.currentFile) diskText.current = await FS.readFile(open.currentFile);
+      },
+      after: async () => {
+        const file = editorRef.current.currentFile;
+        if (!file) return;
+        const disk = await FS.readFile(file);
+        // The note open and its typing as of now, not as of before the read.
+        const open = editorRef.current;
+        if (open.currentFile !== file || disk === null || disk === diskText.current) return;
+        if (open.isDirty) {
+          // Typed during the sync, over text the sync replaced: the editor keeps the typing, and the version the
+          // sync brought stays beside the note, so saving does not silently drop it.
+          await writeConflictCopy(open.vaultPath, vaultRelativePath(open.vaultPath, open.currentFile), disk);
+        } else {
+          setContentState(disk);
+        }
+        diskText.current = disk;
+      },
+    });
+    return () => GitSync.setSyncHooks({});
+  }, []);
+
+  // Initialize
+  useEffect(() => {
+    (async () => {
+      const [loadedSettings, complete, loadedVaults] = await Promise.all([
+        loadSettings(),
+        VaultOps.isSetupComplete(),
+        VaultOps.getVaults(),
+      ]);
+      setSettings(loadedSettings);
+      setSetupComplete(complete);
+      setVaults(loadedVaults);
+
+      if (complete && loadedVaults.length > 0) {
+        const active = await VaultOps.getActiveVault();
+        if (active) {
+          setVault(active);
+          setCurrentDirState(active.path);
+          const ws = await VaultOps.loadWorkspace(active.id);
+          setWorkspace(ws);
+        }
+      }
+      setIsLoading(false);
+    })();
+  }, []);
+
+  // Refresh files when vault or currentDir changes
+  useEffect(() => {
+    if (currentDir) {
+      refreshFiles();
+    }
+  }, [currentDir]);
+
+  // Auto-save
+  useEffect(() => {
+    if (autoSaveTimer.current) clearInterval(autoSaveTimer.current);
+    if (settings.autoSaveInterval > 0 && currentFile) {
+      autoSaveTimer.current = setInterval(() => {
+        if (isDirty) saveFile();
+      }, settings.autoSaveInterval * 1000);
+    }
+    return () => {
+      if (autoSaveTimer.current) clearInterval(autoSaveTimer.current);
+    };
+  }, [settings.autoSaveInterval, currentFile, isDirty]);
+
+  // Save workspace on changes
+  useEffect(() => {
+    if (vault) {
+      VaultOps.saveWorkspace(vault.id, workspace);
+    }
+  }, [workspace, vault]);
+
+  // Auto-pull from the configured forge when vault opens.
+  useEffect(() => {
+    if (!vault?.gitRemote || hasPulledOnOpen.current) return;
+    hasPulledOnOpen.current = true;
+
+    (async () => {
+      if (syncInFlight.current) return;
+      syncInFlight.current = true;
+      try {
+        const token = await GitSync.getVaultToken(vault.id);
+        if (!token) return;
+        console.log('[Noteriv] Auto-pulling from remote...');
+        const result = await GitSync.pull(vault.path, token, vault.gitRemote!, vault.gitBranch || undefined, vault.gitProvider);
+        console.log(`[Noteriv] Pull complete: ${result.pulled} files, ${result.errors.length} errors`);
+        if (result.pulled > 0 && currentDirRef.current) {
+          setFiles(FS.readDir(currentDirRef.current));
+        }
+      } catch (err) {
+        console.warn('[Noteriv] Auto-pull failed:', err);
+      } finally {
+        syncInFlight.current = false;
+      }
+    })();
+  }, [vault?.id, vault?.gitRemote]);
+
+  // Auto-sync every minute (pull + push if changes)
+  useEffect(() => {
+    if (autoSyncTimer.current) {
+      clearInterval(autoSyncTimer.current);
+      autoSyncTimer.current = null;
+    }
+
+    if (!vault?.gitRemote) return;
+
+    autoSyncTimer.current = setInterval(async () => {
+      if (syncInFlight.current) return;
+      syncInFlight.current = true;
+      try {
+        const token = await GitSync.getVaultToken(vault.id);
+        if (!token) return;
+        const result = await GitSync.sync(vault.path, token, vault.gitRemote!, vault.gitBranch || undefined, vault.gitProvider);
+        if (result.errors.length > 0) {
+          console.warn('[Noteriv] Sync errors:', result.errors);
+        }
+        // Pulled changes include notes deleted on the remote; refresh so the
+        // list doesn't keep offering a note that no longer exists.
+        if (result.pulled > 0 && currentDirRef.current) {
+          setFiles(FS.readDir(currentDirRef.current));
+        }
+      } catch {
+      } finally {
+        syncInFlight.current = false;
+      }
+    }, 60_000);
+
+    return () => {
+      if (autoSyncTimer.current) {
+        clearInterval(autoSyncTimer.current);
+        autoSyncTimer.current = null;
+      }
+    };
+  }, [vault?.id, vault?.gitRemote]);
+
+  const refreshFiles = useCallback(() => {
+    if (!currentDir) return;
+    const entries = FS.readDir(currentDir);
+    setFiles(entries);
+  }, [currentDir]);
+
+  const refreshVaults = useCallback(async () => {
+    const v = await VaultOps.getVaults();
+    setVaults(v);
+    // Also refresh the active vault in case its properties changed
+    const active = await VaultOps.getActiveVault();
+    if (active) setVault(active);
+  }, []);
+
+  const switchVault = useCallback(async (id: string) => {
+    // Save current workspace
+    if (vault) {
+      await VaultOps.saveWorkspace(vault.id, workspace);
+    }
+    await VaultOps.setActiveVault(id);
+    const v = await VaultOps.getActiveVault();
+    if (v) {
+      hasPulledOnOpen.current = false; // Reset so new vault triggers pull
+      setVault(v);
+      setCurrentDirState(v.path);
+      setCurrentFileState(null);
+      setContentState('');
+      setIsDirty(false);
+      const ws = await VaultOps.loadWorkspace(v.id);
+      setWorkspace(ws);
+    }
+  }, [vault, workspace]);
+
+  const createVaultFn = useCallback(async (name: string) => {
+    const v = await VaultOps.createVault(name);
+    await refreshVaults();
+    setVault(v);
+    setCurrentDirState(v.path);
+    const ws = await VaultOps.loadWorkspace(v.id);
+    setWorkspace(ws);
+    return v;
+  }, []);
+
+  const deleteVaultFn = useCallback(async (id: string) => {
+    await VaultOps.deleteVault(id);
+    await refreshVaults();
+    if (vault?.id === id) {
+      const remaining = await VaultOps.getVaults();
+      if (remaining.length > 0) {
+        await switchVault(remaining[0].id);
+      } else {
+        setVault(null);
+        setCurrentDirState('');
+      }
+    }
+  }, [vault]);
+
+  const updateSettingsFn = useCallback(async (updates: Partial<AppSettings>) => {
+    const next = { ...settings, ...updates };
+    setSettings(next);
+    await saveSettings(next);
+  }, [settings]);
+
+  const updateWorkspace = useCallback((updates: Partial<WorkspaceState>) => {
+    setWorkspace((prev) => ({ ...prev, ...updates }));
+  }, []);
+
+  const setCurrentFile = useCallback(async (path: string | null) => {
+    // Save current file if dirty
+    if (isDirty && currentFile) {
+      FS.writeFile(currentFile, content);
+      setIsDirty(false);
+    }
+
+    setCurrentFileState(path);
+    if (path) {
+      const fileContent = await FS.readFile(path);
+      diskText.current = fileContent;
+      setContentState(fileContent ?? '');
+      setIsDirty(false);
+      // Update open tabs
+      setWorkspace((prev) => {
+        const tabs = prev.openTabs.includes(path)
+          ? prev.openTabs
+          : [...prev.openTabs, path];
+        return { ...prev, openTabs: tabs, activeTab: path };
+      });
+    } else {
+      setContentState('');
+      setIsDirty(false);
+    }
+  }, [currentFile, content, isDirty]);
+
+  const setContent = useCallback((newContent: string) => {
+    setContentState(newContent);
+    setIsDirty(true);
+  }, []);
+
+  const saveFile = useCallback(async (): Promise<boolean> => {
+    if (!currentFile) return false;
+    const ok = FS.writeFile(currentFile, content);
+    if (ok) {
+      diskText.current = content;
+      setIsDirty(false);
+    }
+    return ok;
+  }, [currentFile, content]);
+
+  const setCurrentDir = useCallback((dir: string) => {
+    setCurrentDirState(dir);
+  }, []);
+
+  const completeSetup = useCallback(async () => {
+    await VaultOps.setSetupComplete();
+    setSetupComplete(true);
+    // Re-read vault from storage so gitRemote etc. are picked up
+    const active = await VaultOps.getActiveVault();
+    if (active) setVault(active);
+  }, []);
+
+  return (
+    <AppContext.Provider
+      value={{
+        vault,
+        vaults,
+        switchVault,
+        createVault: createVaultFn,
+        deleteVault: deleteVaultFn,
+        refreshVaults,
+        settings,
+        updateSettings: updateSettingsFn,
+        workspace,
+        updateWorkspace,
+        currentFile,
+        content,
+        setCurrentFile,
+        setContent,
+        saveFile,
+        files,
+        currentDir,
+        setCurrentDir,
+        refreshFiles,
+        setupComplete,
+        completeSetup,
+        isLoading,
+        isDirty,
+      }}
+    >
+      {children}
+    </AppContext.Provider>
+  );
+}
+
+export function useApp() {
+  const ctx = useContext(AppContext);
+  if (!ctx) throw new Error('useApp must be used inside AppProvider');
+  return ctx;
+}
