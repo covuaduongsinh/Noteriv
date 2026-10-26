@@ -1,4 +1,5 @@
 import type { FastifyInstance } from "fastify";
+import type { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { resolvePath } from "../lib/notePath.js";
@@ -41,6 +42,12 @@ const updateNoteSchema = z.object({
 
 const containingSchema = z.object({
   terms: z.array(z.string().min(1).max(255)).min(1).max(200),
+});
+
+const batchNotesSchema = z.object({
+  noteIds: z.array(z.string().min(1)).max(250).optional(),
+  paths: z.array(z.string().min(1)).max(250).optional(),
+  all: z.boolean().optional(),
 });
 
 /** More notes than this matching one rename is unusual; the cap keeps one request bounded. */
@@ -97,6 +104,46 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       // Past the cap the client cannot know which notes it missed: it says so and reads every note instead.
       const truncated = notes.length > CONTAINING_LIMIT;
       return reply.send({ notes: truncated ? notes.slice(0, CONTAINING_LIMIT) : notes, truncated });
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  /**
+   * Batch read note contents in one request. Used by plugins (scanVault, graph, dataview, vault-insights)
+   * to avoid making individual HTTP requests for hundreds or thousands of notes (Bug #5).
+   */
+  fastify.post("/:vid/notes/batch", async (request, reply) => {
+    const { vid } = request.params as { vid: string };
+    const parsed = batchNotesSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const { noteIds, paths, all } = parsed.data;
+
+      const where: Prisma.NoteWhereInput = {
+        vaultId: vid,
+        deletedAt: null,
+      };
+
+      if (!all) {
+        if (noteIds && noteIds.length > 0) {
+          where.id = { in: noteIds };
+        } else if (paths && paths.length > 0) {
+          where.path = { in: paths.map((p) => p.replace(/\\/g, "/")) };
+        } else {
+          return reply.send({ notes: [] });
+        }
+      }
+
+      const notes = await prisma.note.findMany({
+        where,
+        select: { id: true, name: true, path: true, content: true },
+        orderBy: { path: "asc" },
+      });
+
+      return reply.send({ notes });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
       throw err;

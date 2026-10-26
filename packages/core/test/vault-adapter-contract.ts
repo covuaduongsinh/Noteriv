@@ -85,6 +85,17 @@ export function runVaultAdapterContract(label: string, make: (initial: Record<st
       expect(await v.getSettings()).toEqual({ theme: "dark" });
     });
 
+    it("batch reads notes when supported", async () => {
+      const v = make(seed);
+      if (!v.readBatchNotes) return;
+      const all = await v.readBatchNotes({ all: true });
+      expect(all.map((r) => r.ref.path).sort()).toEqual(["a.md", "dir/b.md", "dir/c.md"]);
+      expect(all.find((r) => r.ref.path === "a.md")?.content).toBe(seed["a.md"]);
+
+      const subset = await v.readBatchNotes({ paths: ["a.md", "dir/c.md"] });
+      expect(subset.map((r) => r.ref.path).sort()).toEqual(["a.md", "dir/c.md"]);
+    });
+
     it("reports changes to watchers until they unsubscribe", async () => {
       const v = make(seed);
       if (!v.watch) return;

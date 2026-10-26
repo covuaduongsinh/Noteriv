@@ -87,6 +87,10 @@ export interface VaultApi {
   frontmatter(): Promise<{ path: string; block: string }[]>;
   /** Core tier only. Creation / last-change time of every note, keyed by vault-relative path (absent: unknown). */
   stats(): Promise<Record<string, NoteStats>>;
+  /** Core tier only. Reads multiple notes by path in batch, returning a map of path -> content. */
+  readBatch?(paths: string[]): Promise<Record<string, string>>;
+  /** Core tier only. Reads all notes in the vault in batch (Bug #5). */
+  readAll?(): Promise<{ path: string; content: string }[]>;
   /**
    * Core tier only. Stores a binary attachment (a recording, an image…) under `name` and returns the link target to
    * put in markdown (`![Audio](target)`): an attachment URL on web, `attachments/<name>` inside the vault on desktop.

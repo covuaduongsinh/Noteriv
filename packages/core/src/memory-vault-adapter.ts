@@ -173,6 +173,33 @@ export class MemoryVaultAdapter implements VaultAdapter {
     return out.sort((a, b) => a.ref.name.localeCompare(b.ref.name) || (a.line ?? 0) - (b.line ?? 0));
   }
 
+  async readBatchNotes(options: { ids?: string[]; paths?: string[]; all?: boolean } = { all: true }): Promise<{ ref: NoteRef; content: string }[]> {
+    const out: { ref: NoteRef; content: string }[] = [];
+    if (options.all) {
+      for (const [path, content] of this.notes.entries()) {
+        out.push({ ref: this.ref(path), content });
+      }
+      return out;
+    }
+    if (options.ids && options.ids.length > 0) {
+      for (const id of options.ids) {
+        const norm = toPosixPath(id);
+        const content = this.notes.get(norm);
+        if (content !== undefined) out.push({ ref: this.ref(norm), content });
+      }
+      return out;
+    }
+    if (options.paths && options.paths.length > 0) {
+      for (const path of options.paths) {
+        const norm = toPosixPath(path);
+        const content = this.notes.get(norm);
+        if (content !== undefined) out.push({ ref: this.ref(norm), content });
+      }
+      return out;
+    }
+    return out;
+  }
+
   async getSettings(): Promise<Record<string, unknown>> {
     return { ...this.settings };
   }
