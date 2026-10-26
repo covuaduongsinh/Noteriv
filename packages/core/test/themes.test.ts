@@ -16,5 +16,9 @@ describe("built-in themes", () => {
     expect(light).toEqual(["catppuccin-latte", "solarized-light"]);
     expect(isLightTheme({ bgPrimary: "#fff" })).toBe(true);
     expect(isLightTheme({ bgPrimary: "not a colour" })).toBe(false);
+    expect(isLightTheme({ bgPrimary: " #ffffff " })).toBe(true);
+    expect(isLightTheme({ bgPrimary: "#fffa" })).toBe(true);
+    expect(isLightTheme({ bgPrimary: "beige" })).toBe(false);
+    expect(isLightTheme({ bgPrimary: "rgb(255, 255, 255)" })).toBe(false);
   });
 });

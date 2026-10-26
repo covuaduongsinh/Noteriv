@@ -15,6 +15,8 @@
 
 - Màn thiết lập ban đầu có công tắc "Thêm các note hướng dẫn", bật sẵn như trên desktop. Công tắc ghi vault "Bắt đầu" (`packages/core/src/sample-vault.ts`) theo ngôn ngữ của app.
 - Không ghi note mẫu khi vault được nối với một repo GitHub có sẵn, vì sync sẽ đẩy chúng vào repo đó. Nếu tạo repo mới, hoặc không sync, thì vẫn ghi.
+- Chỉ ghi vào chỗ chưa có file. Review chỉ ra rằng "Reset app" xoá cài đặt nhưng giữ thư mục vault. Nếu sau đó người dùng chạy lại thiết lập với cùng tên vault, note mẫu sẽ ghi đè note thật của họ.
+- Review cũng làm `isLightTheme` chặt hơn: chỉ đọc mã hex, bỏ khoảng trắng ở đầu và cuối, còn tên màu hoặc `rgb()` thì coi là theme tối.
 
 ## Bố cục theo web: để sau
 

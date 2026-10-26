@@ -22,7 +22,7 @@ import { useApp } from '@/context/AppContext';
 import { setItem, KEYS } from '@/lib/storage';
 import { getLocale, useT } from '@/lib/i18n';
 import { sampleVault } from '@noteriv/core/sample-vault';
-import { writeFile } from '@/lib/file-system';
+import { fileMissing, writeFile } from '@/lib/file-system';
 import { vaultFileUri } from '@/lib/sync-state';
 
 interface GitHubUser {
@@ -198,7 +198,13 @@ export default function SetupScreen() {
       // Not into a repository that already holds notes: sync would push the samples into it.
       const existingRepo = enableGit && !!ghUser && !createNewRepo && !!selectedRepo;
       if (sampleNotes && !existingRepo) {
-        for (const file of sampleVault(getLocale()).files) writeFile(vaultFileUri(vault.path, file.path), file.content);
+        // Only where nothing is: a folder of the same name may survive from before (Reset app keeps the files).
+        let failed = 0;
+        for (const file of sampleVault(getLocale()).files) {
+          const uri = vaultFileUri(vault.path, file.path);
+          if (fileMissing(uri) && !writeFile(uri, file.content)) failed++;
+        }
+        if (failed > 0) console.warn(`[Noteriv] ${failed} getting started note(s) could not be written`);
       }
 
       // If git is enabled, determine the remote URL

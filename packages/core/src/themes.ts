@@ -306,12 +306,16 @@ export const BUILT_IN_THEMES: ThemeDefinition[] = [
   },
 ];
 
-/** Whether a theme is light (dark text on a light background), from its background's luminance. */
+/**
+ * Whether a theme is light (dark text on a light background), from its background's luminance. Only hex colours
+ * (`#rgb`, `#rrggbb`, with or without alpha) are read; anything else counts as dark.
+ */
 export function isLightTheme(colors: Pick<ThemeColors, "bgPrimary">): boolean {
-  const hex = colors.bgPrimary.replace("#", "");
-  const full = hex.length === 3 ? hex.split("").map((c) => c + c).join("") : hex.slice(0, 6);
+  const m = /^#?([0-9a-f]{3,4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.exec(colors.bgPrimary.trim());
+  if (!m) return false;
+  const hex = m[1];
+  const full = hex.length <= 4 ? hex.slice(0, 3).split("").map((c) => c + c).join("") : hex.slice(0, 6);
   const n = Number.parseInt(full, 16);
-  if (Number.isNaN(n)) return false;
   const [r, g, b] = [(n >> 16) & 255, (n >> 8) & 255, n & 255];
   return 0.2126 * r + 0.7152 * g + 0.0722 * b > 128;
 }
