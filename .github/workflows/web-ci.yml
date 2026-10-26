@@ -52,6 +52,10 @@ jobs:
       - name: Typecheck
         run: npx tsc --noEmit
 
+      # The sync worker's guards against hostile paths, branches, hosts and symlinks (no database needed).
+      - name: Security checks
+        run: npx tsx scripts/test-security.ts
+
       - name: Build
         run: npm run build
 

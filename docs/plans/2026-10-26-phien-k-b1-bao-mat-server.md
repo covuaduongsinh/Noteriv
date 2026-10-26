@@ -25,6 +25,8 @@ Worker sync giữ `DATABASE_URL`, `ENCRYPTION_KEY` (giải mã token Git/WebDAV 
 - **Tên đính kèm có thể thành `..`.** `safeName` nay thêm `_` phía trước cho các tên không hợp lệ.
 - **Cách dùng hợp lệ bị chặn:** Gitea qua http hoặc trong LAN, NAS, Tailscale. Thêm công tắc `SYNC_ALLOW_PRIVATE_REMOTES=1` cho máy chủ tự host: cho phép địa chỉ nội bộ và `http://`. Bản SaaS không đặt biến này. Remote dạng ssh `git@` không còn nhập được (vốn không dùng được với token qua askpass). Tên branch không phải ASCII bị từ chối; quy tắc này hẹp hơn git chứ không lỏng hơn.
 
+Working copy cũ trên production không cần dọn tay: không có `SYNC_SCRATCH_DIR`, nên chúng nằm trong `/tmp` của container và mất ở mỗi lần deploy. `scripts/test-security.ts` nay chạy trong CI job `server`.
+
 Bộ kịch bản sync chạy với repo cục bộ, nên bật `SYNC_ALLOW_LOCAL_REMOTES=1` để mở lại giao thức `file` và bỏ qua bước kiểm host. Biến này chỉ đặt trong script test, không đặt ở production.
 
 **Chưa che:** tên miền đổi địa chỉ giữa lúc kiểm và lúc git/axios kết nối (DNS rebinding). Phần còn lại là việc của mạng: cho worker vào một mạng chỉ đi ra Internet, ghi ở K-B3.
