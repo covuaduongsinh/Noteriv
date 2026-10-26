@@ -35,7 +35,7 @@ export default async function adminRoutes(fastify: FastifyInstance) {
   fastify.addHook("preHandler", fastify.authenticate);
   fastify.addHook("preHandler", async (request, reply) => {
     if (reply.sent) return;
-    const me = await prisma.user.findUnique({ where: { id: request.user!.id }, select: { role: true, email: true } });
+    const me = await prisma.user.findUnique({ where: { id: request.user!.id }, select: { role: true, email: true, emailVerifiedAt: true } });
     if (!me || !isAdmin(me)) {
       return reply.code(403).send({ error: "forbidden" });
     }

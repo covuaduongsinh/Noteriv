@@ -143,7 +143,7 @@ async function main() {
   const s = new Session(args.api);
   await signIn(s, args.email, args.password);
   if (args.cleanup) {
-    const del = await s.req("DELETE", "/users/me");
+    const del = await s.req("DELETE", "/users/me", { password: args.password });
     console.log(`delete account: ${del.status}`);
     return;
   }

@@ -11,6 +11,7 @@ const localeField = z.enum(["en", "vi"]).optional();
 const resendVerificationSchema = z.object({ locale: localeField });
 const changeEmailSchema = z.object({ newEmail: emailField, password: z.string().min(1), locale: localeField });
 const acceptTermsSchema = z.object({ version: z.string().min(1).max(32) });
+const deleteAccountSchema = z.object({ password: z.string().min(1) });
 
 /** How a send that the user asked for directly is answered; "sent" is the only 200. */
 function sendFailure(result: Exclude<SendResult, "sent">): { code: number; error: string } {
@@ -123,6 +124,17 @@ export default async function userRoutes(fastify: FastifyInstance) {
    */
   fastify.delete("/me", async (request, reply) => {
     const userId = request.user!.id;
+    const parsed = deleteAccountSchema.safeParse(request.body);
+    if (!parsed.success) {
+      return reply.code(400).send({ error: "password_required" });
+    }
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) return reply.code(404).send({ error: "not_found" });
+    if (!user.passwordHash || !(await verifyPassword(parsed.data.password, user.passwordHash))) {
+      logAudit(prisma, { userId, action: "account_delete_rejected", metadata: { reason: "wrong_password" }, ip: request.ip });
+      return reply.code(403).send({ error: "wrong_password" });
+    }
+
     const { attachmentFiles, failed } = await deleteAccount(prisma, userId);
     if (failed) request.log.warn({ failed, total: attachmentFiles }, "some attachment files were not removed from storage");
     // The user row is gone, so the entry names the account as its resource: with userId set, the foreign key made

@@ -1381,7 +1381,8 @@
       "emailOff": "Chưa gửi email được.",
       "emailFailed": "Không gửi được thư. Hãy thử lại sau.",
       "cancel": "Huỷ",
-      "admin": "Quản trị (admin)"
+      "admin": "Quản trị (admin)",
+      "deletePasswordPrompt": "Vui lòng nhập mật khẩu để xác nhận xoá tài khoản:"
     },
     "termsGate": {
       "title": "Chúng tôi đã cập nhật Điều khoản và Chính sách quyền riêng tư",

@@ -9,6 +9,10 @@ import path from "node:path";
 import { isSafeBranch, isSafeVaultPath, prepareWrite, safeJoin, vaultSegmentError } from "../src/lib/vaultPaths.js";
 import { ensureWorkingCopy } from "../src/lib/gitSync.js";
 import { assertPublicRemote, isPrivateAddress } from "../src/lib/remoteHost.js";
+import { isAdmin } from "../src/lib/registration.js";
+import { isSafeInlineMime } from "../src/routes/attachments.js";
+import { isAllowedOrigin } from "../src/lib/collabOrigin.js";
+import { checkLoginAttempts, recordFailedLogin, resetFailedLogins } from "../src/routes/auth.js";
 
 let failures = 0;
 function check(name: string, ok: boolean, detail?: unknown) {
@@ -126,6 +130,47 @@ const leak = path.join(wc2, "leak.md");
 check("the symlink is checked out as a plain file", !lstatSync(leak).isSymbolicLink());
 check("its text is the link target, not the secret", readFileSync(leak, "utf8") !== "SECRET", readFileSync(leak, "utf8"));
 check("a branch that looks like an option is refused", (await ensureWorkingCopy(path.join(root, "wc3"), bare, "--upload-pack=x", null).then(() => false, () => true)));
+
+// --- K-B3: Admin verification, Safe inline MIME, Collab origin, Login lockout ---
+// 1. ADMIN_EMAILS requires verified email
+process.env.ADMIN_EMAILS = "admin@example.com,operator@example.com";
+check("role=admin is always admin", isAdmin({ role: "admin", email: "anyone@example.com" }));
+check("ADMIN_EMAILS with verified email is admin", isAdmin({ role: "user", email: "admin@example.com", emailVerifiedAt: new Date() }));
+check("ADMIN_EMAILS unverified is NOT admin", !isAdmin({ role: "user", email: "admin@example.com", emailVerifiedAt: null }));
+check("ADMIN_EMAILS without emailVerifiedAt is NOT admin", !isAdmin({ role: "user", email: "admin@example.com" }));
+check("regular user with verified email is NOT admin", !isAdmin({ role: "user", email: "user@example.com", emailVerifiedAt: new Date() }));
+
+// 2. Safe inline MIME types whitelist
+for (const mime of ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "application/pdf", "audio/mpeg", "video/mp4"]) {
+  check(`safe inline MIME ${mime} allowed`, isSafeInlineMime(mime));
+}
+for (const mime of ["image/svg+xml", "text/html", "text/javascript", "application/javascript", "application/xhtml+xml", "text/xml"]) {
+  check(`unsafe MIME ${mime} refused inline`, !isSafeInlineMime(mime));
+}
+
+// 3. Collab WebSocket Origin validation
+check("non-browser client (no origin) allowed", isAllowedOrigin(undefined));
+check("tauri origin allowed", isAllowedOrigin("tauri://localhost"));
+check("localhost origin allowed", isAllowedOrigin("http://localhost:3000"));
+check("127.0.0.1 origin allowed", isAllowedOrigin("http://127.0.0.1:4002"));
+check("production domain allowed", isAllowedOrigin("https://noteriv.dsc.edu.vn"));
+check("staging domain allowed", isAllowedOrigin("https://staging-noteriv.dsc.edu.vn"));
+process.env.APP_ORIGIN = "https://custom-noteriv.example.com";
+check("custom APP_ORIGIN domain allowed", isAllowedOrigin("https://custom-noteriv.example.com"));
+check("subdomain takeover or evil origin refused", !isAllowedOrigin("https://evil.com"));
+check("prefix attack origin refused", !isAllowedOrigin("https://noteriv.dsc.edu.vn.attacker.com"));
+
+// 4. Per-account login lockout
+const testEmail = "victim@example.com";
+resetFailedLogins(testEmail);
+check("initial login attempt allowed", checkLoginAttempts(testEmail).allowed);
+for (let i = 0; i < 4; i++) recordFailedLogin(testEmail);
+check("4 failed attempts still allowed", checkLoginAttempts(testEmail).allowed);
+recordFailedLogin(testEmail); // 5th attempt
+check("5th failed attempt triggers lockout", !checkLoginAttempts(testEmail).allowed);
+resetFailedLogins(testEmail);
+check("reset clears lockout", checkLoginAttempts(testEmail).allowed);
+
 
 rmSync(root, { recursive: true, force: true });
 console.log(failures ? `${failures} FAILED` : "ALL PASSED");

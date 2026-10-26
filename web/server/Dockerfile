@@ -28,4 +28,7 @@ COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/package.json ./package.json
 
+# Run as unprivileged node user (non-root)
+USER node
+
 CMD ["node", "dist/index.js"]

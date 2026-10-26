@@ -66,9 +66,19 @@ export default function TermsGate() {
 
   const remove = () => {
     if (!confirmDelete) return setConfirmDelete(true);
+    const password = window.prompt(t("web.vaultList.deletePasswordPrompt") || "Enter your password to confirm account deletion:");
+    if (!password) {
+      setConfirmDelete(false);
+      return;
+    }
     return run(async () => {
-      await deleteMyAccount();
-      router.replace("/login");
+      try {
+        await deleteMyAccount(password);
+        router.replace("/login");
+      } catch {
+        setConfirmDelete(false);
+        setError(t("web.vaultList.wrongPassword") || "Wrong password.");
+      }
     });
   };
 

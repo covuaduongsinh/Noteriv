@@ -1410,7 +1410,8 @@
       "emailOff": "Sending email is not available yet.",
       "emailFailed": "The email could not be sent. Try again later.",
       "cancel": "Cancel",
-      "admin": "Administration (admin)"
+      "admin": "Administration (admin)",
+      "deletePasswordPrompt": "Please enter your password to confirm account deletion:"
     },
     "termsGate": {
       "title": "We updated our Terms and Privacy Policy",
