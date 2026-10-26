@@ -126,6 +126,11 @@ export interface VaultAdapter {
    * vault. Optional: without it, callers read every note.
    */
   frontmatterHeads?(): Promise<{ ref: NoteRef; head: string }[]>;
+  /**
+   * Batch reads multiple notes with their contents (optional). Used by plugins to scan notes
+   * efficiently without making individual read requests per note (Bug #5).
+   */
+  readBatchNotes?(options?: { ids?: string[]; paths?: string[]; all?: boolean }): Promise<{ ref: NoteRef; content: string }[]>;
   /** Subscribe to external changes. Optional: the web client has no change feed yet. */
   watch?(onChange: (id: string) => void): () => void;
 }

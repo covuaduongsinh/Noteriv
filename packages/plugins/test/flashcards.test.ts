@@ -105,6 +105,45 @@ describe("flashcards plugin", () => {
     expect(notes.map((n) => n.path).sort()).toEqual(["Openings/e4.md", "a.md"]);
   });
 
+  it("scanVault uses readAll when available", async () => {
+    const readAllFn = vi.fn(async () => [
+      { path: "a.md", content: "AAA" },
+      { path: "b.md", content: "BBB" },
+    ]);
+    const readFn = vi.fn();
+    const vault = {
+      readAll: readAllFn,
+      read: readFn,
+      list: vi.fn(),
+    } as unknown as PluginApi["vault"];
+
+    const notes = await scanVault(vault);
+    expect(notes).toEqual([
+      { path: "a.md", content: "AAA" },
+      { path: "b.md", content: "BBB" },
+    ]);
+    expect(readAllFn).toHaveBeenCalledTimes(1);
+    expect(readFn).not.toHaveBeenCalled();
+  });
+
+  it("scanVault uses readBatch when available", async () => {
+    const tree: Record<string, { path: string; name: string; isDir: boolean }[]> = {
+      "": [{ path: "x.md", name: "x.md", isDir: false }],
+    };
+    const readBatchFn = vi.fn(async (_paths: string[]) => ({ "x.md": "XXX" }));
+    const readFn = vi.fn();
+    const vault = {
+      list: async (dir?: string) => tree[dir ?? ""] ?? [],
+      readBatch: readBatchFn,
+      read: readFn,
+    } as unknown as PluginApi["vault"];
+
+    const notes = await scanVault(vault);
+    expect(notes).toEqual([{ path: "x.md", content: "XXX" }]);
+    expect(readBatchFn).toHaveBeenCalledWith(["x.md"]);
+    expect(readFn).not.toHaveBeenCalled();
+  });
+
   it("registers the review view, a command and a ribbon button that open it", async () => {
     const api = {
       app: { platform: "web", vaultPath: null },

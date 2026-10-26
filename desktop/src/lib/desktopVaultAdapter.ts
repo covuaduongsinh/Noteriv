@@ -55,6 +55,34 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
 
     readNote: (id) => api().readFile(id),
 
+    async readBatchNotes(options: { ids?: string[]; paths?: string[]; all?: boolean } = { all: true }) {
+      const notes = await listNotes();
+      let targetNotes: NoteRef[] = [];
+      if (options.all) {
+        targetNotes = notes;
+      } else if (options.ids && options.ids.length > 0) {
+        const idSet = new Set(options.ids);
+        targetNotes = notes.filter((n) => idSet.has(n.id));
+      } else if (options.paths && options.paths.length > 0) {
+        const pathSet = new Set(options.paths.map(toPosixPath));
+        targetNotes = notes.filter((n) => pathSet.has(toPosixPath(n.path)));
+      } else {
+        return [];
+      }
+
+      // Read in bounded chunks (32 at a time) to avoid EMFILE or IPC pressure on large vaults
+      const out: { ref: NoteRef; content: string }[] = [];
+      for (let i = 0; i < targetNotes.length; i += 32) {
+        const chunk = targetNotes.slice(i, i + 32);
+        const contents = await Promise.all(chunk.map((n) => api().readFile(n.id).catch(() => null)));
+        chunk.forEach((ref, k) => {
+          const content = contents[k];
+          if (content !== null && content !== undefined) out.push({ ref, content });
+        });
+      }
+      return out;
+    },
+
     async writeNote(id, content) {
       if (!(await api().writeFile(id, content))) throw new Error(`Could not write ${id}`);
     },

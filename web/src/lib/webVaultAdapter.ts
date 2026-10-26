@@ -102,6 +102,32 @@ export function createWebVaultAdapter(vaultId: string): VaultAdapter {
       return (await webApi.notes.frontmatterHeads(vaultId)).map((n) => ({ ref: toRef(n), head: n.head }));
     },
 
+    async readBatchNotes(options: { ids?: string[]; paths?: string[]; all?: boolean } = { all: true }) {
+      if (options.all) {
+        const res = await webApi.notes.batch(vaultId, { all: true });
+        return res.notes.map((n) => ({ ref: toRef(n), content: n.content }));
+      }
+      if (options.ids && options.ids.length > 0) {
+        const out: { ref: NoteRef; content: string }[] = [];
+        for (let i = 0; i < options.ids.length; i += 200) {
+          const chunk = options.ids.slice(i, i + 200);
+          const res = await webApi.notes.batch(vaultId, { noteIds: chunk });
+          out.push(...res.notes.map((n) => ({ ref: toRef(n), content: n.content })));
+        }
+        return out;
+      }
+      if (options.paths && options.paths.length > 0) {
+        const out: { ref: NoteRef; content: string }[] = [];
+        for (let i = 0; i < options.paths.length; i += 200) {
+          const chunk = options.paths.slice(i, i + 200);
+          const res = await webApi.notes.batch(vaultId, { paths: chunk });
+          out.push(...res.notes.map((n) => ({ ref: toRef(n), content: n.content })));
+        }
+        return out;
+      }
+      return [];
+    },
+
     async writeNoteIfUnchanged(id, content, expected) {
       const expectHash = await contentHash(expected);
       if (!expectHash) {

@@ -322,6 +322,33 @@ export function createCorePluginHost(services: CorePluginHostServices): CorePlug
           for (const n of notes) if (dates[n.id]) out[n.path] = dates[n.id];
           return out;
         },
+        async readBatch(paths) {
+          if (adapter.readBatchNotes) {
+            const results = await adapter.readBatchNotes({ paths });
+            const map: Record<string, string> = {};
+            for (const r of results) map[r.ref.path] = r.content;
+            return map;
+          }
+          const map: Record<string, string> = {};
+          await mapLimited(paths, 8, async (p) => {
+            const ref = await findNote(p);
+            const content = ref ? await adapter.readNote(ref.id) : null;
+            if (content !== null) map[p] = content;
+          });
+          return map;
+        },
+        async readAll() {
+          if (adapter.readBatchNotes) {
+            const results = await adapter.readBatchNotes({ all: true });
+            return results.map((r) => ({ path: r.ref.path, content: r.content }));
+          }
+          const notes = await listNotes();
+          const results = await mapLimited(notes, 8, async (ref) => {
+            const content = await adapter.readNote(ref.id);
+            return content !== null ? { path: ref.path, content } : null;
+          });
+          return results.filter((r): r is { path: string; content: string } => r !== null);
+        },
         async saveAttachment(name, data) {
           if (!adapter.saveAttachment) throw new Error("This vault cannot store attachments");
           // A file name only: no folders, nothing that could step out of the attachments place.

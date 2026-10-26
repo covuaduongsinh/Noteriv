@@ -16,8 +16,21 @@ export async function listMarkdown(vault: VaultApi, dir?: string): Promise<strin
   return out;
 }
 
-/** Every markdown note with its content, read a few at a time (one request per note on web). */
+/**
+ * Every markdown note with its content.
+ * Uses batch reading when available (`vault.readAll` or `vault.readBatch`) to read all notes
+ * in a single request (Bug #5), otherwise falls back to reading notes individually.
+ */
 export async function scanVault(vault: VaultApi, concurrency = 8): Promise<ScannedNote[]> {
+  if (typeof vault.readAll === "function") {
+    const all = await vault.readAll();
+    return all.filter((n) => /\.(md|markdown)$/i.test(n.path));
+  }
+  if (typeof vault.readBatch === "function") {
+    const paths = await listMarkdown(vault);
+    const map = await vault.readBatch(paths);
+    return Object.entries(map).map(([path, content]) => ({ path, content }));
+  }
   const paths = await listMarkdown(vault);
   const out: ScannedNote[] = [];
   for (let i = 0; i < paths.length; i += concurrency) {

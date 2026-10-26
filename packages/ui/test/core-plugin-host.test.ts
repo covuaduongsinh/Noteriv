@@ -184,6 +184,48 @@ describe("core plugin host", () => {
     expect(listNotes.mock.calls.length).toBeGreaterThan(1);
   });
 
+  it("supports readBatch and readAll with adapter.readBatchNotes delegation and fallback", async () => {
+    const adapter = new MemoryVaultAdapter({ "a.md": "Content A", "b.md": "Content B", "c.md": "Content C" });
+    const spy = vi.spyOn(adapter, "readBatchNotes");
+    let api!: PluginApi;
+    const { host } = makeHost([def("v", { onload: (a) => void (api = a) })], { adapter });
+    await host.registry.setEnabled("v", true);
+
+    // Test readBatch
+    const batch = await api.vault.readBatch!(["a.md", "c.md"]);
+    expect(batch).toEqual({ "a.md": "Content A", "c.md": "Content C" });
+    expect(spy).toHaveBeenCalledWith({ paths: ["a.md", "c.md"] });
+
+    // Test readAll
+    const all = await api.vault.readAll!();
+    expect(all).toEqual(
+      expect.arrayContaining([
+        { path: "a.md", content: "Content A" },
+        { path: "b.md", content: "Content B" },
+        { path: "c.md", content: "Content C" },
+      ])
+    );
+    expect(spy).toHaveBeenCalledWith({ all: true });
+
+    // Test fallback when adapter does not have readBatchNotes
+    const legacyAdapter = new MemoryVaultAdapter({ "x.md": "X", "y.md": "Y" });
+    delete (legacyAdapter as any).readBatchNotes;
+    let legacyApi!: PluginApi;
+    const { host: legacyHost } = makeHost([def("v2", { onload: (a) => void (legacyApi = a) })], { adapter: legacyAdapter });
+    await legacyHost.registry.setEnabled("v2", true);
+
+    const fallbackBatch = await legacyApi.vault.readBatch!(["x.md"]);
+    expect(fallbackBatch).toEqual({ "x.md": "X" });
+
+    const fallbackAll = await legacyApi.vault.readAll!();
+    expect(fallbackAll).toEqual(
+      expect.arrayContaining([
+        { path: "x.md", content: "X" },
+        { path: "y.md", content: "Y" },
+      ])
+    );
+  });
+
   it("gives note dates by path and tells the app after a plugin changes the vault", async () => {
     const adapter = new MemoryVaultAdapter({ "a.md": "A", "b.md": "B" });
     adapter.setDates("a.md", { createdAt: 1, modifiedAt: 2 });

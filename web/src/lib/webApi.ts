@@ -543,6 +543,12 @@ export const webApi = {
         method: "POST",
         body: JSON.stringify({ terms }),
       }),
+    /** Batch reads note contents in one request (Bug #5). Used by plugins to scan notes without N individual requests. */
+    batch: (vaultId: string, options: { noteIds?: string[]; paths?: string[]; all?: boolean }) =>
+      request<{ notes: { id: string; name: string; path: string; content: string }[] }>(
+        `/vaults/${vaultId}/notes/batch`,
+        { method: "POST", body: JSON.stringify(options) }
+      ),
     // D5 — File Recovery / Time Scrubber.
     snapshots: (vaultId: string, noteId: string) =>
       request<ApiNoteSnapshot[]>(`/vaults/${vaultId}/notes/${noteId}/snapshots`),
