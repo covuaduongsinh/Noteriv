@@ -20,7 +20,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { setItem, KEYS } from '@/lib/storage';
-import { useT } from '@/lib/i18n';
+import { getLocale, useT } from '@/lib/i18n';
+import { sampleVault } from '@noteriv/core/sample-vault';
+import { writeFile } from '@/lib/file-system';
+import { vaultFileUri } from '@/lib/sync-state';
 
 interface GitHubUser {
   login: string;
@@ -48,6 +51,8 @@ export default function SetupScreen() {
 
   const [step, setStep] = useState(0);
   const [vaultName, setVaultName] = useState('');
+  // The "Getting started" notes, as web and desktop add to a new vault.
+  const [sampleNotes, setSampleNotes] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
 
   // Git state
@@ -190,6 +195,11 @@ export default function SetupScreen() {
     setIsCreating(true);
     try {
       const vault = await createVault(trimmed);
+      // Not into a repository that already holds notes: sync would push the samples into it.
+      const existingRepo = enableGit && !!ghUser && !createNewRepo && !!selectedRepo;
+      if (sampleNotes && !existingRepo) {
+        for (const file of sampleVault(getLocale()).files) writeFile(vaultFileUri(vault.path, file.path), file.content);
+      }
 
       // If git is enabled, determine the remote URL
       if (enableGit && ghUser) {
@@ -224,6 +234,7 @@ export default function SetupScreen() {
     }
   }, [
     vaultName,
+    sampleNotes,
     createVault,
     enableGit,
     ghUser,
@@ -350,6 +361,18 @@ export default function SetupScreen() {
                   if (vaultName.trim()) animateTransition(2);
                 }}
                 selectionColor={colors.blue}
+              />
+            </View>
+            <View style={[styles.autoSyncRow, { borderTopColor: colors.bgTertiary }]}>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.autoSyncLabel, { color: colors.textPrimary }]}>{t('phone.setup.sampleNotes')}</Text>
+                <Text style={[styles.autoSyncHint, { color: colors.textMuted }]}>{t('phone.setup.sampleNotesHint')}</Text>
+              </View>
+              <Switch
+                value={sampleNotes}
+                onValueChange={setSampleNotes}
+                trackColor={{ false: colors.border, true: colors.blue }}
+                thumbColor={colors.textPrimary}
               />
             </View>
             <TouchableOpacity

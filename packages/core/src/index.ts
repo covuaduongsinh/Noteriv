@@ -30,3 +30,4 @@ export * from "./permissions";
 export * from "./note-diff";
 export * from "./conflict-copy";
 export * from "./sample-vault";
+export * from "./themes";
