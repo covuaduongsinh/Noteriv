@@ -22,10 +22,10 @@ import { useCorePlugins } from '@/context/CorePluginsContext';
 import MarkdownEditor from '@/components/MarkdownEditor';
 import MarkdownPreview from '@/components/MarkdownPreview';
 import BoardView from '@/components/BoardView';
-import { rename as renameFile, listAllMarkdownFiles } from '@/lib/file-system';
+import { listAllMarkdownFiles } from '@/lib/file-system';
 import { lintMarkdown, LintWarning } from '@/lib/markdown-lint';
-import { isBoardContent } from '@/lib/board-utils';
-import { resolveWikiLink } from '@/lib/wiki-links';
+import { isBoardContent } from '@noteriv/core/board-utils';
+import { renameNote, resolveWikiLink } from '@/lib/wiki-links';
 
 export default function EditorScreen() {
   const router = useRouter();
@@ -155,19 +155,19 @@ export default function EditorScreen() {
 
   const handleRename = useCallback(() => {
     setMenuVisible(false);
-    setRenameValue(fileName);
+    setRenameValue(safeDecode(currentFile?.split('/').pop() ?? ''));
     setRenameVisible(true);
-  }, []);
+  }, [currentFile]);
 
   const handleWikiLink = useCallback(async (name: string) => {
     if (!vault) return;
-    const resolved = await resolveWikiLink(name, vault.path);
+    const resolved = await resolveWikiLink(name, vault.path, currentFile);
     if (resolved) {
       if (isDirty) await saveFile();
       setCurrentFile(null);
       router.push({ pathname: '/editor', params: { path: resolved } });
     }
-  }, [vault, isDirty, saveFile, setCurrentFile, router]);
+  }, [vault, currentFile, isDirty, saveFile, setCurrentFile, router]);
 
   const handleLint = useCallback(async () => {
     setMenuVisible(false);
@@ -179,18 +179,32 @@ export default function EditorScreen() {
     setLintVisible(true);
   }, [content, vault]);
 
-  const confirmRename = useCallback(() => {
-    if (!currentFile || !renameValue.trim()) return;
+  const confirmRename = useCallback(async () => {
+    if (!currentFile || !vault || !renameValue.trim()) return;
     const newName = renameValue.trim().endsWith('.md')
       ? renameValue.trim()
       : renameValue.trim() + '.md';
-    renameFile(currentFile, newName);
+    if (newName.includes('/')) {
+      Alert.alert('Rename', 'A note name cannot contain "/".');
+      return;
+    }
+    // Links to the note are rewritten from what is on disk, so save first.
+    if (isDirty && !(await saveFile())) {
+      Alert.alert('Rename', 'Could not save the note before renaming it.');
+      return;
+    }
+    const result = await renameNote(vault.path, currentFile, newName);
+    if (!result.uri) {
+      Alert.alert('Rename', `Could not rename: a note named "${newName}" may already exist.`);
+      return;
+    }
+    if (result.failed > 0) Alert.alert('Rename', `Renamed, but links in ${result.failed} note(s) could not be updated.`);
     setRenameVisible(false);
     router.back();
-  }, [currentFile, renameValue, router]);
+  }, [currentFile, vault, isDirty, saveFile, renameValue, router]);
 
   const fileName = currentFile
-    ? currentFile.split('/').pop() ?? 'Untitled'
+    ? safeDecode(currentFile.split('/').pop() ?? 'Untitled')
     : 'Untitled';
 
   const isBookmarked =
@@ -728,3 +742,12 @@ const styles = StyleSheet.create({
   lintMessage: { fontSize: 14, lineHeight: 20 },
   lintMeta: { fontSize: 12 },
 });
+
+/** File URIs are percent-encoded (`My%20note.md`); show the name as written. */
+function safeDecode(name: string): string {
+  try {
+    return decodeURIComponent(name);
+  } catch {
+    return name;
+  }
+}

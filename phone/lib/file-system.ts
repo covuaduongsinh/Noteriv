@@ -206,6 +206,18 @@ export async function searchInFiles(dir: string, query: string): Promise<SearchR
   return results;
 }
 
+/**
+ * True only when the file system says the file is not there. Unlike `fileExists`, an error means "not known
+ * missing": sync deletes the remote copy of a missing note, so a failed check must never look like a deletion.
+ */
+export function fileMissing(path: string): boolean {
+  try {
+    return !new File(path).exists;
+  } catch {
+    return false;
+  }
+}
+
 export function fileExists(path: string): boolean {
   try {
     const info = Paths.info(path);

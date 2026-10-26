@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isConflictCopy, parseConflictCopy } from "../src/conflict-copy";
+import { conflictCopyCandidates, conflictCopyPath, isConflictCopy, parseConflictCopy } from "../src/conflict-copy";
 
 describe("parseConflictCopy", () => {
   it("finds the original note of a conflict copy", () => {
@@ -28,5 +28,24 @@ describe("parseConflictCopy", () => {
     expect(parseConflictCopy("a (conflict 2026-10-17).md")).toBeNull();
     expect(isConflictCopy("notes/a (conflict 2026-10-17 0153).md")).toBe(true);
     expect(isConflictCopy("notes/a.md")).toBe(false);
+  });
+});
+
+describe("conflictCopyPath", () => {
+  const now = new Date("2026-10-26T09:05:00Z");
+
+  it("names the copy like web and desktop sync, numbering it when the name is taken", () => {
+    expect(conflictCopyPath("notes/plan.md", () => false, now)).toBe("notes/plan (conflict 2026-10-26 0905).md");
+    const taken = new Set(["notes/plan (conflict 2026-10-26 0905).md", "notes/plan (conflict 2026-10-26 0905 2).md"]);
+    expect(conflictCopyPath("notes/plan.md", (c) => taken.has(c), now)).toBe("notes/plan (conflict 2026-10-26 0905 3).md");
+    expect(conflictCopyPath("README", () => false, now)).toBe("README (conflict 2026-10-26 0905)");
+    expect(conflictCopyPath("a.b/.hidden", () => false, now)).toBe("a.b/.hidden (conflict 2026-10-26 0905)");
+  });
+
+  it("gives names parseConflictCopy reads back to the original note", () => {
+    const names = conflictCopyCandidates("Dự án/Kế hoạch #1.md", now);
+    for (let i = 0; i < 3; i++) {
+      expect(parseConflictCopy(names.next().value as string)).toEqual({ originalPath: "Dự án/Kế hoạch #1.md", stamp: "2026-10-26 09:05" });
+    }
   });
 });

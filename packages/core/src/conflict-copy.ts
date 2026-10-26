@@ -25,3 +25,26 @@ export function parseConflictCopy(path: string): ConflictCopyInfo | null {
 export function isConflictCopy(path: string): boolean {
   return parseConflictCopy(path) !== null;
 }
+
+/**
+ * Names for a conflict copy of `path`, in the order to try: `notes/a (conflict 2026-10-17 0153).md`, then
+ * `… 0153 2).md`, and so on. The stamp is `now` in UTC, as web/server/src/lib/gitSync.ts and the desktop's git
+ * sync write it (both keep their own copy: the server image cannot read packages/).
+ */
+export function* conflictCopyCandidates(path: string, now = new Date()): Generator<string> {
+  const slash = path.lastIndexOf("/");
+  const dirPart = slash === -1 ? "" : path.slice(0, slash + 1);
+  const file = slash === -1 ? path : path.slice(slash + 1);
+  const dot = file.lastIndexOf(".");
+  const stem = dot > 0 ? file.slice(0, dot) : file;
+  const ext = dot > 0 ? file.slice(dot) : "";
+  const iso = now.toISOString();
+  const stamp = `${iso.slice(0, 10)} ${iso.slice(11, 13)}${iso.slice(14, 16)}`;
+  for (let n = 1; ; n++) yield `${dirPart}${stem} (conflict ${stamp}${n > 1 ? ` ${n}` : ""})${ext}`;
+}
+
+/** The first conflict copy name for `path` that `taken` says is free. */
+export function conflictCopyPath(path: string, taken: (candidate: string) => boolean, now = new Date()): string {
+  for (const candidate of conflictCopyCandidates(path, now)) if (!taken(candidate)) return candidate;
+  throw new Error("unreachable");
+}

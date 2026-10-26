@@ -6,6 +6,7 @@ import {
   contentHash,
   fetchWithTimeout,
   loadSyncBase,
+  loadSyncShas,
   mayUpload,
   pullAction,
   saveSyncBase,
@@ -172,6 +173,25 @@ async function writeRemoteFile(remote: Remote, token: string, ref: string, path:
 
 const markdown = (path: string) => /\.(md|markdown)$/i.test(path) && !path.startsWith('.noteriv/');
 
+async function deleteRemoteFile(remote: Remote, token: string, ref: string, path: string, sha: string): Promise<void> {
+  const encodedPath = encodeFilePath(remote, path);
+  const message = 'Sync from Noteriv Mobile';
+  const response = remote.provider === 'gitlab'
+    ? await api(remote, `/projects/${encodeURIComponent(remote.project)}/repository/files/${encodedPath}`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({ branch: ref, commit_message: message }),
+      })
+    : await api(remote, `/repos/${remote.project}/contents/${encodedPath}`, token, {
+        method: 'DELETE',
+        body: JSON.stringify({ branch: ref, message, sha }),
+      });
+  if (!response.ok) throw new Error(`Failed to delete file ${path}: ${response.status} ${await response.text()}`);
+}
+
+/**
+ * GitLab and Gitea/Forgejo, the same rules as GitHub (lib/github-sync.ts): both trees give each file's blob sha,
+ * recorded at each agreement, so only notes whose sha moved are downloaded.
+ */
 async function pullOnce(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
   const remote = parseRemote(remoteUrl, hint);
   if (!remote) return { pulled: 0, pushed: 0, errors: ['Unknown Git provider. Choose GitLab or Gitea/Forgejo for self-hosted remotes.'] };
@@ -180,6 +200,7 @@ async function pullOnce(vaultPath: string, token: string, remoteUrl: string, bra
   try {
     const ref = branchName || await branch(remote, token);
     const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
+    const shas = await loadSyncShas(vaultPath, remoteUrl, branchName);
     const files = (await listFiles(remote, token, ref)).filter((file) => markdown(file.path));
     const paths = new Set(files.map((file) => file.path));
     // Apply remote deletions only to notes that haven't changed here since the last sync.
@@ -188,20 +209,33 @@ async function pullOnce(vaultPath: string, token: string, remoteUrl: string, bra
       if (path.startsWith('.trash/') || !markdown(path) || paths.has(path)) continue;
       if (shouldDeleteLocal(await FS.readFile(file.filePath), base[path]) && FS.deleteFile(file.filePath)) {
         delete base[path];
+        delete shas[path];
         result.pulled++;
       }
     }
     for (const file of files) {
       try {
-        const remoteFile = await readRemoteFile(remote, token, ref, file.path);
         const localPath = vaultFileUri(vaultPath, file.path);
-        switch (pullAction(await FS.readFile(localPath), remoteFile.content, base[file.path])) {
+        const local = await FS.readFile(localPath);
+        const unmoved = base[file.path] !== undefined && file.sha !== undefined && shas[file.path] === file.sha;
+        // Unchanged on the remote since the last sync: an edit here is push's, and so is a deletion here.
+        if (unmoved && (local !== null || FS.fileMissing(localPath))) continue;
+        const remoteFile = await readRemoteFile(remote, token, ref, file.path);
+        // Read again: the note may have been saved while the download was in flight.
+        const current = await FS.readFile(localPath);
+        const remoteHash = contentHash(remoteFile.content);
+        // Deleted here, and the remote holds the agreed text (its sha was not recorded yet): push deletes it.
+        if (current === null && base[file.path] === remoteHash && FS.fileMissing(localPath)) {
+          if (file.sha) shas[file.path] = file.sha;
+          continue;
+        }
+        switch (pullAction(current, remoteFile.content, base[file.path])) {
           case 'skip':
-            base[file.path] = contentHash(remoteFile.content);
+            base[file.path] = remoteHash;
             break;
           case 'take-remote':
             if (!FS.writeFile(localPath, remoteFile.content)) throw new Error('could not write the note');
-            base[file.path] = contentHash(remoteFile.content);
+            base[file.path] = remoteHash;
             result.pulled++;
             break;
           case 'keep-local':
@@ -209,13 +243,14 @@ async function pullOnce(vaultPath: string, token: string, remoteUrl: string, bra
           case 'conflict':
             // Both versions kept; with the remote's saved as a copy, push may upload this device's.
             if (!(await writeConflictCopy(vaultPath, file.path, remoteFile.content))) throw new Error('could not keep the remote version as a conflict copy');
-            base[file.path] = contentHash(remoteFile.content);
+            base[file.path] = remoteHash;
             result.pulled++;
             break;
         }
+        if (file.sha) shas[file.path] = file.sha;
       } catch (error) { result.errors.push(`Pull ${file.path}: ${error instanceof Error ? error.message : String(error)}`); }
     }
-    saveSyncBase(vaultPath, remoteUrl, branchName, base);
+    saveSyncBase(vaultPath, remoteUrl, branchName, base, shas);
   } catch (error) { result.errors.push(`Pull failed: ${error instanceof Error ? error.message : String(error)}`); }
   return result;
 }
@@ -228,8 +263,10 @@ async function pushOnce(vaultPath: string, token: string, remoteUrl: string, bra
   try {
     const ref = branchName || await branch(remote, token);
     const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
+    const shas = await loadSyncShas(vaultPath, remoteUrl, branchName);
     const files = new Map((await listFiles(remote, token, ref)).map((file) => [file.path, file]));
-    for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
+    const localFiles = await FS.listAllMarkdownFiles(vaultPath);
+    for (const file of localFiles) {
       const path = vaultRelativePath(vaultPath, file.filePath);
       if (!markdown(path)) continue;
       try {
@@ -239,19 +276,48 @@ async function pushOnce(vaultPath: string, token: string, remoteUrl: string, bra
         // Not edited here since the last agreement: whatever the remote did is pull's to apply.
         if (base[path] === hash) continue;
         const existing = files.get(path);
-        const remoteContent = existing ? (await readRemoteFile(remote, token, ref, path)).content : null;
-        if (remoteContent === content) {
+        // The remote is still the agreed version when its sha has not moved; otherwise read it to compare.
+        const unmoved = existing?.sha !== undefined && shas[path] === existing.sha && base[path] !== undefined;
+        const remoteHash = !existing
+          ? null
+          : unmoved
+            ? base[path]
+            : contentHash((await readRemoteFile(remote, token, ref, path)).content);
+        if (remoteHash === hash) {
           base[path] = hash;
+          if (existing?.sha) shas[path] = existing.sha;
           continue;
         }
         // Writing over a remote edit made elsewhere would lose it; the next pull keeps both versions first.
-        if (!mayUpload(hash, remoteContent === null ? null : contentHash(remoteContent), base[path])) continue;
+        if (!mayUpload(hash, remoteHash, base[path])) continue;
         await writeRemoteFile(remote, token, ref, path, content, existing?.sha);
-        base[path] = contentHash(content);
+        base[path] = hash;
+        // The new sha is not returned here; the next pull reads the note once, finds it equal and records it.
+        delete shas[path];
         result.pushed++;
       } catch (error) { result.errors.push(`Push ${path}: ${error instanceof Error ? error.message : String(error)}`); }
     }
-    saveSyncBase(vaultPath, remoteUrl, branchName, base);
+
+    // Notes deleted (or renamed away) here since the last agreement; checked one by one, as on GitHub.
+    const listed = new Set(localFiles.map((file) => vaultRelativePath(vaultPath, file.filePath)));
+    if (listed.size > 0) {
+      for (const path of Object.keys(base)) {
+        if (listed.has(path) || !markdown(path)) continue;
+        if (!FS.fileMissing(vaultFileUri(vaultPath, path))) continue;
+        const existing = files.get(path);
+        try {
+          if (existing) {
+            // Edited elsewhere since (or its sha never recorded): the edit wins, and the next pull brings it back.
+            if (existing.sha === undefined || shas[path] !== existing.sha) continue;
+            await deleteRemoteFile(remote, token, ref, path, existing.sha);
+            result.pushed++;
+          }
+          delete base[path];
+          delete shas[path];
+        } catch (error) { result.errors.push(`Delete ${path}: ${error instanceof Error ? error.message : String(error)}`); }
+      }
+    }
+    saveSyncBase(vaultPath, remoteUrl, branchName, base, shas);
   } catch (error) { result.errors.push(`Push failed: ${error instanceof Error ? error.message : String(error)}`); }
   return result;
 }
