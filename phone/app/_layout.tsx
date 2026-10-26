@@ -138,6 +138,15 @@ function ThemedNavigation() {
           }}
         />
         <Stack.Screen
+          name="quick"
+          options={{
+            presentation: 'modal',
+            title: t('web.quick.title'),
+            headerStyle: { backgroundColor: colors.bgSecondary },
+            headerTintColor: colors.textPrimary,
+          }}
+        />
+        <Stack.Screen
           name="backlinks"
           options={{
             presentation: 'modal',

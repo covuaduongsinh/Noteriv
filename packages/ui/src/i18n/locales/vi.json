@@ -2274,7 +2274,7 @@
       "lastSync": "Lần đồng bộ gần nhất",
       "syncNow": "Đồng bộ ngay",
       "autoSync": "Tự động đồng bộ",
-      "autoSyncEvery": "Mỗi 5 giây",
+      "autoSyncEvery": "Mỗi phút",
       "disconnectRemote": "Ngắt kết nối remote",
       "gitHint": "Kết nối GitHub, GitLab, Gitea hoặc Forgejo để đồng bộ ghi chú giữa các thiết bị.",
       "connectGitHub": "Kết nối GitHub",
@@ -2732,6 +2732,10 @@
     },
     "calendar": {
       "monthYear": "{month} năm {year}"
+    },
+    "quick": {
+      "openNote": "Mở note",
+      "invalidFolder": "Tên thư mục không hợp lệ: dùng chữ và \"/\" giữa các thư mục, không dùng \"..\"."
     }
   }
 }

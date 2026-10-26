@@ -22,7 +22,8 @@
       },
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "vn.edu.dsc.noteriv"
+      "package": "vn.edu.dsc.noteriv",
+      "versionCode": 1
     },
     "web": {
       "output": "static",
@@ -38,7 +39,9 @@
           "backgroundColor": "#101030"
         }
       ],
-      "./plugins/withAndroidDebugBundle.js"
+      "./plugins/withAndroidDebugBundle.js",
+      "./plugins/withQuickNoteShortcut.js",
+      "./plugins/withReleaseSigning.js"
     ],
     "experiments": {
       "typedRoutes": true,

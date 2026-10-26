@@ -137,6 +137,13 @@ export default function HomeScreen() {
           <Ionicons name="chevron-down" size={16} color={colors.textMuted} />
         </TouchableOpacity>
         <View style={styles.headerActions}>
+          <TouchableOpacity
+            style={styles.headerBtn}
+            onPress={() => router.push('/quick')}
+            accessibilityLabel={t('web.quick.title')}
+          >
+            <Ionicons name="flash-outline" size={22} color={colors.textPrimary} />
+          </TouchableOpacity>
           {isEnabled('calendar') && (
             <TouchableOpacity
               style={styles.headerBtn}

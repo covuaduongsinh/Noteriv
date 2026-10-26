@@ -20,7 +20,7 @@ These pages describe the **web app**. Where the [desktop app](desktop.md) behave
 | [Sync](sync/index.md) | Keeping a vault in a Git repository (GitHub, GitLab, Gitea, Forgejo…) or on a WebDAV server |
 | [Plugins](plugins/index.md) | Core plugins, community plugins, writing your own |
 | [Themes](themes/index.md) | Built-in themes, accent colours, custom themes, CSS snippets |
-| [Phone and tablet](mobile/index.md) | Installing on Android and iOS, the phone layout, Quick note, offline |
+| [Phone and tablet](mobile/index.md) | Installing on Android and iOS, the phone layout, Quick note, offline; the [Android app](mobile/android-app.md) |
 | [Desktop app](desktop.md) | How the desktop app differs: vaults as folders, shortcuts, local Git |
 | [Reference](reference/index.md) | Markdown syntax, frontmatter, callouts, file types |
 | [MCP server](mcp/index.md) | Letting AI assistants read and write a vault folder on your computer |

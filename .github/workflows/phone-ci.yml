@@ -1,0 +1,41 @@
+name: Phone CI
+
+# The Android app (phone/) is outside the npm workspaces (its own lockfile), so it has its own workflow. It also
+# runs when the shared code it imports changes (@noteriv/core, the i18n module and catalogs).
+on:
+  push:
+    branches: [main]
+    paths: ["phone/**", "packages/core/src/**", "packages/ui/src/i18n/**", ".github/workflows/phone-ci.yml"]
+  pull_request:
+    paths: ["phone/**", "packages/core/src/**", "packages/ui/src/i18n/**", ".github/workflows/phone-ci.yml"]
+
+jobs:
+  phone:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: phone
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: phone/package-lock.json
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      # GitHub, Gitea and GitLab stand-ins against an in-memory vault (no network, no device).
+      - name: Sync simulation
+        working-directory: .
+        run: npx --yes tsx@4.23.15 --tsconfig phone/scripts/sync-sim/tsconfig.json phone/scripts/sync-sim/run.ts
+
+      # Metro must resolve the shared code too (tsc alone does not prove it).
+      - name: Bundle the Android JS
+        run: npx expo export --platform android --output-dir /tmp/phone-export
