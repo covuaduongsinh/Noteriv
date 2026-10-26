@@ -43,6 +43,7 @@ export default function EditorScreen() {
     updateWorkspace,
     vault,
     files,
+    applyPathMoves,
   } = useApp();
   const { isEnabled } = useCorePlugins();
   const showBoard = isEnabled('board') && isBoardContent(content);
@@ -181,7 +182,7 @@ export default function EditorScreen() {
 
   const confirmRename = useCallback(async () => {
     if (!currentFile || !vault || !renameValue.trim()) return;
-    const newName = renameValue.trim().endsWith('.md')
+    const newName = /\.(md|markdown)$/i.test(renameValue.trim())
       ? renameValue.trim()
       : renameValue.trim() + '.md';
     if (newName.includes('/')) {
@@ -198,10 +199,11 @@ export default function EditorScreen() {
       Alert.alert('Rename', `Could not rename: a note named "${newName}" may already exist.`);
       return;
     }
+    applyPathMoves(result.moves);
     if (result.failed > 0) Alert.alert('Rename', `Renamed, but links in ${result.failed} note(s) could not be updated.`);
     setRenameVisible(false);
     router.back();
-  }, [currentFile, vault, isDirty, saveFile, renameValue, router]);
+  }, [currentFile, vault, isDirty, saveFile, renameValue, router, applyPathMoves]);
 
   const fileName = currentFile
     ? safeDecode(currentFile.split('/').pop() ?? 'Untitled')

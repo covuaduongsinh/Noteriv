@@ -243,6 +243,21 @@ export function trashFile(filePath: string, vaultPath: string): boolean {
   }
 }
 
+/** Moves a folder into .trash (like `trashFile`), so deleting it can be undone. */
+export function trashDir(dirPath: string, vaultPath: string): boolean {
+  try {
+    const trash = new Directory(vaultPath.replace(/\/$/, ''), '.trash');
+    if (!trash.exists) trash.create({ intermediates: true });
+    const dir = new Directory(dirPath);
+    if (!dir.exists) return false;
+    const name = dir.uri.replace(/\/$/, '').split('/').pop() ?? 'folder';
+    dir.move(new Directory(vaultPath.replace(/\/$/, '') + '/.trash/' + Date.now() + '_' + name));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export function restoreFromTrash(trashedPath: string, vaultPath: string): boolean {
   try {
     const file = new File(trashedPath);

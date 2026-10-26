@@ -129,9 +129,19 @@ async function listFiles(remote: Remote, token: string, ref: string): Promise<Re
     }
     return files;
   }
-  const response = await api(remote, `/repos/${remote.project}/git/trees/${encodeURIComponent(ref)}?recursive=1`, token);
-  if (!response.ok) throw new Error(`Failed to get repository tree: ${response.status}`);
-  return ((await response.json()).tree ?? []).filter((item: { type: string }) => item.type === 'blob').map((item: { path: string; sha: string }) => ({ path: item.path, sha: item.sha }));
+  // Gitea/Forgejo send a recursive tree in pages (`truncated` until the last one). A cut-off listing would make
+  // every note past the cut look deleted on the remote, so all pages are read, or the sync stops.
+  const files: RemoteFile[] = [];
+  for (let page = 1; page <= 200; page++) {
+    const response = await api(remote, `/repos/${remote.project}/git/trees/${encodeURIComponent(ref)}?recursive=1&per_page=1000&page=${page}`, token);
+    if (!response.ok) throw new Error(`Failed to get repository tree: ${response.status}`);
+    const data = await response.json();
+    const items: { type: string; path: string; sha: string }[] = data.tree ?? [];
+    files.push(...items.filter((item) => item.type === 'blob').map((item) => ({ path: item.path, sha: item.sha })));
+    if (!data.truncated) return files;
+    if (items.length === 0) break;
+  }
+  throw new Error('The repository is too large to list; sync stopped so no note is lost');
 }
 
 /** GitLab's files API takes the path as one encoded segment; Gitea's contents API takes it as segments. */
@@ -152,13 +162,28 @@ async function readRemoteFile(remote: Remote, token: string, ref: string, path: 
   return { content: decodeBase64(data.content), sha: data.sha };
 }
 
+/**
+ * GitLab checks no sha on update or delete. This reads the file's current blob and last commit first: if the blob
+ * is no longer `sha`, it changed since the listing and the write stops; otherwise its commit id goes with the
+ * request (`last_commit_id`), so GitLab refuses it if the file changes in between.
+ */
+async function gitlabLastCommit(remote: Remote, token: string, ref: string, path: string, sha: string): Promise<string> {
+  const response = await api(remote, `/projects/${encodeURIComponent(remote.project)}/repository/files/${encodeFilePath(remote, path)}?ref=${encodeURIComponent(ref)}`, token, { method: 'HEAD' });
+  if (!response.ok) throw new Error(`Failed to check file ${path}: ${response.status}`);
+  if (response.headers.get('x-gitlab-blob-id') !== sha) throw new Error(`${path} changed on the remote; it is merged on the next sync`);
+  const commit = response.headers.get('x-gitlab-last-commit-id');
+  if (!commit) throw new Error(`Failed to check file ${path}: no commit id`);
+  return commit;
+}
+
 async function writeRemoteFile(remote: Remote, token: string, ref: string, path: string, content: string, sha?: string): Promise<void> {
   const encodedPath = encodeFilePath(remote, path);
   const message = 'Sync from Noteriv Mobile';
   if (remote.provider === 'gitlab') {
+    const lastCommit = sha ? await gitlabLastCommit(remote, token, ref, path, sha) : undefined;
     const response = await api(remote, `/projects/${encodeURIComponent(remote.project)}/repository/files/${encodedPath}`, token, {
       method: sha ? 'PUT' : 'POST',
-      body: JSON.stringify({ branch: ref, content, commit_message: message, encoding: 'text' }),
+      body: JSON.stringify({ branch: ref, content, commit_message: message, encoding: 'text', ...(lastCommit ? { last_commit_id: lastCommit } : {}) }),
     });
     if (!response.ok) throw new Error(`Failed to write file ${path}: ${response.status} ${await response.text()}`);
     return;
@@ -179,7 +204,7 @@ async function deleteRemoteFile(remote: Remote, token: string, ref: string, path
   const response = remote.provider === 'gitlab'
     ? await api(remote, `/projects/${encodeURIComponent(remote.project)}/repository/files/${encodedPath}`, token, {
         method: 'DELETE',
-        body: JSON.stringify({ branch: ref, commit_message: message }),
+        body: JSON.stringify({ branch: ref, commit_message: message, last_commit_id: await gitlabLastCommit(remote, token, ref, path, sha) }),
       })
     : await api(remote, `/repos/${remote.project}/contents/${encodedPath}`, token, {
         method: 'DELETE',
@@ -299,8 +324,9 @@ async function pushOnce(vaultPath: string, token: string, remoteUrl: string, bra
     }
 
     // Notes deleted (or renamed away) here since the last agreement; checked one by one, as on GitHub.
+    // Skipped after a failed upload: a rename whose new note did not go up must not take the old one down.
     const listed = new Set(localFiles.map((file) => vaultRelativePath(vaultPath, file.filePath)));
-    if (listed.size > 0) {
+    if (listed.size > 0 && result.errors.length === 0) {
       for (const path of Object.keys(base)) {
         if (listed.has(path) || !markdown(path)) continue;
         if (!FS.fileMissing(vaultFileUri(vaultPath, path))) continue;

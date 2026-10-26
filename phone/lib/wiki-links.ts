@@ -1,4 +1,4 @@
-import { linkResolver, resolveLinkTarget, rewriteLinksForMoves } from '@noteriv/core/link-rename';
+import { expandFolderMove, linkResolver, resolveLinkTarget, rewriteLinksForMoves, type PathMove } from '@noteriv/core/link-rename';
 import { wikiLinkTargets } from '@noteriv/core/graph-utils';
 import { readFile, writeFile, listAllMarkdownFiles, rename as renameFile } from '@/lib/file-system';
 import { vaultFileUri, vaultRelativePath } from '@/lib/sync-state';
@@ -146,8 +146,10 @@ export async function findBacklinks(filePath: string, vaultPath: string): Promis
 }
 
 export interface RenameResult {
-  /** The renamed note's URI, or null if it was not renamed. */
+  /** The renamed item's URI, or null if it was not renamed. */
   uri: string | null;
+  /** The notes that moved, vault-relative (one note, or every note under a renamed folder). */
+  moves: PathMove[];
   /** Notes whose links were rewritten. */
   updated: number;
   /** Notes whose links could not be rewritten. */
@@ -155,38 +157,42 @@ export interface RenameResult {
 }
 
 /**
- * Renames a note in its folder and rewrites the links to it in every note, as web and desktop do. A name that
- * is taken (in any letter case) is refused.
+ * Renames a note or a folder in place and rewrites the links to the notes that moved, in every note, as web
+ * and desktop do. A name already taken (in any letter case) is refused.
  */
-export async function renameNote(vaultPath: string, fileUri: string, newName: string): Promise<RenameResult> {
+export async function renameNote(vaultPath: string, fileUri: string, newName: string, isFolder = false): Promise<RenameResult> {
+  const none: RenameResult = { uri: null, moves: [], updated: 0, failed: 0 };
+  if (!newName || newName.includes('/')) return none;
   const notes = await vaultNotes(vaultPath);
-  const from = vaultRelativePath(vaultPath, fileUri);
+  const from = vaultRelativePath(vaultPath, fileUri).replace(/\/+$/, '');
   const slash = from.lastIndexOf('/');
   const to = (slash === -1 ? '' : from.slice(0, slash + 1)) + newName;
-  if (to === from) return { uri: fileUri, updated: 0, failed: 0 };
-  const taken = notes.some((note) => note.path.toLowerCase() === to.toLowerCase() && note.path !== from);
-  if (taken || !renameFile(fileUri, newName)) return { uri: null, updated: 0, failed: 0 };
+  if (to === from) return { ...none, uri: fileUri };
+  const toLower = to.toLowerCase();
+  const fromLower = from.toLowerCase();
+  const taken = notes.some((note) => {
+    const p = note.path.toLowerCase();
+    const inFrom = p === fromLower || p.startsWith(fromLower + '/');
+    return !inFrom && (p === toLower || p.startsWith(toLower + '/'));
+  });
+  if (taken || !renameFile(fileUri, newName)) return none;
 
-  const uri = vaultFileUri(vaultPath, to);
   const before = notes.map((note) => note.path);
-  const moves = [{ from, to }];
+  const moves = isFolder ? expandFolderMove(from, to, before) : [{ from, to }];
+  const movedTo = new Map(moves.map((m) => [m.from, m.to]));
   let updated = 0;
   let failed = 0;
   for (const note of notes) {
-    const noteUri = note.path === from ? uri : note.uri;
+    const after = movedTo.get(note.path);
+    const noteUri = after ? vaultFileUri(vaultPath, after) : note.uri;
     const content = await readFile(noteUri);
-    if (content === null || !content.includes('](') && !content.includes('[[')) continue;
-    const next = rewriteLinksForMoves(content, {
-      sourceBefore: note.path,
-      sourceAfter: note.path === from ? to : note.path,
-      moves,
-      before,
-    });
+    if (content === null || (!content.includes('](') && !content.includes('[['))) continue;
+    const next = rewriteLinksForMoves(content, { sourceBefore: note.path, sourceAfter: after ?? note.path, moves, before });
     if (next === content) continue;
     if (writeFile(noteUri, next)) updated++;
     else failed++;
   }
-  return { uri, updated, failed };
+  return { uri: vaultFileUri(vaultPath, to), moves, updated, failed };
 }
 
 // ---------------------------------------------------------------------------

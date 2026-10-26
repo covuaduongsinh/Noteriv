@@ -440,8 +440,9 @@ export async function push(
 
     // Notes deleted (or renamed away) on this device since the last agreement. Each is checked on its own
     // (the listing skips dot folders and reads a failing folder as empty), and none if the vault lists no note.
+    // Skipped after a failed upload: a rename whose new note did not go up must not take the old one down.
     const listed = new Set(localFiles.map((file) => vaultRelativePath(vaultPath, file.filePath)));
-    if (listed.size > 0) {
+    if (listed.size > 0 && result.errors.length === 0) {
       for (const relPath of Object.keys(base)) {
         if (listed.has(relPath) || shouldSkipPath(relPath)) continue;
         if (!FS.fileMissing(vaultFileUri(vaultPath, relPath))) continue;

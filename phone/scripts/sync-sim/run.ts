@@ -16,10 +16,57 @@ class Repo {
   truncated = false;
   failBlob = new Set<string>();
   calls: string[] = [];
+  /** Gitea: tree entries per page (0 = one page). */
+  pageSize = 0;
+  /** GitLab: last commit id per path. */
+  commits = new Map<string, string>();
+  /** Runs right before the next write or delete lands, as an edit made elsewhere in between. */
+  meanwhile: (() => void) | null = null;
+  set(path: string, content: string) {
+    this.files.set(path, content);
+    this.commits.set(path, `c${Math.random().toString(36).slice(2)}`);
+  }
 }
 
 const github = new Repo();
 const gitea = new Repo();
+const gitlab = new Repo();
+
+function gitlabRoute(u: URL, method: string, body: Record<string, string>): Response {
+  const repo = gitlab;
+  const prefix = '/api/v4/projects/me%2Fnotes';
+  const rest = u.pathname.slice(prefix.length);
+  if (rest === '') return json({ default_branch: 'main' });
+  if (rest === '/repository/tree') {
+    const page = Number(u.searchParams.get('page') ?? 1);
+    const all = [...repo.files.keys()].map((p) => ({ path: p, type: 'blob', id: blobSha(repo.files.get(p)!) }));
+    return json(all.slice((page - 1) * 100, page * 100));
+  }
+  const m = rest.match(/^\/repository\/files\/([^/]+)(\/raw)?$/);
+  if (!m) return json({ message: `unexpected ${method} ${rest}` }, 500);
+  const path = decodeURIComponent(m[1]);
+  const current = repo.files.get(path);
+  if (m[2]) return current === undefined ? json({}, 404) : new Response(current);
+  if (method === 'HEAD') {
+    if (current === undefined) return new Response(null, { status: 404 });
+    return new Response(null, { headers: { 'x-gitlab-blob-id': blobSha(current), 'x-gitlab-last-commit-id': repo.commits.get(path)! } });
+  }
+  repo.meanwhile?.();
+  repo.meanwhile = null;
+  const after = repo.files.get(path);
+  if ((method === 'PUT' || method === 'DELETE') && body.last_commit_id && body.last_commit_id !== repo.commits.get(path)) {
+    return json({ message: 'You are attempting to update a file that has changed since you started editing it.' }, 400);
+  }
+  if (method === 'DELETE') {
+    if (after === undefined) return json({}, 404);
+    repo.files.delete(path);
+    return new Response(null, { status: 204 });
+  }
+  if (method === 'POST' && after !== undefined) return json({ message: 'exists' }, 400);
+  if (method === 'PUT' && after === undefined) return json({ message: 'missing' }, 400);
+  repo.set(path, body.content);
+  return json({ file_path: path });
+}
 
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } });
@@ -28,13 +75,22 @@ const json = (body: unknown, status = 200) =>
   const u = new URL(url);
   const method = opts.method ?? 'GET';
   const body = opts.body ? JSON.parse(String(opts.body)) : {};
+  if (u.host === 'gitlab.example.com') {
+    gitlab.calls.push(`${method} ${u.pathname}`);
+    return gitlabRoute(u, method, body);
+  }
   const repo = u.host === 'api.github.com' ? github : gitea;
   repo.calls.push(`${method} ${u.pathname}`);
   const path = u.pathname.replace('/repos/me/notes', '').replace('/api/v1', '');
   if (path === '') return json({ default_branch: 'main' });
   if (path.startsWith('/git/trees/')) {
     if (repo.empty && repo.files.size === 0) return json({ message: 'Git Repository is empty.' }, 409);
-    return json({ truncated: repo.truncated, tree: [...repo.files].map(([p, c]) => ({ path: p, type: 'blob', sha: blobSha(c) })) });
+    const tree = [...repo.files].map(([p, c]) => ({ path: p, type: 'blob', sha: blobSha(c) }));
+    if (repo.pageSize) {
+      const page = Number(u.searchParams.get('page') ?? 1);
+      return json({ truncated: page * repo.pageSize < tree.length, tree: tree.slice((page - 1) * repo.pageSize, page * repo.pageSize) });
+    }
+    return json({ truncated: repo.truncated, tree });
   }
   if (path.startsWith('/git/blobs/')) {
     const sha = path.split('/').pop()!;
@@ -51,6 +107,7 @@ const json = (body: unknown, status = 200) =>
       repo.files.delete(p);
       return json({});
     }
+    if (method === 'PUT' && p === failUpload) return json({ message: 'network' }, 502);
     // GitHub: PUT creates or updates; Gitea: POST creates, PUT updates. An update must name the current sha.
     if (current !== undefined && body.sha !== blobSha(current)) return json({ message: 'sha mismatch' }, 409);
     if (current === undefined && body.sha) return json({ message: 'no such file' }, 422);
@@ -64,6 +121,8 @@ const json = (body: unknown, status = 200) =>
 const V = 'file:///vault';
 const at = (rel: string) => `${V}/${rel.split('/').map(encodeURIComponent).join('/')}`;
 let fails = 0;
+/** A path whose upload the GitHub stand-in refuses once (a network error). */
+let failUpload: string | null = null;
 const check = (name: string, ok: boolean, detail: unknown = '') => {
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${ok ? '' : '  -> ' + JSON.stringify(detail)}`);
   if (!ok) fails++;
@@ -75,10 +134,10 @@ const copiesOf = (rel: string) =>
     .filter((p) => parseConflictCopy(p)?.originalPath === rel)
     .map((p) => disk.get(at(p)));
 
-async function run(repo: Repo, remote: string, hint?: 'gitea') {
+async function run(repo: Repo, remote: string, hint?: 'gitea' | 'gitlab') {
   repo.calls = [];
   const r = await sync(V, 't', remote, undefined, hint);
-  const downloads = repo.calls.filter((c) => c.includes('/git/blobs/') || (c.startsWith('GET') && c.includes('/contents/'))).length;
+  const downloads = repo.calls.filter((c) => c.includes('/git/blobs/') || (c.startsWith('GET') && (c.includes('/contents/') || c.endsWith('/raw')))).length;
   const writes = repo.calls.filter((c) => /^(PUT|POST) /.test(c)).length;
   const deletes = repo.calls.filter((c) => c.startsWith('DELETE')).length;
   return { r, n: repo.calls.length, downloads, writes, deletes };
@@ -145,6 +204,28 @@ async function githubScenarios() {
     !repo.has('notes/n13.md') && repo.get('notes/Thirteen.md') === '# Note 13\nTiếng Việt 13' && repo.get('notes/linker.md')?.includes('[[Thirteen]]') === true, s.r);
   s = await go();
   check('rename on phone: steady after', s.writes === 0 && s.deletes === 0 && !disk.has(at('notes/n13.md')), s);
+
+  // A folder renamed here: every note in it moves, links to them follow.
+  disk.set(at('proj/a.md'), 'A');
+  disk.set(at('proj/sub/b.md'), 'B links [[proj/a]]');
+  disk.set(at('index.md'), 'see [[proj/sub/b]]');
+  await go();
+  const folder = await renameNote(V, at('proj') + '/', 'Projects', true);
+  check('folder rename on phone rewrites links to the notes in it',
+    folder.moves.length === 2 && disk.get(at('index.md')) === 'see [[Projects/sub/b]]' && disk.get(at('Projects/sub/b.md')) === 'B links [[Projects/a]]',
+    { folder, index: disk.get(at('index.md')), b: disk.get(at('Projects/sub/b.md')) });
+  s = await go();
+  check('folder rename on phone: remote follows',
+    !repo.has('proj/a.md') && !repo.has('proj/sub/b.md') && repo.get('Projects/a.md') === 'A' && repo.get('index.md') === 'see [[Projects/sub/b]]', s.r);
+
+  // A rename whose new note fails to upload must not delete the old one on the remote.
+  await renameNote(V, at('notes/n14.md'), 'Fourteen.md');
+  failUpload = 'notes/Fourteen.md';
+  s = await go();
+  check('rename with failed upload: old note kept on the remote', repo.get('notes/n14.md') === '# Note 14\nTiếng Việt 14' && !repo.has('notes/Fourteen.md'), s.r);
+  failUpload = null;
+  s = await go();
+  check('rename with failed upload: next sync completes it', !repo.has('notes/n14.md') && repo.has('notes/Fourteen.md') && s.r.errors.length === 0, s.r);
 
   // Pull failures must not let push overwrite remote edits.
   repo.set('notes/n10.md', 'desktop edit');
@@ -227,11 +308,49 @@ async function giteaScenarios() {
   repo.delete('g/n5.md');
   s = await go();
   check('gitea: remote delete applies here', !disk.has(at('g/n5.md')), s.r);
+  gitea.pageSize = 7;
+  const before = notesOnDisk();
+  s = await go();
+  check('gitea: a tree sent in pages is read whole (nothing deleted here)', notesOnDisk() === before && s.r.errors.length === 0 && s.writes === 0 && s.deletes === 0, { before, now: notesOnDisk(), s: s.r });
+  gitea.pageSize = 0;
+}
+
+async function gitlabScenarios() {
+  disk.clear();
+  const R = 'https://gitlab.example.com/me/notes';
+  const go = () => run(gitlab, R, 'gitlab');
+  for (let i = 0; i < 30; i++) gitlab.set(`l/n${i}.md`, `gitlab ${i}`);
+  disk.set(at('mine.md'), 'phone');
+  let s = await go();
+  check('gitlab: first sync', s.r.pulled === 30 && gitlab.files.get('mine.md') === 'phone' && s.r.errors.length === 0, s.r);
+  await go();
+  s = await go();
+  check(`gitlab: idle sync downloads nothing (${s.n} API calls)`, s.downloads === 0 && s.writes === 0, s);
+  disk.set(at('l/n1.md'), 'phone edit');
+  s = await go();
+  check('gitlab: local edit uploaded', gitlab.files.get('l/n1.md') === 'phone edit' && s.r.errors.length === 0, s.r);
+  // Edited elsewhere between the listing and the write: GitLab refuses, nothing is lost, the next sync merges.
+  disk.set(at('l/n2.md'), 'phone edit 2');
+  gitlab.meanwhile = () => gitlab.set('l/n2.md', 'web edit in between');
+  s = await go();
+  check('gitlab: write racing an edit elsewhere is refused', gitlab.files.get('l/n2.md') === 'web edit in between' && s.r.errors.length === 1, s.r);
+  s = await go();
+  check('gitlab: next sync keeps both', copiesOf('l/n2.md').join() === 'web edit in between' && gitlab.files.get('l/n2.md') === 'phone edit 2', { copies: copiesOf('l/n2.md'), s: s.r });
+  disk.delete(at('l/n3.md'));
+  gitlab.meanwhile = () => gitlab.set('l/n3.md', 'web edit before delete');
+  s = await go();
+  check('gitlab: delete racing an edit elsewhere is refused', gitlab.files.get('l/n3.md') === 'web edit before delete', s.r);
+  s = await go();
+  check('gitlab: and the edit comes back here', disk.get(at('l/n3.md')) === 'web edit before delete', s.r);
+  disk.delete(at('l/n4.md'));
+  s = await go();
+  check('gitlab: phone delete reaches the remote', !gitlab.files.has('l/n4.md'), s.r);
 }
 
 (async () => {
   await githubScenarios();
   await giteaScenarios();
+  await gitlabScenarios();
   console.log(fails ? `${fails} FAILED` : 'ALL PASSED');
   process.exit(fails ? 1 : 0);
 })();

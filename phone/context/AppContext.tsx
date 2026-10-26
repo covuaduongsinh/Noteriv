@@ -4,7 +4,7 @@ import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 import * as VaultOps from '@/lib/vault';
 import * as FS from '@/lib/file-system';
 import * as GitSync from '@/lib/provider-sync';
-import { vaultRelativePath, writeConflictCopy } from '@/lib/sync-state';
+import { vaultFileUri, vaultRelativePath, writeConflictCopy } from '@/lib/sync-state';
 
 interface AppContextType {
   // Vault
@@ -27,6 +27,8 @@ interface AppContextType {
   currentFile: string | null;
   content: string;
   setCurrentFile: (path: string | null) => void;
+  /** After a rename: the open note, tabs and bookmarks follow the notes that moved (vault-relative paths). */
+  applyPathMoves: (moves: { from: string; to: string }[]) => void;
   setContent: (content: string) => void;
   saveFile: () => Promise<boolean>;
   files: FileEntry[];
@@ -317,6 +319,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [currentFile, content, isDirty]);
 
+  const applyPathMoves = useCallback((moves: { from: string; to: string }[]) => {
+    if (!vault || moves.length === 0) return;
+    const moved = new Map(moves.map((m) => [m.from, vaultFileUri(vault.path, m.to)]));
+    const follow = (uri: string) => moved.get(vaultRelativePath(vault.path, uri)) ?? uri;
+    // The open note's URI changes too, so a later save writes the new path, not the old one back.
+    setCurrentFileState((prev) => (prev ? follow(prev) : prev));
+    setWorkspace((prev) => ({
+      ...prev,
+      openTabs: prev.openTabs.map(follow),
+      activeTab: prev.activeTab ? follow(prev.activeTab) : prev.activeTab,
+      bookmarks: prev.bookmarks?.map(follow),
+    }));
+  }, [vault]);
+
   const setContent = useCallback((newContent: string) => {
     setContentState(newContent);
     setIsDirty(true);
@@ -360,6 +376,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         currentFile,
         content,
         setCurrentFile,
+        applyPathMoves,
         setContent,
         saveFile,
         files,

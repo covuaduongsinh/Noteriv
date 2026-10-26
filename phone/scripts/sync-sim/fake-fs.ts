@@ -36,11 +36,17 @@ export function fileExists(path: string): boolean {
   return disk.has(path);
 }
 
+/** A file, or a folder (every file under it), renamed in place. */
 export function rename(oldPath: string, newName: string): boolean {
-  const content = disk.get(oldPath);
-  if (content === undefined) return false;
-  disk.delete(oldPath);
-  disk.set(oldPath.slice(0, oldPath.lastIndexOf('/') + 1) + encodeURIComponent(newName), content);
+  const from = oldPath.replace(/\/+$/, '');
+  const to = from.slice(0, from.lastIndexOf('/') + 1) + encodeURIComponent(newName);
+  const moved = [...disk.keys()].filter((k) => k === from || k.startsWith(from + '/'));
+  if (moved.length === 0) return false;
+  for (const k of moved) {
+    const content = disk.get(k)!;
+    disk.delete(k);
+    disk.set(to + k.slice(from.length), content);
+  }
   return true;
 }
 
