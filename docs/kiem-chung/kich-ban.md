@@ -40,8 +40,8 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 
 | # | Kịch bản | Ai | Bước chính | Kết quả | Thời gian | Ghi chú |
 |---|---|---|---|---|---|---|
-| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | Chưa chạy | | 2026-10-26: cần ghi vault thử vào database dev dùng chung (hoặc staging). Lần chạy bị hệ thống quyền chặn; chờ chủ dự án cho phép. Script đo bằng Playwright đã viết (chưa vào repo vì chưa chạy được). |
-| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | Chưa chạy | | Như 16 |
+| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | Không đạt | 2026-10-26 | Đo ngày 2026-10-26: build production cục bộ (`next start`) cộng API cục bộ, nối DB dev trên VPS qua tunnel SSH; script `scripts/perf/measure-vault.mjs` (Playwright), trung vị 3 lần. Cây thư mục 1,74 s (500 note lần đo 17/10: ~0,93 s); mở note 54 ms; gõ ~15 ms/ký tự; tìm kiếm 1,39 s; JS heap 17 MB. **Đồ thị không xong sau 240 s**: nó đọc từng note bằng một request (8 song song), mỗi request ~0,6 s qua tunnel. Xem lỗi #5. |
+| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | Không đạt | 2026-10-26 | Như 16, chưa có đính kèm. Cây thư mục 1,70 s; mở note 66 ms; gõ ~15 ms/ký tự; tìm kiếm 1,41 s; heap 21 MB: các việc thường ngày không chậm đi đáng kể từ 2.000 lên 10.000 note. **Đồ thị không xong** (như 16). Tài khoản thử `perf-k@example.test` với hai vault "Perf 2000", "Perf 10000" vẫn ở DB dev, dọn bằng `seed-vault.mjs --cleanup`. |
 
 ## E. Vận hành
 

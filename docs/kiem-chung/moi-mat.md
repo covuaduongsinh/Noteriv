@@ -20,7 +20,9 @@
 ## 2. Kỹ thuật
 
 - **Hiệu năng**: kết quả kịch bản 16–17 ([kich-ban.md](kich-ban.md)); so với ngân sách ở `docs/perf/2026-10-17-after-phase2.md`.
+  - 2026-10-26: các việc thường ngày (cây thư mục ~1,7 s, mở note < 0,1 s, tìm kiếm ~1,4 s) gần như không đổi từ 2.000 lên 10.000 note. Vấn đề lớn là các plugin quét cả vault bằng một request mỗi note, vướng giới hạn 300 request/phút ở production ([loi-va-gop-y.md](loi-va-gop-y.md) #5).
 - **Bảo mật**: chạy `/security-review` trên mã hiện tại; liệt kê phát hiện theo mức; mục Chặn/Nặng vào [loi-va-gop-y.md](loi-va-gop-y.md).
+  - 2026-10-26: rà soát chỉ đọc code (server, web, desktop, phone). Mức rủi ro tổng thể **cao** trước khi mở đăng ký: 3 lỗ Nghiêm trọng và 1 Cao ở worker sync (đã vá trong [phiên K-B1](../plans/2026-10-26-phien-k-b1-bao-mat-server.md), PR #47, qua 2 lượt review), 2 Cao ở desktop, 5 Trung bình, 6 Thấp ([loi-va-gop-y.md](loi-va-gop-y.md) #6–#8). Thấy ổn: phân quyền theo vault (không thấy IDOR), mã hoá credentials, SQL có tham số, token email, plugin sandbox, sanitize markdown. Báo cáo đầy đủ **không để trong repo công khai** (mô tả lỗ chưa vá): giữ ở máy chủ dự án, `~/.config/noteriv/bao-mat-2026-10-26.md`.
 - **Độ tin cậy**: số lỗi Sentry theo tuần, sự cố/downtime trong 6 tuần.
 - **Nợ kỹ thuật đã biết** (đánh giá: có cần trả trước khi bán không):
 
@@ -34,6 +36,8 @@
 | Lockfile tạo trên Windows, CI phải `npm install` | | |
 
 ## 3. Vận hành và chi phí
+
+Chi tiết, nguồn và giả định: [chi-phi.md](chi-phi.md) (2026-10-26). Tóm tắt: khoảng €37 / €63 / €104 mỗi tháng ở 100 / 1.000 / 10.000 người đăng ký (€0,37 / €0,06 / €0,01 mỗi người); khi còn ít người, khoản lớn nhất là ký mã desktop (~€25/tháng). Azure Trusted Signing không cấp cho pháp nhân/cá nhân Việt Nam.
 
 Ước tính chi phí **mỗi tháng** khi chạy trên máy chủ riêng (Chặng 6.3):
 
@@ -60,6 +64,7 @@ Thời gian vận hành của một người mỗi tuần (ước tính từ 6 t
 
 - **Giấy phép**: MIT cho phép bán; điều kiện giữ ghi công (`LICENSE`, `NOTICE.md`).
 - **Nghiên cứu đối thủ**: [Điều khoản của Obsidian](https://obsidian.md/terms) (cập nhật 2025-02-20, tra 2026-10-22) cấm dịch ngược và cấm dùng phần mềm để làm sản phẩm cạnh tranh. Ngày 2026-10-22, một lần chạy REA trên `obsidian.asar` đã dừng ngay lúc bắt đầu và kết quả đã xoá. **Quy tắc:** chỉ nghiên cứu đối thủ qua nguồn công khai (tài liệu, changelog, bảng giá, API công khai), không dịch ngược app độc quyền, không chép giao diện hay chữ. Áp dụng cho cả 12 app trong [doi-thu.md](doi-thu.md). Chi tiết: [obsidian-cong-khai.md](obsidian-cong-khai.md) mục 1.
+- **Đã tra 2026-10-26, chi tiết ở [phap-ly.md](phap-ly.md):** Stripe chưa mở cho pháp nhân Việt Nam; Lemon Squeezy và Polar.sh có trả tiền về Việt Nam, Paddle chưa xác minh; Luật Bảo vệ dữ liệu cá nhân 91/2025/QH15 thay Nghị định 13/2023 từ 01/01/2026; có 13 câu hỏi cho kế toán/luật sư.
 - **Thanh toán quốc tế từ Việt Nam**: điều kiện Paddle và Lemon Squeezy với người bán/pháp nhân Việt Nam (có nguồn); hệ quả thuế ở Việt Nam (cần hỏi kế toán — ghi câu hỏi, không tự kết luận).
 - **Dữ liệu cá nhân**: `/privacy`, `/terms` đã có từ 5.6; ghi điểm còn thiếu nếu bán cho EU / Việt Nam (Nghị định 13/2023 về dữ liệu cá nhân).
 
