@@ -53,6 +53,11 @@ pub fn expand_tilde(input: &str) -> PathBuf {
     PathBuf::from(input)
 }
 
+/// Platform-default base directory where user vaults live when created with the default path (`~/Noteriv`).
+pub fn default_vault_base_dir() -> Option<PathBuf> {
+    home_dir().map(|h| h.join("Noteriv"))
+}
+
 fn home_dir() -> Option<PathBuf> {
     if let Some(h) = std::env::var_os("HOME") {
         return Some(PathBuf::from(h));

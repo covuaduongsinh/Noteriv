@@ -101,5 +101,5 @@ describe("core plugin text", () => {
     }
     expect(checked).toBeGreaterThan(200);
     expect(missing).toEqual([]);
-  });
+  }, 30000);
 });

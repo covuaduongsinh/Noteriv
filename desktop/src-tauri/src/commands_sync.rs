@@ -5,6 +5,39 @@ use serde_json::Value;
 use std::collections::{HashMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
+use tauri::Manager;
+use crate::scope::PathScope;
+
+/// Validate relative path from sync providers (folder, webdav).
+/// Rejects path traversal (`..`), empty components, backslashes, absolute paths, and root dirs.
+pub fn is_safe_sync_rel_path(rel: &str) -> bool {
+    if rel.is_empty() || rel.contains('\\') || rel.contains('\0') {
+        return false;
+    }
+    let p = Path::new(rel);
+    if p.is_absolute() {
+        return false;
+    }
+    for component in p.components() {
+        match component {
+            std::path::Component::Normal(name) => {
+                let s = name.to_string_lossy();
+                if s.is_empty()
+                    || s == "."
+                    || s == ".."
+                    || s.contains('/')
+                    || s.contains('\\')
+                    || s.contains('\0')
+                {
+                    return false;
+                }
+            }
+            _ => return false,
+        }
+    }
+    true
+}
+
 
 const SYNC_EXTS: &[&str] = &[".md", ".markdown", ".txt", ".css", ".json", ".yaml", ".yml"];
 const SKIP_DIRS: &[&str] = &[".git", ".noteriv", "node_modules", ".obsidian", ".trash"];
@@ -119,14 +152,18 @@ fn default_direction() -> String {
     "both".into()
 }
 
-fn folder_sync(vault_path: &str, cfg: FolderConfig) -> Result<SyncResult, String> {
+fn folder_sync(scope: &PathScope, vault_path: &str, cfg: FolderConfig) -> Result<SyncResult, String> {
     if cfg.target_path.is_empty() {
         return Err("Invalid target path".into());
+    }
+    let target = Path::new(&cfg.target_path);
+    if !scope.is_allowed(target) {
+        log::warn!("[folder_sync] target path outside scope: {:?}", target);
+        return Err("Target folder outside permitted scope".into());
     }
     if !Path::new(vault_path).exists() {
         return Err("Invalid vault path".into());
     }
-    let target = Path::new(&cfg.target_path);
     if !target.exists() {
         fs::create_dir_all(target).map_err(|e| e.to_string())?;
     }
@@ -144,6 +181,9 @@ fn folder_sync(vault_path: &str, cfg: FolderConfig) -> Result<SyncResult, String
 
     if cfg.direction == "push" || cfg.direction == "both" {
         for (rel, lf) in &local_map {
+            if !is_safe_sync_rel_path(rel) {
+                continue;
+            }
             let needs = match remote_map.get(rel) {
                 Some(rf) => lf.mtime_ms > rf.mtime_ms,
                 None => true,
@@ -159,6 +199,9 @@ fn folder_sync(vault_path: &str, cfg: FolderConfig) -> Result<SyncResult, String
 
     if cfg.direction == "pull" || cfg.direction == "both" {
         for (rel, rf) in &remote_map {
+            if !is_safe_sync_rel_path(rel) {
+                continue;
+            }
             let needs = match local_map.get(rel) {
                 Some(lf) => rf.mtime_ms > lf.mtime_ms,
                 None => true,
@@ -166,6 +209,10 @@ fn folder_sync(vault_path: &str, cfg: FolderConfig) -> Result<SyncResult, String
             if needs {
                 let dest = Path::new(vault_path)
                     .join(rel.replace('/', std::path::MAIN_SEPARATOR_STR));
+                if !scope.is_allowed(&dest) {
+                    log::warn!("[folder_sync] skipping file write outside scope: {:?}", dest);
+                    continue;
+                }
                 ensure_parent(&dest);
                 fs::copy(&rf.full, &dest).map_err(|e| e.to_string())?;
                 pulled += 1;
@@ -342,8 +389,8 @@ fn parse_propfind(xml: &str, base_path: &str) -> Vec<WebDavEntry> {
                                 .and_then(|s| parse_webdav_date(&s))
                                 .unwrap_or(0);
 
-                            // Skip the base itself (empty rel)
-                            if !rel.is_empty() {
+                            // Skip the base itself (empty rel) and any unsafe paths
+                            if !rel.is_empty() && is_safe_sync_rel_path(&rel) {
                                 out.push(WebDavEntry {
                                     rel,
                                     href: decoded,
@@ -458,7 +505,7 @@ async fn webdav_get(client: &reqwest::Client, url: &str) -> Result<Vec<u8>, Stri
     Ok(resp.bytes().await.map_err(|e| e.to_string())?.to_vec())
 }
 
-async fn webdav_sync(vault_path: &str, cfg: WebDavConfig) -> Result<SyncResult, String> {
+async fn webdav_sync(scope: &PathScope, vault_path: &str, cfg: WebDavConfig) -> Result<SyncResult, String> {
     let client = build_webdav_client(&cfg)?;
     let base_url = format!(
         "{}{}",
@@ -486,6 +533,9 @@ async fn webdav_sync(vault_path: &str, cfg: WebDavConfig) -> Result<SyncResult, 
             } else {
                 format!("{}/{}", prefix.trim_end_matches('/'), e.rel)
             };
+            if !is_safe_sync_rel_path(&combined) {
+                continue;
+            }
             if e.is_dir {
                 stack.push((combined.clone(), format!("{}/{}", url.trim_end_matches('/'), e.rel)));
             } else {
@@ -529,20 +579,28 @@ async fn webdav_sync(vault_path: &str, cfg: WebDavConfig) -> Result<SyncResult, 
 
     // Pull: remote → local
     for (rel, rf) in &remote_entries {
+        if !is_safe_sync_rel_path(rel) {
+            continue;
+        }
         let needs = match local_map.get(rel) {
             Some(lf) => rf.mtime_ms > lf.mtime_ms,
             None => true,
         };
         if needs {
             let dest = Path::new(vault_path).join(rel.replace('/', std::path::MAIN_SEPARATOR_STR));
+            if !scope.is_allowed(&dest) {
+                log::warn!("[webdav] skipping file write outside scope: {:?}", dest);
+                continue;
+            }
             ensure_parent(&dest);
             // Build remote URL from base_url + href path tail
             let server_root = url::Url::parse(&cfg.url)
                 .ok()
-                .map(|u| {
-                    let mut clone = u.clone();
-                    clone.set_path("/");
-                    clone.to_string()
+                .map(|mut u| {
+                    u.set_path("");
+                    u.set_query(None);
+                    u.set_fragment(None);
+                    u.to_string()
                 })
                 .unwrap_or_else(|| cfg.url.clone());
             let remote_url = format!("{}{}", server_root.trim_end_matches('/'), rf.href);
@@ -589,15 +647,21 @@ pub struct SyncRunInput {
 }
 
 #[tauri::command]
-pub async fn sync_run(args: SyncRunInput) -> Result<SyncResult, String> {
+pub async fn sync_run(app: tauri::AppHandle, args: SyncRunInput) -> Result<SyncResult, String> {
+    let state = app.state::<crate::AppState>();
+    let vpath = Path::new(&args.vault_path);
+    if !state.scope.is_allowed(vpath) {
+        log::warn!("[sync] refused sync on unpermitted vault path: {}", args.vault_path);
+        return Err("Vault path outside permitted scope".into());
+    }
     match args.provider_type.as_str() {
         "folder" => {
             let cfg: FolderConfig = serde_json::from_value(args.config).map_err(|e| e.to_string())?;
-            folder_sync(&args.vault_path, cfg)
+            folder_sync(&state.scope, &args.vault_path, cfg)
         }
         "webdav" => {
             let cfg: WebDavConfig = serde_json::from_value(args.config).map_err(|e| e.to_string())?;
-            webdav_sync(&args.vault_path, cfg).await
+            webdav_sync(&state.scope, &args.vault_path, cfg).await
         }
         other => Err(format!("Unknown sync provider: {other}")),
     }
@@ -611,10 +675,20 @@ pub struct SyncTestInput {
 }
 
 #[tauri::command]
-pub async fn sync_test(args: SyncTestInput) -> ConnectionResult {
+pub async fn sync_test(app: tauri::AppHandle, args: SyncTestInput) -> ConnectionResult {
+    let state = app.state::<crate::AppState>();
     match args.provider_type.as_str() {
         "folder" => match serde_json::from_value::<FolderConfig>(args.config) {
-            Ok(cfg) => folder_test(&cfg),
+            Ok(cfg) => {
+                let target = Path::new(&cfg.target_path);
+                if !state.scope.is_allowed(target) {
+                    return ConnectionResult {
+                        ok: false,
+                        error: Some("Target folder outside permitted scope".into()),
+                    };
+                }
+                folder_test(&cfg)
+            }
             Err(e) => ConnectionResult { ok: false, error: Some(e.to_string()) },
         },
         "webdav" => match serde_json::from_value::<WebDavConfig>(args.config) {
@@ -627,3 +701,45 @@ pub async fn sync_test(args: SyncTestInput) -> ConnectionResult {
 
 // Pull base64 import in scope (used by build_webdav_client).
 use base64::Engine as _;
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_is_safe_sync_rel_path() {
+        assert!(is_safe_sync_rel_path("notes/alpha.md"));
+        assert!(is_safe_sync_rel_path("alpha.md"));
+        assert!(is_safe_sync_rel_path("deep/nested/folder/file.txt"));
+
+        // Path traversal attempts
+        assert!(!is_safe_sync_rel_path("../alpha.md"));
+        assert!(!is_safe_sync_rel_path("sub/../../alpha.md"));
+        assert!(!is_safe_sync_rel_path("/etc/passwd"));
+        assert!(!is_safe_sync_rel_path("C:\\Windows\\System32"));
+        assert!(!is_safe_sync_rel_path(""));
+        assert!(!is_safe_sync_rel_path("."));
+        assert!(!is_safe_sync_rel_path(".."));
+        assert!(!is_safe_sync_rel_path("a/b/../c.md"));
+        assert!(!is_safe_sync_rel_path("notes\\something.md"));
+    }
+
+    #[test]
+    fn test_parse_propfind_filters_traversal() {
+        let xml = r#"<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:">
+  <D:response>
+    <D:href>/dav/valid.md</D:href>
+    <D:propstat><D:prop><D:getlastmodified>Tue, 01 Apr 2025 12:00:00 GMT</D:getlastmodified></D:prop></D:propstat>
+  </D:response>
+  <D:response>
+    <D:href>/dav/../../etc/passwd</D:href>
+    <D:propstat><D:prop><D:getlastmodified>Tue, 01 Apr 2025 12:00:00 GMT</D:getlastmodified></D:prop></D:propstat>
+  </D:response>
+</D:multistatus>"#;
+
+        let entries = parse_propfind(xml, "/dav");
+        assert_eq!(entries.len(), 1);
+        assert_eq!(entries[0].rel, "valid.md");
+    }
+}

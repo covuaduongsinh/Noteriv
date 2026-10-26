@@ -26,8 +26,16 @@ pub async fn vault_get_active() -> Option<Vault> {
 }
 
 #[tauri::command]
-pub async fn vault_create(data: CreateVaultInput) -> Vault {
-    store::create_vault(data)
+pub async fn vault_create(app: AppHandle, data: CreateVaultInput) -> Result<Vault, String> {
+    let state: State<AppState> = app.state();
+    let resolved = crate::paths::expand_tilde(&data.vault_path);
+    if !state.scope.is_permitted_for_vault(&resolved) {
+        log::warn!("[vault] refused vault_create outside permitted scope: {}", data.vault_path);
+        return Err("Path is not permitted for vault creation. Please choose a folder using the dialog.".into());
+    }
+    let vault = store::create_vault(data);
+    state.scope.grant(&vault.path);
+    Ok(vault)
 }
 
 #[derive(Debug, Deserialize)]
