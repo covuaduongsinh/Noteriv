@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/lib/i18n';
 import {
   parseBoard,
   serializeBoard,
@@ -34,6 +35,7 @@ interface BoardViewProps {
 const COL_WIDTH = Dimensions.get('window').width * 0.7;
 
 export default function BoardView({ content, onChange }: BoardViewProps) {
+  const t = useT();
   const { colors } = useTheme();
   const [board, setBoard] = useState<BoardData>(() => parseBoard(content));
   const [editingCard, setEditingCard] = useState<{ colId: string; cardId: string } | null>(null);
@@ -66,11 +68,11 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
   }, [board, newCardText, emit]);
 
   const handleRemoveCard = useCallback((colId: string, cardId: string) => {
-    Alert.alert('Delete Card', 'Remove this card?', [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => emit(removeCard(board, colId, cardId)) },
+    Alert.alert(t('phone.boardView.deleteCardTitle'), t('phone.boardView.deleteCardMessage'), [
+      { text: t('phone.boardView.cancel'), style: 'cancel' },
+      { text: t('phone.boardView.delete'), style: 'destructive', onPress: () => emit(removeCard(board, colId, cardId)) },
     ]);
-  }, [board, emit]);
+  }, [board, emit, t]);
 
   const handleStartEdit = useCallback((colId: string, card: BoardCard) => {
     setEditingCard({ colId, cardId: card.id });
@@ -88,17 +90,17 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
     const otherCols = board.columns.filter((c) => c.id !== fromCol.id);
     if (otherCols.length === 0) return;
     Alert.alert(
-      'Move to',
+      t('phone.boardView.moveTo'),
       undefined,
       [
         ...otherCols.map((col) => ({
           text: col.title,
           onPress: () => emit(moveCard(board, card.id, fromCol.id, col.id, col.cards.length)),
         })),
-        { text: 'Cancel', style: 'cancel' as const },
+        { text: t('phone.boardView.cancel'), style: 'cancel' as const },
       ]
     );
-  }, [board, emit]);
+  }, [board, emit, t]);
 
   const handleAddColumn = useCallback(() => {
     if (!newColTitle.trim()) return;
@@ -111,13 +113,13 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
     const col = board.columns.find((c) => c.id === colId);
     if (!col) return;
     const msg = col.cards.length > 0
-      ? `Delete "${col.title}" and its ${col.cards.length} cards?`
-      : `Delete "${col.title}"?`;
-    Alert.alert('Delete Column', msg, [
-      { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => emit(removeColumn(board, colId)) },
+      ? t('phone.boardView.deleteColumnWithCards', { title: col.title, count: col.cards.length })
+      : t('phone.boardView.deleteColumnMessage', { title: col.title });
+    Alert.alert(t('phone.boardView.deleteColumnTitle'), msg, [
+      { text: t('phone.boardView.cancel'), style: 'cancel' },
+      { text: t('phone.boardView.delete'), style: 'destructive', onPress: () => emit(removeColumn(board, colId)) },
     ]);
-  }, [board, emit]);
+  }, [board, emit, t]);
 
   useEffect(() => {
     if (addingToCol) setTimeout(() => newCardRef.current?.focus(), 50);
@@ -223,7 +225,7 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
                   onChangeText={setNewCardText}
                   onSubmitEditing={() => handleAddCard(col.id)}
                   onBlur={() => { if (!newCardText.trim()) setAddingToCol(null); }}
-                  placeholder="Card text..."
+                  placeholder={t('phone.boardView.cardPlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   style={[styles.newCardInput, { color: colors.textPrimary }]}
                 />
@@ -237,7 +239,7 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
               onPress={() => setAddingToCol(col.id)}
             >
               <Ionicons name="add" size={16} color={colors.textMuted} />
-              <Text style={{ color: colors.textMuted, fontSize: 12 }}>Add card</Text>
+              <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('phone.boardView.addCard')}</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -252,7 +254,7 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
               onChangeText={setNewColTitle}
               onSubmitEditing={handleAddColumn}
               autoFocus
-              placeholder="Column title..."
+              placeholder={t('phone.boardView.columnPlaceholder')}
               placeholderTextColor={colors.textMuted}
               style={[styles.newCardInput, { color: colors.textPrimary, backgroundColor: colors.bgPrimary, borderRadius: 6, padding: 8, marginBottom: 8 }]}
             />
@@ -261,10 +263,10 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
                 style={[styles.addColConfirm, { backgroundColor: colors.accent }]}
                 onPress={handleAddColumn}
               >
-                <Text style={{ color: colors.bgPrimary, fontWeight: '600', fontSize: 13 }}>Add</Text>
+                <Text style={{ color: colors.bgPrimary, fontWeight: '600', fontSize: 13 }}>{t('phone.boardView.add')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setAddingColumn(false)}>
-                <Text style={{ color: colors.textMuted, fontSize: 13, padding: 8 }}>Cancel</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 13, padding: 8 }}>{t('phone.boardView.cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -274,7 +276,7 @@ export default function BoardView({ content, onChange }: BoardViewProps) {
             onPress={() => setAddingColumn(true)}
           >
             <Ionicons name="add" size={20} color={colors.textMuted} />
-            <Text style={{ color: colors.textMuted, fontSize: 13 }}>Add column</Text>
+            <Text style={{ color: colors.textMuted, fontSize: 13 }}>{t('phone.boardView.addColumn')}</Text>
           </TouchableOpacity>
         )}
       </View>

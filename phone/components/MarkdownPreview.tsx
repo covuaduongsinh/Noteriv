@@ -16,6 +16,7 @@ import { useCorePlugins } from '@/context/CorePluginsContext';
 import { parseQuery, executeQuery, parseNoteData, QueryResult } from '@noteriv/core/dataview';
 import { listAllMarkdownFiles, readFile } from '@/lib/file-system';
 import { getInstalledPlugins, getEnabledPluginIds } from '@/lib/plugins';
+import { useT } from '@/lib/i18n';
 
 interface MarkdownPreviewProps {
   content: string;
@@ -891,6 +892,7 @@ async function findInVault(base: string, name: string): Promise<string[]> {
 function DataviewBlock({ code, vaultPath, fontSize, colors }: {
   code: string; vaultPath: string; fontSize: number; colors: any;
 }) {
+  const tr = useT();
   const [result, setResult] = useState<QueryResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -914,7 +916,7 @@ function DataviewBlock({ code, vaultPath, fontSize, colors }: {
     return <Text style={{ color: colors.red, fontSize: fontSize - 1, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace' }}>{error}</Text>;
   }
   if (!result) {
-    return <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>Running query…</Text>;
+    return <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>{tr('phone.markdownPreview.runningQuery')}</Text>;
   }
 
   if (result.type === 'TASK') {
@@ -926,7 +928,7 @@ function DataviewBlock({ code, vaultPath, fontSize, colors }: {
             <Text style={{ color: t.completed ? colors.textMuted : colors.textPrimary, fontSize: fontSize - 1, textDecorationLine: t.completed ? 'line-through' : 'none', flex: 1 }}>{t.text}</Text>
           </View>
         ))}
-        {(result.tasks ?? []).length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>No tasks found.</Text>}
+        {(result.tasks ?? []).length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>{tr('phone.markdownPreview.noTasks')}</Text>}
       </View>
     );
   }
@@ -937,7 +939,7 @@ function DataviewBlock({ code, vaultPath, fontSize, colors }: {
         {result.rows.map((r, i) => (
           <Text key={i} style={{ color: colors.blue, fontSize: fontSize - 1 }}>· {r['file.name']}</Text>
         ))}
-        {result.rows.length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>No results.</Text>}
+        {result.rows.length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>{tr('phone.markdownPreview.noResults')}</Text>}
       </View>
     );
   }
@@ -958,7 +960,7 @@ function DataviewBlock({ code, vaultPath, fontSize, colors }: {
             ))}
           </View>
         ))}
-        {result.rows.length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>No results.</Text>}
+        {result.rows.length === 0 && <Text style={{ color: colors.textMuted, fontSize: fontSize - 1 }}>{tr('phone.markdownPreview.noResults')}</Text>}
       </View>
     </ScrollView>
   );

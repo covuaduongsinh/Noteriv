@@ -24,11 +24,13 @@ import {
 import { writeFile, readFile } from '@/lib/file-system';
 import { diffStrings, DiffLine } from '@/lib/note-history';
 import MarkdownPreview from '@/components/MarkdownPreview';
+import { useT } from '@/lib/i18n';
 
 export default function RecoveryScreen() {
   const router = useRouter();
   const { filePath } = useLocalSearchParams<{ filePath: string }>();
   const { colors } = useTheme();
+  const t = useT();
   const { vault, settings, setCurrentFile } = useApp();
 
   const [snapshots, setSnapshots] = useState<SnapshotInfo[]>([]);
@@ -70,12 +72,12 @@ export default function RecoveryScreen() {
     if (!previewSnapshot || !filePath) return;
 
     Alert.alert(
-      'Restore Snapshot',
-      'This will overwrite the current file with this snapshot. Continue?',
+      t('phone.recovery.restoreTitle'),
+      t('phone.recovery.restoreMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('phone.recovery.cancel'), style: 'cancel' },
         {
-          text: 'Restore',
+          text: t('phone.recovery.restore'),
           style: 'destructive',
           onPress: () => {
             const ok = writeFile(filePath, previewContent);
@@ -83,20 +85,20 @@ export default function RecoveryScreen() {
               setCurrentFile(filePath);
               router.back();
             } else {
-              Alert.alert('Error', 'Failed to restore snapshot.');
+              Alert.alert(t('phone.recovery.errorTitle'), t('phone.recovery.restoreFailed'));
             }
           },
         },
       ]
     );
-  }, [previewSnapshot, filePath, previewContent, setCurrentFile, router]);
+  }, [previewSnapshot, filePath, previewContent, setCurrentFile, router, t]);
 
   const handleDelete = useCallback(
     (snap: SnapshotInfo) => {
-      Alert.alert('Delete Snapshot', 'Remove this snapshot permanently?', [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(t('phone.recovery.deleteTitle'), t('phone.recovery.deleteMessage'), [
+        { text: t('phone.recovery.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('phone.recovery.delete'),
           style: 'destructive',
           onPress: () => {
             deleteSnapshot(snap.snapshotPath);
@@ -109,20 +111,20 @@ export default function RecoveryScreen() {
         },
       ]);
     },
-    [previewSnapshot, loadSnapshots]
+    [previewSnapshot, loadSnapshots, t]
   );
 
   const formatRelativeAge = useCallback((timestamp: number) => {
     const diff = Date.now() - timestamp;
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return t('phone.recovery.justNow');
+    if (minutes < 60) return t('phone.recovery.minutesAgo', { count: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t('phone.recovery.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    if (days < 30) return `${days}d ago`;
-    return `${Math.floor(days / 30)}mo ago`;
-  }, []);
+    if (days < 30) return t('phone.recovery.daysAgo', { count: days });
+    return t('phone.recovery.monthsAgo', { count: Math.floor(days / 30) });
+  }, [t]);
 
   const handleBack = useCallback(() => {
     if (previewSnapshot) {
@@ -167,7 +169,7 @@ export default function RecoveryScreen() {
           </TouchableOpacity>
           <TouchableOpacity style={styles.restoreBtn} onPress={handleRestore}>
             <Ionicons name="refresh" size={18} color={colors.bgPrimary} />
-            <Text style={styles.restoreBtnText}>Restore</Text>
+            <Text style={styles.restoreBtnText}>{t('phone.recovery.restore')}</Text>
           </TouchableOpacity>
         </View>
         {showDiff ? (
@@ -187,7 +189,7 @@ export default function RecoveryScreen() {
               </Text>
             ))}
             {diffLines.length === 0 && (
-              <Text style={[styles.diffEmpty, { color: colors.textMuted }]}>No differences</Text>
+              <Text style={[styles.diffEmpty, { color: colors.textMuted }]}>{t('phone.recovery.noDifferences')}</Text>
             )}
           </ScrollView>
         ) : (
@@ -208,16 +210,16 @@ export default function RecoveryScreen() {
           {fileName}
         </Text>
         <Text style={styles.snapshotCount}>
-          {snapshots.length} snapshot{snapshots.length !== 1 ? 's' : ''}
+          {t('phone.recovery.snapshotCount', { count: snapshots.length })}
         </Text>
       </View>
 
       {snapshots.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="time-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Snapshots</Text>
+          <Text style={styles.emptyTitle}>{t('phone.recovery.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            Snapshots are created automatically each time you save.
+            {t('phone.recovery.emptyHint')}
           </Text>
         </View>
       ) : (

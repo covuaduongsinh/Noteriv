@@ -17,6 +17,7 @@ import { useApp } from '@/context/AppContext';
 import { listTemplates, loadTemplate, processTemplate } from '@/lib/templates';
 import { writeFile } from '@/lib/file-system';
 import MarkdownPreview from '@/components/MarkdownPreview';
+import { useT } from '@/lib/i18n';
 
 interface TemplateEntry {
   name: string;
@@ -24,6 +25,7 @@ interface TemplateEntry {
 }
 
 export default function TemplatesScreen() {
+  const t = useT();
   const router = useRouter();
   const { colors } = useTheme();
   const { vault, currentDir, refreshFiles, settings } = useApp();
@@ -73,9 +75,9 @@ export default function TemplatesScreen() {
         router.push({ pathname: '/editor', params: { path: filePath } });
       }, 100);
     } else {
-      Alert.alert('Error', 'Failed to create file from template.');
+      Alert.alert(t('phone.templates.errorTitle'), t('phone.templates.createFailed'));
     }
-  }, [selectedTemplate, vault, currentDir, previewContent, refreshFiles, router]);
+  }, [selectedTemplate, vault, currentDir, previewContent, refreshFiles, router, t]);
 
   const handleBack = useCallback(() => {
     if (selectedTemplate) {
@@ -108,11 +110,11 @@ export default function TemplatesScreen() {
             <Text style={styles.previewTitle} numberOfLines={1}>
               {selectedTemplate.name}
             </Text>
-            <Text style={styles.previewSubtitle}>Preview</Text>
+            <Text style={styles.previewSubtitle}>{t('phone.templates.preview')}</Text>
           </View>
           <TouchableOpacity style={styles.useBtn} onPress={handleUseTemplate}>
             <Ionicons name="checkmark" size={20} color={colors.bgPrimary} />
-            <Text style={styles.useBtnText}>Use</Text>
+            <Text style={styles.useBtnText}>{t('phone.templates.use')}</Text>
           </TouchableOpacity>
         </View>
         <MarkdownPreview content={previewContent} fontSize={settings.fontSize} />
@@ -127,7 +129,7 @@ export default function TemplatesScreen() {
         <Ionicons name="search" size={18} color={colors.textMuted} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Search templates..."
+          placeholder={t('phone.templates.searchPlaceholder')}
           placeholderTextColor={colors.textMuted}
           value={search}
           onChangeText={setSearch}
@@ -143,9 +145,9 @@ export default function TemplatesScreen() {
       {templates.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="document-text-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Templates</Text>
+          <Text style={styles.emptyTitle}>{t('phone.templates.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            Create a "Templates" folder in your vault and add .md files to use as templates.
+            {t('phone.templates.emptyMessage')}
           </Text>
         </View>
       ) : (
@@ -166,7 +168,7 @@ export default function TemplatesScreen() {
           )}
           ListEmptyComponent={
             <View style={styles.empty}>
-              <Text style={styles.emptySubtitle}>No templates match your search.</Text>
+              <Text style={styles.emptySubtitle}>{t('phone.templates.noMatch')}</Text>
             </View>
           }
         />

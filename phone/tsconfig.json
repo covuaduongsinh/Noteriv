@@ -8,6 +8,9 @@
       ],
       "@noteriv/core/*": [
         "../packages/core/src/*"
+      ],
+      "@noteriv/ui/i18n": [
+        "../packages/ui/src/i18n/index.ts"
       ]
     }
   },

@@ -2,17 +2,19 @@ import React, { useState } from 'react';
 import { View, Text, ScrollView, Switch, StyleSheet } from 'react-native';
 import { useTheme } from '@/context/ThemeContext';
 import { useCorePlugins } from '@/context/CorePluginsContext';
-import { CORE_PLUGINS, corePluginLabels, corePluginText } from '@/lib/core-plugins';
+import { CORE_PLUGINS, corePluginText } from '@/lib/core-plugins';
+import { useT } from '@/lib/i18n';
 
 export default function CorePluginsScreen() {
   const { colors } = useTheme();
+  const t = useT();
   const { isEnabled, setEnabled } = useCorePlugins();
   const [saveError, setSaveError] = useState<string | null>(null);
 
   const handleToggle = (id: string, enabled: boolean) => {
     setSaveError(null);
     setEnabled(id, enabled).catch((err) => {
-      setSaveError(`${corePluginLabels.saveFailed}: ${err instanceof Error ? err.message : String(err)}`);
+      setSaveError(t('phone.corePlugins.saveFailed', { error: err instanceof Error ? err.message : String(err) }));
     });
   };
 
@@ -21,7 +23,7 @@ export default function CorePluginsScreen() {
       style={[styles.container, { backgroundColor: colors.bgPrimary }]}
       contentContainerStyle={styles.contentContainer}
     >
-      <Text style={[styles.intro, { color: colors.textSecondary }]}>{corePluginLabels.intro}</Text>
+      <Text style={[styles.intro, { color: colors.textSecondary }]}>{t('phone.corePlugins.intro')}</Text>
       {saveError && <Text style={[styles.error, { color: colors.red }]}>{saveError}</Text>}
       {CORE_PLUGINS.map((plugin) => {
         const { name, description } = corePluginText(plugin.id);
@@ -35,7 +37,7 @@ export default function CorePluginsScreen() {
               <Text style={[styles.name, { color: colors.textPrimary }]}>{name}</Text>
               <Text style={[styles.description, { color: colors.textSecondary }]}>{description}</Text>
               {!plugin.onPhone && (
-                <Text style={[styles.note, { color: colors.textMuted }]}>{corePluginLabels.notOnPhone}</Text>
+                <Text style={[styles.note, { color: colors.textMuted }]}>{t('phone.corePlugins.notOnPhone')}</Text>
               )}
             </View>
             <Switch

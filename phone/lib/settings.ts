@@ -15,6 +15,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   commitMessageFormat: 'Sync {date} {time}',
   theme: 'catppuccin-mocha',
   autoUpdate: true,
+  language: 'auto',
 };
 
 export async function loadSettings(): Promise<AppSettings> {

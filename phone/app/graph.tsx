@@ -14,6 +14,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { WebView } from 'react-native-webview';
 import { listAllMarkdownFiles, readFile } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 interface GraphNode {
   id: string;
@@ -28,6 +29,7 @@ interface GraphEdge {
 }
 
 export default function GraphScreen() {
+  const t = useT();
   const router = useRouter();
   const { colors } = useTheme();
   const { vault } = useApp();
@@ -87,10 +89,13 @@ export default function GraphScreen() {
       }
       const filteredNodes = nodes.filter((n) => connected.has(n.id));
 
-      setHtml(buildGraphHTML(filteredNodes, edges, colors));
+      setHtml(buildGraphHTML(filteredNodes, edges, colors, {
+        oneWay: t('phone.graph.oneWay'),
+        reciprocal: t('phone.graph.reciprocal'),
+      }));
       setLoading(false);
     })();
-  }, [vault, colors]);
+  }, [vault, colors, t]);
 
   const handleMessage = useCallback((event: any) => {
     try {
@@ -107,14 +112,14 @@ export default function GraphScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Graph View</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('phone.graph.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={{ color: colors.textMuted, marginTop: 12 }}>Building graph...</Text>
+          <Text style={{ color: colors.textMuted, marginTop: 12 }}>{t('phone.graph.building')}</Text>
         </View>
       ) : (
         <WebView
@@ -132,7 +137,8 @@ export default function GraphScreen() {
 function buildGraphHTML(
   nodes: GraphNode[],
   edges: GraphEdge[],
-  colors: ReturnType<typeof useTheme>['colors']
+  colors: ReturnType<typeof useTheme>['colors'],
+  legend: { oneWay: string; reciprocal: string }
 ): string {
   const { width, height } = Dimensions.get('window');
 
@@ -150,7 +156,7 @@ function buildGraphHTML(
 </head>
 <body>
 <canvas id="c"></canvas>
-<div class="legend"><span><b>→</b> one-way</span><span><b>↔</b> reciprocal</span></div>
+<div class="legend"><span><b>→</b> ${legend.oneWay}</span><span><b>↔</b> ${legend.reciprocal}</span></div>
 <script>
 const W = ${width}, H = ${height - 100};
 const canvas = document.getElementById('c');

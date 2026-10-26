@@ -13,10 +13,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { listTrash, restoreFromTrash, deleteFile } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 export default function TrashScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const { vault } = useApp();
   const [items, setItems] = useState(() => vault ? listTrash(vault.path) : []);
 
@@ -30,32 +32,32 @@ export default function TrashScreen() {
     if (ok) {
       refresh();
     } else {
-      Alert.alert('Restore failed', `Could not restore "${name}".`);
+      Alert.alert(t('phone.trash.restoreFailedTitle'), t('phone.trash.restoreFailed', { name }));
     }
-  }, [vault, refresh]);
+  }, [vault, refresh, t]);
 
   const handleDelete = useCallback((path: string, name: string) => {
-    Alert.alert('Delete permanently?', `"${name}" will be gone forever.`, [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('phone.trash.deleteTitle'), t('phone.trash.deleteMessage', { name }), [
+      { text: t('phone.trash.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('phone.trash.delete'),
         style: 'destructive',
         onPress: () => { deleteFile(path); refresh(); },
       },
     ]);
-  }, [refresh]);
+  }, [refresh, t]);
 
   const handleEmptyTrash = useCallback(() => {
     if (items.length === 0) return;
-    Alert.alert('Empty Trash?', 'All trashed files will be permanently deleted.', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('phone.trash.emptyTitle'), t('phone.trash.emptyMessage'), [
+      { text: t('phone.trash.cancel'), style: 'cancel' },
       {
-        text: 'Empty Trash',
+        text: t('phone.trash.emptyConfirm'),
         style: 'destructive',
         onPress: () => { items.forEach((i) => deleteFile(i.path)); refresh(); },
       },
     ]);
-  }, [items, refresh]);
+  }, [items, refresh, t]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
@@ -64,10 +66,10 @@ export default function TrashScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: colors.textPrimary }]}>Trash</Text>
+        <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.trash.title')}</Text>
         {items.length > 0 && (
           <TouchableOpacity onPress={handleEmptyTrash} style={styles.emptyBtn}>
-            <Text style={[styles.emptyText, { color: colors.red }]}>Empty</Text>
+            <Text style={[styles.emptyText, { color: colors.red }]}>{t('phone.trash.empty')}</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -75,7 +77,7 @@ export default function TrashScreen() {
       {items.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="trash-outline" size={48} color={colors.textMuted} />
-          <Text style={[styles.emptyLabel, { color: colors.textMuted }]}>Trash is empty</Text>
+          <Text style={[styles.emptyLabel, { color: colors.textMuted }]}>{t('phone.trash.isEmpty')}</Text>
         </View>
       ) : (
         <FlatList
@@ -92,13 +94,13 @@ export default function TrashScreen() {
                 style={[styles.actionBtn, { backgroundColor: colors.accent + '20' }]}
                 onPress={() => handleRestore(item.path, item.name)}
               >
-                <Text style={[styles.actionText, { color: colors.accent }]}>Restore</Text>
+                <Text style={[styles.actionText, { color: colors.accent }]}>{t('phone.trash.restore')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.actionBtn, { backgroundColor: colors.red + '20' }]}
                 onPress={() => handleDelete(item.path, item.name)}
               >
-                <Text style={[styles.actionText, { color: colors.red }]}>Delete</Text>
+                <Text style={[styles.actionText, { color: colors.red }]}>{t('phone.trash.delete')}</Text>
               </TouchableOpacity>
             </View>
           )}

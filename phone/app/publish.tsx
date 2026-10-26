@@ -18,8 +18,10 @@ import { shareAsync } from 'expo-sharing';
 import { File, Paths } from 'expo-file-system';
 import { generatePublishHTML } from '@/lib/publish';
 import { readFile } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 export default function PublishScreen() {
+  const t = useT();
   const router = useRouter();
   const { filePath } = useLocalSearchParams<{ filePath: string }>();
   const { colors } = useTheme();
@@ -39,17 +41,17 @@ export default function PublishScreen() {
       file.write(html);
       await shareAsync(tmpPath, {
         mimeType: 'text/html',
-        dialogTitle: `Share ${fileName}`,
+        dialogTitle: t('phone.publish.shareDialogTitle', { name: fileName }),
         UTI: 'public.html',
       });
     } catch (err: any) {
       if (err?.message !== 'User did not share') {
-        Alert.alert('Error', 'Failed to share HTML file.');
+        Alert.alert(t('phone.publish.errorTitle'), t('phone.publish.shareFailed'));
       }
     } finally {
       setPublishing(false);
     }
-  }, [html, fileName]);
+  }, [html, fileName, t]);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
@@ -59,7 +61,7 @@ export default function PublishScreen() {
         </TouchableOpacity>
         <View style={styles.headerCenter}>
           <Text style={[styles.headerTitle, { color: colors.textPrimary }]} numberOfLines={1}>
-            Publish
+            {t('phone.publish.title')}
           </Text>
           <Text style={[styles.headerSubtitle, { color: colors.textMuted }]}>
             {fileName}.html
@@ -75,7 +77,7 @@ export default function PublishScreen() {
           ) : (
             <>
               <Ionicons name="share-outline" size={16} color={colors.bgPrimary} />
-              <Text style={[styles.shareBtnText, { color: colors.bgPrimary }]}>Share</Text>
+              <Text style={[styles.shareBtnText, { color: colors.bgPrimary }]}>{t('phone.publish.share')}</Text>
             </>
           )}
         </TouchableOpacity>

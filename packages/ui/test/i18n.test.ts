@@ -28,6 +28,23 @@ describe("createTranslator", () => {
   });
 });
 
+describe("plural forms without Intl.PluralRules (the Android app's engine may lack it)", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    vi.resetModules();
+  });
+
+  it("still picks English one/other, and Vietnamese other", async () => {
+    vi.stubGlobal("Intl", { ...Intl, PluralRules: undefined });
+    vi.resetModules();
+    const fresh = await import("../src/i18n/translate");
+    const en = fresh.createTranslator("en", catalog);
+    expect(en("files", { count: 1 })).toBe("1 file");
+    expect(en("files", { count: 0 })).toBe("0 files");
+    expect(fresh.createTranslator("vi", fresh.flattenMessages({ files: { one: "x", other: "{count} tệp" } }))("files", { count: 1 })).toBe("1 tệp");
+  });
+});
+
 describe("resolveLocale", () => {
   it("prefers a supported saved choice, then the browser's languages, then the fallback", () => {
     expect(resolveLocale({ saved: "vi", preferred: ["en-US"] })).toBe("vi");

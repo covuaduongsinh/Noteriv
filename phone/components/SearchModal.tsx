@@ -16,6 +16,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { listAllMarkdownFiles, searchInFiles } from '@/lib/file-system';
 import { SearchResult } from '@/types';
+import { useT } from '@/lib/i18n';
 
 interface SearchModalProps {
   visible: boolean;
@@ -75,6 +76,7 @@ export default function SearchModal({
   onFileSelect,
 }: SearchModalProps) {
   const { colors } = useTheme();
+  const t = useT();
   const [activeTab, setActiveTab] = useState<TabId>('quickOpen');
   const [query, setQuery] = useState('');
   const [allFiles, setAllFiles] = useState<FileInfo[]>([]);
@@ -230,7 +232,7 @@ export default function SearchModal({
           >
             <Ionicons name="close" size={24} color={colors.textPrimary} />
           </TouchableOpacity>
-          <Text style={[styles.title, { color: colors.textPrimary }]}>Search</Text>
+          <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.searchModal.title')}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -248,7 +250,7 @@ export default function SearchModal({
             <Text
               style={[styles.tabText, { color: colors.textMuted }, activeTab === 'quickOpen' && { color: colors.blue, fontWeight: '600' }]}
             >
-              Quick Open
+              {t('phone.searchModal.quickOpen')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity
@@ -263,7 +265,7 @@ export default function SearchModal({
             <Text
               style={[styles.tabText, { color: colors.textMuted }, activeTab === 'vaultSearch' && { color: colors.blue, fontWeight: '600' }]}
             >
-              Vault Search
+              {t('phone.searchModal.vaultSearch')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -278,8 +280,8 @@ export default function SearchModal({
             onChangeText={setQuery}
             placeholder={
               activeTab === 'quickOpen'
-                ? 'Search file name...'
-                : 'Search in file contents...'
+                ? t('phone.searchModal.placeholderFiles')
+                : t('phone.searchModal.placeholderContents')
             }
             placeholderTextColor={colors.textMuted}
             selectionColor={colors.blue}
@@ -309,12 +311,12 @@ export default function SearchModal({
                 ) : query.trim() ? (
                   <>
                     <Ionicons name="document-outline" size={40} color={colors.border} />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>No files found</Text>
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.searchModal.noFiles')}</Text>
                   </>
                 ) : (
                   <>
                     <Ionicons name="flash-outline" size={40} color={colors.border} />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>Type to search files</Text>
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.searchModal.typeToSearchFiles')}</Text>
                   </>
                 )}
               </View>
@@ -332,17 +334,17 @@ export default function SearchModal({
                 {isSearching ? (
                   <>
                     <ActivityIndicator color={colors.blue} size="small" />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>Searching...</Text>
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.searchModal.searching')}</Text>
                   </>
                 ) : query.trim() ? (
                   <>
                     <Ionicons name="search-outline" size={40} color={colors.border} />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>No results found</Text>
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.searchModal.noResults')}</Text>
                   </>
                 ) : (
                   <>
                     <Ionicons name="search-outline" size={40} color={colors.border} />
-                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>Search file contents</Text>
+                    <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.searchModal.searchContents')}</Text>
                   </>
                 )}
               </View>
@@ -350,7 +352,7 @@ export default function SearchModal({
             ListHeaderComponent={
               searchResults.length > 0 ? (
                 <Text style={[styles.resultCount, { color: colors.textMuted }]}>
-                  {searchResults.length} result{searchResults.length !== 1 ? 's' : ''} found
+                  {t('phone.searchModal.resultsFound', { count: searchResults.length })}
                 </Text>
               ) : null
             }

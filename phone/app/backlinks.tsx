@@ -12,8 +12,10 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { findBacklinks, Backlink } from '@/lib/wiki-links';
+import { useT } from '@/lib/i18n';
 
 export default function BacklinksScreen() {
+  const t = useT();
   const router = useRouter();
   const { filePath, vaultPath } = useLocalSearchParams<{
     filePath: string;
@@ -54,21 +56,21 @@ export default function BacklinksScreen() {
       <View style={styles.fileInfo}>
         <Ionicons name="link-outline" size={18} color={colors.textMuted} />
         <Text style={styles.fileInfoText} numberOfLines={1}>
-          Backlinks to {fileName}
+          {t('phone.backlinks.backlinksTo', { name: fileName })}
         </Text>
       </View>
 
       {loading ? (
         <View style={styles.centered}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={styles.loadingText}>Scanning vault...</Text>
+          <Text style={styles.loadingText}>{t('phone.backlinks.scanning')}</Text>
         </View>
       ) : backlinks.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="link-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Backlinks Found</Text>
+          <Text style={styles.emptyTitle}>{t('phone.backlinks.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            No other files link to this note using [[wiki links]].
+            {t('phone.backlinks.emptyMessage')}
           </Text>
         </View>
       ) : (
@@ -90,7 +92,7 @@ export default function BacklinksScreen() {
                   <Text style={styles.backlinkFileName} numberOfLines={1}>
                     {item.fileName}
                   </Text>
-                  <Text style={styles.backlinkLine}>Line {item.line}</Text>
+                  <Text style={styles.backlinkLine}>{t('phone.backlinks.line', { line: item.line })}</Text>
                 </View>
                 <Text style={styles.backlinkText} numberOfLines={2}>
                   {item.text}
@@ -101,7 +103,7 @@ export default function BacklinksScreen() {
           )}
           ListHeaderComponent={
             <Text style={styles.countText}>
-              {backlinks.length} backlink{backlinks.length !== 1 ? 's' : ''} found
+              {t('phone.backlinks.found', { count: backlinks.length })}
             </Text>
           }
         />

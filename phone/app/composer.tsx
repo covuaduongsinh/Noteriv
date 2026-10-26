@@ -17,6 +17,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { mergeNotes, splitByHeadings, sanitizeFileName } from '@/lib/note-composer';
 import { listAllMarkdownFiles, writeFile } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 type Mode = 'merge' | 'split';
 
@@ -27,6 +28,7 @@ interface MarkdownFile {
 }
 
 export default function ComposerScreen() {
+  const t = useT();
   const router = useRouter();
   const { colors } = useTheme();
   const { vault, currentDir, content, currentFile, refreshFiles } = useApp();
@@ -74,11 +76,11 @@ export default function ComposerScreen() {
 
   const handleMerge = useCallback(async () => {
     if (selectedPaths.size < 2) {
-      Alert.alert('Select Files', 'Select at least 2 files to merge.');
+      Alert.alert(t('phone.composer.selectFilesTitle'), t('phone.composer.selectFilesMessage'));
       return;
     }
     if (!mergedName.trim()) {
-      Alert.alert('Name Required', 'Enter a name for the merged file.');
+      Alert.alert(t('phone.composer.nameRequiredTitle'), t('phone.composer.nameRequiredMessage'));
       return;
     }
     if (!vault) return;
@@ -100,16 +102,16 @@ export default function ComposerScreen() {
           router.push({ pathname: '/editor', params: { path: filePath } });
         }, 100);
       } else {
-        Alert.alert('Error', 'Failed to create merged file.');
+        Alert.alert(t('phone.composer.errorTitle'), t('phone.composer.mergeFailed'));
       }
     } finally {
       setMerging(false);
     }
-  }, [selectedPaths, mergedName, addHeadings, vault, currentDir, refreshFiles, router]);
+  }, [selectedPaths, mergedName, addHeadings, vault, currentDir, refreshFiles, router, t]);
 
   const handleSplit = useCallback(async () => {
     if (splitSections.length < 2) {
-      Alert.alert('Cannot Split', 'Content does not have enough headings to split.');
+      Alert.alert(t('phone.composer.cannotSplitTitle'), t('phone.composer.cannotSplitMessage'));
       return;
     }
     if (!vault) return;
@@ -134,13 +136,13 @@ export default function ComposerScreen() {
 
     if (created > 0) {
       refreshFiles();
-      Alert.alert('Split Complete', `Created ${created} file${created !== 1 ? 's' : ''}.`, [
-        { text: 'OK', onPress: () => router.back() },
+      Alert.alert(t('phone.composer.splitCompleteTitle'), t('phone.composer.splitCreated', { count: created }), [
+        { text: t('phone.composer.ok'), onPress: () => router.back() },
       ]);
     } else {
-      Alert.alert('Error', 'Failed to create split files.');
+      Alert.alert(t('phone.composer.errorTitle'), t('phone.composer.splitFailed'));
     }
-  }, [splitSections, vault, currentDir, refreshFiles, router]);
+  }, [splitSections, vault, currentDir, refreshFiles, router, t]);
 
   const handlePickSourceFile = useCallback(
     async (file: MarkdownFile) => {
@@ -181,7 +183,7 @@ export default function ComposerScreen() {
               mode === 'merge' && styles.segmentTextActive,
             ]}
           >
-            Merge
+            {t('phone.composer.merge')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -199,7 +201,7 @@ export default function ComposerScreen() {
               mode === 'split' && styles.segmentTextActive,
             ]}
           >
-            Split
+            {t('phone.composer.split')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -210,7 +212,7 @@ export default function ComposerScreen() {
           <View style={styles.inputRow}>
             <TextInput
               style={styles.nameInput}
-              placeholder="Merged file name..."
+              placeholder={t('phone.composer.mergedNamePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={mergedName}
               onChangeText={setMergedName}
@@ -228,11 +230,11 @@ export default function ComposerScreen() {
               size={22}
               color={addHeadings ? colors.accent : colors.textMuted}
             />
-            <Text style={styles.optionText}>Add heading for each file</Text>
+            <Text style={styles.optionText}>{t('phone.composer.addHeadings')}</Text>
           </TouchableOpacity>
 
           <Text style={styles.sectionLabel}>
-            Select files ({selectedPaths.size} selected)
+            {t('phone.composer.selectFiles', { count: selectedPaths.size })}
           </Text>
 
           {/* File list */}
@@ -281,7 +283,7 @@ export default function ComposerScreen() {
               <>
                 <Ionicons name="git-merge-outline" size={20} color={colors.bgPrimary} />
                 <Text style={styles.actionBtnText}>
-                  Merge {selectedPaths.size} Files
+                  {t('phone.composer.mergeFiles', { count: selectedPaths.size })}
                 </Text>
               </>
             )}
@@ -294,14 +296,14 @@ export default function ComposerScreen() {
             <Ionicons name="document-text-outline" size={18} color={colors.textMuted} />
             <Text style={styles.sourceText} numberOfLines={1}>
               {splitSourceFile
-                ? splitSourceFile.split('/').pop() ?? 'Current file'
-                : 'No file selected'}
+                ? splitSourceFile.split('/').pop() ?? t('phone.composer.currentFile')
+                : t('phone.composer.noFileSelected')}
             </Text>
           </View>
 
           {/* Split level selector */}
           <View style={styles.splitLevelRow}>
-            <Text style={styles.splitLevelLabel}>Split by:</Text>
+            <Text style={styles.splitLevelLabel}>{t('phone.composer.splitBy')}</Text>
             <TouchableOpacity
               style={[styles.levelBtn, splitLevel === 1 && styles.levelBtnActive]}
               onPress={() => setSplitLevel(1)}
@@ -334,13 +336,13 @@ export default function ComposerScreen() {
           {splitSource ? (
             <>
               <Text style={styles.sectionLabel}>
-                {splitSections.length} section{splitSections.length !== 1 ? 's' : ''} found
+                {t('phone.composer.sectionsFound', { count: splitSections.length })}
               </Text>
               <ScrollView style={styles.previewScroll} contentContainerStyle={styles.previewContent}>
                 {splitSections.map((section, idx) => (
                   <View key={idx} style={styles.sectionPreview}>
                     <Text style={styles.sectionTitle}>
-                      {section.title || '(Untitled section)'}
+                      {section.title || t('phone.composer.untitledSection')}
                     </Text>
                     <Text style={styles.sectionSnippet} numberOfLines={3}>
                       {section.content.slice(0, 200)}
@@ -359,13 +361,13 @@ export default function ComposerScreen() {
               >
                 <Ionicons name="git-branch-outline" size={20} color={colors.bgPrimary} />
                 <Text style={styles.actionBtnText}>
-                  Split into {splitSections.length} Files
+                  {t('phone.composer.splitInto', { count: splitSections.length })}
                 </Text>
               </TouchableOpacity>
             </>
           ) : (
             <>
-              <Text style={styles.sectionLabel}>Pick a file to split</Text>
+              <Text style={styles.sectionLabel}>{t('phone.composer.pickFile')}</Text>
               <FlatList
                 data={allFiles}
                 keyExtractor={(item) => item.filePath}

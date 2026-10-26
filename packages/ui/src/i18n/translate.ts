@@ -58,12 +58,23 @@ function interpolate(text: string, params?: Params): string {
   return text.replace(/\{(\w+)\}/g, (whole, name: string) => (name in params ? String(params[name]) : whole));
 }
 
-const pluralRules = new Map<Locale, Intl.PluralRules>();
+const pluralRules = new Map<Locale, Pick<Intl.PluralRules, "select">>();
+
+/**
+ * The rules of the two supported languages, for an engine without `Intl.PluralRules` (the Android app's Hermes
+ * may lack it): English has "one" for exactly 1, Vietnamese has no plural forms.
+ */
+const BASIC_PLURALS: Record<Locale, (count: number) => Intl.LDMLPluralRule> = {
+  en: (count) => (count === 1 ? "one" : "other"),
+  vi: () => "other",
+};
 
 function pluralCategory(locale: Locale, count: number): Intl.LDMLPluralRule {
   let rules = pluralRules.get(locale);
   if (!rules) {
-    rules = new Intl.PluralRules(locale);
+    rules = typeof Intl !== "undefined" && typeof Intl.PluralRules === "function"
+      ? new Intl.PluralRules(locale)
+      : { select: BASIC_PLURALS[locale] };
     pluralRules.set(locale, rules);
   }
   return rules.select(count);

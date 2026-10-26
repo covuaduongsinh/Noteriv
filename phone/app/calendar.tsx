@@ -14,7 +14,6 @@ import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import {
   buildCalendarMonth,
-  getWeekdayHeaders,
   formatDate,
   extractTasks,
   extractFrontmatterDue,
@@ -22,15 +21,12 @@ import {
 } from '@/lib/calendar-utils';
 import { listAllMarkdownFiles, readFile, writeFile, fileExists, createDir } from '@/lib/file-system';
 import { Directory } from 'expo-file-system';
-
-const MONTH_NAMES = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December',
-];
+import { useT } from '@/lib/i18n';
 
 export default function CalendarScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const { vault } = useApp();
 
   const today = new Date();
@@ -111,7 +107,9 @@ export default function CalendarScreen() {
     router.push({ pathname: '/editor', params: { path: notePath } });
   }, [vault, router]);
 
-  const headers = getWeekdayHeaders(false);
+  // Month and weekday names come from the shared Calendar plugin catalog (comma-separated lists).
+  const monthNames = t('plugins.calendar.months').split(',');
+  const headers = t('plugins.calendar.weekdays').split(',');
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
@@ -124,7 +122,7 @@ export default function CalendarScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
-            {MONTH_NAMES[month]} {year}
+            {t('phone.calendar.monthYear', { month: monthNames[month], year })}
           </Text>
           <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
             <Ionicons name="chevron-forward" size={20} color={colors.textPrimary} />
@@ -182,11 +180,11 @@ export default function CalendarScreen() {
           <View style={[styles.legend, { borderTopColor: colors.border }]}>
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: colors.accent }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>Daily note</Text>
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('plugins.calendar.dailyNote')}</Text>
             </View>
             <View style={styles.legendItem}>
               <View style={[styles.dot, { backgroundColor: colors.yellow }]} />
-              <Text style={[styles.legendText, { color: colors.textSecondary }]}>Due tasks</Text>
+              <Text style={[styles.legendText, { color: colors.textSecondary }]}>{t('plugins.calendar.dueTasks')}</Text>
             </View>
           </View>
         </ScrollView>

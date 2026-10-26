@@ -15,6 +15,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { createFile, createDir, fileExists } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 interface CreateModalProps {
   visible: boolean;
@@ -32,6 +33,7 @@ export default function CreateModal({
   onCreated,
 }: CreateModalProps) {
   const { colors } = useTheme();
+  const t = useT();
   const [name, setName] = useState('');
   const [createType, setCreateType] = useState<CreateType>('file');
   const [isCreating, setIsCreating] = useState(false);
@@ -58,13 +60,13 @@ export default function CreateModal({
   const handleCreate = useCallback(async () => {
     const trimmed = name.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Please enter a name.');
+      Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.enterName'));
       return;
     }
 
     // Prevent path traversal
     if (trimmed.includes('/') || trimmed.includes('\\') || trimmed === '.' || trimmed === '..') {
-      Alert.alert('Error', 'Name cannot contain path separators.');
+      Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.noSeparators'));
       return;
     }
 
@@ -79,14 +81,14 @@ export default function CreateModal({
 
         const exists = await fileExists(fullPath);
         if (exists) {
-          Alert.alert('Error', `A file named "${fileName}" already exists.`);
+          Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.fileExists', { name: fileName }));
           setIsCreating(false);
           return;
         }
 
         const success = await createFile(fullPath);
         if (!success) {
-          Alert.alert('Error', 'Failed to create file.');
+          Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.createFileFailed'));
           setIsCreating(false);
           return;
         }
@@ -95,14 +97,14 @@ export default function CreateModal({
 
         const exists = await fileExists(fullPath);
         if (exists) {
-          Alert.alert('Error', `A folder named "${trimmed}" already exists.`);
+          Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.folderExists', { name: trimmed }));
           setIsCreating(false);
           return;
         }
 
         const success = await createDir(fullPath);
         if (!success) {
-          Alert.alert('Error', 'Failed to create folder.');
+          Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.createFolderFailed'));
           setIsCreating(false);
           return;
         }
@@ -111,11 +113,11 @@ export default function CreateModal({
       onCreated();
       onClose();
     } catch {
-      Alert.alert('Error', 'An unexpected error occurred.');
+      Alert.alert(t('phone.createModal.errorTitle'), t('phone.createModal.unexpected'));
     } finally {
       setIsCreating(false);
     }
-  }, [name, createType, currentDir, onCreated, onClose]);
+  }, [name, createType, currentDir, onCreated, onClose, t]);
 
   const previewName = useCallback(() => {
     const trimmed = name.trim();
@@ -162,7 +164,7 @@ export default function CreateModal({
                 color={colors.blue}
               />
               <Text style={[styles.dialogTitle, { color: colors.textPrimary }]}>
-                Create {createType === 'file' ? 'File' : 'Folder'}
+                {createType === 'file' ? t('phone.createModal.titleFile') : t('phone.createModal.titleFolder')}
               </Text>
             </View>
 
@@ -185,7 +187,7 @@ export default function CreateModal({
                     createType === 'file' && { color: colors.bgPrimary, fontWeight: '600' },
                   ]}
                 >
-                  File
+                  {t('phone.createModal.file')}
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity
@@ -205,7 +207,7 @@ export default function CreateModal({
                     createType === 'folder' && { color: colors.bgPrimary, fontWeight: '600' },
                   ]}
                 >
-                  Folder
+                  {t('phone.createModal.folder')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -217,7 +219,7 @@ export default function CreateModal({
                 style={[styles.input, { color: colors.textPrimary }]}
                 value={name}
                 onChangeText={setName}
-                placeholder={createType === 'file' ? 'Note name' : 'Folder name'}
+                placeholder={createType === 'file' ? t('phone.createModal.noteName') : t('phone.createModal.folderName')}
                 placeholderTextColor={colors.textMuted}
                 selectionColor={colors.blue}
                 autoCapitalize="none"
@@ -230,7 +232,7 @@ export default function CreateModal({
             {/* Preview */}
             {name.trim().length > 0 && (
               <Text style={[styles.preview, { color: colors.textMuted }]} numberOfLines={1}>
-                Will create: {previewName()}
+                {t('phone.createModal.willCreate', { name: previewName() })}
               </Text>
             )}
 
@@ -241,7 +243,7 @@ export default function CreateModal({
                 onPress={onClose}
                 activeOpacity={0.6}
               >
-                <Text style={[styles.cancelText, { color: colors.textMuted }]}>Cancel</Text>
+                <Text style={[styles.cancelText, { color: colors.textMuted }]}>{t('phone.createModal.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -265,7 +267,7 @@ export default function CreateModal({
                     (!name.trim() || isCreating) && { color: colors.textMuted },
                   ]}
                 >
-                  {isCreating ? 'Creating...' : 'Create'}
+                  {isCreating ? t('phone.createModal.creating') : t('phone.createModal.create')}
                 </Text>
               </TouchableOpacity>
             </View>

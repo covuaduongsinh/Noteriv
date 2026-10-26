@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { Vault } from '@/types';
+import { useT } from '@/lib/i18n';
 
 interface VaultSwitcherProps {
   visible: boolean;
@@ -26,6 +27,7 @@ interface VaultSwitcherProps {
 
 export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) {
   const { colors } = useTheme();
+  const t = useT();
   const insets = useSafeAreaInsets();
   const { vaults, vault, switchVault, createVault, deleteVault } = useApp();
   const [showCreate, setShowCreate] = useState(false);
@@ -84,13 +86,13 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
   const handleCreate = useCallback(async () => {
     const trimmed = newVaultName.trim();
     if (!trimmed) {
-      Alert.alert('Error', 'Please enter a vault name.');
+      Alert.alert(t('phone.vaultSwitcher.errorTitle'), t('phone.vaultSwitcher.enterName'));
       return;
     }
 
     // Check for duplicate
     if (vaults.some((v) => v.name.toLowerCase() === trimmed.toLowerCase())) {
-      Alert.alert('Error', 'A vault with this name already exists.');
+      Alert.alert(t('phone.vaultSwitcher.errorTitle'), t('phone.vaultSwitcher.nameExists'));
       return;
     }
 
@@ -101,21 +103,21 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
       setShowCreate(false);
       onClose();
     } catch {
-      Alert.alert('Error', 'Failed to create vault.');
+      Alert.alert(t('phone.vaultSwitcher.errorTitle'), t('phone.vaultSwitcher.createFailed'));
     } finally {
       setIsCreating(false);
     }
-  }, [newVaultName, vaults, createVault, onClose]);
+  }, [newVaultName, vaults, createVault, onClose, t]);
 
   const handleDelete = useCallback(
     (v: Vault) => {
       Alert.alert(
-        'Delete Vault',
-        `Are you sure you want to delete "${v.name}"? This action cannot be undone.`,
+        t('phone.vaultSwitcher.deleteTitle'),
+        t('phone.vaultSwitcher.deleteMessage', { name: v.name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('phone.vaultSwitcher.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('phone.vaultSwitcher.delete'),
             style: 'destructive',
             onPress: async () => {
               await deleteVault(v.id);
@@ -125,7 +127,7 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
         ]
       );
     },
-    [deleteVault]
+    [deleteVault, t]
   );
 
   const renderVaultItem = useCallback(
@@ -177,21 +179,21 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
                 activeOpacity={0.7}
               >
                 <Ionicons name="trash" size={18} color={colors.bgPrimary} />
-                <Text style={[styles.deleteActionText, { color: colors.bgPrimary }]}>Delete</Text>
+                <Text style={[styles.deleteActionText, { color: colors.bgPrimary }]}>{t('phone.vaultSwitcher.delete')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.cancelSwipe, { backgroundColor: colors.border }]}
                 onPress={() => setSwipedId(null)}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.cancelSwipeText, { color: colors.textMuted }]}>Cancel</Text>
+                <Text style={[styles.cancelSwipeText, { color: colors.textMuted }]}>{t('phone.vaultSwitcher.cancel')}</Text>
               </TouchableOpacity>
             </View>
           )}
         </View>
       );
     },
-    [colors, vault, swipedId, handleSwitch, handleDelete]
+    [colors, vault, swipedId, handleSwitch, handleDelete, t]
   );
 
   return (
@@ -212,7 +214,7 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
 
           {/* Header */}
           <View style={[styles.header, { borderBottomColor: colors.bgTertiary }]}>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Vaults</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.vaultSwitcher.title')}</Text>
             <TouchableOpacity
               onPress={onClose}
               hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -230,8 +232,8 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
             ListEmptyComponent={
               <View style={styles.emptyContainer}>
                 <Ionicons name="cube-outline" size={48} color={colors.border} />
-                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No vaults yet</Text>
-                <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>Create your first vault below</Text>
+                <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('phone.vaultSwitcher.empty')}</Text>
+                <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>{t('phone.vaultSwitcher.emptyHint')}</Text>
               </View>
             }
           />
@@ -245,7 +247,7 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
                   style={[styles.createInput, { backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.border }]}
                   value={newVaultName}
                   onChangeText={setNewVaultName}
-                  placeholder="Vault name"
+                  placeholder={t('phone.vaultSwitcher.namePlaceholder')}
                   placeholderTextColor={colors.textMuted}
                   selectionColor={colors.blue}
                   autoCapitalize="none"
@@ -290,7 +292,7 @@ export default function VaultSwitcher({ visible, onClose }: VaultSwitcherProps) 
               <View style={[styles.createButtonIcon, { backgroundColor: colors.blue + '20' }]}>
                 <Ionicons name="add" size={20} color={colors.blue} />
               </View>
-              <Text style={[styles.createButtonText, { color: colors.blue }]}>Create New Vault</Text>
+              <Text style={[styles.createButtonText, { color: colors.blue }]}>{t('phone.vaultSwitcher.createNew')}</Text>
             </TouchableOpacity>
           )}
 

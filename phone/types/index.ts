@@ -26,6 +26,8 @@ export interface AppSettings {
   commitMessageFormat: string;
   theme: string;
   autoUpdate: boolean;
+  /** `auto` follows the phone's language. */
+  language: 'auto' | 'en' | 'vi';
 }
 
 export interface WorkspaceState {

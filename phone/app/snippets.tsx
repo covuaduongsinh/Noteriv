@@ -25,12 +25,13 @@ import {
   fetchCommunitySnippets,
   installCommunitySnippet,
 } from '@/lib/css-snippets';
-
+import { useT } from '@/lib/i18n';
 type Tab = 'installed' | 'community';
 
 export default function SnippetsScreen() {
   const { vault } = useApp();
   const { colors } = useTheme();
+  const t = useT();
 
   const [activeTab, setActiveTab] = useState<Tab>('installed');
   const [snippets, setSnippets] = useState<CSSSnippet[]>([]);
@@ -83,12 +84,12 @@ export default function SnippetsScreen() {
   const handleDelete = useCallback(
     (snippet: CSSSnippet) => {
       Alert.alert(
-        'Delete Snippet',
-        `Delete "${snippet.name}"? This cannot be undone.`,
+        t('phone.snippets.deleteTitle'),
+        t('phone.snippets.deleteMessage', { name: snippet.name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('phone.snippets.cancel'), style: 'cancel' },
           {
-            text: 'Delete',
+            text: t('phone.snippets.delete'),
             style: 'destructive',
             onPress: () => {
               deleteSnippet(vaultPath, snippet.id);
@@ -98,7 +99,7 @@ export default function SnippetsScreen() {
         ]
       );
     },
-    [vaultPath]
+    [vaultPath, t]
   );
 
   const handleCreate = useCallback(() => {
@@ -129,14 +130,14 @@ export default function SnippetsScreen() {
         setSnippets((prev) =>
           [...prev, snippet].sort((a, b) => a.name.localeCompare(b.name))
         );
-        Alert.alert('Installed', `"${entry.name}" has been installed.`);
+        Alert.alert(t('phone.snippets.installed'), t('phone.snippets.installedMessage', { name: entry.name }));
       } catch {
-        Alert.alert('Error', 'Failed to install snippet.');
+        Alert.alert(t('phone.snippets.error'), t('phone.snippets.installFailed'));
       } finally {
         setInstallingId(null);
       }
     },
-    [vaultPath]
+    [vaultPath, t]
   );
 
   const categories = Array.from(
@@ -158,7 +159,7 @@ export default function SnippetsScreen() {
           onPress={() => setActiveTab('installed')}
         >
           <Text style={[styles.tabText, { color: activeTab === 'installed' ? colors.accent : colors.textMuted }]}>
-            Installed
+            {t('phone.snippets.tabInstalled')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -166,7 +167,7 @@ export default function SnippetsScreen() {
           onPress={() => setActiveTab('community')}
         >
           <Text style={[styles.tabText, { color: activeTab === 'community' ? colors.accent : colors.textMuted }]}>
-            Community
+            {t('phone.snippets.tabCommunity')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -180,7 +181,7 @@ export default function SnippetsScreen() {
           >
             <Ionicons name="add" size={20} color={colors.bgPrimary} />
             <Text style={[styles.createButtonText, { color: colors.bgPrimary }]}>
-              New Snippet
+              {t('phone.snippets.newSnippet')}
             </Text>
           </TouchableOpacity>
 
@@ -188,10 +189,10 @@ export default function SnippetsScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="code-slash-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No CSS snippets yet
+                {t('phone.snippets.empty')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                Create one or browse community snippets
+                {t('phone.snippets.emptyHint')}
               </Text>
             </View>
           ) : (
@@ -237,17 +238,17 @@ export default function SnippetsScreen() {
             <View style={styles.loadingState}>
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                Fetching community snippets...
+                {t('phone.snippets.fetching')}
               </Text>
             </View>
           ) : communitySnippets.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No community snippets available
+                {t('phone.snippets.communityEmpty')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                Check your internet connection or try again later
+                {t('phone.snippets.communityEmptyHint')}
               </Text>
             </View>
           ) : (
@@ -273,7 +274,7 @@ export default function SnippetsScreen() {
                         { color: !selectedCategory ? colors.bgPrimary : colors.textSecondary },
                       ]}
                     >
-                      All
+                      {t('phone.snippets.all')}
                     </Text>
                   </TouchableOpacity>
                   {categories.map((cat) => (
@@ -341,7 +342,7 @@ export default function SnippetsScreen() {
                             { color: isInstalled ? colors.textMuted : colors.bgPrimary },
                           ]}
                         >
-                          {isInstalled ? 'Installed' : 'Install'}
+                          {isInstalled ? t('phone.snippets.installed') : t('phone.snippets.install')}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -363,13 +364,13 @@ export default function SnippetsScreen() {
         <View style={[styles.editorModal, { backgroundColor: colors.bgPrimary }]}>
           <View style={[styles.editorHeader, { backgroundColor: colors.bgSecondary, borderBottomColor: colors.border }]}>
             <TouchableOpacity onPress={() => setEditingSnippet(null)}>
-              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>Cancel</Text>
+              <Text style={{ color: colors.textSecondary, fontSize: 16 }}>{t('phone.snippets.cancel')}</Text>
             </TouchableOpacity>
             <Text style={[styles.editorTitle, { color: colors.textPrimary }]} numberOfLines={1}>
               {editingSnippet?.name ?? ''}
             </Text>
             <TouchableOpacity onPress={handleSaveEdit}>
-              <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600' }}>Save</Text>
+              <Text style={{ color: colors.accent, fontSize: 16, fontWeight: '600' }}>{t('phone.snippets.save')}</Text>
             </TouchableOpacity>
           </View>
           <TextInput
@@ -387,7 +388,7 @@ export default function SnippetsScreen() {
             autoCapitalize="none"
             autoCorrect={false}
             textAlignVertical="top"
-            placeholder="/* Write your CSS here */"
+            placeholder={t('phone.snippets.cssPlaceholder')}
             placeholderTextColor={colors.textMuted}
           />
         </View>
@@ -403,7 +404,7 @@ export default function SnippetsScreen() {
         <View style={styles.modalOverlay}>
           <View style={[styles.modalContent, { backgroundColor: colors.bgSecondary }]}>
             <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>
-              New CSS Snippet
+              {t('phone.snippets.newTitle')}
             </Text>
             <TextInput
               style={[
@@ -414,7 +415,7 @@ export default function SnippetsScreen() {
                   borderColor: colors.border,
                 },
               ]}
-              placeholder="Snippet name"
+              placeholder={t('phone.snippets.namePlaceholder')}
               placeholderTextColor={colors.textMuted}
               value={newSnippetName}
               onChangeText={setNewSnippetName}
@@ -429,7 +430,7 @@ export default function SnippetsScreen() {
                   setShowCreateModal(false);
                 }}
               >
-                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>Cancel</Text>
+                <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>{t('phone.snippets.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[
@@ -440,7 +441,7 @@ export default function SnippetsScreen() {
                 onPress={handleCreate}
                 disabled={!newSnippetName.trim()}
               >
-                <Text style={{ color: colors.bgPrimary, fontWeight: '600' }}>Create</Text>
+                <Text style={{ color: colors.bgPrimary, fontWeight: '600' }}>{t('phone.snippets.create')}</Text>
               </TouchableOpacity>
             </View>
           </View>

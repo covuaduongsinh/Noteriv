@@ -20,6 +20,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { useApp } from '@/context/AppContext';
 import { setItem, KEYS } from '@/lib/storage';
+import { useT } from '@/lib/i18n';
 
 interface GitHubUser {
   login: string;
@@ -43,6 +44,7 @@ export default function SetupScreen() {
   const router = useRouter();
   const { colors } = useTheme();
   const { createVault, completeSetup, updateSettings } = useApp();
+  const t = useT();
 
   const [step, setStep] = useState(0);
   const [vaultName, setVaultName] = useState('');
@@ -126,7 +128,7 @@ export default function SetupScreen() {
         headers: { Authorization: `token ${token.trim()}` },
       });
       if (!res.ok) {
-        setError('Invalid token. Make sure it has the "repo" scope.');
+        setError(t('phone.setup.invalidToken'));
         setValidating(false);
         return;
       }
@@ -145,11 +147,11 @@ export default function SetupScreen() {
       }
       setLoadingRepos(false);
     } catch {
-      setError('Network error. Check your connection.');
+      setError(t('phone.setup.networkError'));
     } finally {
       setValidating(false);
     }
-  }, [token]);
+  }, [token, t]);
 
   const createGitHubRepo = useCallback(async (): Promise<GitHubRepo | null> => {
     if (!newRepoName.trim()) return null;
@@ -169,20 +171,20 @@ export default function SetupScreen() {
       });
       if (!res.ok) {
         const err = await res.json();
-        setError(err.message || 'Failed to create repo');
+        setError(err.message || t('phone.setup.createRepoFailed'));
         return null;
       }
       return await res.json();
     } catch {
-      setError('Failed to create repo');
+      setError(t('phone.setup.createRepoFailed'));
       return null;
     }
-  }, [token, newRepoName, newRepoPrivate, vaultName]);
+  }, [token, newRepoName, newRepoPrivate, vaultName, t]);
 
   const handleCreateVault = useCallback(async () => {
     const trimmed = vaultName.trim();
     if (!trimmed) {
-      Alert.alert('Name Required', 'Please enter a name for your vault.');
+      Alert.alert(t('phone.setup.nameRequiredTitle'), t('phone.setup.nameRequiredMessage'));
       return;
     }
     setIsCreating(true);
@@ -216,7 +218,7 @@ export default function SetupScreen() {
 
       animateTransition(3);
     } catch {
-      Alert.alert('Error', 'Could not create vault. Please try again.');
+      Alert.alert(t('phone.setup.error'), t('phone.setup.createVaultFailed'));
     } finally {
       setIsCreating(false);
     }
@@ -231,6 +233,7 @@ export default function SetupScreen() {
     autoSync,
     createGitHubRepo,
     animateTransition,
+    t,
   ]);
 
   const handleComplete = useCallback(async () => {
@@ -267,10 +270,9 @@ export default function SetupScreen() {
                 color={colors.blue}
               />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Welcome to Noteriv</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.setup.welcomeTitle')}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              A beautiful markdown editor for your notes, ideas, and everything
-              in between.
+              {t('phone.setup.welcomeSubtitle')}
             </Text>
             <View style={styles.featureList}>
               <View style={styles.featureItem}>
@@ -280,7 +282,7 @@ export default function SetupScreen() {
                   color={colors.green}
                 />
                 <Text style={[styles.featureText, { color: colors.textSecondary }]}>
-                  Write in Markdown with live preview
+                  {t('phone.setup.featureWrite')}
                 </Text>
               </View>
               <View style={styles.featureItem}>
@@ -290,7 +292,7 @@ export default function SetupScreen() {
                   color={colors.mauve}
                 />
                 <Text style={[styles.featureText, { color: colors.textSecondary }]}>
-                  Organize notes in vaults and folders
+                  {t('phone.setup.featureOrganize')}
                 </Text>
               </View>
               <View style={styles.featureItem}>
@@ -300,7 +302,7 @@ export default function SetupScreen() {
                   color={colors.peach}
                 />
                 <Text style={[styles.featureText, { color: colors.textSecondary }]}>
-                  Sync with GitHub for backup & versioning
+                  {t('phone.setup.featureSync')}
                 </Text>
               </View>
             </View>
@@ -309,7 +311,7 @@ export default function SetupScreen() {
               onPress={() => animateTransition(1)}
               activeOpacity={0.8}
             >
-              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>Get Started</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>{t('phone.setup.getStarted')}</Text>
               <Ionicons
                 name="arrow-forward"
                 size={20}
@@ -330,10 +332,9 @@ export default function SetupScreen() {
                 color={colors.mauve}
               />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Create Your Vault</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.setup.vaultTitle')}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              A vault is a folder where your notes live. Give it a name to get
-              started.
+              {t('phone.setup.vaultSubtitle')}
             </Text>
             <View style={styles.inputContainer}>
               <TextInput
@@ -341,7 +342,7 @@ export default function SetupScreen() {
                 style={[styles.input, { backgroundColor: colors.bgTertiary, color: colors.textPrimary, borderColor: colors.border }]}
                 value={vaultName}
                 onChangeText={setVaultName}
-                placeholder="My Notes"
+                placeholder={t('phone.setup.vaultPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 autoFocus
                 returnKeyType="next"
@@ -361,7 +362,7 @@ export default function SetupScreen() {
               disabled={!vaultName.trim()}
               activeOpacity={0.8}
             >
-              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>Continue</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>{t('phone.setup.continue')}</Text>
               <Ionicons
                 name="arrow-forward"
                 size={20}
@@ -382,10 +383,9 @@ export default function SetupScreen() {
                 color={colors.textPrimary}
               />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>Connect GitHub</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.setup.connectTitle')}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Back up and sync your notes to a GitHub repo. You can skip this
-              and set it up later.
+              {t('phone.setup.connectSubtitle')}
             </Text>
 
             {!ghUser ? (
@@ -400,12 +400,12 @@ export default function SetupScreen() {
                     }
                   >
                     <Text style={[styles.tokenLink, { color: colors.blue }]}>
-                      Generate a token on GitHub →
+                      {t('phone.setup.generateToken')}
                     </Text>
                   </TouchableOpacity>
                 </View>
                 <Text style={[styles.tokenHint, { color: colors.textMuted }]}>
-                  Select the "repo" scope. Your token stays on this device.
+                  {t('phone.setup.tokenHint')}
                 </Text>
                 <View style={styles.tokenInputRow}>
                   <TextInput
@@ -440,7 +440,7 @@ export default function SetupScreen() {
                     {validating ? (
                       <ActivityIndicator size="small" color={colors.bgPrimary} />
                     ) : (
-                      <Text style={[styles.connectButtonText, { color: colors.bgPrimary }]}>Connect</Text>
+                      <Text style={[styles.connectButtonText, { color: colors.bgPrimary }]}>{t('phone.setup.connect')}</Text>
                     )}
                   </TouchableOpacity>
                 </View>
@@ -473,7 +473,7 @@ export default function SetupScreen() {
                       setEnableGit(false);
                     }}
                   >
-                    <Text style={[styles.disconnectText, { color: colors.textMuted }]}>Disconnect</Text>
+                    <Text style={[styles.disconnectText, { color: colors.textMuted }]}>{t('phone.setup.disconnect')}</Text>
                   </TouchableOpacity>
                 </View>
 
@@ -495,7 +495,7 @@ export default function SetupScreen() {
                     size={20}
                     color={colors.blue}
                   />
-                  <Text style={[styles.repoOptionText, { color: colors.textPrimary }]}>Create new repo</Text>
+                  <Text style={[styles.repoOptionText, { color: colors.textPrimary }]}>{t('phone.setup.createNewRepo')}</Text>
                 </TouchableOpacity>
 
                 {createNewRepo && (
@@ -515,7 +515,7 @@ export default function SetupScreen() {
                       selectionColor={colors.blue}
                     />
                     <View style={styles.privateRow}>
-                      <Text style={[styles.privateLabel, { color: colors.textSecondary }]}>Private repo</Text>
+                      <Text style={[styles.privateLabel, { color: colors.textSecondary }]}>{t('phone.setup.privateRepo')}</Text>
                       <Switch
                         value={newRepoPrivate}
                         onValueChange={setNewRepoPrivate}
@@ -537,7 +537,7 @@ export default function SetupScreen() {
                   />
                 ) : (
                   <View style={styles.repoList}>
-                    <Text style={[styles.repoListLabel, { color: colors.textMuted }]}>Or pick an existing repo:</Text>
+                    <Text style={[styles.repoListLabel, { color: colors.textMuted }]}>{t('phone.setup.pickExisting')}</Text>
                     {repos.slice(0, 20).map((item) => (
                       <TouchableOpacity
                         key={item.id}
@@ -564,7 +564,7 @@ export default function SetupScreen() {
                           )}
                         </View>
                         {item.private && (
-                          <Text style={[styles.privateBadge, { color: colors.yellow }]}>private</Text>
+                          <Text style={[styles.privateBadge, { color: colors.yellow }]}>{t('phone.setup.private')}</Text>
                         )}
                       </TouchableOpacity>
                     ))}
@@ -574,9 +574,9 @@ export default function SetupScreen() {
                 {/* Auto-sync toggle */}
                 <View style={[styles.autoSyncRow, { borderTopColor: colors.bgTertiary }]}>
                   <View style={{ flex: 1 }}>
-                    <Text style={[styles.autoSyncLabel, { color: colors.textPrimary }]}>Auto-sync</Text>
+                    <Text style={[styles.autoSyncLabel, { color: colors.textPrimary }]}>{t('phone.setup.autoSync')}</Text>
                     <Text style={[styles.autoSyncHint, { color: colors.textMuted }]}>
-                      Automatically push changes
+                      {t('phone.setup.autoSyncHint')}
                     </Text>
                   </View>
                   <Switch
@@ -604,7 +604,7 @@ export default function SetupScreen() {
                   size={18}
                   color={colors.textSecondary}
                 />
-                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>Back</Text>
+                <Text style={[styles.backButtonText, { color: colors.textSecondary }]}>{t('phone.setup.back')}</Text>
               </TouchableOpacity>
 
               {ghUser ? (
@@ -622,7 +622,7 @@ export default function SetupScreen() {
                   {isCreating ? (
                     <ActivityIndicator size="small" color={colors.bgPrimary} />
                   ) : (
-                    <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>Create Vault</Text>
+                    <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>{t('phone.setup.createVault')}</Text>
                   )}
                 </TouchableOpacity>
               ) : (
@@ -634,7 +634,7 @@ export default function SetupScreen() {
                   }}
                   activeOpacity={0.8}
                 >
-                  <Text style={[styles.skipButtonText, { color: colors.textPrimary }]}>Skip & Create</Text>
+                  <Text style={[styles.skipButtonText, { color: colors.textPrimary }]}>{t('phone.setup.skipAndCreate')}</Text>
                 </TouchableOpacity>
               )}
             </View>
@@ -652,12 +652,12 @@ export default function SetupScreen() {
                 color={colors.green}
               />
             </View>
-            <Text style={[styles.title, { color: colors.textPrimary }]}>You're All Set!</Text>
+            <Text style={[styles.title, { color: colors.textPrimary }]}>{t('phone.setup.doneTitle')}</Text>
             <Text style={[styles.subtitle, { color: colors.textSecondary }]}>
-              Your vault "{vaultName.trim()}" is ready.
+              {t('phone.setup.vaultReady', { name: vaultName.trim() })}
               {enableGit && ghUser
-                ? ' GitHub sync is configured.'
-                : ' You can connect GitHub later in Settings.'}
+                ? ' ' + t('phone.setup.githubConfigured')
+                : ' ' + t('phone.setup.connectLater')}
             </Text>
             <TouchableOpacity
               style={[styles.primaryButton, { backgroundColor: colors.blue, shadowColor: colors.blue }]}
@@ -669,7 +669,7 @@ export default function SetupScreen() {
                 size={20}
                 color={colors.bgPrimary}
               />
-              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>Start Writing</Text>
+              <Text style={[styles.primaryButtonText, { color: colors.bgPrimary }]}>{t('phone.setup.startWriting')}</Text>
             </TouchableOpacity>
           </View>
         );

@@ -52,7 +52,7 @@ describe("i18n catalogs", () => {
   }
 
   it("has every key the code names", () => {
-    const dirs = ["packages/ui/src", "packages/plugins/src", "web/src", "desktop/src"].map((d) => join(root, d));
+    const dirs = ["packages/ui/src", "packages/plugins/src", "web/src", "desktop/src", "phone/app", "phone/components", "phone/context", "phone/lib"].map((d) => join(root, d));
     const files = (dir: string): string[] =>
       readdirSync(dir).flatMap((entry) => {
         const full = join(dir, entry);

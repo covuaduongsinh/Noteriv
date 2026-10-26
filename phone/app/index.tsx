@@ -19,10 +19,12 @@ import SearchModal from '@/components/SearchModal';
 import CreateModal from '@/components/CreateModal';
 import VaultSwitcher from '@/components/VaultSwitcher';
 import { FileEntry } from '@/types';
+import { useT } from '@/lib/i18n';
 
 export default function HomeScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const {
     vault,
     setupComplete,
@@ -100,16 +102,16 @@ export default function HomeScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: colors.bgPrimary }]}>
         <View style={styles.empty}>
           <Ionicons name="folder-open-outline" size={64} color={colors.textMuted} />
-          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>No Vault Selected</Text>
+          <Text style={[styles.emptyTitle, { color: colors.textPrimary }]}>{t('phone.home.noVault')}</Text>
           <Text style={[styles.emptySubtitle, { color: colors.textSecondary }]}>
-            Create a vault to start taking notes
+            {t('phone.home.noVaultHint')}
           </Text>
           <TouchableOpacity
             style={[styles.emptyButton, { backgroundColor: colors.blue }]}
             onPress={() => setVaultSwitcherVisible(true)}
           >
             <Ionicons name="add" size={20} color={colors.bgPrimary} />
-            <Text style={[styles.emptyButtonText, { color: colors.bgPrimary }]}>Create a Vault</Text>
+            <Text style={[styles.emptyButtonText, { color: colors.bgPrimary }]}>{t('phone.home.createVault')}</Text>
           </TouchableOpacity>
         </View>
         <VaultSwitcher

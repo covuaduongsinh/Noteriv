@@ -4,6 +4,7 @@ import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 import * as VaultOps from '@/lib/vault';
 import * as FS from '@/lib/file-system';
 import * as GitSync from '@/lib/provider-sync';
+import { applyLanguage } from '@/lib/i18n';
 import { vaultFileUri, vaultRelativePath, writeConflictCopy } from '@/lib/sync-state';
 
 interface AppContextType {
@@ -120,6 +121,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         VaultOps.getVaults(),
       ]);
       setSettings(loadedSettings);
+      applyLanguage(loadedSettings.language);
       setSetupComplete(complete);
       setVaults(loadedVaults);
 
@@ -286,6 +288,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updateSettingsFn = useCallback(async (updates: Partial<AppSettings>) => {
     const next = { ...settings, ...updates };
     setSettings(next);
+    if (updates.language !== undefined) applyLanguage(next.language);
     await saveSettings(next);
   }, [settings]);
 
