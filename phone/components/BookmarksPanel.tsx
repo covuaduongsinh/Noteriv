@@ -10,6 +10,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/lib/i18n';
 
 interface BookmarksPanelProps {
   bookmarks: string[];
@@ -37,6 +38,7 @@ interface SwipeableBookmarkProps {
 
 function SwipeableBookmark({ path, onPress, onRemove }: SwipeableBookmarkProps) {
   const { colors } = useTheme();
+  const t = useT();
   const translateX = useRef(new Animated.Value(0)).current;
   const isSwipedOpen = useRef(false);
 
@@ -87,7 +89,7 @@ function SwipeableBookmark({ path, onPress, onRemove }: SwipeableBookmarkProps) 
           activeOpacity={0.7}
         >
           <Ionicons name="bookmark-outline" size={18} color={colors.bgPrimary} />
-          <Text style={[styles.removeText, { color: colors.bgPrimary }]}>Remove</Text>
+          <Text style={[styles.removeText, { color: colors.bgPrimary }]}>{t('phone.bookmarksPanel.remove')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -130,6 +132,7 @@ export default function BookmarksPanel({
   onRemoveBookmark,
 }: BookmarksPanelProps) {
   const { colors } = useTheme();
+  const t = useT();
 
   const renderItem = useCallback(
     ({ item }: { item: string }) => (
@@ -149,9 +152,9 @@ export default function BookmarksPanel({
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.bgTertiary, backgroundColor: colors.bgSecondary }]}>
         <Ionicons name="bookmarks" size={18} color={colors.peach} />
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Bookmarks</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('phone.bookmarksPanel.title')}</Text>
         <Text style={[styles.headerCount, { color: colors.textMuted }]}>
-          {bookmarks.length} item{bookmarks.length !== 1 ? 's' : ''}
+          {t('phone.bookmarksPanel.items', { count: bookmarks.length })}
         </Text>
       </View>
 
@@ -164,15 +167,15 @@ export default function BookmarksPanel({
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="bookmarks-outline" size={48} color={colors.border} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No bookmarks yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('phone.bookmarksPanel.empty')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-              Long press a file to bookmark it
+              {t('phone.bookmarksPanel.emptyHint')}
             </Text>
           </View>
         }
         ListFooterComponent={
           bookmarks.length > 0 ? (
-            <Text style={[styles.swipeHint, { color: colors.textMuted }]}>Swipe left to remove</Text>
+            <Text style={[styles.swipeHint, { color: colors.textMuted }]}>{t('phone.bookmarksPanel.swipeHint')}</Text>
           ) : null
         }
       />

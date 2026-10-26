@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/lib/i18n';
 
 interface OutlinePanelProps {
   content: string;
@@ -49,6 +50,7 @@ const levelSizes: Record<number, number> = {
 
 export default function OutlinePanel({ content, onHeadingPress }: OutlinePanelProps) {
   const { colors } = useTheme();
+  const t = useT();
 
   const levelColors: Record<number, string> = {
     1: colors.blue,
@@ -116,9 +118,9 @@ export default function OutlinePanel({ content, onHeadingPress }: OutlinePanelPr
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.bgTertiary, backgroundColor: colors.bgSecondary }]}>
         <Ionicons name="list" size={18} color={colors.blue} />
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Outline</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('phone.outlinePanel.title')}</Text>
         <Text style={[styles.headerCount, { color: colors.textMuted }]}>
-          {headings.length} heading{headings.length !== 1 ? 's' : ''}
+          {t('phone.outlinePanel.count', { count: headings.length })}
         </Text>
       </View>
 
@@ -131,9 +133,9 @@ export default function OutlinePanel({ content, onHeadingPress }: OutlinePanelPr
         ListEmptyComponent={
           <View style={styles.emptyContainer}>
             <Ionicons name="document-text-outline" size={40} color={colors.border} />
-            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No headings found</Text>
+            <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('phone.outlinePanel.empty')}</Text>
             <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-              Add headings using # syntax
+              {t('phone.outlinePanel.emptyHint')}
             </Text>
           </View>
         }

@@ -19,6 +19,7 @@ import {
   serializeFrontmatter,
   hasFrontmatter,
 } from '@/lib/frontmatter';
+import { useT } from '@/lib/i18n';
 
 const COMMON_PROPERTIES = [
   'title',
@@ -36,6 +37,7 @@ interface PropertyRow {
 }
 
 export default function FrontmatterScreen() {
+  const t = useT();
   const router = useRouter();
   const { colors } = useTheme();
   const { content, setContent } = useApp();
@@ -127,16 +129,16 @@ export default function FrontmatterScreen() {
       <SafeAreaView style={styles.container}>
         <View style={styles.empty}>
           <Ionicons name="code-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Frontmatter</Text>
+          <Text style={styles.emptyTitle}>{t('phone.frontmatter.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            Frontmatter lets you add metadata like title, date, tags, and more to your notes.
+            {t('phone.frontmatter.emptyMessage')}
           </Text>
           <TouchableOpacity
             style={styles.addFrontmatterBtn}
             onPress={handleAddFrontmatter}
           >
             <Ionicons name="add" size={20} color={colors.bgPrimary} />
-            <Text style={styles.addFrontmatterText}>Add Frontmatter</Text>
+            <Text style={styles.addFrontmatterText}>{t('phone.frontmatter.addFrontmatter')}</Text>
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -147,10 +149,10 @@ export default function FrontmatterScreen() {
     <SafeAreaView style={styles.container}>
       {/* Header with save */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Frontmatter</Text>
+        <Text style={styles.headerTitle}>{t('phone.frontmatter.title')}</Text>
         <TouchableOpacity style={styles.saveBtn} onPress={handleSave}>
           <Ionicons name="checkmark" size={20} color={colors.bgPrimary} />
-          <Text style={styles.saveBtnText}>Save</Text>
+          <Text style={styles.saveBtnText}>{t('phone.frontmatter.save')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -167,7 +169,7 @@ export default function FrontmatterScreen() {
                 style={styles.keyInput}
                 value={prop.key}
                 onChangeText={(text) => handleUpdateKey(index, text)}
-                placeholder="key"
+                placeholder={t('phone.frontmatter.keyPlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 autoCapitalize="none"
                 autoCorrect={false}
@@ -176,7 +178,7 @@ export default function FrontmatterScreen() {
                 style={styles.valueInput}
                 value={prop.value}
                 onChangeText={(text) => handleUpdateValue(index, text)}
-                placeholder="value"
+                placeholder={t('phone.frontmatter.valuePlaceholder')}
                 placeholderTextColor={colors.textMuted}
                 autoCorrect={false}
               />
@@ -202,13 +204,13 @@ export default function FrontmatterScreen() {
           }}
         >
           <Ionicons name="add-circle-outline" size={20} color={colors.accent} />
-          <Text style={styles.addPropertyText}>Add Property</Text>
+          <Text style={styles.addPropertyText}>{t('phone.frontmatter.addProperty')}</Text>
         </TouchableOpacity>
 
         {/* Suggestions */}
         {showSuggestions && unusedSuggestions.length > 0 && (
           <View style={styles.suggestions}>
-            <Text style={styles.suggestionsLabel}>Common properties</Text>
+            <Text style={styles.suggestionsLabel}>{t('phone.frontmatter.commonProperties')}</Text>
             <View style={styles.suggestionsGrid}>
               {unusedSuggestions.map((suggestion) => (
                 <TouchableOpacity
@@ -224,7 +226,7 @@ export default function FrontmatterScreen() {
                 onPress={() => handleAddProperty()}
               >
                 <Ionicons name="add" size={14} color={colors.textSecondary} />
-                <Text style={styles.suggestionText}>Custom</Text>
+                <Text style={styles.suggestionText}>{t('phone.frontmatter.custom')}</Text>
               </TouchableOpacity>
             </View>
           </View>

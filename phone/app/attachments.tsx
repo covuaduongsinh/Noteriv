@@ -26,16 +26,27 @@ import * as DocumentPicker from 'expo-document-picker';
 import { File as ExpoFile } from 'expo-file-system';
 import { createDir } from '@/lib/file-system';
 import * as Clipboard from 'expo-clipboard';
+import { useT, t } from '@/lib/i18n';
 
 type FilterType = 'all' | 'image' | 'audio' | 'video' | 'pdf';
 
-const FILTER_TABS: { key: FilterType; label: string; icon: string }[] = [
-  { key: 'all', label: 'All', icon: 'grid-outline' },
-  { key: 'image', label: 'Images', icon: 'image-outline' },
-  { key: 'audio', label: 'Audio', icon: 'musical-notes-outline' },
-  { key: 'video', label: 'Video', icon: 'videocam-outline' },
+const FILTER_TABS = (): { key: FilterType; label: string; icon: string }[] => [
+  { key: 'all', label: t('phone.attachments.filterAll'), icon: 'grid-outline' },
+  { key: 'image', label: t('phone.attachments.filterImages'), icon: 'image-outline' },
+  { key: 'audio', label: t('phone.attachments.filterAudio'), icon: 'musical-notes-outline' },
+  { key: 'video', label: t('phone.attachments.filterVideo'), icon: 'videocam-outline' },
   { key: 'pdf', label: 'PDF', icon: 'document-outline' },
 ];
+
+const typeLabel = (type: Attachment['type']): string => {
+  switch (type) {
+    case 'image': return t('phone.attachments.typeImage');
+    case 'audio': return t('phone.attachments.typeAudio');
+    case 'video': return t('phone.attachments.typeVideo');
+    case 'pdf': return 'PDF';
+    default: return t('phone.attachments.typeOther');
+  }
+};
 
 const TYPE_ICONS: Record<Attachment['type'], string> = {
   image: 'image-outline',
@@ -48,6 +59,7 @@ const TYPE_ICONS: Record<Attachment['type'], string> = {
 export default function AttachmentsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const { vault } = useApp();
 
   const [attachments, setAttachments] = useState<Attachment[]>([]);
@@ -73,10 +85,10 @@ export default function AttachmentsScreen() {
 
   const handleDelete = useCallback(
     (attachment: Attachment) => {
-      Alert.alert('Delete Attachment', `Delete "${attachment.name}"?`, [
-        { text: 'Cancel', style: 'cancel' },
+      Alert.alert(t('phone.attachments.deleteTitle'), t('phone.attachments.deleteMessage', { name: attachment.name }), [
+        { text: t('phone.attachments.cancel'), style: 'cancel' },
         {
-          text: 'Delete',
+          text: t('phone.attachments.delete'),
           style: 'destructive',
           onPress: () => {
             deleteAttachment(attachment.path);
@@ -88,7 +100,7 @@ export default function AttachmentsScreen() {
         },
       ]);
     },
-    [previewAttachment, loadAttachments]
+    [previewAttachment, loadAttachments, t]
   );
 
   const handleCopyLink = useCallback(
@@ -97,12 +109,12 @@ export default function AttachmentsScreen() {
       const link = markdownLinkForAttachment(attachment, vault.path);
       try {
         await Clipboard.setStringAsync(link);
-        Alert.alert('Copied', 'Markdown link copied to clipboard.');
+        Alert.alert(t('phone.attachments.copiedTitle'), t('phone.attachments.copiedMessage'));
       } catch {
-        Alert.alert('Link', link);
+        Alert.alert(t('phone.attachments.linkTitle'), link);
       }
     },
-    [vault]
+    [vault, t]
   );
 
   const handleImport = useCallback(async () => {
@@ -127,9 +139,9 @@ export default function AttachmentsScreen() {
 
       loadAttachments();
     } catch (err) {
-      Alert.alert('Error', 'Failed to import file.');
+      Alert.alert(t('phone.attachments.errorTitle'), t('phone.attachments.importFailed'));
     }
-  }, [vault, loadAttachments]);
+  }, [vault, loadAttachments, t]);
 
   const handleTap = useCallback((attachment: Attachment) => {
     setPreviewAttachment(attachment);
@@ -193,7 +205,7 @@ export default function AttachmentsScreen() {
                 {previewAttachment.name}
               </Text>
               <Text style={styles.previewMeta}>
-                {previewAttachment.type.toUpperCase()} &middot;{' '}
+                {typeLabel(previewAttachment.type).toUpperCase()} &middot;{' '}
                 {formatFileSize(previewAttachment.size)}
               </Text>
             </View>
@@ -208,7 +220,7 @@ export default function AttachmentsScreen() {
     <SafeAreaView style={styles.container}>
       {/* Filter tabs */}
       <View style={styles.filterRow}>
-        {FILTER_TABS.map((tab) => (
+        {FILTER_TABS().map((tab) => (
           <TouchableOpacity
             key={tab.key}
             style={[styles.filterTab, filter === tab.key && styles.filterTabActive]}
@@ -234,9 +246,9 @@ export default function AttachmentsScreen() {
       {filtered.length === 0 ? (
         <View style={styles.empty}>
           <Ionicons name="attach-outline" size={48} color={colors.textMuted} />
-          <Text style={styles.emptyTitle}>No Attachments</Text>
+          <Text style={styles.emptyTitle}>{t('phone.attachments.emptyTitle')}</Text>
           <Text style={styles.emptySubtitle}>
-            Import files using the + button below.
+            {t('phone.attachments.emptyHint')}
           </Text>
         </View>
       ) : (

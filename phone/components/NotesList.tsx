@@ -18,6 +18,7 @@ import { FileEntry } from '@/types';
 import { trashDir, trashFile } from '@/lib/file-system';
 import { renameNote } from '@/lib/wiki-links';
 import { useApp } from '@/context/AppContext';
+import { useT } from '@/lib/i18n';
 
 interface NotesListProps {
   files: FileEntry[];
@@ -41,6 +42,7 @@ export default function NotesList({
   isAtRoot,
 }: NotesListProps) {
   const { colors } = useTheme();
+  const t = useT();
   const { applyPathMoves } = useApp();
   const [renameTarget, setRenameTarget] = useState<FileEntry | null>(null);
   const [renameValue, setRenameValue] = useState('');
@@ -77,29 +79,29 @@ export default function NotesList({
       undefined,
       [
         {
-          text: 'Rename',
+          text: t('phone.notesList.rename'),
           onPress: () => {
             setRenameTarget(entry);
             setRenameValue(entry.name);
           },
         },
         {
-          text: 'Delete',
+          text: t('phone.notesList.delete'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              `Move to Trash?`,
-              `"${entry.name}" will be moved to .trash and can be restored.`,
+              t('phone.notesList.trashTitle'),
+              t('phone.notesList.trashMessage', { name: entry.name }),
               [
-                { text: 'Cancel', style: 'cancel' },
+                { text: t('phone.notesList.cancel'), style: 'cancel' },
                 {
-                  text: 'Move to Trash',
+                  text: t('phone.notesList.moveToTrash'),
                   style: 'destructive',
                   onPress: () => {
                     // A folder goes to .trash too (it was deleted outright): sync now deletes on the remote
                     // what is deleted here, so the trash is where it can still be restored.
                     const ok = entry.isDirectory ? trashDir(entry.path, vaultPath) : trashFile(entry.path, vaultPath);
-                    if (!ok) Alert.alert('Error', 'Could not move it to the trash.');
+                    if (!ok) Alert.alert(t('phone.notesList.errorTitle'), t('phone.notesList.trashFailed'));
                     onRefresh();
                   },
                 },
@@ -107,24 +109,24 @@ export default function NotesList({
             );
           },
         },
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('phone.notesList.cancel'), style: 'cancel' },
       ]
     );
-  }, [onRefresh, vaultPath]);
+  }, [onRefresh, vaultPath, t]);
 
   const handleRename = useCallback(async () => {
     if (!renameTarget || !renameValue.trim()) return;
     // Links to the renamed note (or to the notes in a renamed folder) are rewritten, as on web and desktop.
     const result = await renameNote(vaultPath, renameTarget.path, renameValue.trim(), renameTarget.isDirectory);
     if (!result.uri) {
-      Alert.alert('Rename', `Could not rename: "${renameValue.trim()}" may already exist or is not a valid name.`);
+      Alert.alert(t('phone.notesList.rename'), t('phone.notesList.renameFailed', { name: renameValue.trim() }));
       return;
     }
     applyPathMoves(result.moves);
-    if (result.failed > 0) Alert.alert('Rename', `Renamed, but links in ${result.failed} note(s) could not be updated.`);
+    if (result.failed > 0) Alert.alert(t('phone.notesList.rename'), t('phone.notesList.linksNotUpdated', { count: result.failed }));
     setRenameTarget(null);
     onRefresh();
-  }, [renameTarget, renameValue, onRefresh, vaultPath, applyPathMoves]);
+  }, [renameTarget, renameValue, onRefresh, vaultPath, applyPathMoves, t]);
 
   const renderItem = useCallback(
     ({ item }: { item: FileEntry }) => {
@@ -187,7 +189,7 @@ export default function NotesList({
             {!isAtRoot && (
               <TouchableOpacity style={[styles.backRow, { borderBottomColor: colors.bgTertiary }]} onPress={onNavigateUp}>
                 <Ionicons name="chevron-back" size={20} color={colors.blue} />
-                <Text style={[styles.backText, { color: colors.blue }]}>Back</Text>
+                <Text style={[styles.backText, { color: colors.blue }]}>{t('phone.notesList.back')}</Text>
                 <Text style={[styles.folderTitle, { color: colors.textMuted }]} numberOfLines={1}>
                   {folderName}
                 </Text>
@@ -195,7 +197,7 @@ export default function NotesList({
             )}
             {files.length > 0 && (
               <View style={[styles.sortRow, { borderBottomColor: colors.bgTertiary }]}>
-                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{files.length} items</Text>
+                <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('phone.notesList.items', { count: files.length })}</Text>
                 <TouchableOpacity
                   style={styles.sortBtn}
                   onPress={() => setSortMode((m) => m === 'name' ? 'name-desc' : 'name')}
@@ -205,7 +207,7 @@ export default function NotesList({
                     size={14}
                     color={colors.textMuted}
                   />
-                  <Text style={{ color: colors.textMuted, fontSize: 12 }}>Name</Text>
+                  <Text style={{ color: colors.textMuted, fontSize: 12 }}>{t('phone.notesList.sortName')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -214,9 +216,9 @@ export default function NotesList({
         ListEmptyComponent={
           <View style={styles.empty}>
             <Ionicons name="document-text-outline" size={48} color={colors.border} />
-            <Text style={[styles.emptyText, { color: colors.textMuted }]}>No notes yet</Text>
+            <Text style={[styles.emptyText, { color: colors.textMuted }]}>{t('phone.notesList.empty')}</Text>
             <Text style={[styles.emptyHint, { color: colors.border }]}>
-              Tap + to create your first note
+              {t('phone.notesList.emptyHint')}
             </Text>
           </View>
         }
@@ -237,7 +239,7 @@ export default function NotesList({
         >
         <View style={styles.modalOverlay}>
           <View style={[styles.modalDialog, { backgroundColor: colors.bgTertiary }]}>
-            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>Rename</Text>
+            <Text style={[styles.modalTitle, { color: colors.textPrimary }]}>{t('phone.notesList.rename')}</Text>
             <TextInput
               style={[styles.modalInput, { backgroundColor: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.border }]}
               value={renameValue}
@@ -253,13 +255,13 @@ export default function NotesList({
                 style={styles.modalCancel}
                 onPress={() => setRenameTarget(null)}
               >
-                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                <Text style={[styles.modalCancelText, { color: colors.textSecondary }]}>{t('phone.notesList.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.modalConfirm, { backgroundColor: colors.blue }]}
                 onPress={handleRename}
               >
-                <Text style={[styles.modalConfirmText, { color: colors.bgPrimary }]}>Rename</Text>
+                <Text style={[styles.modalConfirmText, { color: colors.bgPrimary }]}>{t('phone.notesList.rename')}</Text>
               </TouchableOpacity>
             </View>
           </View>

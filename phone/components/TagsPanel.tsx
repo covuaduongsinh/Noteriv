@@ -10,6 +10,7 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { listAllMarkdownFiles, readFile } from '@/lib/file-system';
+import { useT } from '@/lib/i18n';
 
 interface TagsPanelProps {
   vaultPath: string;
@@ -117,6 +118,7 @@ function flattenTree(
 
 export default function TagsPanel({ vaultPath, onTagPress }: TagsPanelProps) {
   const { colors } = useTheme();
+  const t = useT();
   const [tags, setTags] = useState<Map<string, number>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
@@ -251,16 +253,16 @@ export default function TagsPanel({ vaultPath, onTagPress }: TagsPanelProps) {
       {/* Header */}
       <View style={[styles.header, { borderBottomColor: colors.bgTertiary, backgroundColor: colors.bgSecondary }]}>
         <Ionicons name="pricetags" size={18} color={colors.mauve} />
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Tags</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('phone.tagsPanel.title')}</Text>
         <Text style={[styles.headerCount, { color: colors.textMuted }]}>
-          {tags.size} tag{tags.size !== 1 ? 's' : ''}
+          {t('phone.tagsPanel.count', { count: tags.size })}
         </Text>
       </View>
 
       {isLoading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator color={colors.blue} size="small" />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Scanning files...</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>{t('phone.tagsPanel.scanning')}</Text>
         </View>
       ) : (
         <FlatList
@@ -271,9 +273,9 @@ export default function TagsPanel({ vaultPath, onTagPress }: TagsPanelProps) {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="pricetags-outline" size={48} color={colors.border} />
-              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>No tags found</Text>
+              <Text style={[styles.emptyText, { color: colors.textSecondary }]}>{t('phone.tagsPanel.empty')}</Text>
               <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                Use #tag syntax in your notes
+                {t('phone.tagsPanel.emptyHint')}
               </Text>
             </View>
           }

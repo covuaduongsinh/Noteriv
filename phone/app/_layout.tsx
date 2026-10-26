@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { AppProvider, useApp } from '@/context/AppContext';
 import { ThemeProvider, useTheme } from '@/context/ThemeContext';
 import { CorePluginsProvider } from '@/context/CorePluginsContext';
-import { corePluginLabels } from '@/lib/core-plugins';
+import { useT } from '@/lib/i18n';
 import { ThemeDefinition } from '@/constants/theme';
 import { loadCustomThemes } from '@/lib/community';
 import { DarkTheme, DefaultTheme, ThemeProvider as NavigationThemeProvider } from '@react-navigation/native';
@@ -30,6 +30,7 @@ function AppThemeWrapper({ children }: { children: React.ReactNode }) {
 
 function ThemedNavigation() {
   const { colors, isDark } = useTheme();
+  const t = useT();
 
   const navigationTheme = {
     ...(isDark ? DarkTheme : DefaultTheme),
@@ -60,7 +61,7 @@ function ThemedNavigation() {
           name="settings"
           options={{
             presentation: 'modal',
-            title: 'Settings',
+            title: t('phone.layout.settings'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -70,7 +71,7 @@ function ThemedNavigation() {
           name="snippets"
           options={{
             presentation: 'modal',
-            title: 'CSS Snippets',
+            title: t('phone.layout.snippets'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -79,7 +80,7 @@ function ThemedNavigation() {
           name="core-plugins"
           options={{
             presentation: 'modal',
-            title: corePluginLabels.title,
+            title: t('phone.corePlugins.title'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -88,7 +89,7 @@ function ThemedNavigation() {
           name="plugins"
           options={{
             presentation: 'modal',
-            title: 'Plugins',
+            title: t('phone.layout.plugins'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -97,7 +98,7 @@ function ThemedNavigation() {
           name="templates"
           options={{
             presentation: 'modal',
-            title: 'Templates',
+            title: t('phone.layout.templates'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -106,7 +107,7 @@ function ThemedNavigation() {
           name="recovery"
           options={{
             presentation: 'modal',
-            title: 'File Recovery',
+            title: t('phone.layout.recovery'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -115,7 +116,7 @@ function ThemedNavigation() {
           name="composer"
           options={{
             presentation: 'modal',
-            title: 'Note Composer',
+            title: t('phone.layout.composer'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -124,7 +125,7 @@ function ThemedNavigation() {
           name="attachments"
           options={{
             presentation: 'modal',
-            title: 'Attachments',
+            title: t('phone.layout.attachments'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -140,7 +141,7 @@ function ThemedNavigation() {
           name="backlinks"
           options={{
             presentation: 'modal',
-            title: 'Backlinks',
+            title: t('phone.layout.backlinks'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -149,7 +150,7 @@ function ThemedNavigation() {
           name="frontmatter"
           options={{
             presentation: 'modal',
-            title: 'Frontmatter',
+            title: t('phone.layout.frontmatter'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}
@@ -157,21 +158,21 @@ function ThemedNavigation() {
         <Stack.Screen
           name="calendar"
           options={{
-            title: 'Calendar',
+            title: t('phone.layout.calendar'),
             headerShown: false,
           }}
         />
         <Stack.Screen
           name="flashcards"
           options={{
-            title: 'Flashcards',
+            title: t('phone.layout.flashcards'),
             headerShown: false,
           }}
         />
         <Stack.Screen
           name="graph"
           options={{
-            title: 'Graph',
+            title: t('phone.layout.graph'),
             headerShown: false,
           }}
         />
@@ -179,7 +180,7 @@ function ThemedNavigation() {
           name="publish"
           options={{
             presentation: 'modal',
-            title: 'Publish',
+            title: t('phone.layout.publish'),
             headerShown: false,
           }}
         />
@@ -187,7 +188,7 @@ function ThemedNavigation() {
           name="trash"
           options={{
             presentation: 'modal',
-            title: 'Trash',
+            title: t('phone.layout.trash'),
             headerStyle: { backgroundColor: colors.bgSecondary },
             headerTintColor: colors.textPrimary,
           }}

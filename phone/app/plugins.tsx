@@ -22,7 +22,7 @@ import {
   fetchCommunityPlugins,
   installCommunityPlugin,
 } from '@/lib/plugins';
-
+import { useT } from '@/lib/i18n';
 type Tab = 'installed' | 'community';
 
 interface InstalledPlugin {
@@ -33,6 +33,7 @@ interface InstalledPlugin {
 export default function PluginsScreen() {
   const { vault } = useApp();
   const { colors } = useTheme();
+  const t = useT();
 
   const [activeTab, setActiveTab] = useState<Tab>('installed');
   const [plugins, setPlugins] = useState<InstalledPlugin[]>([]);
@@ -86,12 +87,12 @@ export default function PluginsScreen() {
   const handleUninstall = useCallback(
     (plugin: InstalledPlugin) => {
       Alert.alert(
-        'Uninstall Plugin',
-        `Uninstall "${plugin.manifest.name}"? This will remove all plugin files.`,
+        t('phone.plugins.uninstallTitle'),
+        t('phone.plugins.uninstallMessage', { name: plugin.manifest.name }),
         [
-          { text: 'Cancel', style: 'cancel' },
+          { text: t('phone.plugins.cancel'), style: 'cancel' },
           {
-            text: 'Uninstall',
+            text: t('phone.plugins.uninstall'),
             style: 'destructive',
             onPress: () => {
               uninstallPlugin(vaultPath, plugin.manifest.id);
@@ -103,7 +104,7 @@ export default function PluginsScreen() {
         ]
       );
     },
-    [vaultPath]
+    [vaultPath, t]
   );
 
   const handleInstallCommunity = useCallback(
@@ -114,17 +115,17 @@ export default function PluginsScreen() {
         const success = await installCommunityPlugin(vaultPath, entry);
         if (success) {
           await refreshPlugins();
-          Alert.alert('Installed', `"${entry.name}" has been installed.`);
+          Alert.alert(t('phone.plugins.installed'), t('phone.plugins.installedMessage', { name: entry.name }));
         } else {
-          Alert.alert('Error', 'Failed to install plugin.');
+          Alert.alert(t('phone.plugins.error'), t('phone.plugins.installFailed'));
         }
       } catch {
-        Alert.alert('Error', 'Failed to install plugin.');
+        Alert.alert(t('phone.plugins.error'), t('phone.plugins.installFailed'));
       } finally {
         setInstallingId(null);
       }
     },
-    [vaultPath, refreshPlugins]
+    [vaultPath, refreshPlugins, t]
   );
 
   const installedIds = new Set(plugins.map((p) => p.manifest.id));
@@ -138,7 +139,7 @@ export default function PluginsScreen() {
           onPress={() => setActiveTab('installed')}
         >
           <Text style={[styles.tabText, { color: activeTab === 'installed' ? colors.accent : colors.textMuted }]}>
-            Installed
+            {t('phone.plugins.tabInstalled')}
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -146,7 +147,7 @@ export default function PluginsScreen() {
           onPress={() => setActiveTab('community')}
         >
           <Text style={[styles.tabText, { color: activeTab === 'community' ? colors.accent : colors.textMuted }]}>
-            Community
+            {t('phone.plugins.tabCommunity')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -157,10 +158,10 @@ export default function PluginsScreen() {
             <View style={styles.emptyState}>
               <Ionicons name="extension-puzzle-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No plugins installed
+                {t('phone.plugins.empty')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                Browse the community tab to find plugins
+                {t('phone.plugins.emptyHint')}
               </Text>
             </View>
           ) : (
@@ -181,7 +182,7 @@ export default function PluginsScreen() {
                     </Text>
                   </View>
                   <Text style={[styles.pluginAuthor, { color: colors.textMuted }]}>
-                    by {plugin.manifest.author}
+                    {t('phone.plugins.by', { author: plugin.manifest.author })}
                   </Text>
                   <Text style={[styles.pluginDescription, { color: colors.textSecondary }]} numberOfLines={2}>
                     {plugin.manifest.description}
@@ -201,7 +202,7 @@ export default function PluginsScreen() {
 
           {plugins.length > 0 && (
             <Text style={[styles.hintText, { color: colors.textMuted }]}>
-              Long press a plugin to uninstall
+              {t('phone.plugins.longPressHint')}
             </Text>
           )}
         </ScrollView>
@@ -211,17 +212,17 @@ export default function PluginsScreen() {
             <View style={styles.loadingState}>
               <ActivityIndicator size="large" color={colors.accent} />
               <Text style={[styles.loadingText, { color: colors.textMuted }]}>
-                Fetching community plugins...
+                {t('phone.plugins.fetching')}
               </Text>
             </View>
           ) : communityPlugins.length === 0 ? (
             <View style={styles.emptyState}>
               <Ionicons name="cloud-offline-outline" size={48} color={colors.textMuted} />
               <Text style={[styles.emptyText, { color: colors.textMuted }]}>
-                No community plugins available
+                {t('phone.plugins.communityEmpty')}
               </Text>
               <Text style={[styles.emptySubtext, { color: colors.textMuted }]}>
-                Check your internet connection or try again later
+                {t('phone.plugins.communityEmptyHint')}
               </Text>
             </View>
           ) : (
@@ -244,7 +245,7 @@ export default function PluginsScreen() {
                       </Text>
                     </View>
                     <Text style={[styles.pluginAuthor, { color: colors.textMuted }]}>
-                      by {entry.author}
+                      {t('phone.plugins.by', { author: entry.author })}
                     </Text>
                     <Text style={[styles.communityDescription, { color: colors.textSecondary }]} numberOfLines={2}>
                       {entry.description}
@@ -268,7 +269,7 @@ export default function PluginsScreen() {
                           { color: isInstalled ? colors.textMuted : colors.bgPrimary },
                         ]}
                       >
-                        {isInstalled ? 'Installed' : 'Install'}
+                        {isInstalled ? t('phone.plugins.installed') : t('phone.plugins.install')}
                       </Text>
                     )}
                   </TouchableOpacity>

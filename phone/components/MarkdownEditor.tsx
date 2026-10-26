@@ -13,6 +13,7 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
+import { useT } from '@/lib/i18n';
 
 interface MarkdownEditorProps {
   content: string;
@@ -136,6 +137,7 @@ const toolbarActions: ToolbarAction[] = [
 ];
 
 export default function MarkdownEditor({ content, onChange, fontSize, focusMode, onToggleFocusMode }: MarkdownEditorProps) {
+  const t = useT();
   const { colors } = useTheme();
   const inputRef = useRef<TextInput>(null);
   const [selection, setSelection] = useState<Selection>({ start: 0, end: 0 });
@@ -186,7 +188,7 @@ export default function MarkdownEditor({ content, onChange, fontSize, focusMode,
         scrollEnabled
         selectionColor={colors.accent + '80'}
         placeholderTextColor={colors.textMuted}
-        placeholder="Start writing..."
+        placeholder={t('phone.markdownEditor.placeholder')}
       />
 
       {!focusMode && (

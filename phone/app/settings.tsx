@@ -24,7 +24,8 @@ import { GitProvider } from '@/types';
 import { loadSnippets } from '@/lib/css-snippets';
 import { getInstalledPlugins, getEnabledPluginIds } from '@/lib/plugins';
 import { useCorePlugins } from '@/context/CorePluginsContext';
-import { CORE_PLUGINS, corePluginLabels } from '@/lib/core-plugins';
+import { CORE_PLUGINS } from '@/lib/core-plugins';
+import { useT, t as translate } from '@/lib/i18n';
 import {
   CommunityThemeEntry,
   fetchCommunityThemes,
@@ -33,8 +34,8 @@ import {
 } from '@/lib/community';
 import Constants from 'expo-constants';
 
-const AUTO_SAVE_OPTIONS = [
-  { label: 'Off', value: 0 },
+const AUTO_SAVE_OPTIONS = () => [
+  { label: translate('phone.settings.autoSaveOff'), value: 0 },
   { label: '10s', value: 10 },
   { label: '30s', value: 30 },
   { label: '1m', value: 60 },
@@ -45,15 +46,15 @@ const TAB_SIZE_OPTIONS = [2, 4, 8];
 
 /** "Pulled: 3, Pushed: 1", plus the error count and the first error's text so a failure says why. */
 function syncSummary(result: GitSync.SyncResult): string {
-  const counts = `Pulled: ${result.pulled}, Pushed: ${result.pushed}`;
+  const counts = translate('phone.settings.syncCounts', { pulled: result.pulled, pushed: result.pushed });
   if (result.errors.length === 0) return counts;
-  return `${counts}, Errors: ${result.errors.length}
-${result.errors[0]}`;
+  return translate('phone.settings.syncCountsErrors', { counts, errors: result.errors.length, first: result.errors[0] });
 }
 
 export default function SettingsScreen() {
   const { settings, updateSettings, vault, refreshFiles, refreshVaults } = useApp();
   const { colors } = useTheme();
+  const t = useT();
   const router = useRouter();
 
   // Git sync state
@@ -62,7 +63,9 @@ export default function SettingsScreen() {
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [syncing, setSyncing] = useState(false);
   const [lastSyncTime, setLastSyncTime] = useState<string | null>(null);
-  const [syncStatus, setSyncStatus] = useState<string | null>(null);
+  // The last sync's message, and whether it reports a failure (shown in red).
+  const [syncStatus, setSyncStatusState] = useState<{ text: string; error: boolean } | null>(null);
+  const setSyncStatus = (text: string | null, error = false) => setSyncStatusState(text === null ? null : { text, error });
   const [remoteInput, setRemoteInput] = useState('');
   const [providerInput, setProviderInput] = useState<GitProvider>('gitlab');
 
@@ -116,7 +119,7 @@ export default function SettingsScreen() {
         headers: { Authorization: `token ${tokenInput.trim()}` },
       });
       if (!userRes.ok) {
-        Alert.alert('Invalid Token', 'Could not authenticate. Check your token has the "repo" scope.');
+        Alert.alert(t('phone.settings.invalidTokenTitle'), t('phone.settings.invalidTokenMessage'));
         setValidatingToken(false);
         return;
       }
@@ -131,7 +134,7 @@ export default function SettingsScreen() {
       }
       setTokenStep('repo');
     } catch {
-      Alert.alert('Error', 'Network error. Check your connection.');
+      Alert.alert(t('phone.settings.error'), t('phone.settings.networkError'));
     } finally {
       setValidatingToken(false);
     }
@@ -156,14 +159,14 @@ export default function SettingsScreen() {
     setShowTokenModal(false);
 
     // Trigger immediate sync
-    setSyncStatus('Syncing...');
+    setSyncStatus(t('phone.settings.syncing'));
     setSyncing(true);
     try {
       const result = await GitSync.sync(vault.path, tokenInput.trim(), selectedRepoUrl, vault.gitBranch || undefined, 'github');
       setLastSyncTime(new Date().toLocaleTimeString());
-      setSyncStatus(syncSummary(result));
+      setSyncStatus(syncSummary(result), result.errors.length > 0);
     } catch (err) {
-      setSyncStatus(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
+      setSyncStatus(t('phone.settings.syncFailed', { error: err instanceof Error ? err.message : String(err) }), true);
     } finally {
       setSyncing(false);
     }
@@ -171,10 +174,10 @@ export default function SettingsScreen() {
 
   const handleDisconnectGitHub = useCallback(async () => {
     if (!vault) return;
-    Alert.alert('Disconnect GitHub', 'Remove the stored token for this vault?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('phone.settings.disconnectGitHubTitle'), t('phone.settings.disconnectGitHubMessage'), [
+      { text: t('phone.settings.cancel'), style: 'cancel' },
       {
-        text: 'Disconnect',
+        text: t('phone.settings.disconnect'),
         style: 'destructive',
         onPress: async () => {
           await AsyncStorage.removeItem(KEYS.GITHUB_TOKEN(vault.id));
@@ -183,7 +186,7 @@ export default function SettingsScreen() {
         },
       },
     ]);
-  }, [vault]);
+  }, [vault, t]);
 
   const handleSyncNow = useCallback(async () => {
     if (!vault || !ghToken || !vault.gitRemote) return;
@@ -200,15 +203,13 @@ export default function SettingsScreen() {
       refreshFiles();
       const now = new Date().toLocaleTimeString();
       setLastSyncTime(now);
-      setSyncStatus(syncSummary(result));
+      setSyncStatus(syncSummary(result), result.errors.length > 0);
     } catch (err) {
-      setSyncStatus(
-        `Sync failed: ${err instanceof Error ? err.message : String(err)}`
-      );
+      setSyncStatus(t('phone.settings.syncFailed', { error: err instanceof Error ? err.message : String(err) }), true);
     } finally {
       setSyncing(false);
     }
-  }, [vault, ghToken, refreshFiles]);
+  }, [vault, ghToken, refreshFiles, t]);
 
   const handleSaveCustomRemote = useCallback(async () => {
     if (!vault || !remoteInput.trim() || !tokenInput.trim()) return;
@@ -226,27 +227,27 @@ export default function SettingsScreen() {
       const result = await GitSync.sync(vault.path, token, remoteInput.trim(), vault.gitBranch || undefined, provider);
       refreshFiles();
       setLastSyncTime(new Date().toLocaleTimeString());
-      setSyncStatus(syncSummary(result));
+      setSyncStatus(syncSummary(result), result.errors.length > 0);
     } catch (err) {
-      setSyncStatus(`Sync failed: ${err instanceof Error ? err.message : String(err)}`);
+      setSyncStatus(t('phone.settings.syncFailed', { error: err instanceof Error ? err.message : String(err) }), true);
     } finally {
       setSyncing(false);
     }
-  }, [vault, remoteInput, tokenInput, providerInput, refreshFiles, refreshVaults]);
+  }, [vault, remoteInput, tokenInput, providerInput, refreshFiles, refreshVaults, t]);
 
   const handleFreshClone = useCallback(async () => {
     if (!vault || !ghToken || !vault.gitRemote) return;
     Alert.alert(
-      'Fresh Clone',
-      'This will DELETE all local notes and re-download everything from GitHub. Are you sure?',
+      t('phone.settings.freshCloneTitle'),
+      t('phone.settings.freshCloneMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('phone.settings.cancel'), style: 'cancel' },
         {
-          text: 'Delete & Clone',
+          text: t('phone.settings.deleteAndClone'),
           style: 'destructive',
           onPress: async () => {
             setSyncing(true);
-            setSyncStatus('Deleting local files & cloning...');
+            setSyncStatus(t('phone.settings.deletingAndCloning'));
             try {
               const result = await GitSync.freshClone(
                 vault.path,
@@ -258,13 +259,12 @@ export default function SettingsScreen() {
               refreshFiles();
               setLastSyncTime(new Date().toLocaleTimeString());
               if (result.errors.length > 0) {
-                setSyncStatus(`Cloned: ${result.pulled} files, Errors: ${result.errors.length}
-${result.errors[0]}`);
+                setSyncStatus(t('phone.settings.clonedWithErrors', { pulled: result.pulled, errors: result.errors.length, first: result.errors[0] }), true);
               } else {
-                setSyncStatus(`Fresh clone: ${result.pulled} files downloaded`);
+                setSyncStatus(t('phone.settings.freshCloneDone', { pulled: result.pulled }));
               }
             } catch (err) {
-              setSyncStatus(`Clone failed: ${err instanceof Error ? err.message : String(err)}`);
+              setSyncStatus(t('phone.settings.cloneFailed', { error: err instanceof Error ? err.message : String(err) }), true);
             } finally {
               setSyncing(false);
             }
@@ -272,7 +272,7 @@ ${result.errors[0]}`);
         },
       ]
     );
-  }, [vault, ghToken]);
+  }, [vault, ghToken, t]);
 
   const handleBrowseCommunityThemes = useCallback(async () => {
     if (showCommunityThemes) {
@@ -303,27 +303,27 @@ ${result.errors[0]}`);
               a.name.localeCompare(b.name)
             )
           );
-          Alert.alert('Installed', `"${entry.name}" theme has been installed.`);
+          Alert.alert(t('phone.settings.installed'), t('phone.settings.themeInstalled', { name: entry.name }));
         } else {
-          Alert.alert('Error', 'Failed to install theme.');
+          Alert.alert(t('phone.settings.error'), t('phone.settings.themeInstallFailed'));
         }
       } catch {
-        Alert.alert('Error', 'Failed to install theme.');
+        Alert.alert(t('phone.settings.error'), t('phone.settings.themeInstallFailed'));
       } finally {
         setInstallingThemeId(null);
       }
     },
-    [vault?.path]
+    [vault?.path, t]
   );
 
   const handleResetApp = useCallback(() => {
     Alert.alert(
-      'Reset App',
-      'This will delete all vaults, settings, and data. You will go through setup again. This cannot be undone.',
+      t('phone.settings.resetApp'),
+      t('phone.settings.resetAppMessage'),
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t('phone.settings.cancel'), style: 'cancel' },
         {
-          text: 'Reset Everything',
+          text: t('phone.settings.resetEverything'),
           style: 'destructive',
           onPress: async () => {
             await AsyncStorage.clear();
@@ -332,7 +332,7 @@ ${result.errors[0]}`);
         },
       ]
     );
-  }, [router]);
+  }, [router, t]);
 
   const renderSectionHeader = useCallback(
     (title: string, icon: keyof typeof Ionicons.glyphMap) => (
@@ -509,25 +509,35 @@ ${result.errors[0]}`);
       contentContainerStyle={s.contentContainer}
     >
       {/* General */}
-      {renderSectionHeader('General', 'settings-outline')}
+      {renderSectionHeader(t('phone.settings.general'), 'settings-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         {renderPicker(
-          'Auto-save',
-          AUTO_SAVE_OPTIONS,
+          t('phone.settings.language'),
+          [
+            { label: t('phone.settings.languageAuto'), value: 'auto' },
+            { label: t('phone.settings.languageEn'), value: 'en' },
+            { label: t('phone.settings.languageVi'), value: 'vi' },
+          ],
+          settings.language ?? 'auto',
+          (val) => updateSettings({ language: val as 'auto' | 'en' | 'vi' })
+        )}
+        {renderPicker(
+          t('phone.settings.autoSave'),
+          AUTO_SAVE_OPTIONS(),
           settings.autoSaveInterval,
           (val) => updateSettings({ autoSaveInterval: val as number })
         )}
-        {renderToggle('Spell check', settings.spellCheck, (val) =>
+        {renderToggle(t('phone.settings.spellCheck'), settings.spellCheck, (val) =>
           updateSettings({ spellCheck: val })
         )}
       </View>
 
       {/* Appearance */}
-      {renderSectionHeader('Appearance', 'color-palette-outline')}
+      {renderSectionHeader(t('phone.settings.appearance'), 'color-palette-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         {/* Theme Picker */}
         <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
-          <Text style={[s.settingLabel, { color: colors.textPrimary }]}>Theme</Text>
+          <Text style={[s.settingLabel, { color: colors.textPrimary }]}>{t('phone.settings.theme')}</Text>
         </View>
         <View style={s.themeGrid}>
           {BUILT_IN_THEMES.map(renderThemeCard)}
@@ -540,7 +550,7 @@ ${result.errors[0]}`);
           onPress={handleBrowseCommunityThemes}
         >
           <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-            Community Themes
+            {t('phone.settings.communityThemes')}
           </Text>
           <View style={s.linkRow}>
             <Ionicons
@@ -557,12 +567,12 @@ ${result.errors[0]}`);
               <View style={{ alignItems: 'center', paddingVertical: 20 }}>
                 <ActivityIndicator size="small" color={colors.accent} />
                 <Text style={{ color: colors.textMuted, fontSize: 13, marginTop: 8 }}>
-                  Loading community themes...
+                  {t('phone.settings.loadingCommunityThemes')}
                 </Text>
               </View>
             ) : communityThemes.length === 0 ? (
               <Text style={{ color: colors.textMuted, fontSize: 13, textAlign: 'center', paddingVertical: 16 }}>
-                No community themes available
+                {t('phone.settings.noCommunityThemes')}
               </Text>
             ) : (
               communityThemes.map((entry) => {
@@ -584,7 +594,7 @@ ${result.errors[0]}`);
                         {entry.description}
                       </Text>
                       <Text style={{ fontSize: 11, color: colors.textMuted, marginTop: 2 }}>
-                        by {entry.author} · {entry.type}
+                        {t('phone.settings.themeBy', { author: entry.author, type: entry.type })}
                       </Text>
                     </View>
                     <TouchableOpacity
@@ -608,7 +618,7 @@ ${result.errors[0]}`);
                             color: isInstalled ? colors.textMuted : colors.bgPrimary,
                           }}
                         >
-                          {isInstalled ? 'Installed' : 'Install'}
+                          {isInstalled ? t('phone.settings.installed') : t('phone.settings.install')}
                         </Text>
                       )}
                     </TouchableOpacity>
@@ -622,7 +632,7 @@ ${result.errors[0]}`);
         {/* Accent color */}
         <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
           <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-            Accent Color
+            {t('phone.settings.accentColor')}
           </Text>
           <View style={s.colorRow}>
             {Object.entries(AccentColors).map(([name, accentColors]) => {
@@ -658,7 +668,7 @@ ${result.errors[0]}`);
         </View>
 
         {renderSlider(
-          'Font size',
+          t('phone.settings.fontSize'),
           settings.fontSize,
           12,
           24,
@@ -669,10 +679,10 @@ ${result.errors[0]}`);
       </View>
 
       {/* Editor */}
-      {renderSectionHeader('Editor', 'code-slash-outline')}
+      {renderSectionHeader(t('phone.settings.editor'), 'code-slash-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         {renderSlider(
-          'Line height',
+          t('phone.settings.lineHeight'),
           settings.lineHeight,
           1.2,
           2.0,
@@ -681,7 +691,7 @@ ${result.errors[0]}`);
           (val) => updateSettings({ lineHeight: val })
         )}
         {renderPicker(
-          'Tab size',
+          t('phone.settings.tabSize'),
           TAB_SIZE_OPTIONS.map((sz) => ({ label: String(sz), value: sz })),
           settings.tabSize,
           (val) => updateSettings({ tabSize: val as number })
@@ -689,7 +699,7 @@ ${result.errors[0]}`);
       </View>
 
       {/* Ecosystem */}
-      {renderSectionHeader('Ecosystem', 'apps-outline')}
+      {renderSectionHeader(t('phone.settings.ecosystem'), 'apps-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         <TouchableOpacity
           style={[s.settingRow, { borderBottomColor: colors.border }]}
@@ -699,10 +709,10 @@ ${result.errors[0]}`);
             <Ionicons name="code-slash-outline" size={20} color={colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-                CSS Snippets
+                {t('phone.settings.cssSnippets')}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                {snippetCount} snippet{snippetCount !== 1 ? 's' : ''} installed
+                {t('phone.settings.snippetsInstalled', { count: snippetCount })}
               </Text>
             </View>
           </View>
@@ -716,10 +726,10 @@ ${result.errors[0]}`);
             <Ionicons name="cube-outline" size={20} color={colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-                {corePluginLabels.title}
+                {t('phone.corePlugins.title')}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                {corePluginLabels.summary(corePluginsOn, CORE_PLUGINS.length)}
+                {t('phone.corePlugins.summary', { on: corePluginsOn, total: CORE_PLUGINS.length })}
               </Text>
             </View>
           </View>
@@ -733,10 +743,10 @@ ${result.errors[0]}`);
             <Ionicons name="extension-puzzle-outline" size={20} color={colors.accent} />
             <View style={{ flex: 1 }}>
               <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-                Plugins
+                {t('phone.settings.plugins')}
               </Text>
               <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-                {pluginCount} installed · {enabledPluginCount} enabled
+                {t('phone.settings.pluginsSummary', { installed: pluginCount, enabled: enabledPluginCount })}
               </Text>
             </View>
           </View>
@@ -745,18 +755,18 @@ ${result.errors[0]}`);
       </View>
 
       {/* Git sync */}
-      {renderSectionHeader('Git Sync', 'git-branch-outline')}
+      {renderSectionHeader(t('phone.settings.gitSync'), 'git-branch-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         {gitConnected ? (
           <>
             <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
               <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-                Status
+                {t('phone.settings.status')}
               </Text>
               <View style={s.statusRow}>
                 <View style={[s.statusDot, { backgroundColor: colors.green }]} />
                 <Text style={{ color: colors.green, fontSize: 14, fontWeight: '500' }}>
-                  Connected
+                  {t('phone.settings.connected')}
                 </Text>
               </View>
             </View>
@@ -764,7 +774,7 @@ ${result.errors[0]}`);
             {lastSyncTime && (
               <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
                 <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-                  Last sync
+                  {t('phone.settings.lastSync')}
                 </Text>
                 <Text style={{ color: colors.textSecondary, fontSize: 14 }}>
                   {lastSyncTime}
@@ -776,14 +786,14 @@ ${result.errors[0]}`);
               <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
                 <Text
                   style={{
-                    color: syncStatus.includes('failed')
+                    color: syncStatus.error
                       ? colors.red
                       : colors.textSecondary,
                     fontSize: 13,
                     flex: 1,
                   }}
                 >
-                  {syncStatus}
+                  {syncStatus.text}
                 </Text>
               </View>
             )}
@@ -804,7 +814,7 @@ ${result.errors[0]}`);
                   <Ionicons name="sync" size={18} color={colors.bgPrimary} />
                 )}
                 <Text style={[s.syncButtonText, { color: colors.bgPrimary }]}>
-                  {syncing ? 'Syncing...' : 'Sync Now'}
+                  {syncing ? t('phone.settings.syncing') : t('phone.settings.syncNow')}
                 </Text>
               </TouchableOpacity>
               {provider === 'github' && (
@@ -819,15 +829,15 @@ ${result.errors[0]}`);
                 >
                   <Ionicons name="cloud-download-outline" size={18} color={colors.bgPrimary} />
                   <Text style={[s.syncButtonText, { color: colors.bgPrimary }]}>
-                    Fresh Clone
+                    {t('phone.settings.freshCloneTitle')}
                   </Text>
                 </TouchableOpacity>
               )}
             </View>
 
             <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
-              <Text style={[s.settingLabel, { color: colors.textPrimary }]}>Auto-sync</Text>
-              <Text style={{ color: colors.green, fontSize: 13, fontWeight: '500' }}>Every 5s</Text>
+              <Text style={[s.settingLabel, { color: colors.textPrimary }]}>{t('phone.settings.autoSync')}</Text>
+              <Text style={{ color: colors.green, fontSize: 13, fontWeight: '500' }}>{t('phone.settings.autoSyncEvery')}</Text>
             </View>
 
             <TouchableOpacity
@@ -835,7 +845,7 @@ ${result.errors[0]}`);
               onPress={handleDisconnectGitHub}
             >
               <Text style={{ color: colors.red, fontSize: 15, fontWeight: '500' }}>
-                Disconnect Remote
+                {t('phone.settings.disconnectRemote')}
               </Text>
               <Ionicons name="close-circle-outline" size={20} color={colors.red} />
             </TouchableOpacity>
@@ -843,7 +853,7 @@ ${result.errors[0]}`);
         ) : (
           <View style={s.gitDisconnected}>
             <Text style={[s.gitDisconnectedText, { color: colors.textMuted }]}>
-                Connect GitHub, GitLab, Gitea, or Forgejo to sync notes across devices.
+                {t('phone.settings.gitHint')}
             </Text>
             <TouchableOpacity
               style={[s.connectButton, { backgroundColor: colors.accent }]}
@@ -851,11 +861,11 @@ ${result.errors[0]}`);
             >
               <Ionicons name="logo-github" size={20} color={colors.bgPrimary} />
               <Text style={[s.connectButtonText, { color: colors.bgPrimary }]}>
-                Connect GitHub
+                {t('phone.settings.connectGitHub')}
               </Text>
             </TouchableOpacity>
             <View style={s.customRemoteForm}>
-              <Text style={[s.modalHint, { color: colors.textMuted }]}>For GitLab or Gitea/Forgejo, enter the clone URL and a token with repository read/write access.</Text>
+              <Text style={[s.modalHint, { color: colors.textMuted }]}>{t('phone.settings.customRemoteHint')}</Text>
               <View style={s.providerRow}>
                 {(['gitlab', 'gitea'] as GitProvider[]).map((item) => (
                   <TouchableOpacity key={item} style={[s.providerOption, { backgroundColor: colors.bgSecondary }, providerInput === item && { backgroundColor: colors.accent }]} onPress={() => setProviderInput(item)}>
@@ -864,9 +874,9 @@ ${result.errors[0]}`);
                 ))}
               </View>
               <TextInput style={[s.tokenInput, { color: colors.textPrimary, backgroundColor: colors.bgSecondary, borderColor: colors.border }]} placeholder="https://git.example.com/group/repo.git" placeholderTextColor={colors.textMuted} value={remoteInput} onChangeText={setRemoteInput} autoCapitalize="none" autoCorrect={false} />
-              <TextInput style={[s.tokenInput, { color: colors.textPrimary, backgroundColor: colors.bgSecondary, borderColor: colors.border }]} placeholder="Personal access token" placeholderTextColor={colors.textMuted} value={tokenInput} onChangeText={setTokenInput} autoCapitalize="none" autoCorrect={false} secureTextEntry />
+              <TextInput style={[s.tokenInput, { color: colors.textPrimary, backgroundColor: colors.bgSecondary, borderColor: colors.border }]} placeholder={t('phone.settings.tokenPlaceholder')} placeholderTextColor={colors.textMuted} value={tokenInput} onChangeText={setTokenInput} autoCapitalize="none" autoCorrect={false} secureTextEntry />
               <TouchableOpacity style={[s.connectButton, { backgroundColor: colors.accent }, (!remoteInput.trim() || !tokenInput.trim() || syncing) && { opacity: 0.5 }]} onPress={handleSaveCustomRemote} disabled={!remoteInput.trim() || !tokenInput.trim() || syncing}>
-                <Text style={[s.connectButtonText, { color: colors.bgPrimary }]}>{syncing ? 'Saving...' : 'Save & Sync Remote'}</Text>
+                <Text style={[s.connectButtonText, { color: colors.bgPrimary }]}>{syncing ? t('phone.settings.saving') : t('phone.settings.saveAndSyncRemote')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -874,17 +884,17 @@ ${result.errors[0]}`);
       </View>
 
       {/* About */}
-      {renderSectionHeader('About', 'information-circle-outline')}
+      {renderSectionHeader(t('phone.settings.about'), 'information-circle-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         <View style={[s.settingRow, { borderBottomColor: colors.border }]}>
-          <Text style={[s.settingLabel, { color: colors.textPrimary }]}>Version</Text>
+          <Text style={[s.settingLabel, { color: colors.textPrimary }]}>{t('phone.settings.version')}</Text>
           <Text style={{ fontSize: 15, color: colors.textSecondary }}>
             {appVersion}
           </Text>
         </View>
         <TouchableOpacity style={[s.settingRow, { borderBottomColor: colors.border }]}>
           <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-            Source Code
+            {t('phone.settings.sourceCode')}
           </Text>
           <View style={s.linkRow}>
             <Text style={{ fontSize: 14, color: colors.accent }}>GitHub</Text>
@@ -893,21 +903,21 @@ ${result.errors[0]}`);
         </TouchableOpacity>
         <TouchableOpacity style={[s.settingRow, { borderBottomColor: colors.border }]}>
           <Text style={[s.settingLabel, { color: colors.textPrimary }]}>
-            Report an Issue
+            {t('phone.settings.reportIssue')}
           </Text>
           <Ionicons name="chevron-forward" size={18} color={colors.textMuted} />
         </TouchableOpacity>
       </View>
 
       {/* Danger Zone */}
-      {renderSectionHeader('Danger Zone', 'warning-outline')}
+      {renderSectionHeader(t('phone.settings.dangerZone'), 'warning-outline')}
       <View style={[s.section, { backgroundColor: colors.bgTertiary }]}>
         <TouchableOpacity style={s.resetRow} onPress={handleResetApp}>
           <Ionicons name="trash-outline" size={20} color={colors.red} />
           <View style={{ flex: 1 }}>
-            <Text style={[s.resetLabel, { color: colors.red }]}>Reset App</Text>
+            <Text style={[s.resetLabel, { color: colors.red }]}>{t('phone.settings.resetApp')}</Text>
             <Text style={{ fontSize: 12, color: colors.textMuted, marginTop: 2 }}>
-              Delete all vaults, settings, and start over
+              {t('phone.settings.resetAppHint')}
             </Text>
           </View>
           <Ionicons name="chevron-forward" size={18} color={colors.red} />
@@ -917,7 +927,7 @@ ${result.errors[0]}`);
       <View style={s.footer}>
         <Text style={[s.footerText, { color: colors.textMuted }]}>Noteriv</Text>
         <Text style={[s.footerSubtext, { color: colors.textMuted }]}>
-          A markdown notes app built with care.
+          {t('phone.settings.tagline')}
         </Text>
       </View>
 
@@ -939,10 +949,10 @@ ${result.errors[0]}`);
             {tokenStep === 'token' ? (
               <>
                 <Text style={[s.modalTitle, { color: colors.textPrimary }]}>
-                  Connect GitHub
+                  {t('phone.settings.connectGitHub')}
                 </Text>
                 <Text style={[s.modalHint, { color: colors.textMuted }]}>
-                  Enter a Personal Access Token with the repo scope.
+                  {t('phone.settings.tokenHint')}
                 </Text>
                 <TextInput
                   style={[
@@ -970,7 +980,7 @@ ${result.errors[0]}`);
                     }}
                   >
                     <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                      Cancel
+                      {t('phone.settings.cancel')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -986,7 +996,7 @@ ${result.errors[0]}`);
                       <ActivityIndicator size="small" color={colors.bgPrimary} />
                     ) : (
                       <Text style={{ color: colors.bgPrimary, fontWeight: '600' }}>
-                        Connect
+                        {t('phone.settings.connect')}
                       </Text>
                     )}
                   </TouchableOpacity>
@@ -995,11 +1005,11 @@ ${result.errors[0]}`);
             ) : (
               <>
                 <Text style={[s.modalTitle, { color: colors.textPrimary }]}>
-                  Pick a Repository
+                  {t('phone.settings.pickRepo')}
                 </Text>
                 {ghUser && (
                   <Text style={[s.modalHint, { color: colors.green }]}>
-                    Authenticated as @{ghUser}
+                    {t('phone.settings.authenticatedAs', { user: ghUser })}
                   </Text>
                 )}
                 <FlatList
@@ -1027,7 +1037,7 @@ ${result.errors[0]}`);
                         </Text>
                       </View>
                       {item.private && (
-                        <Text style={{ color: colors.yellow, fontSize: 11 }}>private</Text>
+                        <Text style={{ color: colors.yellow, fontSize: 11 }}>{t('phone.settings.private')}</Text>
                       )}
                       {selectedRepoUrl === item.clone_url && (
                         <Ionicons name="checkmark-circle" size={20} color={colors.accent} style={{ marginLeft: 8 }} />
@@ -1036,7 +1046,7 @@ ${result.errors[0]}`);
                   )}
                   ListEmptyComponent={
                     <Text style={{ color: colors.textMuted, textAlign: 'center', paddingVertical: 20 }}>
-                      No repositories found
+                      {t('phone.settings.noRepos')}
                     </Text>
                   }
                 />
@@ -1046,7 +1056,7 @@ ${result.errors[0]}`);
                     onPress={() => setTokenStep('token')}
                   >
                     <Text style={{ color: colors.textSecondary, fontWeight: '600' }}>
-                      Back
+                      {t('phone.settings.back')}
                     </Text>
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -1059,7 +1069,7 @@ ${result.errors[0]}`);
                     disabled={!selectedRepoUrl}
                   >
                     <Text style={{ color: colors.bgPrimary, fontWeight: '600' }}>
-                      Connect & Sync
+                      {t('phone.settings.connectAndSync')}
                     </Text>
                   </TouchableOpacity>
                 </View>

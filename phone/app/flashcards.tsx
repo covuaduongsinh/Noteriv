@@ -21,12 +21,14 @@ import {
   Flashcard,
   CardReview,
 } from '@/lib/flashcard-utils';
+import { useT } from '@/lib/i18n';
 
 type Phase = 'loading' | 'lobby' | 'question' | 'answer' | 'done';
 
 export default function FlashcardsScreen() {
   const router = useRouter();
   const { colors } = useTheme();
+  const t = useT();
   const { vault } = useApp();
 
   const [phase, setPhase] = useState<Phase>('loading');
@@ -76,10 +78,10 @@ export default function FlashcardsScreen() {
   const currentCard = dueCards[index];
 
   const gradeButtons = [
-    { label: 'Again', grade: 0, color: colors.red },
-    { label: 'Hard', grade: 2, color: colors.peach },
-    { label: 'Good', grade: 3, color: colors.green },
-    { label: 'Easy', grade: 5, color: colors.blue },
+    { label: t('phone.flashcards.again'), grade: 0, color: colors.red },
+    { label: t('phone.flashcards.hard'), grade: 2, color: colors.peach },
+    { label: t('phone.flashcards.good'), grade: 3, color: colors.green },
+    { label: t('phone.flashcards.easy'), grade: 5, color: colors.blue },
   ];
 
   return (
@@ -88,14 +90,14 @@ export default function FlashcardsScreen() {
         <TouchableOpacity style={styles.headerBtn} onPress={() => router.back()}>
           <Ionicons name="chevron-back" size={24} color={colors.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>Flashcards</Text>
+        <Text style={[styles.headerTitle, { color: colors.textPrimary }]}>{t('phone.flashcards.title')}</Text>
         <View style={{ width: 40 }} />
       </View>
 
       {phase === 'loading' && (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={colors.accent} />
-          <Text style={[styles.loadingText, { color: colors.textMuted }]}>Scanning vault…</Text>
+          <Text style={[styles.loadingText, { color: colors.textMuted }]}>{t('phone.flashcards.scanning')}</Text>
         </View>
       )}
 
@@ -104,10 +106,10 @@ export default function FlashcardsScreen() {
           <Ionicons name="school-outline" size={64} color={colors.accent} style={{ marginBottom: 16 }} />
           <Text style={[styles.bigNum, { color: colors.textPrimary }]}>{dueCards.length}</Text>
           <Text style={[styles.bigLabel, { color: colors.textSecondary }]}>
-            {dueCards.length === 1 ? 'card due today' : 'cards due today'}
+            {t('phone.flashcards.dueToday', { count: dueCards.length })}
           </Text>
           <Text style={[styles.subLabel, { color: colors.textMuted }]}>
-            {allCards.length} total in vault
+            {t('phone.flashcards.totalInVault', { count: allCards.length })}
           </Text>
           {dueCards.length > 0 ? (
             <TouchableOpacity
@@ -115,11 +117,11 @@ export default function FlashcardsScreen() {
               onPress={startReview}
               activeOpacity={0.8}
             >
-              <Text style={[styles.startBtnText, { color: colors.bgPrimary }]}>Start Review</Text>
+              <Text style={[styles.startBtnText, { color: colors.bgPrimary }]}>{t('phone.flashcards.startReview')}</Text>
             </TouchableOpacity>
           ) : (
             <Text style={[styles.allDoneText, { color: colors.green }]}>
-              All caught up!
+              {t('phone.flashcards.caughtUp')}
             </Text>
           )}
         </View>
@@ -144,7 +146,7 @@ export default function FlashcardsScreen() {
           <ScrollView contentContainerStyle={styles.cardArea}>
             <View style={[styles.card, { backgroundColor: colors.bgSecondary, borderColor: colors.border }]}>
               <Text style={[styles.cardTypeLabel, { color: colors.textMuted }]}>
-                {currentCard.type === 'cloze' ? 'Complete the sentence' : 'Question'}
+                {currentCard.type === 'cloze' ? t('phone.flashcards.cloze') : t('phone.flashcards.question')}
               </Text>
               <Text style={[styles.cardText, { color: colors.textPrimary }]}>
                 {currentCard.question}
@@ -153,7 +155,7 @@ export default function FlashcardsScreen() {
 
             {phase === 'answer' && (
               <View style={[styles.card, styles.answerCard, { backgroundColor: colors.bgTertiary, borderColor: colors.border }]}>
-                <Text style={[styles.cardTypeLabel, { color: colors.textMuted }]}>Answer</Text>
+                <Text style={[styles.cardTypeLabel, { color: colors.textMuted }]}>{t('phone.flashcards.answer')}</Text>
                 <Text style={[styles.cardText, { color: colors.textPrimary }]}>
                   {currentCard.answer}
                 </Text>
@@ -171,7 +173,7 @@ export default function FlashcardsScreen() {
                 onPress={() => setPhase('answer')}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.flipBtnText, { color: colors.bgPrimary }]}>Show Answer</Text>
+                <Text style={[styles.flipBtnText, { color: colors.bgPrimary }]}>{t('phone.flashcards.showAnswer')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -200,14 +202,14 @@ export default function FlashcardsScreen() {
           <Ionicons name="checkmark-circle" size={72} color={colors.green} style={{ marginBottom: 16 }} />
           <Text style={[styles.bigNum, { color: colors.textPrimary }]}>{sessionCount}</Text>
           <Text style={[styles.bigLabel, { color: colors.textSecondary }]}>
-            {sessionCount === 1 ? 'card reviewed' : 'cards reviewed'}
+            {t('phone.flashcards.reviewed', { count: sessionCount })}
           </Text>
-          <Text style={[styles.allDoneText, { color: colors.green }]}>Session complete!</Text>
+          <Text style={[styles.allDoneText, { color: colors.green }]}>{t('phone.flashcards.sessionComplete')}</Text>
           <TouchableOpacity
             style={[styles.startBtn, { backgroundColor: colors.bgSecondary }]}
             onPress={() => router.back()}
           >
-            <Text style={[styles.startBtnText, { color: colors.textPrimary }]}>Done</Text>
+            <Text style={[styles.startBtnText, { color: colors.textPrimary }]}>{t('phone.flashcards.done')}</Text>
           </TouchableOpacity>
         </View>
       )}

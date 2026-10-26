@@ -26,8 +26,10 @@ import { listAllMarkdownFiles } from '@/lib/file-system';
 import { lintMarkdown, LintWarning } from '@/lib/markdown-lint';
 import { isBoardContent } from '@noteriv/core/board-utils';
 import { renameNote, resolveWikiLink } from '@/lib/wiki-links';
+import { useT } from '@/lib/i18n';
 
 export default function EditorScreen() {
+  const t = useT();
   const router = useRouter();
   const { path } = useLocalSearchParams<{ path: string }>();
   const { colors } = useTheme();
@@ -117,9 +119,9 @@ export default function EditorScreen() {
   const handleSave = useCallback(async () => {
     const ok = await saveFile();
     if (!ok) {
-      Alert.alert('Error', 'Failed to save file.');
+      Alert.alert(t('phone.editor.errorTitle'), t('phone.editor.saveFailed'));
     }
-  }, [saveFile]);
+  }, [saveFile, t]);
 
   const toggleViewMode = useCallback(() => {
     updateWorkspace({
@@ -140,10 +142,10 @@ export default function EditorScreen() {
   }, [currentFile, workspace.bookmarks, updateWorkspace]);
 
   const handleDelete = useCallback(() => {
-    Alert.alert('Delete File', 'Are you sure you want to delete this file?', [
-      { text: 'Cancel', style: 'cancel' },
+    Alert.alert(t('phone.editor.deleteTitle'), t('phone.editor.deleteConfirm'), [
+      { text: t('phone.editor.cancel'), style: 'cancel' },
       {
-        text: 'Delete',
+        text: t('phone.editor.delete'),
         style: 'destructive',
         onPress: async () => {
           setCurrentFile(null);
@@ -152,7 +154,7 @@ export default function EditorScreen() {
       },
     ]);
     setMenuVisible(false);
-  }, [setCurrentFile, router]);
+  }, [setCurrentFile, router, t]);
 
   const handleRename = useCallback(() => {
     setMenuVisible(false);
@@ -186,28 +188,28 @@ export default function EditorScreen() {
       ? renameValue.trim()
       : renameValue.trim() + '.md';
     if (newName.includes('/')) {
-      Alert.alert('Rename', 'A note name cannot contain "/".');
+      Alert.alert(t('phone.editor.rename'), t('phone.editor.renameNoSlash'));
       return;
     }
     // Links to the note are rewritten from what is on disk, so save first.
     if (isDirty && !(await saveFile())) {
-      Alert.alert('Rename', 'Could not save the note before renaming it.');
+      Alert.alert(t('phone.editor.rename'), t('phone.editor.renameSaveFailed'));
       return;
     }
     const result = await renameNote(vault.path, currentFile, newName);
     if (!result.uri) {
-      Alert.alert('Rename', `Could not rename: a note named "${newName}" may already exist.`);
+      Alert.alert(t('phone.editor.rename'), t('phone.editor.renameFailed', { name: newName }));
       return;
     }
     applyPathMoves(result.moves);
-    if (result.failed > 0) Alert.alert('Rename', `Renamed, but links in ${result.failed} note(s) could not be updated.`);
+    if (result.failed > 0) Alert.alert(t('phone.editor.rename'), t('phone.editor.renameLinksFailed', { count: result.failed }));
     setRenameVisible(false);
     router.back();
-  }, [currentFile, vault, isDirty, saveFile, renameValue, router, applyPathMoves]);
+  }, [currentFile, vault, isDirty, saveFile, renameValue, router, applyPathMoves, t]);
 
   const fileName = currentFile
-    ? safeDecode(currentFile.split('/').pop() ?? 'Untitled')
-    : 'Untitled';
+    ? safeDecode(currentFile.split('/').pop() ?? t('phone.editor.untitled'))
+    : t('phone.editor.untitled');
 
   const isBookmarked =
     currentFile && (workspace.bookmarks ?? []).includes(currentFile);
@@ -242,7 +244,7 @@ export default function EditorScreen() {
               onPress={handleSave}
               activeOpacity={0.7}
             >
-              <Text style={[styles.saveButtonText, { color: colors.bgPrimary }]}>Save</Text>
+              <Text style={[styles.saveButtonText, { color: colors.bgPrimary }]}>{t('phone.editor.save')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -282,7 +284,7 @@ export default function EditorScreen() {
               }
             />
             <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>
-              {isBookmarked ? 'Remove Bookmark' : 'Bookmark'}
+              {isBookmarked ? t('phone.editor.removeBookmark') : t('phone.editor.bookmark')}
             </Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem} onPress={handleRename}>
@@ -291,7 +293,7 @@ export default function EditorScreen() {
               size={20}
               color={colors.textPrimary}
             />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Rename</Text>
+            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.rename')}</Text>
           </TouchableOpacity>
           <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
           {isEnabled('templates') && (
@@ -303,7 +305,7 @@ export default function EditorScreen() {
               }}
             >
               <Ionicons name="copy-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Templates</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.templates')}</Text>
             </TouchableOpacity>
           )}
           {isEnabled('note-composer') && (
@@ -315,7 +317,7 @@ export default function EditorScreen() {
               }}
             >
               <Ionicons name="git-merge-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Note Composer</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.noteComposer')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -331,7 +333,7 @@ export default function EditorScreen() {
             }}
           >
             <Ionicons name="link-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Backlinks</Text>
+            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.backlinks')}</Text>
           </TouchableOpacity>
           {isEnabled('note-history') && (
             <TouchableOpacity
@@ -347,7 +349,7 @@ export default function EditorScreen() {
               }}
             >
               <Ionicons name="time-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>File Recovery</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.fileRecovery')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -358,7 +360,7 @@ export default function EditorScreen() {
             }}
           >
             <Ionicons name="code-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Frontmatter</Text>
+            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.frontmatter')}</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuItem}
@@ -373,7 +375,7 @@ export default function EditorScreen() {
             }}
           >
             <Ionicons name="globe-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Publish as HTML</Text>
+            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.publishAsHtml')}</Text>
           </TouchableOpacity>
           {isEnabled('slides') && (
             <TouchableOpacity
@@ -384,7 +386,7 @@ export default function EditorScreen() {
               }}
             >
               <Ionicons name="easel-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Present as Slides</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.presentAsSlides')}</Text>
             </TouchableOpacity>
           )}
           <TouchableOpacity
@@ -395,19 +397,19 @@ export default function EditorScreen() {
             }}
           >
             <Ionicons name="attach-outline" size={20} color={colors.textPrimary} />
-            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Attachments</Text>
+            <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.attachments')}</Text>
           </TouchableOpacity>
           {isEnabled('markdown-lint') && (
             <TouchableOpacity style={styles.menuItem} onPress={handleLint}>
               <Ionicons name="warning-outline" size={20} color={colors.textPrimary} />
-              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>Lint</Text>
+              <Text style={[styles.menuItemText, { color: colors.textPrimary }]}>{t('phone.editor.lint')}</Text>
             </TouchableOpacity>
           )}
           <View style={[styles.menuDivider, { backgroundColor: colors.border }]} />
           <TouchableOpacity style={styles.menuItem} onPress={handleDelete}>
             <Ionicons name="trash-outline" size={20} color={colors.red} />
             <Text style={[styles.menuItemText, { color: colors.red }]}>
-              Delete
+              {t('phone.editor.delete')}
             </Text>
           </TouchableOpacity>
         </View>
@@ -428,19 +430,19 @@ export default function EditorScreen() {
           {isEnabled('word-count') && (
             <>
               <Text style={[styles.statsText, { color: colors.textMuted }]}>
-                {content.trim() ? content.trim().split(/\s+/).length : 0} words
+                {t('phone.editor.words', { count: content.trim() ? content.trim().split(/\s+/).length : 0 })}
               </Text>
               <Text style={[styles.statsText, { color: colors.textMuted }]}>
-                {content.length} chars
+                {t('phone.editor.chars', { count: content.length })}
               </Text>
               <Text style={[styles.statsText, { color: colors.textMuted }]}>
-                {content.split('\n').length} lines
+                {t('phone.editor.lines', { count: content.split('\n').length })}
               </Text>
             </>
           )}
           {siblingNotes.length > 1 && currentIndex >= 0 && (
             <Text style={[styles.statsText, { color: colors.textMuted, marginLeft: 'auto' }]}>
-              {currentIndex + 1}/{siblingNotes.length} ← swipe →
+              {t('phone.editor.swipeHint', { current: currentIndex + 1, total: siblingNotes.length })}
             </Text>
           )}
         </View>
@@ -480,7 +482,7 @@ export default function EditorScreen() {
         <View style={styles.lintOverlay}>
           <View style={[styles.lintSheet, { backgroundColor: colors.bgSecondary }]}>
             <View style={[styles.lintHeader, { borderBottomColor: colors.border }]}>
-              <Text style={[styles.lintTitle, { color: colors.textPrimary }]}>Lint</Text>
+              <Text style={[styles.lintTitle, { color: colors.textPrimary }]}>{t('phone.editor.lint')}</Text>
               <TouchableOpacity onPress={() => setLintVisible(false)} style={styles.lintClose}>
                 <Ionicons name="close" size={22} color={colors.textPrimary} />
               </TouchableOpacity>
@@ -489,7 +491,7 @@ export default function EditorScreen() {
               {lintWarnings.length === 0 ? (
                 <View style={styles.lintEmpty}>
                   <Ionicons name="checkmark-circle" size={40} color={colors.green} />
-                  <Text style={[styles.lintEmptyText, { color: colors.textSecondary }]}>No issues found</Text>
+                  <Text style={[styles.lintEmptyText, { color: colors.textSecondary }]}>{t('phone.editor.lintNoIssues')}</Text>
                 </View>
               ) : (
                 lintWarnings.map((w, i) => {
@@ -501,7 +503,7 @@ export default function EditorScreen() {
                       <View style={styles.lintItemBody}>
                         <Text style={[styles.lintMessage, { color: colors.textPrimary }]}>{w.message}</Text>
                         <Text style={[styles.lintMeta, { color: colors.textMuted }]}>
-                          Line {w.line} · {w.rule}
+                          {t('phone.editor.lintMeta', { line: w.line, rule: w.rule })}
                         </Text>
                       </View>
                     </View>
@@ -526,7 +528,7 @@ export default function EditorScreen() {
         >
         <View style={styles.renameOverlay}>
           <View style={[styles.renameDialog, { backgroundColor: colors.bgTertiary }]}>
-            <Text style={[styles.renameTitle, { color: colors.textPrimary }]}>Rename File</Text>
+            <Text style={[styles.renameTitle, { color: colors.textPrimary }]}>{t('phone.editor.renameFile')}</Text>
             <TextInput
               style={[styles.renameInput, { backgroundColor: colors.bgPrimary, color: colors.textPrimary, borderColor: colors.border }]}
               value={renameValue}
@@ -540,13 +542,13 @@ export default function EditorScreen() {
                 style={styles.renameCancelBtn}
                 onPress={() => setRenameVisible(false)}
               >
-                <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>Cancel</Text>
+                <Text style={[styles.renameCancelText, { color: colors.textSecondary }]}>{t('phone.editor.cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.renameConfirmBtn, { backgroundColor: colors.blue }]}
                 onPress={confirmRename}
               >
-                <Text style={[styles.renameConfirmText, { color: colors.bgPrimary }]}>Rename</Text>
+                <Text style={[styles.renameConfirmText, { color: colors.bgPrimary }]}>{t('phone.editor.rename')}</Text>
               </TouchableOpacity>
             </View>
           </View>
