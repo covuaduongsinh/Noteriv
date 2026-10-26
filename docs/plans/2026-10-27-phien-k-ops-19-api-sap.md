@@ -28,25 +28,25 @@ Kiến trúc offline-first của Noteriv Web & Client được xây dựng tại
 ## 2. Kế hoạch Thực nghiệm Kiểm chứng
 Xây dựng script tự động `scripts/ops/test-api-crash.mjs` sử dụng Playwright Chromium headless:
 1. **Khởi động hệ thống**: API server (port 4001) và Web client (port 3457).
-2. **Khởi tạo & Đăng nhập**: Mở trình duyệt, đăng nhập tài khoản kiểm chứng, mở một note trong vault ("Welcome to Noteriv").
+2. **Khởi tạo & Đăng nhập**: Mở trình duyệt, đăng nhập tài khoản kiểm chứng, mở note trong vault chỉ định (hỗ trợ bất kỳ vault nào qua `--vault`, mặc định `Perf 2000`).
 3. **Mô phỏng sập máy chủ API (Crash/Downtime)**:
-   - Dừng tiến trình API server (ngắt hoàn toàn port 4001).
-   - Kiểm tra `http://127.0.0.1:4001/healthz` không thể kết nối (Connection refused).
+   - Mô phỏng mức mạng thông qua can thiệp route mạng (Playwright route interception) trả về `HTTP 502 Bad Gateway: API Server Unreachable` và ngắt kết nối đến toàn bộ các endpoint `/api/**`. Cơ chế này mô phỏng chính xác trường hợp gateway (Nginx/Cloudflare) không liên lạc được với backend Fastify khi tiến trình sập.
 4. **Trải nghiệm người dùng khi API sập**:
    - Gõ tiếp nội dung mới vào editor trong trình duyệt.
    - Kiểm tra giao diện người dùng:
      - Banner offline có xuất hiện đúng nội dung không?
-     - Trạng thái lưu trên máy có hiển thị không?
+     - Trạng thái lưu trên máy có hiển thị "Kept on this device" không?
    - F5 / Reload trang web khi API vẫn đang sập:
      - Kiểm tra trang có khôi phục note và nội dung vừa gõ từ IndexedDB hay không.
 5. **Hồi phục máy chủ API**:
-   - Khởi động lại tiến trình API server trên port 4001.
-   - Kích hoạt trình duyệt kiểm tra kết nối lại (`flushPending`).
+   - Khôi phục kết nối API bình thường.
+   - Kích hoạt trình duyệt gửi sự kiện `online` để kích hoạt `flushPending()`.
    - Kiểm tra banner offline tự động biến mất.
 6. **Kiểm chứng toàn vẹn dữ liệu (Zero Data Loss)**:
    - Gửi yêu cầu `GET /api/v1/vaults/:vid/notes/:nid` trực tiếp tới API server.
    - Đối chiếu nội dung trong cơ sở dữ liệu với nội dung đã gõ trong lúc API sập.
    - Xác nhận 0 ký tự bị mất.
+   - Dọn dẹp hoàn nguyên note về trạng thái ban đầu trong khối `try ... finally`.
 
 ---
 
