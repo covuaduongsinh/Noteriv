@@ -1,3 +1,4 @@
+import { conflictCopyCandidates } from '@noteriv/core/conflict-copy';
 import * as FS from '@/lib/file-system';
 
 // Sync used to treat the remote as the source of truth: pull deleted every
@@ -98,20 +99,16 @@ export function vaultFileUri(vaultPath: string, relativePath: string): string {
   return base + relativePath.split('/').map(encodeURIComponent).join('/');
 }
 
-/** `notes/plan.md` -> `notes/plan (conflict 2026-10-18).md`, then `… (conflict 2026-10-18 2).md` for `n` = 2. */
-export function conflictCopyPath(relativePath: string, n = 1): string {
-  const label = `conflict ${new Date().toISOString().slice(0, 10)}${n > 1 ? ` ${n}` : ''}`;
-  const match = relativePath.match(/^(.*?)(\.(?:md|markdown))$/i);
-  return match ? `${match[1]} (${label})${match[2]}` : `${relativePath} (${label})`;
-}
-
 /**
- * Keeps `content` beside `relativePath` as a conflict copy, under the first name not already holding other text
- * (a second conflict on the same day must not be dropped because the first copy exists). False if not written.
+ * Keeps `content` beside `relativePath` as a conflict copy, named as web and desktop sync name theirs
+ * (`notes/plan (conflict 2026-10-26 0905).md`, so the web app lists it as a conflict), under the first name not
+ * already holding other text. False if not written.
  */
 export async function writeConflictCopy(vaultPath: string, relativePath: string, content: string): Promise<boolean> {
-  for (let n = 1; n <= 50; n++) {
-    const uri = vaultFileUri(vaultPath, conflictCopyPath(relativePath, n));
+  let n = 0;
+  for (const candidate of conflictCopyCandidates(relativePath)) {
+    if (++n > 50) break;
+    const uri = vaultFileUri(vaultPath, candidate);
     const existing = await FS.readFile(uri);
     if (existing === content) return true;
     if (existing === null) return FS.writeFile(uri, content);

@@ -13,7 +13,7 @@ import { WebView } from 'react-native-webview';
 import * as FileSystem from 'expo-file-system';
 import { useTheme } from '@/context/ThemeContext';
 import { useCorePlugins } from '@/context/CorePluginsContext';
-import { parseQuery, executeQuery, parseNoteData, QueryResult } from '@/lib/dataview';
+import { parseQuery, executeQuery, parseNoteData, QueryResult } from '@noteriv/core/dataview';
 import { listAllMarkdownFiles, readFile } from '@/lib/file-system';
 import { getInstalledPlugins, getEnabledPluginIds } from '@/lib/plugins';
 

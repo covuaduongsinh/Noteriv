@@ -15,7 +15,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useTheme } from '@/context/ThemeContext';
 import { FileEntry } from '@/types';
-import { rename, deleteFile, deleteDir, trashFile } from '@/lib/file-system';
+import { trashDir, trashFile } from '@/lib/file-system';
+import { renameNote } from '@/lib/wiki-links';
+import { useApp } from '@/context/AppContext';
 
 interface NotesListProps {
   files: FileEntry[];
@@ -39,6 +41,7 @@ export default function NotesList({
   isAtRoot,
 }: NotesListProps) {
   const { colors } = useTheme();
+  const { applyPathMoves } = useApp();
   const [renameTarget, setRenameTarget] = useState<FileEntry | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [refreshing, setRefreshing] = useState(false);
@@ -93,11 +96,10 @@ export default function NotesList({
                   text: 'Move to Trash',
                   style: 'destructive',
                   onPress: () => {
-                    if (entry.isDirectory) {
-                      deleteDir(entry.path);
-                    } else {
-                      trashFile(entry.path, vaultPath);
-                    }
+                    // A folder goes to .trash too (it was deleted outright): sync now deletes on the remote
+                    // what is deleted here, so the trash is where it can still be restored.
+                    const ok = entry.isDirectory ? trashDir(entry.path, vaultPath) : trashFile(entry.path, vaultPath);
+                    if (!ok) Alert.alert('Error', 'Could not move it to the trash.');
                     onRefresh();
                   },
                 },
@@ -108,14 +110,21 @@ export default function NotesList({
         { text: 'Cancel', style: 'cancel' },
       ]
     );
-  }, [onRefresh]);
+  }, [onRefresh, vaultPath]);
 
-  const handleRename = useCallback(() => {
+  const handleRename = useCallback(async () => {
     if (!renameTarget || !renameValue.trim()) return;
-    rename(renameTarget.path, renameValue.trim());
+    // Links to the renamed note (or to the notes in a renamed folder) are rewritten, as on web and desktop.
+    const result = await renameNote(vaultPath, renameTarget.path, renameValue.trim(), renameTarget.isDirectory);
+    if (!result.uri) {
+      Alert.alert('Rename', `Could not rename: "${renameValue.trim()}" may already exist or is not a valid name.`);
+      return;
+    }
+    applyPathMoves(result.moves);
+    if (result.failed > 0) Alert.alert('Rename', `Renamed, but links in ${result.failed} note(s) could not be updated.`);
     setRenameTarget(null);
     onRefresh();
-  }, [renameTarget, renameValue, onRefresh]);
+  }, [renameTarget, renameValue, onRefresh, vaultPath, applyPathMoves]);
 
   const renderItem = useCallback(
     ({ item }: { item: FileEntry }) => {

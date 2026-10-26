@@ -24,7 +24,7 @@ import {
   type BoardData,
   type BoardCard,
   type BoardColumn,
-} from '@/lib/board-utils';
+} from '@noteriv/core/board-utils';
 
 interface BoardViewProps {
   content: string;

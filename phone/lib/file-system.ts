@@ -206,6 +206,18 @@ export async function searchInFiles(dir: string, query: string): Promise<SearchR
   return results;
 }
 
+/**
+ * True only when the file system says the file is not there. Unlike `fileExists`, an error means "not known
+ * missing": sync deletes the remote copy of a missing note, so a failed check must never look like a deletion.
+ */
+export function fileMissing(path: string): boolean {
+  try {
+    return !new File(path).exists;
+  } catch {
+    return false;
+  }
+}
+
 export function fileExists(path: string): boolean {
   try {
     const info = Paths.info(path);
@@ -225,6 +237,21 @@ export function trashFile(filePath: string, vaultPath: string): boolean {
     const base = vaultPath.replace(/\/$/, '') + '/.trash/';
     const destName = Date.now() + '_' + file.name;
     file.move(new File(base + destName));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Moves a folder into .trash (like `trashFile`), so deleting it can be undone. */
+export function trashDir(dirPath: string, vaultPath: string): boolean {
+  try {
+    const trash = new Directory(vaultPath.replace(/\/$/, ''), '.trash');
+    if (!trash.exists) trash.create({ intermediates: true });
+    const dir = new Directory(dirPath);
+    if (!dir.exists) return false;
+    const name = dir.uri.replace(/\/$/, '').split('/').pop() ?? 'folder';
+    dir.move(new Directory(vaultPath.replace(/\/$/, '') + '/.trash/' + Date.now() + '_' + name));
     return true;
   } catch {
     return false;

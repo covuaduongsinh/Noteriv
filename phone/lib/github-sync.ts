@@ -213,6 +213,14 @@ async function putFileContent(
   return { sha: data.content?.sha ?? '' };
 }
 
+async function deleteFileContent(owner: string, repo: string, path: string, token: string, sha: string): Promise<void> {
+  const res = await ghFetch(`/repos/${owner}/${repo}/contents/${encodeRepoPath(path)}`, token, {
+    method: 'DELETE',
+    body: JSON.stringify({ message: 'Sync from Noteriv Mobile', sha }),
+  });
+  if (!res.ok) throw new Error(`Failed to delete file ${path}: ${await describeFailure(res)}`);
+}
+
 // --- Helpers ---
 
 function isMarkdownFile(path: string): boolean {
@@ -297,9 +305,16 @@ export async function pull(
         const localContent = await FS.readFile(localPath);
         // Unchanged on the remote since the last sync: nothing to pull (a local edit is push's job).
         if (localContent !== null && base[item.path] !== undefined && shas[item.path] === item.sha) return;
+        // Deleted (or renamed away) here since then, and still the agreed version there: push deletes it.
+        if (localContent === null && base[item.path] !== undefined && shas[item.path] === item.sha && FS.fileMissing(localPath)) return;
         const remoteContent = await getBlobContent(owner, repo, item.sha, token);
         // Read again: the note may have been saved while the download was in flight.
         const current = await FS.readFile(localPath);
+        // Deleted here, and the remote holds the agreed text (its sha was not recorded yet): push deletes it.
+        if (current === null && base[item.path] !== undefined && contentHash(remoteContent) === base[item.path] && FS.fileMissing(localPath)) {
+          shas[item.path] = item.sha;
+          return;
+        }
 
         switch (pullAction(current, remoteContent, base[item.path])) {
           case 'skip':
@@ -420,6 +435,34 @@ export async function push(
         result.errors.push(
           `Push ${relPath}: ${err instanceof Error ? err.message : String(err)}`
         );
+      }
+    }
+
+    // Notes deleted (or renamed away) on this device since the last agreement. Each is checked on its own
+    // (the listing skips dot folders and reads a failing folder as empty), and none if the vault lists no note.
+    // Skipped after a failed upload: a rename whose new note did not go up must not take the old one down.
+    const listed = new Set(localFiles.map((file) => vaultRelativePath(vaultPath, file.filePath)));
+    if (listed.size > 0 && result.errors.length === 0) {
+      for (const relPath of Object.keys(base)) {
+        if (listed.has(relPath) || shouldSkipPath(relPath)) continue;
+        if (!FS.fileMissing(vaultFileUri(vaultPath, relPath))) continue;
+        const remoteSha = remoteFileMap.get(relPath);
+        try {
+          if (remoteSha === undefined) {
+            // Gone on both sides.
+          } else if (remoteSha === shas[relPath]) {
+            await deleteFileContent(owner, repo, relPath, token, remoteSha);
+            shaCache.delete(shaCacheKey(owner, repo, relPath));
+            result.pushed++;
+          } else {
+            // Edited elsewhere since: the edit wins over this deletion, and the next pull brings it back.
+            continue;
+          }
+          delete base[relPath];
+          delete shas[relPath];
+        } catch (err) {
+          result.errors.push(`Delete ${relPath}: ${err instanceof Error ? err.message : String(err)}`);
+        }
       }
     }
 

@@ -1,4 +1,7 @@
-import { readFile, listAllMarkdownFiles } from '@/lib/file-system';
+import { expandFolderMove, linkResolver, resolveLinkTarget, rewriteLinksForMoves, type PathMove } from '@noteriv/core/link-rename';
+import { wikiLinkTargets } from '@noteriv/core/graph-utils';
+import { readFile, writeFile, listAllMarkdownFiles, rename as renameFile } from '@/lib/file-system';
+import { vaultFileUri, vaultRelativePath } from '@/lib/sync-state';
 
 export interface ParsedWikiLink {
   raw: string;
@@ -75,77 +78,66 @@ export function findWikiLinks(content: string): ParsedWikiLink[] {
   return links;
 }
 
-/**
- * Resolve a wiki link target to an actual file path within the vault.
- *
- * Wiki links are matched by filename (case-insensitive, without extension).
- * Returns the first matching path, or null if no match is found.
- */
-export async function resolveWikiLink(
-  target: string,
-  vaultPath: string
-): Promise<string | null> {
-  if (!target) return null;
+// ---------------------------------------------------------------------------
+// Resolving, backlinks and renames: the same rules as web and desktop (@noteriv/core), on vault-relative paths
+// ---------------------------------------------------------------------------
 
-  const allFiles = await listAllMarkdownFiles(vaultPath);
-  const lowerTarget = target.toLowerCase();
+interface VaultNote {
+  /** The file URI the file system gave. */
+  uri: string;
+  /** Vault-relative path, as links and sync name it. */
+  path: string;
+}
 
-  // Exact filename match (without extension)
-  for (const file of allFiles) {
-    if (file.fileName.toLowerCase() === lowerTarget) {
-      return file.filePath;
-    }
-  }
-
-  // Try matching against relative path (without extension)
-  for (const file of allFiles) {
-    const relativePath = file.relativePath
-      .replace(/^\//, '')
-      .replace(/\.(md|markdown)$/i, '');
-    if (relativePath.toLowerCase() === lowerTarget) {
-      return file.filePath;
-    }
-  }
-
-  return null;
+async function vaultNotes(vaultPath: string): Promise<VaultNote[]> {
+  const files = await listAllMarkdownFiles(vaultPath);
+  return files
+    .map((file) => ({ uri: file.filePath, path: vaultRelativePath(vaultPath, file.filePath) }))
+    .filter((note) => !note.path.startsWith('.trash/'));
 }
 
 /**
- * Find all files in the vault that contain a wiki link pointing to the given file.
+ * The note a wiki link target points to, or null. As on web: a bare name or a path (a path's tail also
+ * matches), `.md` optional, and among notes of the same name the one in the linking note's folder first.
  */
-export async function findBacklinks(
-  filePath: string,
-  vaultPath: string
-): Promise<Backlink[]> {
-  const allFiles = await listAllMarkdownFiles(vaultPath);
+export async function resolveWikiLink(
+  target: string,
+  vaultPath: string,
+  sourceFile?: string | null
+): Promise<string | null> {
+  const name = target.trim();
+  if (!name) return null;
+  const notes = await vaultNotes(vaultPath);
+  const paths = notes.map((note) => note.path);
+  const source = sourceFile ? vaultRelativePath(vaultPath, sourceFile) : '';
+  const hit = resolveLinkTarget(name, source, paths) ?? resolveLinkTarget(name.split(/[#^|]/)[0], source, paths);
+  return hit ? notes.find((note) => note.path === hit)?.uri ?? null : null;
+}
+
+/**
+ * Lines of other notes that link to `filePath`, one per line. Links resolve as on web, so a link by path,
+ * to a heading (`#`) or to a block (`^`) counts too.
+ */
+export async function findBacklinks(filePath: string, vaultPath: string): Promise<Backlink[]> {
+  const notes = await vaultNotes(vaultPath);
+  const target = vaultRelativePath(vaultPath, filePath);
+  const resolve = linkResolver(notes.map((note) => note.path));
   const backlinks: Backlink[] = [];
 
-  // Determine the target name we are looking for
-  const targetName = fileNameFromPath(filePath).toLowerCase();
-
-  for (const file of allFiles) {
-    // Skip the file itself
-    if (file.filePath === filePath) continue;
-
-    const content = await readFile(file.filePath);
-    if (!content) continue;
-
+  for (const note of notes) {
+    if (note.path === target) continue;
+    const content = await readFile(note.uri);
+    if (!content || !content.includes('[[')) continue;
     const lines = content.split('\n');
-
     for (let i = 0; i < lines.length; i++) {
-      const lineLinks = findWikiLinksInLine(lines[i]);
-
-      for (const link of lineLinks) {
-        if (link.target.toLowerCase() === targetName) {
-          backlinks.push({
-            filePath: file.filePath,
-            fileName: file.fileName,
-            line: i + 1,
-            text: lines[i].trim(),
-          });
-          // Only record one backlink per line per file
-          break;
-        }
+      if (!lines[i].includes('[[')) continue;
+      if (wikiLinkTargets(lines[i], note.path, resolve).includes(target)) {
+        backlinks.push({
+          filePath: note.uri,
+          fileName: fileNameFromPath(note.path),
+          line: i + 1,
+          text: lines[i].trim(),
+        });
       }
     }
   }
@@ -153,21 +145,59 @@ export async function findBacklinks(
   return backlinks;
 }
 
+export interface RenameResult {
+  /** The renamed item's URI, or null if it was not renamed. */
+  uri: string | null;
+  /** The notes that moved, vault-relative (one note, or every note under a renamed folder). */
+  moves: PathMove[];
+  /** Notes whose links were rewritten. */
+  updated: number;
+  /** Notes whose links could not be rewritten. */
+  failed: number;
+}
+
+/**
+ * Renames a note or a folder in place and rewrites the links to the notes that moved, in every note, as web
+ * and desktop do. A name already taken (in any letter case) is refused.
+ */
+export async function renameNote(vaultPath: string, fileUri: string, newName: string, isFolder = false): Promise<RenameResult> {
+  const none: RenameResult = { uri: null, moves: [], updated: 0, failed: 0 };
+  if (!newName || newName.includes('/')) return none;
+  const notes = await vaultNotes(vaultPath);
+  const from = vaultRelativePath(vaultPath, fileUri).replace(/\/+$/, '');
+  const slash = from.lastIndexOf('/');
+  const to = (slash === -1 ? '' : from.slice(0, slash + 1)) + newName;
+  if (to === from) return { ...none, uri: fileUri };
+  const toLower = to.toLowerCase();
+  const fromLower = from.toLowerCase();
+  const taken = notes.some((note) => {
+    const p = note.path.toLowerCase();
+    const inFrom = p === fromLower || p.startsWith(fromLower + '/');
+    return !inFrom && (p === toLower || p.startsWith(toLower + '/'));
+  });
+  if (taken || !renameFile(fileUri, newName)) return none;
+
+  const before = notes.map((note) => note.path);
+  const moves = isFolder ? expandFolderMove(from, to, before) : [{ from, to }];
+  const movedTo = new Map(moves.map((m) => [m.from, m.to]));
+  let updated = 0;
+  let failed = 0;
+  for (const note of notes) {
+    const after = movedTo.get(note.path);
+    const noteUri = after ? vaultFileUri(vaultPath, after) : note.uri;
+    const content = await readFile(noteUri);
+    if (content === null || (!content.includes('](') && !content.includes('[['))) continue;
+    const next = rewriteLinksForMoves(content, { sourceBefore: note.path, sourceAfter: after ?? note.path, moves, before });
+    if (next === content) continue;
+    if (writeFile(noteUri, next)) updated++;
+    else failed++;
+  }
+  return { uri: vaultFileUri(vaultPath, to), moves, updated, failed };
+}
+
 // ---------------------------------------------------------------------------
 // Internal helpers
 // ---------------------------------------------------------------------------
-
-function findWikiLinksInLine(line: string): ParsedWikiLink[] {
-  const links: ParsedWikiLink[] = [];
-  const regex = /\[\[([^\]]+)\]\]/g;
-  let match: RegExpExecArray | null;
-
-  while ((match = regex.exec(line)) !== null) {
-    links.push(parseWikiLink(match[0]));
-  }
-
-  return links;
-}
 
 function fileNameFromPath(filePath: string): string {
   const segments = filePath.split('/').filter(Boolean);

@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "strict": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@/lib/file-system": ["./fake-fs.ts"],
+      "@/lib/storage": ["./fake-storage.ts"],
+      "@/*": ["../../*"],
+      "@noteriv/core/*": ["../../../packages/core/src/*"]
+    }
+  },
+  "include": ["*.ts"]
+}
