@@ -208,6 +208,8 @@ services:
       COLLAB_PORT: "4002"
       DATABASE_URL: postgresql://noteriv:${POSTGRES_PASSWORD}@noteriv-postgres:5432/noteriv?schema=public
       JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?set JWT_ACCESS_SECRET}
+      APP_ORIGIN: ${PUBLIC_ORIGIN:-https://noteriv.dsc.edu.vn}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
       # Error reports to Sentry (lib/sentry.ts); unset DSN = off. Release = the deployed commit.
       SENTRY_DSN: ${SENTRY_DSN:-}
       SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-production}

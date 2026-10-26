@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { gitVersion } from "../lib/gitSync.js";
 import { checkStorage } from "../lib/attachments.js";
 import { syncQueue } from "../lib/syncQueue.js";
+import { isAdmin } from "../lib/registration.js";
 
 // Same key the worker writes (sync-worker/index.ts); duplicated as a literal because the worker
 // entrypoint starts processes on import and must not be imported from here.
@@ -17,6 +18,16 @@ const WORKER_HEARTBEAT_KEY = "noteriv:worker:heartbeat";
 export default async function diagnosticsRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
   fastify.addHook("preHandler", fastify.authenticate);
+  fastify.addHook("preHandler", async (request, reply) => {
+    if (reply.sent) return;
+    const me = await prisma.user.findUnique({
+      where: { id: request.user!.id },
+      select: { role: true, email: true, emailVerifiedAt: true },
+    });
+    if (!me || !isAdmin(me)) {
+      return reply.code(403).send({ error: "forbidden" });
+    }
+  });
 
   fastify.get("/", async (_request, reply) => {
     const [git, storage, db, redis, disk, pdf] = await Promise.all([

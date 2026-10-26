@@ -21,7 +21,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   // Remove the account and everything it owns, whatever happened above (E2E_KEEP_ACCOUNT=1 keeps it to debug).
-  if (!process.env.E2E_KEEP_ACCOUNT) await page.request.delete("/api/v1/users/me").catch(() => undefined);
+  if (!process.env.E2E_KEEP_ACCOUNT) await page.request.delete("/api/v1/users/me", { data: { password } }).catch(() => undefined);
   await context.close();
 });
 

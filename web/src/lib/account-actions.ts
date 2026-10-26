@@ -17,8 +17,8 @@ export async function downloadMyData(): Promise<void> {
 }
 
 /** Deletes the account for good, then forgets what this device kept. The caller asks for confirmation first. */
-export async function deleteMyAccount(): Promise<void> {
-  await webApi.users.deleteAccount();
+export async function deleteMyAccount(password: string): Promise<void> {
+  await webApi.users.deleteAccount(password);
   clearCachedPages();
   await clearOfflineData();
 }

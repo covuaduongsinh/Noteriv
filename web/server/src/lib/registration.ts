@@ -33,8 +33,12 @@ export function isAdminEmail(email: string | null | undefined): boolean {
  * Admin = the admin role in the database (given and taken on /admin) OR an email in ADMIN_EMAILS. The env list is how
  * the first admin exists and cannot be undone from the page, so the operator can never lock themselves out.
  */
-export function isAdmin(user: { role: string; email: string }): boolean {
-  return user.role === "admin" || isAdminEmail(user.email);
+export function isAdmin(user: { role: string; email: string; emailVerifiedAt?: Date | null }): boolean {
+  if (user.role === "admin") return true;
+  if (isAdminEmail(user.email)) {
+    return user.emailVerifiedAt != null;
+  }
+  return false;
 }
 
 // No 0/O/1/I/L: codes get read out loud and typed from screenshots.

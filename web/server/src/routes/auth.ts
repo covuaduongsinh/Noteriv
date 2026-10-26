@@ -59,6 +59,65 @@ function cookieOpts(maxAgeSeconds: number) {
   };
 }
 
+interface FailedLoginTracker {
+  count: number;
+  lastAttemptAt: number;
+  lockedUntil: number;
+}
+const failedLogins = new Map<string, FailedLoginTracker>();
+const ATTEMPT_WINDOW_MS = 15 * 60 * 1000;
+const MAX_FAILED_ATTEMPTS = 5;
+const MAX_TRACKED_EMAILS = 10_000;
+
+function pruneExpiredLogins(now = Date.now()): void {
+  for (const [email, entry] of failedLogins.entries()) {
+    if (now - entry.lastAttemptAt > ATTEMPT_WINDOW_MS && entry.lockedUntil <= now) {
+      failedLogins.delete(email);
+    }
+  }
+}
+
+// Periodic cleanup; unref so timer does not prevent process exit during tests
+setInterval(() => pruneExpiredLogins(), ATTEMPT_WINDOW_MS).unref();
+
+export function checkLoginAttempts(email: string): { allowed: boolean; retryAfterSeconds?: number } {
+  const norm = email.trim().toLowerCase();
+  const entry = failedLogins.get(norm);
+  if (!entry) return { allowed: true };
+  const now = Date.now();
+  if (entry.lockedUntil > now) {
+    return { allowed: false, retryAfterSeconds: Math.ceil((entry.lockedUntil - now) / 1000) };
+  }
+  return { allowed: true };
+}
+
+export function recordFailedLogin(email: string): void {
+  const norm = email.trim().toLowerCase();
+  const now = Date.now();
+  const entry = failedLogins.get(norm);
+  if (!entry || (now - entry.lastAttemptAt > ATTEMPT_WINDOW_MS && entry.lockedUntil <= now)) {
+    if (failedLogins.size >= MAX_TRACKED_EMAILS) {
+      pruneExpiredLogins(now);
+      if (failedLogins.size >= MAX_TRACKED_EMAILS) {
+        const firstKey = failedLogins.keys().next().value;
+        if (firstKey) failedLogins.delete(firstKey);
+      }
+    }
+    failedLogins.set(norm, { count: 1, lastAttemptAt: now, lockedUntil: 0 });
+    return;
+  }
+  entry.count += 1;
+  entry.lastAttemptAt = now;
+  if (entry.count >= MAX_FAILED_ATTEMPTS) {
+    // 5 consecutive failed attempts within 15 minutes: lock account login for 15 minutes
+    entry.lockedUntil = now + ATTEMPT_WINDOW_MS;
+  }
+}
+
+export function resetFailedLogins(email: string): void {
+  failedLogins.delete(email.trim().toLowerCase());
+}
+
 export default async function authRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
 
@@ -256,8 +315,14 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
     const { email, password } = parsed.data;
 
+    const rateCheck = checkLoginAttempts(email);
+    if (!rateCheck.allowed) {
+      return reply.code(429).send({ error: "too_many_attempts", retryAfter: rateCheck.retryAfterSeconds });
+    }
+
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user || !user.passwordHash || !(await verifyPassword(password, user.passwordHash))) {
+      recordFailedLogin(email);
       logAudit(prisma, { action: "login_failed", metadata: { email }, ip: request.ip });
       return reply.code(401).send({ error: "invalid_credentials" });
     }
@@ -267,6 +332,7 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.code(403).send({ error: "account_locked" });
     }
 
+    resetFailedLogins(email);
     await issueSession(reply, user.id, user.email);
     logAudit(prisma, { userId: user.id, action: "login", ip: request.ip });
     return reply.send({ id: user.id, email: user.email, displayName: user.displayName });
@@ -286,7 +352,28 @@ export default async function authRoutes(fastify: FastifyInstance) {
     }
 
     const stored = await prisma.refreshToken.findUnique({ where: { id: payload.tokenId } });
-    if (!stored || stored.revokedAt || stored.expiresAt < new Date() || stored.tokenHash !== hashToken(token)) {
+    if (!stored) {
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    // Reuse detection (RFC 6819): if a token that was already revoked is presented again,
+    // it suggests the token was stolen. Revoke ALL active tokens for this user immediately.
+    if (stored.revokedAt) {
+      await prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      logAudit(prisma, {
+        userId: stored.userId,
+        action: "refresh_token_reuse_detected",
+        metadata: { tokenId: stored.id },
+        ip: request.ip,
+      });
+      request.log.warn({ userId: stored.userId, tokenId: stored.id }, "Refresh token reuse detected; revoked all active tokens for user");
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
+    if (stored.expiresAt < new Date() || stored.tokenHash !== hashToken(token)) {
       return reply.code(401).send({ error: "unauthorized" });
     }
 
@@ -298,8 +385,25 @@ export default async function authRoutes(fastify: FastifyInstance) {
       return reply.code(401).send({ error: "account_locked" });
     }
 
-    // rotate: revoke old, issue new
-    await prisma.refreshToken.update({ where: { id: stored.id }, data: { revokedAt: new Date() } });
+    // Atomic rotation: revoke old, issue new. If rotation count is not 1, race condition / reused.
+    const rotation = await prisma.refreshToken.updateMany({
+      where: { id: stored.id, revokedAt: null },
+      data: { revokedAt: new Date() },
+    });
+    if (rotation.count !== 1) {
+      await prisma.refreshToken.updateMany({
+        where: { userId: stored.userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      });
+      logAudit(prisma, {
+        userId: stored.userId,
+        action: "refresh_token_race_detected",
+        metadata: { tokenId: stored.id },
+        ip: request.ip,
+      });
+      return reply.code(401).send({ error: "unauthorized" });
+    }
+
     await issueSession(reply, user.id, user.email);
     return reply.send({ ok: true });
   });

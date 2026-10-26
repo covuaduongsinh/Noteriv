@@ -20,6 +20,7 @@ import jwt from "jsonwebtoken";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { snapshotBeforeOverwrite } from "../lib/noteSnapshots.js";
 import { captureError, initSentry } from "../lib/sentry.js";
+import { isAllowedOrigin } from "../lib/collabOrigin.js";
 
 // Uncaught exceptions and unhandled rejections go to Sentry when it is configured (the SDK's default handlers).
 initSentry("collab");
@@ -200,10 +201,16 @@ async function canAccessNote(userId: string, noteId: string): Promise<{ vaultId:
   return membership ? { vaultId: note.vaultId, canWrite: membership.role !== "viewer" } : null;
 }
 
+
 const httpServer = createServer();
-const wss = new WebSocketServer({ noServer: true });
+const wss = new WebSocketServer({ noServer: true, maxPayload: 2 * 1024 * 1024 });
 
 httpServer.on("upgrade", async (request, socket, head) => {
+  if (!isAllowedOrigin(request.headers.origin)) {
+    socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
+    return;
+  }
+
   const url = new URL(request.url ?? "/", "http://localhost");
   const match = url.pathname.match(/^\/collab\/notes\/([^/]+)$/);
   if (!match) {
@@ -214,14 +221,12 @@ httpServer.on("upgrade", async (request, socket, head) => {
 
   const auth = await authenticate(request.headers.cookie);
   if (!auth) {
-    socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-    socket.destroy();
+    socket.end("HTTP/1.1 401 Unauthorized\r\n\r\n");
     return;
   }
   const access = await canAccessNote(auth.userId, noteId);
   if (!access) {
-    socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
-    socket.destroy();
+    socket.end("HTTP/1.1 403 Forbidden\r\n\r\n");
     return;
   }
 

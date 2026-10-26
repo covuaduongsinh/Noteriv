@@ -571,7 +571,7 @@ export const webApi = {
 
   users: {
     exportData: () => request<Record<string, unknown>>("/users/me/export"),
-    deleteAccount: () => request<{ ok: true }>("/users/me", { method: "DELETE" }),
+    deleteAccount: (password: string) => request<{ ok: true }>("/users/me", { method: "DELETE", body: JSON.stringify({ password }) }),
     plan: () => request<ApiPlan>("/users/me/plan"),
     resendVerification: (locale?: Locale) =>
       request<{ ok: true; alreadyVerified?: boolean }>("/users/me/verification-email", { method: "POST", body: JSON.stringify({ locale }) }),

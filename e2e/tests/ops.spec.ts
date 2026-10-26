@@ -83,8 +83,8 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   if (!process.env.E2E_KEEP_ACCOUNT) {
-    await admin.request.delete("/api/v1/users/me").catch(() => undefined);
-    await user.request.delete("/api/v1/users/me").catch(() => undefined);
+    await admin.request.delete("/api/v1/users/me", { data: { password: adminPassword } }).catch(() => undefined);
+    await user.request.delete("/api/v1/users/me", { data: { password: userPassword } }).catch(() => undefined);
   }
   await adminContext.close();
   await userContext.close();

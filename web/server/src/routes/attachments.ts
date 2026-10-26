@@ -4,6 +4,31 @@ import { requireVerifiedEmail } from "../lib/emailGate.js";
 import { makeStorageKey, putObject, getObjectStream, deleteObject } from "../lib/attachments.js";
 import { checkLimit, limitsOf, ownerOfVault, planForUser, PlanLimitError, planLimitReply, usageFor } from "../lib/plans.js";
 
+/**
+ * Safe MIME types that can be rendered inline in browsers without risk of executing scripts.
+ * SVG, HTML, XML, JavaScript, etc. MUST NOT be served inline on the app's domain.
+ */
+export const SAFE_INLINE_MIME_TYPES = new Set([
+  "image/jpeg",
+  "image/png",
+  "image/gif",
+  "image/webp",
+  "image/avif",
+  "application/pdf",
+  "audio/mpeg",
+  "audio/ogg",
+  "audio/wav",
+  "audio/webm",
+  "video/mp4",
+  "video/webm",
+  "video/ogg",
+]);
+
+export function isSafeInlineMime(mimeType: string | null | undefined): boolean {
+  if (!mimeType) return false;
+  return SAFE_INLINE_MIME_TYPES.has(mimeType.trim().toLowerCase());
+}
+
 export default async function attachmentRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
   fastify.addHook("preHandler", fastify.authenticate);
@@ -67,8 +92,15 @@ export default async function attachmentRoutes(fastify: FastifyInstance) {
       if (!attachment) return reply.code(404).send({ error: "not_found" });
 
       const stream = await getObjectStream(attachment.storageKey);
-      reply.header("Content-Type", attachment.mimeType);
-      reply.header("Content-Disposition", `inline; filename="${encodeURIComponent(attachment.filename)}"`);
+      const isSafe = isSafeInlineMime(attachment.mimeType);
+      const disposition = isSafe ? "inline" : "attachment";
+      const safeFilename = attachment.filename.replace(/["\r\n\0]/g, "_");
+      const asciiFallback = safeFilename.replace(/[^\x20-\x7E]/g, "_").replace(/["\\]/g, "_");
+
+      reply.header("Content-Type", isSafe ? attachment.mimeType : "application/octet-stream");
+      reply.header("Content-Disposition", `${disposition}; filename="${asciiFallback}"; filename*=UTF-8''${encodeURIComponent(safeFilename)}`);
+      reply.header("X-Content-Type-Options", "nosniff");
+      reply.header("Content-Security-Policy", "default-src 'none'; sandbox");
       return reply.send(stream);
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });

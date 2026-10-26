@@ -104,10 +104,18 @@ export default function VaultsPage() {
       setConfirmDelete(true);
       return;
     }
+    const password = window.prompt(t("web.vaultList.deletePasswordPrompt") || "Enter your password to confirm account deletion:");
+    if (!password) {
+      setConfirmDelete(false);
+      return;
+    }
     setDeletingAccount(true);
     try {
-      await deleteMyAccount();
+      await deleteMyAccount(password);
       router.replace("/login");
+    } catch {
+      setConfirmDelete(false);
+      setNotice(t("web.vaultList.wrongPassword") || "Wrong password.");
     } finally {
       setDeletingAccount(false);
     }

@@ -60,7 +60,7 @@ test.afterAll(async () => {
   if (!process.env.E2E_KEEP_ACCOUNT) {
     // The last test signs out: sign in again to delete the account.
     await page.request.post("/api/v1/auth/login", { data: { email, password } }).catch(() => undefined);
-    await page.request.delete("/api/v1/users/me").catch(() => undefined);
+    await page.request.delete("/api/v1/users/me", { data: { password } }).catch(() => undefined);
   }
   await context.close();
 });

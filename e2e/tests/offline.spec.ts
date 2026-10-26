@@ -10,6 +10,7 @@ test.describe.configure({ mode: "serial" });
 let context: BrowserContext;
 let page: Page;
 const stamp = Date.now();
+const password = `Off-${stamp}-${Math.random().toString(36).slice(2)}`;
 
 test.beforeAll(async ({ browser }) => {
   context = await browser.newContext();
@@ -18,7 +19,7 @@ test.beforeAll(async ({ browser }) => {
 
 test.afterAll(async () => {
   await context.unroute("**/api/**").catch(() => undefined);
-  await page.request.delete("/api/v1/users/me").catch(() => undefined);
+  await page.request.delete("/api/v1/users/me", { data: { password } }).catch(() => undefined);
   await context.close();
 });
 
@@ -31,7 +32,7 @@ test("open a vault and two notes while online", async () => {
   await page.getByPlaceholder("Invite code").fill(process.env.E2E_INVITE_CODE!);
   await page.getByPlaceholder("Display name").fill("Offline Tester");
   await page.getByPlaceholder("Email").fill(`offline-${stamp}@example.test`);
-  await page.getByPlaceholder("Password (at least 8 characters)").fill(`Off-${stamp}-${Math.random().toString(36).slice(2)}`);
+  await page.getByPlaceholder("Password (at least 8 characters)").fill(password);
   await page.locator('input[type="checkbox"]').check();
   await page.getByRole("button", { name: "Sign up" }).click();
   await expect(page).toHaveURL(/\/vaults$/, { timeout: 60_000 });
