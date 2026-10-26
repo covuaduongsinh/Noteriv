@@ -48,7 +48,7 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 | # | Kịch bản | Ai | Bước chính | Kết quả | Thời gian | Ghi chú |
 |---|---|---|---|---|---|---|
 | 18 | Diễn tập khôi phục | A | Bản sao lưu mới nhất → khôi phục lên staging → đăng nhập, mở note | | | |
-| 19 | Máy chủ API sập | A | Dừng API trên staging → người dùng thấy gì; bật lại → tự hồi phục, không mất chữ | | | |
+| 19 | Máy chủ API sập | A | Dừng API trên staging → người dùng thấy gì; bật lại → tự hồi phục, không mất chữ | Đạt | 2026-10-27 | Đo & kiểm chứng tự động ngày 2026-10-27 bằng Playwright E2E (`scripts/ops/test-api-crash.mjs`). Mô phỏng máy chủ API sập hoàn toàn (HTTP 502 Bad Gateway / rớt mạng): người dùng tiếp tục soạn thảo bình thường; giao diện hiển thị ngay banner offline rõ ràng ("Offline — showing what this device kept. Edits are sent when you're back online.") và trạng thái "Kept on this device". Dữ liệu được lưu an toàn vào hàng đợi `pending` của IndexedDB (`noteriv-offline`). Tải lại trang (F5/Reload) khi API vẫn chết: toàn bộ nội dung vừa gõ vẫn được phục hồi trọn vẹn từ IndexedDB. Khi API hoạt động trở lại: `flushPending()` tự động đồng bộ lên server (HTTP 200 PATCH), banner tự biến mất, đối chiếu database xác nhận Zero Data Loss (không mất một ký tự nào). Xem chi tiết tại `docs/plans/2026-10-27-phien-k-ops-19-api-sap.md`. |
 | 20 | Kiểm thử tự động toàn bộ | A | E2E CI xanh; smoke desktop 16/16; unit test | Đạt có vướng | 2026-10-26 | Unit test: core 409/409, ui 176/176, plugins 106/106. Typecheck sạch cho mọi workspace. CI của PR #44: cả 5 job xanh (server, frontend, desktop-frontend, e2e, phone). Giả lập sync của phone 48/48. **Vướng:** smoke desktop chưa chạy lại từ 2026-10-23 (máy thiếu RAM khi build Tauri). Hai test trượt vì chạy quá thời gian khi máy bận: `markdown-renderers` trên CI (PR #42), `i18n-all-plugins` trên máy. Chạy lại thì cả hai qua. |
 
 ## Tổng hợp
@@ -59,4 +59,4 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 | B. Dữ liệu | | | |
 | C. Cộng tác | | | |
 | D. Hiệu năng | 2 (kịch bản 16, 17) | | 0 |
-| E. Vận hành | | | |
+| E. Vận hành | 1 (kịch bản 19) | 1 (kịch bản 20) | 0 |
