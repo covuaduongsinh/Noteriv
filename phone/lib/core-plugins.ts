@@ -50,25 +50,28 @@ export function isCorePluginEnabled(state: CorePluginState, id: string): boolean
 const CONFIG_DIR = '.noteriv';
 const CONFIG_FILE = '.noteriv/plugin-config.json';
 
-async function readConfig(vaultPath: string): Promise<Record<string, unknown>> {
+/** The file's settings; null if it exists but cannot be read as an object (it must not be written over then). */
+async function readConfig(vaultPath: string): Promise<Record<string, unknown> | null> {
   const raw = await readFile(`${vaultPath}/${CONFIG_FILE}`);
   if (!raw) return {};
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' ? parsed : {};
+    return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : null;
   } catch {
-    return {};
+    return null;
   }
 }
 
 export async function loadCorePluginState(vaultPath: string): Promise<CorePluginState> {
-  const core = (await readConfig(vaultPath)).core;
+  const core = (await readConfig(vaultPath))?.core;
   return core && typeof core === 'object' ? (core as CorePluginState) : {};
 }
 
 /** Read-modify-write so community plugin keys (`enabled`, `settings`) in the same file survive. */
 export async function saveCorePluginState(vaultPath: string, state: CorePluginState): Promise<void> {
   const config = await readConfig(vaultPath);
+  // Writing over a damaged file would wipe the community plugins' settings kept in it.
+  if (!config) throw new Error('plugin-config.json is damaged; fix or delete it first');
   createDir(`${vaultPath}/${CONFIG_DIR}`);
   const ok = writeFile(`${vaultPath}/${CONFIG_FILE}`, JSON.stringify({ ...config, core: state }, null, 2));
   if (!ok) throw new Error('could not write plugin-config.json');

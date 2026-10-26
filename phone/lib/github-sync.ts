@@ -1,14 +1,15 @@
 import * as FS from '@/lib/file-system';
 import {
-  conflictCopyPath,
   contentHash,
   loadSyncBase,
   loadSyncShas,
+  mayUpload,
   pullAction,
   saveSyncBase,
   shouldDeleteLocal,
   vaultFileUri,
   vaultRelativePath,
+  writeConflictCopy,
 } from '@/lib/sync-state';
 
 // --- Types ---
@@ -26,15 +27,6 @@ interface GitHubTreeItem {
   sha: string;
   size?: number;
   url: string;
-}
-
-interface GitHubFileContent {
-  name: string;
-  path: string;
-  sha: string;
-  size: number;
-  content: string;
-  encoding: string;
 }
 
 // Cache of remote file shas keyed by "owner/repo:path"
@@ -151,6 +143,8 @@ async function getTree(
   if (res.status === 409) return [];
   if (!res.ok) throw new Error(`Failed to get tree: ${await describeFailure(res)}`);
   const data = await res.json();
+  // A cut-off listing would make every note past the cut look deleted on the remote.
+  if (data.truncated) throw new Error('The repository is too large to list in one request; sync stopped so no note is lost');
   return data.tree ?? [];
 }
 
@@ -188,22 +182,6 @@ async function forEachLimited<T>(items: T[], limit: number, fn: (item: T) => Pro
     }
   };
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
-}
-
-async function getFileContent(
-  owner: string,
-  repo: string,
-  path: string,
-  token: string,
-  ref?: string
-): Promise<GitHubFileContent> {
-  const query = ref ? `?ref=${encodeURIComponent(ref)}` : '';
-  const res = await ghFetch(
-    `/repos/${owner}/${repo}/contents/${encodeRepoPath(path)}${query}`,
-    token
-  );
-  if (!res.ok) throw new Error(`Failed to get file ${path}: ${res.status}`);
-  return res.json();
 }
 
 async function putFileContent(
@@ -277,8 +255,8 @@ export async function pull(
   try {
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
     const tree = await getTree(owner, repo, branchName, token);
-    const base = await loadSyncBase(vaultPath, remote, branch);
-    const shas = await loadSyncShas(vaultPath, remote, branch);
+    let base = await loadSyncBase(vaultPath, remote, branch);
+    let shas = await loadSyncShas(vaultPath, remote, branch);
 
     // Filter to markdown files only, skip .noteriv/
     const remoteFiles = tree.filter(
@@ -287,6 +265,11 @@ export async function pull(
         isMarkdownFile(item.path) &&
         !shouldSkipPath(item.path)
     );
+    // No notes at all on the remote (a new or recreated repository): start over rather than delete every note here.
+    if (remoteFiles.length === 0) {
+      base = {};
+      shas = {};
+    }
 
     // Update sha cache
     for (const item of remoteFiles) {
@@ -318,14 +301,16 @@ export async function pull(
         // Unchanged on the remote since the last sync: nothing to pull (a local edit is push's job).
         if (localContent !== null && base[item.path] !== undefined && shas[item.path] === item.sha) return;
         const remoteContent = await getBlobContent(owner, repo, item.sha, token);
+        // Read again: the note may have been saved while the download was in flight.
+        const current = await FS.readFile(localPath);
 
-        switch (pullAction(localContent, remoteContent, base[item.path])) {
+        switch (pullAction(current, remoteContent, base[item.path])) {
           case 'skip':
             base[item.path] = contentHash(remoteContent);
             shas[item.path] = item.sha;
             break;
           case 'take-remote':
-            FS.writeFile(localPath, remoteContent);
+            if (!FS.writeFile(localPath, remoteContent)) throw new Error('could not write the note');
             base[item.path] = contentHash(remoteContent);
             shas[item.path] = item.sha;
             result.pulled++;
@@ -335,13 +320,12 @@ export async function pull(
             shas[item.path] = item.sha;
             break;
           case 'conflict': {
-            // Edited on both sides since the last sync: keep this device's
-            // version in place and the remote's alongside it.
-            const copy = vaultFileUri(vaultPath, conflictCopyPath(item.path));
-            if ((await FS.readFile(copy)) === null) {
-              FS.writeFile(copy, remoteContent);
-              result.pulled++;
-            }
+            // Edited on both sides since the last sync: keep this device's version in place and the remote's
+            // alongside it. Once that copy exists the remote version is accounted for, so push may upload ours.
+            if (!(await writeConflictCopy(vaultPath, item.path, remoteContent))) throw new Error('could not keep the remote version as a conflict copy');
+            base[item.path] = contentHash(remoteContent);
+            shas[item.path] = item.sha;
+            result.pulled++;
             break;
           }
         }
@@ -380,8 +364,8 @@ export async function push(
 
   try {
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
-    const base = await loadSyncBase(vaultPath, remote, branch);
-    const shas = await loadSyncShas(vaultPath, remote, branch);
+    let base = await loadSyncBase(vaultPath, remote, branch);
+    let shas = await loadSyncShas(vaultPath, remote, branch);
 
     // Get the remote tree to know current shas
     const tree = await getTree(owner, repo, branchName, token);
@@ -391,6 +375,11 @@ export async function push(
         remoteFileMap.set(item.path, item.sha);
         shaCache.set(shaCacheKey(owner, repo, item.path), item.sha);
       }
+    }
+    // As in pull: a remote with no notes is new, so every note here is uploaded.
+    if (![...remoteFileMap.keys()].some((path) => isMarkdownFile(path) && !shouldSkipPath(path))) {
+      base = {};
+      shas = {};
     }
 
     // List all local markdown files
@@ -407,9 +396,10 @@ export async function push(
         const localHash = contentHash(localContent);
         const remoteSha = remoteFileMap.get(relPath);
 
+        // Not edited here since the last agreement: whatever the remote did (an edit, a deletion) is pull's to apply.
+        if (base[relPath] === localHash) continue;
+
         if (remoteSha) {
-          // Unchanged on both sides since the last sync.
-          if (base[relPath] === localHash && shas[relPath] === remoteSha) continue;
           if (shas[relPath] !== remoteSha) {
             // The remote moved, or this device never recorded its sha: compare before writing.
             const remoteContent = await getBlobContent(owner, repo, remoteSha, token);
@@ -418,6 +408,8 @@ export async function push(
               shas[relPath] = remoteSha;
               continue;
             }
+            // Writing now would overwrite an edit made elsewhere; the next pull keeps both versions first.
+            if (!mayUpload(localHash, contentHash(remoteContent), base[relPath])) continue;
           }
           const { sha } = await putFileContent(owner, repo, relPath, localContent, token, remoteSha, 'Sync from Noteriv Mobile');
           shaCache.set(shaCacheKey(owner, repo, relPath), sha);
@@ -469,59 +461,36 @@ export async function freshClone(
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
     const tree = await getTree(owner, repo, branchName, token);
 
-    // Nuke all vault contents except .noteriv/ and .trash/
-    const base = vaultPath.endsWith('/') ? vaultPath.slice(0, -1) : vaultPath;
-    console.log('[FreshClone] Vault path:', base);
-    const entries = FS.readDir(base);
-    console.log('[FreshClone] Found', entries.length, 'entries to process');
-    for (const entry of entries) {
-      const name = entry.name;
-      if (name === '.noteriv' || name === '.trash') {
-        console.log('[FreshClone] Skipping:', name);
-        continue;
-      }
-      console.log('[FreshClone] Deleting:', entry.path, entry.isDirectory ? '(dir)' : '(file)');
-      if (entry.isDirectory) {
-        const ok = FS.deleteDir(entry.path);
-        console.log('[FreshClone] deleteDir result:', ok);
-      } else {
-        const ok = FS.deleteFile(entry.path);
-        console.log('[FreshClone] deleteFile result:', ok);
-      }
+    // Replace the notes with the remote's. Only notes: sync carries nothing else, so images and other files
+    // deleted here could never come back. .noteriv/ and .trash/ stay.
+    for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
+      const rel = vaultRelativePath(vaultPath, file.filePath);
+      if (shouldSkipPath(rel) || rel.startsWith('.trash/')) continue;
+      FS.deleteFile(file.filePath);
     }
-    // Verify deletion
-    const remaining = FS.readDir(base);
-    console.log('[FreshClone] After delete:', remaining.length, 'entries remain:', remaining.map(e => e.name));
 
-    // Pull all remote files (not just markdown — clone everything)
     const remoteFiles = tree.filter(
-      (item) =>
-        item.type === 'blob' &&
-        !shouldSkipPath(item.path)
+      (item) => item.type === 'blob' && isMarkdownFile(item.path) && !shouldSkipPath(item.path)
     );
-    console.log('[FreshClone] Remote files to download:', remoteFiles.length);
     const clonedBase: Record<string, string> = {};
+    const clonedShas: Record<string, string> = {};
 
-    for (const item of remoteFiles) {
+    // The blobs API, like pull: the contents API sends notes over 1 MB empty.
+    await forEachLimited(remoteFiles, DOWNLOAD_CONCURRENCY, async (item) => {
       try {
-        const localPath = vaultFileUri(vaultPath, item.path);
-        console.log('[FreshClone] Downloading:', item.path, '->', localPath);
-        const remoteFile = await getFileContent(owner, repo, item.path, token, branchName);
-        const remoteContent = base64Decode(remoteFile.content.replace(/\n/g, ''));
-        const ok = FS.writeFile(localPath, remoteContent);
-        console.log('[FreshClone] Write result:', ok);
+        const remoteContent = await getBlobContent(owner, repo, item.sha, token);
+        if (!FS.writeFile(vaultFileUri(vaultPath, item.path), remoteContent)) throw new Error('could not write the note');
         shaCache.set(shaCacheKey(owner, repo, item.path), item.sha);
-        if (ok && isMarkdownFile(item.path)) clonedBase[item.path] = contentHash(remoteContent);
+        clonedBase[item.path] = contentHash(remoteContent);
+        clonedShas[item.path] = item.sha;
         result.pulled++;
       } catch (err) {
-        console.log('[FreshClone] Error downloading:', item.path, err);
         result.errors.push(
           `Clone ${item.path}: ${err instanceof Error ? err.message : String(err)}`
         );
       }
-    }
-    saveSyncBase(vaultPath, remote, branch, clonedBase);
-    console.log('[FreshClone] Done. Pulled:', result.pulled, 'Errors:', result.errors.length);
+    });
+    saveSyncBase(vaultPath, remote, branch, clonedBase, clonedShas);
   } catch (err) {
     result.errors.push(
       `Fresh clone failed: ${err instanceof Error ? err.message : String(err)}`

@@ -86,6 +86,9 @@ function runGit(args: string[], cwd: string, creds?: GitCredentials | null, time
       // does not reset, so git would push with the developer's account instead of the connection's token.
       GIT_CONFIG_GLOBAL: process.platform === "win32" ? "NUL" : "/dev/null",
       GIT_CONFIG_NOSYSTEM: "1",
+      // Sync reads git's messages ("couldn't find remote ref", "unrelated histories"); keep them in English.
+      LC_ALL: "C",
+      LANGUAGE: "C",
       GIT_SSH_COMMAND: "ssh -o BatchMode=yes -o StrictHostKeyChecking=accept-new",
       GIT_TERMINAL_PROMPT: "0",
       SSH_ASKPASS: "",

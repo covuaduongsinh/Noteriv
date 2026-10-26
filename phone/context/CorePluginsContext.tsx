@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { useApp } from '@/context/AppContext';
 import {
   CorePluginState,
@@ -19,27 +19,36 @@ export function CorePluginsProvider({ children }: { children: React.ReactNode })
   const { vault } = useApp();
   const vaultPath = vault?.path ?? '';
   const [state, setState] = useState<CorePluginState>({});
+  // Saved choices, read before any change is made: a switch flipped before they load must not replace them all.
+  const loaded = useRef<Promise<CorePluginState>>(Promise.resolve({}));
+  // Writes in the order the switches were flipped, each from the state after the one before.
+  const saving = useRef<Promise<unknown>>(Promise.resolve());
 
   useEffect(() => {
     let cancelled = false;
     setState({});
-    if (vaultPath) {
-      loadCorePluginState(vaultPath).then((s) => {
-        if (!cancelled) setState(s);
-      });
-    }
+    loaded.current = vaultPath ? loadCorePluginState(vaultPath) : Promise.resolve({});
+    loaded.current.then((s) => {
+      if (!cancelled) setState(s);
+    });
     return () => {
       cancelled = true;
     };
   }, [vaultPath]);
 
   const setEnabled = useCallback(
-    async (id: string, enabled: boolean) => {
-      const next = { ...state, [id]: enabled };
-      setState(next);
-      if (vaultPath) await saveCorePluginState(vaultPath, next);
+    (id: string, enabled: boolean) => {
+      setState((prev) => ({ ...prev, [id]: enabled }));
+      const run = saving.current.then(async () => {
+        const saved = await loaded.current;
+        const next = { ...saved, [id]: enabled };
+        loaded.current = Promise.resolve(next);
+        if (vaultPath) await saveCorePluginState(vaultPath, next);
+      });
+      saving.current = run.catch(() => undefined);
+      return run;
     },
-    [state, vaultPath]
+    [vaultPath]
   );
 
   const value = useMemo<CorePluginsContextValue>(

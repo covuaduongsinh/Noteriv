@@ -79,7 +79,32 @@ Vault thật có 1.928 note (khoảng 27 MB). Code upstream có các vấn đề
 - `npx tsc --noEmit` trong `phone/`: exit 0. ESLint không có lỗi; các cảnh báo đều có từ upstream.
 - APK debug build lại; chủ dự án kiểm trên máy thật.
 
+## Review (2026-10-26)
+
+Trước khi mở PR, nhánh được gộp với `main` (các phiên O1–O12). Web/desktop nay có 20 core plugin, nên danh sách của phone thêm `views`, `footnotes`, `unique-note` (đều tắt sẵn, phone chưa có các tính năng này).
+
+Review độc lập tìm thấy 3 lỗi nặng: sync của phone có thể **ghi đè bản sửa trên remote mà không báo**. Đã sửa cùng các lỗi nhỏ hơn:
+
+- **Push chỉ ghi lên remote khi note đã sửa trên máy này** và remote vẫn là bản đã thống nhất (`mayUpload` trong `sync-state.ts`). Trước đây, nếu pull tải một note thất bại (hết hạn mức, mất mạng) hoặc desktop vừa push xong, push vẫn ghi bản cũ của phone đè lên. Remote đã đổi thì để lần pull sau gộp, giữ cả hai bản. Áp dụng cho cả GitHub lẫn GitLab/Gitea.
+- **Xung đột lần hai trong cùng ngày** không còn bị bỏ: bản sao có số thứ tự riêng (`… (conflict 2026-10-26 2).md`). Chỉ khi đã ghi được bản sao thì push mới được tải bản của phone lên.
+- **Note đang mở:** mọi lần sync (hẹn giờ, nút trong Settings) đều lưu note đang mở trước và kiểm lại sau. Sync đổi note đó thì editor nạp bản mới. Nếu người dùng đang gõ dở, chữ đang gõ được giữ, còn bản sync mang về nằm cạnh note thành bản sao xung đột. Pull cũng đọc lại file ngay trước khi ghi.
+- **Một lần sync tại một thời điểm**, bất kể ai gọi (hàng đợi trong `provider-sync.ts`). Trước đây nút Sync trong Settings có thể chạy song song với auto-sync, và hai lần chạy ghi đè `sync-state.json` của nhau.
+- **Remote không còn note nào** (repo tạo lại cùng tên) thì bắt đầu lại từ đầu và tải mọi note lên, thay vì xoá mọi note trên máy.
+- **Danh sách file của GitHub bị cắt** (repo rất lớn) thì dừng sync và báo lỗi, thay vì coi phần bị cắt là đã xoá.
+- **Ghi file thất bại** thì báo lỗi và không ghi nhận là đã thống nhất.
+- **Fresh Clone** chỉ thay note (trước đây xoá cả ảnh và các file khác mà sync không tải lại được), và tải qua blobs API (file trên 1 MB trước đây thành file rỗng).
+- `X.MD` (đuôi viết hoa) nay cũng được push.
+- **Core plugin:** `plugin-config.json` hỏng thì không ghi đè (để không mất thiết lập của community plugin). Bật/tắt trước khi lựa chọn cũ nạp xong, hoặc bấm nhanh hai lần, không còn làm mất lựa chọn.
+- **Server:** git chạy với `LC_ALL=C`, vì sync đọc thông báo tiếng Anh của git (`couldn't find remote ref`).
+
+Kiểm chứng:
+- Giả lập GitHub cùng hệ thống file trong bộ nhớ: 21 kịch bản PASS, gồm 11 kịch bản cũ và 10 kịch bản mới cho từng lỗi trên. Chạy 10 kịch bản mới với code cũ thì trượt 7, trong đó kịch bản "repo tạo lại rỗng" xoá sạch 305 note trên máy.
+- `scripts/test-sync-scenarios.ts` của server: 52/52 PASS.
+- `npx tsc --noEmit` trong `phone/`: exit 0.
+
 ## Việc tồn
+
+- **Xoá và đổi tên trên phone chưa lên remote.** Push không xoá file nào trên remote, nên note đã xoá trên phone sẽ được pull về lại, còn đổi tên thì sinh bản trùng. Lỗi này có từ upstream, làm ở M2 cùng phần sync hai chiều.
 
 - Phần chữ còn lại của phone vẫn là tiếng Anh. Chuyển sang catalog chung ở M3, kể cả mấy dòng tạm trong `corePluginLabels`.
 - Phone chưa có tuỳ chọn riêng của từng plugin (`coreSettings`) như web/desktop.

@@ -88,11 +88,36 @@ export function vaultFileUri(vaultPath: string, relativePath: string): string {
   return base + relativePath.split('/').map(encodeURIComponent).join('/');
 }
 
-/** `notes/plan.md` -> `notes/plan (conflict 2026-10-18).md` */
-export function conflictCopyPath(relativePath: string): string {
-  const date = new Date().toISOString().slice(0, 10);
+/** `notes/plan.md` -> `notes/plan (conflict 2026-10-18).md`, then `… (conflict 2026-10-18 2).md` for `n` = 2. */
+export function conflictCopyPath(relativePath: string, n = 1): string {
+  const label = `conflict ${new Date().toISOString().slice(0, 10)}${n > 1 ? ` ${n}` : ''}`;
   const match = relativePath.match(/^(.*?)(\.(?:md|markdown))$/i);
-  return match ? `${match[1]} (conflict ${date})${match[2]}` : `${relativePath} (conflict ${date})`;
+  return match ? `${match[1]} (${label})${match[2]}` : `${relativePath} (${label})`;
+}
+
+/**
+ * Keeps `content` beside `relativePath` as a conflict copy, under the first name not already holding other text
+ * (a second conflict on the same day must not be dropped because the first copy exists). False if not written.
+ */
+export async function writeConflictCopy(vaultPath: string, relativePath: string, content: string): Promise<boolean> {
+  for (let n = 1; n <= 50; n++) {
+    const uri = vaultFileUri(vaultPath, conflictCopyPath(relativePath, n));
+    const existing = await FS.readFile(uri);
+    if (existing === content) return true;
+    if (existing === null) return FS.writeFile(uri, content);
+  }
+  return false;
+}
+
+/**
+ * Whether push may write this device's note over the remote's copy. Only a note edited here since the last
+ * agreement is uploaded, and only over the agreed version: a remote that moved since (or was never agreed on)
+ * is pull's to merge first, which keeps both versions. `remoteHash` is the remote copy's hash, or null if absent.
+ */
+export function mayUpload(localHash: string, remoteHash: string | null, base: string | undefined): boolean {
+  if (base === localHash) return false;
+  if (remoteHash === null) return true;
+  return base !== undefined && remoteHash === base;
 }
 
 export type PullAction = 'skip' | 'take-remote' | 'keep-local' | 'conflict';

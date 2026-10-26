@@ -3,14 +3,15 @@ import * as FS from '@/lib/file-system';
 import * as GitHub from '@/lib/github-sync';
 import { getItem, KEYS } from '@/lib/storage';
 import {
-  conflictCopyPath,
   contentHash,
   loadSyncBase,
+  mayUpload,
   pullAction,
   saveSyncBase,
   shouldDeleteLocal,
   vaultFileUri,
   vaultRelativePath,
+  writeConflictCopy,
 } from '@/lib/sync-state';
 
 export type SyncProvider = GitProvider;
@@ -170,15 +171,16 @@ async function writeRemoteFile(remote: Remote, token: string, ref: string, path:
 
 const markdown = (path: string) => /\.(md|markdown)$/i.test(path) && !path.startsWith('.noteriv/');
 
-export async function pull(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
+async function pullOnce(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
   const remote = parseRemote(remoteUrl, hint);
   if (!remote) return { pulled: 0, pushed: 0, errors: ['Unknown Git provider. Choose GitLab or Gitea/Forgejo for self-hosted remotes.'] };
   if (remote.provider === 'github') return GitHub.pull(vaultPath, token, remoteUrl, branchName);
   const result: SyncResult = { pulled: 0, pushed: 0, errors: [] };
   try {
     const ref = branchName || await branch(remote, token);
-    const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
     const files = (await listFiles(remote, token, ref)).filter((file) => markdown(file.path));
+    // No notes at all on the remote (a new or recreated project): start over rather than delete every note here.
+    const base = files.length ? await loadSyncBase(vaultPath, remoteUrl, branchName) : {};
     const paths = new Set(files.map((file) => file.path));
     // Apply remote deletions only to notes that haven't changed here since the last sync.
     for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
@@ -199,20 +201,18 @@ export async function pull(vaultPath: string, token: string, remoteUrl: string, 
             base[file.path] = contentHash(remoteFile.content);
             break;
           case 'take-remote':
-            FS.writeFile(localPath, remoteFile.content);
+            if (!FS.writeFile(localPath, remoteFile.content)) throw new Error('could not write the note');
             base[file.path] = contentHash(remoteFile.content);
             result.pulled++;
             break;
           case 'keep-local':
             break;
-          case 'conflict': {
-            const copy = vaultFileUri(vaultPath, conflictCopyPath(file.path));
-            if ((await FS.readFile(copy)) === null) {
-              FS.writeFile(copy, remoteFile.content);
-              result.pulled++;
-            }
+          case 'conflict':
+            // Both versions kept; with the remote's saved as a copy, push may upload this device's.
+            if (!(await writeConflictCopy(vaultPath, file.path, remoteFile.content))) throw new Error('could not keep the remote version as a conflict copy');
+            base[file.path] = contentHash(remoteFile.content);
+            result.pulled++;
             break;
-          }
         }
       } catch (error) { result.errors.push(`Pull ${file.path}: ${error instanceof Error ? error.message : String(error)}`); }
     }
@@ -221,26 +221,33 @@ export async function pull(vaultPath: string, token: string, remoteUrl: string, 
   return result;
 }
 
-export async function push(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
+async function pushOnce(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
   const remote = parseRemote(remoteUrl, hint);
   if (!remote) return { pulled: 0, pushed: 0, errors: ['Unknown Git provider. Choose GitLab or Gitea/Forgejo for self-hosted remotes.'] };
   if (remote.provider === 'github') return GitHub.push(vaultPath, token, remoteUrl, branchName);
   const result: SyncResult = { pulled: 0, pushed: 0, errors: [] };
   try {
     const ref = branchName || await branch(remote, token);
-    const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
     const files = new Map((await listFiles(remote, token, ref)).map((file) => [file.path, file]));
+    // As in pull: a remote with no notes is new, so every note here is uploaded.
+    const base = [...files.keys()].some(markdown) ? await loadSyncBase(vaultPath, remoteUrl, branchName) : {};
     for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
       const path = vaultRelativePath(vaultPath, file.filePath);
       if (!markdown(path)) continue;
       try {
         const content = await FS.readFile(file.filePath);
         if (content === null) continue;
+        const hash = contentHash(content);
+        // Not edited here since the last agreement: whatever the remote did is pull's to apply.
+        if (base[path] === hash) continue;
         const existing = files.get(path);
-        if (existing && (await readRemoteFile(remote, token, ref, path)).content === content) {
-          base[path] = contentHash(content);
+        const remoteContent = existing ? (await readRemoteFile(remote, token, ref, path)).content : null;
+        if (remoteContent === content) {
+          base[path] = hash;
           continue;
         }
+        // Writing over a remote edit made elsewhere would lose it; the next pull keeps both versions first.
+        if (!mayUpload(hash, remoteContent === null ? null : contentHash(remoteContent), base[path])) continue;
         await writeRemoteFile(remote, token, ref, path, content, existing?.sha);
         base[path] = contentHash(content);
         result.pushed++;
@@ -251,14 +258,52 @@ export async function push(vaultPath: string, token: string, remoteUrl: string, 
   return result;
 }
 
-export async function sync(vaultPath: string, token: string, remote: string, branch?: string, hint?: SyncProvider): Promise<SyncResult> {
-  const pulled = await pull(vaultPath, token, remote, branch, hint);
-  const pushed = await push(vaultPath, token, remote, branch, hint);
-  return { pulled: pulled.pulled, pushed: pushed.pushed, errors: [...pulled.errors, ...pushed.errors] };
+// --- One sync at a time, whoever starts it (the timers in AppContext, Settings) ---
+
+export interface SyncHooks {
+  /** Before a run: save the open note, so the sync sees what is on screen. */
+  before?: () => void | Promise<void>;
+  /** After a run: the open note may have changed on disk. */
+  after?: (result: SyncResult) => void | Promise<void>;
 }
 
-export async function freshClone(vaultPath: string, token: string, remoteUrl: string, branch?: string, hint?: SyncProvider): Promise<SyncResult> {
+let hooks: SyncHooks = {};
+let queue: Promise<unknown> = Promise.resolve();
+
+export function setSyncHooks(next: SyncHooks): void {
+  hooks = next;
+}
+
+/** Runs `run` after any sync already going (two at once would overwrite each other's sync state). */
+function serialized(run: () => Promise<SyncResult>): Promise<SyncResult> {
+  const next = queue.then(async () => {
+    await hooks.before?.();
+    const result = await run();
+    await hooks.after?.(result);
+    return result;
+  });
+  queue = next.catch(() => undefined);
+  return next;
+}
+
+export function pull(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
+  return serialized(() => pullOnce(vaultPath, token, remoteUrl, branchName, hint));
+}
+
+export function push(vaultPath: string, token: string, remoteUrl: string, branchName?: string, hint?: SyncProvider): Promise<SyncResult> {
+  return serialized(() => pushOnce(vaultPath, token, remoteUrl, branchName, hint));
+}
+
+export function sync(vaultPath: string, token: string, remote: string, branch?: string, hint?: SyncProvider): Promise<SyncResult> {
+  return serialized(async () => {
+    const pulled = await pullOnce(vaultPath, token, remote, branch, hint);
+    const pushed = await pushOnce(vaultPath, token, remote, branch, hint);
+    return { pulled: pulled.pulled, pushed: pushed.pushed, errors: [...pulled.errors, ...pushed.errors] };
+  });
+}
+
+export function freshClone(vaultPath: string, token: string, remoteUrl: string, branch?: string, hint?: SyncProvider): Promise<SyncResult> {
   const remote = parseRemote(remoteUrl, hint);
-  if (remote?.provider === 'github') return GitHub.freshClone(vaultPath, token, remoteUrl, branch);
-  return { pulled: 0, pushed: 0, errors: ['Fresh Clone is currently available for GitHub remotes only. Use Sync Now for this provider.'] };
+  if (remote?.provider === 'github') return serialized(() => GitHub.freshClone(vaultPath, token, remoteUrl, branch));
+  return Promise.resolve({ pulled: 0, pushed: 0, errors: ['Fresh Clone is currently available for GitHub remotes only. Use Sync Now for this provider.'] });
 }

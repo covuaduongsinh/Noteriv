@@ -4,6 +4,7 @@ import { loadSettings, saveSettings, DEFAULT_SETTINGS } from '@/lib/settings';
 import * as VaultOps from '@/lib/vault';
 import * as FS from '@/lib/file-system';
 import * as GitSync from '@/lib/provider-sync';
+import { vaultRelativePath, writeConflictCopy } from '@/lib/sync-state';
 
 interface AppContextType {
   // Vault
@@ -72,8 +73,38 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   currentDirRef.current = currentDir;
   // The sync timer outlives renders; it reads the open note through refs, not the values of the render that
   // started it (which would save stale text over the note).
-  const editorRef = useRef({ isDirty, currentFile, content });
-  editorRef.current = { isDirty, currentFile, content };
+  const editorRef = useRef({ isDirty, currentFile, content, vaultPath: vault?.path ?? '' });
+  editorRef.current = { isDirty, currentFile, content, vaultPath: vault?.path ?? '' };
+  // The open note's text as last read from or written to disk, to tell when a sync changed it underneath.
+  const diskText = useRef<string | null>(null);
+
+  // Every sync, whoever starts it (the timers below, Settings), saves the open note first and checks it after.
+  useEffect(() => {
+    GitSync.setSyncHooks({
+      before: () => {
+        const open = editorRef.current;
+        if (open.isDirty && open.currentFile && FS.writeFile(open.currentFile, open.content)) {
+          diskText.current = open.content;
+          setIsDirty(false);
+        }
+      },
+      after: async () => {
+        const open = editorRef.current;
+        if (!open.currentFile) return;
+        const disk = await FS.readFile(open.currentFile);
+        if (disk === null || disk === diskText.current) return;
+        if (open.isDirty) {
+          // Typed during the sync, over text the sync replaced: the editor keeps the typing, and the version the
+          // sync brought stays beside the note, so saving does not silently drop it.
+          await writeConflictCopy(open.vaultPath, vaultRelativePath(open.vaultPath, open.currentFile), disk);
+        } else {
+          setContentState(disk);
+        }
+        diskText.current = disk;
+      },
+    });
+    return () => GitSync.setSyncHooks({});
+  }, []);
 
   // Initialize
   useEffect(() => {
@@ -167,12 +198,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       try {
         const token = await GitSync.getVaultToken(vault.id);
         if (!token) return;
-        // Save current file before sync
-        const open = editorRef.current;
-        if (open.isDirty && open.currentFile) {
-          FS.writeFile(open.currentFile, open.content);
-          setIsDirty(false);
-        }
         const result = await GitSync.sync(vault.path, token, vault.gitRemote!, vault.gitBranch || undefined, vault.gitProvider);
         if (result.errors.length > 0) {
           console.warn('[Noteriv] Sync errors:', result.errors);
@@ -273,6 +298,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setCurrentFileState(path);
     if (path) {
       const fileContent = await FS.readFile(path);
+      diskText.current = fileContent;
       setContentState(fileContent ?? '');
       setIsDirty(false);
       // Update open tabs
@@ -296,7 +322,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const saveFile = useCallback(async (): Promise<boolean> => {
     if (!currentFile) return false;
     const ok = FS.writeFile(currentFile, content);
-    if (ok) setIsDirty(false);
+    if (ok) {
+      diskText.current = content;
+      setIsDirty(false);
+    }
     return ok;
   }, [currentFile, content]);
 

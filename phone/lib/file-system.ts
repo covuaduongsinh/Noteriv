@@ -163,7 +163,7 @@ export async function listAllMarkdownFiles(
     for (const entry of entries) {
       if (entry.isDirectory) {
         walk(entry.path);
-      } else if (entry.name.endsWith('.md') || entry.name.endsWith('.markdown')) {
+      } else if (/\.(md|markdown)$/i.test(entry.name)) {
         files.push({
           filePath: entry.path,
           fileName: entry.name.replace(/\.(md|markdown)$/i, ''),
