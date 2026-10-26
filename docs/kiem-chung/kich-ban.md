@@ -40,8 +40,8 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 
 | # | Kịch bản | Ai | Bước chính | Kết quả | Thời gian | Ghi chú |
 |---|---|---|---|---|---|---|
-| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | Không đạt | 2026-10-26 | Đo ngày 2026-10-26: build production cục bộ (`next start`) cộng API cục bộ, nối DB dev trên VPS qua tunnel SSH; script `scripts/perf/measure-vault.mjs` (Playwright), trung vị 3 lần. Cây thư mục 1,74 s (500 note lần đo 17/10: ~0,93 s); mở note 54 ms; gõ ~15 ms/ký tự; tìm kiếm 1,39 s; JS heap 17 MB. **Đồ thị không xong sau 240 s**: nó đọc từng note bằng một request (8 song song), mỗi request ~0,6 s qua tunnel. Xem lỗi #5. |
-| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | Không đạt | 2026-10-26 | Như 16, chưa có đính kèm. Cây thư mục 1,70 s; mở note 66 ms; gõ ~15 ms/ký tự; tìm kiếm 1,41 s; heap 21 MB: các việc thường ngày không chậm đi đáng kể từ 2.000 lên 10.000 note. **Đồ thị không xong** (như 16). Tài khoản thử `perf-k@example.test` với hai vault "Perf 2000", "Perf 10000" vẫn ở DB dev, dọn bằng `seed-vault.mjs --cleanup`. |
+| 16 | Vault 2.000 note | A | Seed → đo mở vault, tìm kiếm, đồ thị, gõ phím (staging) | Đạt | 2026-10-26 | Đo ngày 2026-10-26 (đo lại sau khi sửa Lỗi #5 ở PR #51): build production cục bộ (`next start`) cộng API cục bộ, nối DB dev trên VPS qua tunnel SSH; script `scripts/perf/measure-vault.mjs` (Playwright), trung vị 3 lần. Cây thư mục 2,38 s; mở note 304 ms; gõ 25,1 ms/ký tự; tìm kiếm 1,55 s; JS heap 17,2 MB. **Đồ thị hoàn thành trong 3,86 s** (trước khi sửa bị treo > 240 s do đọc từng note đơn lẻ qua 8 request song song). |
+| 17 | Vault 10.000 note + đính kèm | A | Như 16; ghi ngưỡng bắt đầu chậm | Đạt | 2026-10-26 | Đo ngày 2026-10-26 (đo lại sau khi sửa Lỗi #5 ở PR #51 trên vault 4.750 note đã seed): build production cục bộ, trung vị 3 lần. Cây thư mục 1,78 s; mở note 119 ms; gõ 33,7 ms/ký tự; tìm kiếm 1,50 s; heap 54,0 MB. **Đồ thị hoàn thành trong 6,39 s** (trước khi sửa bị treo > 240 s). Các thao tác mở note và tìm kiếm vẫn mượt mà dưới 1,5 s. |
 
 ## E. Vận hành
 
@@ -58,5 +58,5 @@ Tài liệu dùng lại: [`docs/qa/checklist.md`](../qa/checklist.md), E2E `e2e/
 | A. Người mới | | | |
 | B. Dữ liệu | | | |
 | C. Cộng tác | | | |
-| D. Hiệu năng | | | |
+| D. Hiệu năng | 2 (kịch bản 16, 17) | | 0 |
 | E. Vận hành | | | |
