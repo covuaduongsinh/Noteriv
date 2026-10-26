@@ -134,8 +134,8 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | Tuần | Nội dung | Trạng thái | Ngày | Ghi chú |
 |---|---|---|---|---|
 | 0 | Chuẩn bị | Đang làm | 2026-10-20 | Đã tạo mẫu, đã chốt tiêu chí và trọng số; còn: nhập ghi chú thật, ghi số liệu nền |
-| 1 | Dùng thật + kịch bản | Chưa làm | 21–27/10 | |
-| 2 | Dùng thật + kịch bản + bắt đầu đối thủ | Chưa làm | 28/10–3/11 | |
+| 1 | Dùng thật + kịch bản | Đang làm | 21–27/10 | Phần Claude (2026-10-26): kịch bản 20 đạt có vướng; 16–17 chờ cho phép ghi vault thử vào database dev; số liệu nền VPS đã ghi (số tài khoản/note chờ chủ dự án xem `/admin/stats`). Phần chủ dự án (nhật ký, kịch bản C, nhập ghi chú thật) chưa có ghi nhận |
+| 2 | Dùng thật + kịch bản + bắt đầu đối thủ | Đang làm | 28/10–3/11 | Làm sớm (2026-10-26): hồ sơ bàn giấy đủ 12 app cộng Noteriv, có nguồn và ngày tra; điểm bàn giấy; bản nháp mục 5–6 của [doi-thu.md](../kiem-chung/doi-thu.md) |
 | 3 | Đối thủ + mọi mặt | Chưa làm | 4–10/11 | |
 | 4 | Đối thủ (dùng thử 4 app) + mọi mặt | Chưa làm | 11–17/11 | |
 | 5 | Mọi mặt + sửa lỗi cuối | Chưa làm | 18–24/11 | |
