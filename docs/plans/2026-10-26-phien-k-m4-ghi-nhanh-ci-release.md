@@ -70,3 +70,21 @@ $env:NOTERIV_RELEASE_KEY_ALIAS="noteriv"
 - Sửa kèm: nhãn tự đồng bộ trong Settings vẫn ghi "Every 5s", trong khi từ M1b app sync mỗi phút.
 
 ## Kiểm thử
+
+- **Build release trên máy này** (ABI arm64-v8a): mất 25 phút 42 giây, ra APK 34,5 MB. `apksigner verify` xác nhận APK ký bằng chứng chỉ `CN=Noteriv, O=covuaduongsinh, C=VN`, SHA-256 `df4264…786b71`, đúng keystore ở trên.
+- **Lớp chặn:** chạy `assembleRelease` khi không có biến môi trường thì dừng, báo "Release builds are signed with Noteriv's key…". `assembleDebug` không bị ảnh hưởng.
+- **`expo prebuild` sinh đúng các file:** `signingConfigs.release`, meta-data `android.app.shortcuts` nằm trong MainActivity, `res/xml/shortcuts.xml`, và nhãn "Ghi nhanh" trong `values-vi`.
+- **Các test khác:**
+  - Core 409/409, có test quick-note so khớp với bản của server.
+  - Test catalog i18n PASS.
+  - `tsc` của phone sạch.
+  - Giả lập sync 48/48.
+- **Review độc lập tìm ra một lỗi nặng: emoji trong dòng đầu làm app crash.** `quickNoteName` cắt theo đơn vị UTF-16, nên có thể cắt đôi một emoji. Chuỗi bị cắt thì không mã hoá được thành URL, và nút Lưu làm app crash. Lỗi có ở cả bản của server. Đã sửa ở cả hai chỗ:
+  - Cắt theo ký tự, và `trim` lại sau khi bỏ dấu chấm đầu.
+  - Vòng tìm tên trống có giới hạn số lần thử, mọi lỗi đều báo ra thay vì ném.
+  - Ngày trong tên theo giờ máy.
+  - Mở từ shortcut thì vẫn có danh sách note phía dưới (`initialRouteName`), nên Back không thoát app.
+  - Intent của shortcut ghi rõ package của app.
+  - Workflow release kiểm tag có khớp `expo.version` không.
+- **APK build ở trên có trước các bản sửa này, nên không dùng để phát hành.** Bản đầu tiên sẽ do workflow build từ tag `phone-v1.0.0`.
+- Chưa thử trên máy thật.
