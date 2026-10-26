@@ -142,9 +142,9 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | 6 | Báo cáo quyết định | Chưa làm | 25/11–1/12 | |
 | M1 | App mobile: khôi phục, APK debug | Xong | 2026-10-21 | [Phiên K-M1](2026-10-21-phien-k-m1-khoi-phuc-phone.md); `phone/` lấy từ upstream `013fa8c`; APK chạy trên máy thật |
 | M1b | App mobile: bật/tắt core plugin như web | Xong | 2026-10-26 | [Phiên K-M1b](2026-10-21-phien-k-m1b-core-plugins-phone.md); PR #39 (gộp cả M1), đã merge; sửa sync qua 2 lượt review; APK mới chưa thử trên máy thật |
-| M2 | App mobile: logic chung, sync | Đang làm | 2026-10-26 | [Phiên K-M2](2026-10-26-phien-k-m2-dung-chung-sync.md) |
-| M3 | App mobile: i18n, theme, vault mẫu | Đang làm | 2026-10-26 | Tách đôi: [M3a i18n](2026-10-26-phien-k-m3a-i18n-phone.md) (PR #42); [M3b theme chung, vault mẫu](2026-10-26-phien-k-m3b-theme-vault-mau.md); bố cục theo web chờ góp ý trên máy thật |
-| M4 | App mobile: Ghi nhanh, CI, APK release | Đang làm | 2026-10-26 | [Phiên K-M4](2026-10-26-phien-k-m4-ghi-nhanh-ci-release.md); keystore ở máy này + GitHub Secrets |
+| M2 | App mobile: logic chung, sync | Xong | 2026-10-26 | [Phiên K-M2](2026-10-26-phien-k-m2-dung-chung-sync.md); PR #41, đã merge |
+| M3 | App mobile: i18n, theme, vault mẫu | Xong | 2026-10-26 | [M3a i18n](2026-10-26-phien-k-m3a-i18n-phone.md) (PR #42) và [M3b theme chung, vault mẫu](2026-10-26-phien-k-m3b-theme-vault-mau.md) (PR #43); bố cục theo web chờ góp ý trên máy thật |
+| M4 | App mobile: Ghi nhanh, CI, APK release | Xong | 2026-10-26 | [Phiên K-M4](2026-10-26-phien-k-m4-ghi-nhanh-ci-release.md); PR #44, đã merge; chưa phát hành APK release (tag `phone-v*`) |
 | O0 | Obsidian: bản đồ khoảng trống từ nguồn công khai | Xong | 2026-10-22 | [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md); đã dừng dịch ngược vì điều khoản của Obsidian |
 | O1 | G1: đổi tên thì cập nhật liên kết | Xong | 2026-10-22 | [Phiên K-O1](2026-10-22-phien-k-o1-cap-nhat-lien-ket.md); PR #26, đã lên production |
 | O2 | G3: liên kết đi ra + nhắc đến chưa liên kết | Xong | 2026-10-22 | [Phiên K-O2](2026-10-22-phien-k-o2-lien-ket-di-ra.md); PR #27, đã lên production |
