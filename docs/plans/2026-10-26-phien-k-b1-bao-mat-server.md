@@ -17,6 +17,14 @@ Worker sync giữ `DATABASE_URL`, `ENCRYPTION_KEY` (giải mã token Git/WebDAV 
 | H1 | WebDAV: `href` có `..` ghi được file ra ngoài; axios đi theo redirect vào mạng nội bộ; URL được trỏ thẳng vào địa chỉ nội bộ | Danh sách từ server chỉ nhận đường dẫn an toàn, và ghi qua `safeJoin`. Đặt `maxRedirects: 0`. Thêm `lib/remoteHost.ts`: trước khi sync hay thử kết nối (Git và WebDAV), phân giải tên miền và từ chối nếu có địa chỉ nội bộ (loopback, mạng riêng, link-local/metadata, CGNAT) |
 | L4 | Tên entry trong zip export lấy từ đường dẫn note, có thể chứa `..` | Bỏ qua đường dẫn không an toàn khi xuất zip |
 
+**Review lần hai** (cùng người rà soát) xác nhận các lỗ chính đã được vá. Nó tìm ra một đường vòng (đã chạy thử) và vài lỗ nhỏ hơn, nay đã sửa:
+- **Bộ lọc địa chỉ nội bộ bị vượt qua bằng IPv6.** `new URL` chuẩn hoá `[::ffff:127.0.0.1]` thành `::ffff:7f00:1`, dạng mà bản đầu không nhận ra. Nay đọc đủ 128 bit của IPv6 và tách IPv4 nhúng bên trong (mapped, compat, NAT64 `64:ff9b::/96`, 6to4 `2002::/16`). Các dạng IPv4 viết khác như `2130706433` hay `0x7f.1` vốn đã bị chặn vì URL được chuẩn hoá trước.
+- **Git theo redirect qua https** (`http.followRedirects` mặc định là `initial`). Nay đặt `-c http.followRedirects=false`.
+- **Working copy tạo trước bản vá có thể còn symlink.** `safeJoin` chỉ kiểm theo chuỗi. Nay mọi lần ghi đi qua `prepareWrite`: thư mục cha phải nằm trong working copy sau `realpath`, và nếu đích là symlink thì xoá symlink rồi ghi file thường.
+- **Bước prune xoá file mà import đã bỏ qua.** File remote có tên bị loại (ví dụ chứa `\`) sẽ bị xoá rồi đẩy lệnh xoá lên remote. Nay prune chỉ xoá file thường có đường dẫn an toàn.
+- **Tên đính kèm có thể thành `..`.** `safeName` nay thêm `_` phía trước cho các tên không hợp lệ.
+- **Cách dùng hợp lệ bị chặn:** Gitea qua http hoặc trong LAN, NAS, Tailscale. Thêm công tắc `SYNC_ALLOW_PRIVATE_REMOTES=1` cho máy chủ tự host: cho phép địa chỉ nội bộ và `http://`. Bản SaaS không đặt biến này. Remote dạng ssh `git@` không còn nhập được (vốn không dùng được với token qua askpass). Tên branch không phải ASCII bị từ chối; quy tắc này hẹp hơn git chứ không lỏng hơn.
+
 Bộ kịch bản sync chạy với repo cục bộ, nên bật `SYNC_ALLOW_LOCAL_REMOTES=1` để mở lại giao thức `file` và bỏ qua bước kiểm host. Biến này chỉ đặt trong script test, không đặt ở production.
 
 **Chưa che:** tên miền đổi địa chỉ giữa lúc kiểm và lúc git/axios kết nối (DNS rebinding). Phần còn lại là việc của mạng: cho worker vào một mạng chỉ đi ra Internet, ghi ở K-B3.
@@ -34,9 +42,10 @@ Bộ kịch bản sync chạy với repo cục bộ, nên bật `SYNC_ALLOW_LOCA
 
 ## Kiểm thử
 
-- `web/server/scripts/test-security.ts` (mới, chạy `npx tsx scripts/test-security.ts`, không cần DB): **69/69 PASS**.
+- `web/server/scripts/test-security.ts` (mới, chạy `npx tsx scripts/test-security.ts`, không cần DB): **83/83 PASS**.
   - Tên và đường dẫn hợp lệ/không hợp lệ, `safeJoin`, tên branch.
-  - Địa chỉ nội bộ/công khai; remote `127.0.0.1`, `localhost`, `169.254.169.254`, `[::1]`, `10.x` bị từ chối.
+  - Địa chỉ nội bộ/công khai, kể cả IPv4 nhúng trong IPv6. Remote `127.0.0.1` (cả dạng thập phân, hex, bát phân), `localhost`, `169.254.169.254`, `[::1]`, `[::ffff:127.0.0.1]`, `10.x` bị từ chối.
+- `prepareWrite` thay symlink bằng file thường, không ghi xuyên qua.
   - Remote cục bộ bị từ chối khi không bật biến test.
   - Một repo có symlink trỏ tới file "bí mật" được checkout thành file thường, không đọc ra bí mật.
   - Branch `--upload-pack=x` bị từ chối.

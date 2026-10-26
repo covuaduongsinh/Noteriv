@@ -12,7 +12,7 @@ import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { isSafeBranch } from "./vaultPaths.js";
-import { assertPublicRemote } from "./remoteHost.js";
+import { assertPublicRemote, privateRemotesAllowed } from "./remoteHost.js";
 import { randomBytes } from "node:crypto";
 
 export interface GitCredentials {
@@ -118,6 +118,9 @@ function runGit(args: string[], cwd: string, creds?: GitCredentials | null, time
       // The sync scenarios script runs against local bare repositories and opens file:// with this variable.
       "-c", "protocol.allow=never",
       "-c", "protocol.https.allow=always",
+      // ...and never follows a redirect, which could lead it to an internal address after the host check.
+      "-c", "http.followRedirects=false",
+      ...(privateRemotesAllowed() ? ["-c", "protocol.http.allow=always"] : []),
       ...(process.env.SYNC_ALLOW_LOCAL_REMOTES === "1" ? ["-c", "protocol.file.allow=always"] : []),
       ...args,
     ];

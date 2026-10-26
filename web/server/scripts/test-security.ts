@@ -3,10 +3,10 @@
 // Vault paths and branch names, the git transport allow-list, and symlinks in a remote repository.
 
 import { execFileSync } from "node:child_process";
-import { lstatSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { lstatSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { isSafeBranch, isSafeVaultPath, safeJoin, vaultSegmentError } from "../src/lib/vaultPaths.js";
+import { isSafeBranch, isSafeVaultPath, prepareWrite, safeJoin, vaultSegmentError } from "../src/lib/vaultPaths.js";
 import { ensureWorkingCopy } from "../src/lib/gitSync.js";
 import { assertPublicRemote, isPrivateAddress } from "../src/lib/remoteHost.js";
 
@@ -40,6 +40,25 @@ check("safeJoin stays inside", safeJoin(root, "a/b.md") === path.join(root, "a",
 check("safeJoin refuses ..", throws(() => safeJoin(root, "../outside.md")));
 check("safeJoin refuses .git", throws(() => safeJoin(root, ".git/config")));
 
+// prepareWrite: a symlink left in an older working copy is replaced, never written through.
+const outside = path.join(root, "outside.txt");
+writeFileSync(outside, "untouched");
+const wcOld = path.join(root, "wc-old");
+mkdirSync(wcOld, { recursive: true });
+let linked = true;
+try {
+  symlinkSync(outside, path.join(wcOld, "note.md"));
+} catch {
+  linked = false; // Windows without the right to create symlinks
+}
+if (linked) {
+  const dest = await prepareWrite(wcOld, "note.md");
+  writeFileSync(dest, "new text");
+  check("prepareWrite replaces a symlink instead of writing through it", readFileSync(outside, "utf8") === "untouched" && !lstatSync(dest).isSymbolicLink());
+} else {
+  console.log("SKIP  prepareWrite symlink check (cannot create symlinks here)");
+}
+
 // --- Branch names ---
 for (const bad of ["-x", "--upload-pack=touch /tmp/p", "a..b", "a b", "a:b", "/a", "a/", "a.lock", ".hidden", "a/.b", "x~1", "x^", "@{1}"]) {
   check(`branch ${JSON.stringify(bad)} refused`, !isSafeBranch(bad));
@@ -52,7 +71,15 @@ for (const good of ["main", "master", "notes/phone", "release-1.2", "v1.0_x"]) {
 for (const ip of ["127.0.0.1", "10.1.2.3", "172.20.0.5", "192.168.1.1", "169.254.169.254", "100.64.0.1", "0.0.0.0", "::1", "fd00::1", "fe80::1", "::ffff:127.0.0.1"]) {
   check(`address ${ip} is private`, isPrivateAddress(ip));
 }
-for (const ip of ["140.82.112.3", "1.1.1.1", "2606:4700::1111"]) check(`address ${ip} is public`, !isPrivateAddress(ip));
+// IPv4 inside IPv6, in the forms `new URL` produces (review of K-B1: "::ffff:7f00:1" got through).
+for (const ip of ["::ffff:7f00:1", "::ffff:a9fe:a9fe", "::7f00:1", "64:ff9b::a00:1", "2002:7f00:1::", "::ffff:10.0.0.1", "fe80::1%eth0"]) {
+  check(`address ${ip} is private`, isPrivateAddress(ip));
+}
+for (const ip of ["140.82.112.3", "1.1.1.1", "2606:4700::1111", "::ffff:8c52:7003", "2002:8c52:7003::"]) check(`address ${ip} is public`, !isPrivateAddress(ip));
+check("URL [::ffff:127.0.0.1] is refused", await assertPublicRemote("https://[::ffff:127.0.0.1]/x.git").then(() => false, () => true));
+for (const url of ["https://2130706433/x.git", "https://0x7f.1/x.git", "https://017700000001/x.git"]) {
+  check(`remote ${url} (127.0.0.1 written otherwise) refused`, await assertPublicRemote(url).then(() => false, () => true));
+}
 for (const url of ["https://127.0.0.1/x.git", "https://localhost/x.git", "http://169.254.169.254/latest/", "https://[::1]/dav", "https://10.0.0.5/dav"]) {
   check(`remote ${url} refused`, await assertPublicRemote(url).then(() => false, () => true));
 }

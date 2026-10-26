@@ -6,7 +6,7 @@ import { XMLParser } from "fast-xml-parser";
 import { readdir, readFile, writeFile, mkdir, stat, unlink } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { isSafeVaultPath, safeJoin } from "./vaultPaths.js";
+import { isSafeVaultPath, prepareWrite } from "./vaultPaths.js";
 import { assertPublicRemote } from "./remoteHost.js";
 import { conflictCopyPath } from "./gitSync.js";
 
@@ -258,8 +258,7 @@ export async function webdavSyncCore(dir: string, cfg: WebdavConfig, prev: Webda
     if (res.status !== 404 && (res.status < 200 || res.status >= 300)) throw new Error(`DELETE HTTP ${res.status}`);
   };
   const writeLocal = async (rel: string, bytes: Buffer) => {
-    const dest = safeJoin(dir, rel);
-    await mkdir(path.dirname(dest), { recursive: true });
+    const dest = await prepareWrite(dir, rel);
     await writeFile(dest, bytes);
   };
   /** Keeps `bytes` (the remote version of `rel`) as a conflict copy on both sides. */

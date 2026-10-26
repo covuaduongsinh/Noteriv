@@ -8,7 +8,7 @@ import path from "node:path";
 import { recomputeBacklinksForNote } from "./backlinks.js";
 import { snapshotBeforeOverwrite } from "./noteSnapshots.js";
 import { trashNote } from "./trash.js";
-import { isSafeVaultPath, safeJoin } from "./vaultPaths.js";
+import { isSafeVaultPath, prepareWrite } from "./vaultPaths.js";
 import { conflictCopyPath } from "./gitSync.js";
 
 export interface ImportOptions {
@@ -49,8 +49,7 @@ export async function exportNotesToDir(
       console.warn(`[sync] skipped unsafe note path ${JSON.stringify(note.path)} in vault ${vaultId}`);
       continue;
     }
-    const dest = safeJoin(dir, note.path);
-    await mkdir(path.dirname(dest), { recursive: true });
+    const dest = await prepareWrite(dir, note.path);
     await writeFile(dest, transform(note.path, note.content), "utf8");
   }
 
@@ -69,7 +68,8 @@ export async function exportNotesToDir(
         await pruneRecurse(full);
       } else if (entry.name.toLowerCase().endsWith(".md")) {
         const rel = path.relative(dir, full).replace(/\\/g, "/");
-        if (!wanted.has(rel)) await unlink(full).catch(() => undefined);
+        // Only paths an import would have read: a remote file skipped for its name is left alone, not deleted.
+        if (entry.isFile() && isSafeVaultPath(rel) && !wanted.has(rel)) await unlink(full).catch(() => undefined);
       }
     }
   }

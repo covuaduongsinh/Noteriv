@@ -1,4 +1,5 @@
 import path from "node:path";
+import { lstat, mkdir, realpath, unlink } from "node:fs/promises";
 
 // Vault paths come from users (note and folder names, imports) and from sync remotes (Git trees, WebDAV listings),
 // and end up as files under a sync working copy on the worker. Every one of them is checked here, so none can
@@ -32,6 +33,23 @@ export function safeJoin(dir: string, rel: string): string {
   const full = path.resolve(root, rel.split("/").join(path.sep));
   if (full !== root && !full.startsWith(root + path.sep)) throw new Error(`vault path leaves its folder: ${JSON.stringify(rel)}`);
   return full;
+}
+
+/**
+ * The file to write for `rel` under `dir`, made ready: its folder exists and resolves inside `dir` (no symlinked
+ * folder on the way), and a symlink already at the file itself (from a working copy older than these checks) is
+ * removed, so the write creates a plain file instead of following the link.
+ */
+export async function prepareWrite(dir: string, rel: string): Promise<string> {
+  const dest = safeJoin(dir, rel);
+  await mkdir(path.dirname(dest), { recursive: true });
+  const [realRoot, realParent] = await Promise.all([realpath(dir), realpath(path.dirname(dest))]);
+  if (realParent !== realRoot && !realParent.startsWith(realRoot + path.sep)) {
+    throw new Error(`vault path leaves its folder through a link: ${JSON.stringify(rel)}`);
+  }
+  const existing = await lstat(dest).catch(() => null);
+  if (existing?.isSymbolicLink()) await unlink(dest);
+  return dest;
 }
 
 /** Branch names a sync connection may use: git's ref rules, and never anything git could read as an option. */
