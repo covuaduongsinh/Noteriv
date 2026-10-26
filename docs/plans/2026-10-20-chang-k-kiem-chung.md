@@ -145,6 +145,7 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | B3 | Bảo mật server (Mức Trung bình & Thấp) | Xong | 2026-10-26 | [Phiên K-B3](2026-10-26-phien-k-b3-bao-mat-server.md); PR #50, đã merge; email verification, attachment header, refresh token replay, non-root |
 | #5 | Đọc note hàng loạt cho plugin (scanVault) | Xong | 2026-10-26 | [Phiên Lỗi #5](2026-10-26-phien-loi-5-doc-note-hang-loat.md); PR #51, đã merge; xoá bỏ nghẽn 300 req/phút của plugin |
 | KC | Kiểm chứng đối thủ, nhãn hiệu, giá & năng lực | Xong | 2026-10-26 | [Phiên K-Claude](2026-10-26-phien-k-claude-kiem-chung.md); xác minh sandbox/tiếng Việt, 10 nhãn hiệu, điểm hoà vốn, chiến lược ngách cờ vua |
+| REL | Cấu hình release APK (DUO-16) | Xong | 2026-10-26 | [Phiên K-REL-APK](2026-10-26-phien-k-rel-apk-android.md); tăng versionCode lên 2, sẵn sàng gắn tag phone-v1.0.0 |
 | M1 | App mobile: khôi phục, APK debug | Xong | 2026-10-21 | [Phiên K-M1](2026-10-21-phien-k-m1-khoi-phuc-phone.md); `phone/` lấy từ upstream `013fa8c`; APK chạy trên máy thật |
 | M1b | App mobile: bật/tắt core plugin như web | Xong | 2026-10-26 | [Phiên K-M1b](2026-10-21-phien-k-m1b-core-plugins-phone.md); PR #39 (gộp cả M1), đã merge; sửa sync qua 2 lượt review; APK mới chưa thử trên máy thật |
 | M2 | App mobile: logic chung, sync | Xong | 2026-10-26 | [Phiên K-M2](2026-10-26-phien-k-m2-dung-chung-sync.md); PR #41, đã merge |
