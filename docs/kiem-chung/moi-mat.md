@@ -20,7 +20,7 @@
 ## 2. Kỹ thuật
 
 - **Hiệu năng**: kết quả kịch bản 16–17 ([kich-ban.md](kich-ban.md)); so với ngân sách ở `docs/perf/2026-10-17-after-phase2.md`.
-  - 2026-10-26: các việc thường ngày (cây thư mục ~1,7 s, mở note < 0,1 s, tìm kiếm ~1,4 s) gần như không đổi từ 2.000 lên 10.000 note. Vấn đề lớn là các plugin quét cả vault bằng một request mỗi note, vướng giới hạn 300 request/phút ở production ([loi-va-gop-y.md](loi-va-gop-y.md) #5).
+  - 2026-10-26: các việc thường ngày (cây thư mục ~1,7–2,4 s, mở note 0,1–0,3 s, tìm kiếm ~1,5 s) gần như không đổi từ 2.000 lên 10.000 note. Vấn đề nghẽn plugin quét vault ([loi-va-gop-y.md](loi-va-gop-y.md) #5) đã được giải quyết triệt để ở PR #51 bằng batch note reading (`POST /:vid/notes/batch` và `readAll`/`readBatch`), đưa thời gian tải đồ thị từ chỗ bị timeout > 240 s xuống còn **3,86 s** (vault 2.000 note) và **6,39 s** (vault 10.000 note / 4.750 note thực tế); bộ nhớ JS heap duy trì ổn định 17–54 MB.
 - **Bảo mật**: chạy `/security-review` trên mã hiện tại; liệt kê phát hiện theo mức; mục Chặn/Nặng vào [loi-va-gop-y.md](loi-va-gop-y.md).
   - 2026-10-26: rà soát chỉ đọc code (server, web, desktop, phone). Mức rủi ro tổng thể **cao** trước khi mở đăng ký: 3 lỗ Nghiêm trọng và 1 Cao ở worker sync (đã vá trong [phiên K-B1](../plans/2026-10-26-phien-k-b1-bao-mat-server.md), PR #47, qua 2 lượt review), 2 Cao ở desktop, 5 Trung bình, 6 Thấp ([loi-va-gop-y.md](loi-va-gop-y.md) #6–#8). Thấy ổn: phân quyền theo vault (không thấy IDOR), mã hoá credentials, SQL có tham số, token email, plugin sandbox, sanitize markdown. Báo cáo đầy đủ **không để trong repo công khai** (mô tả lỗ chưa vá): giữ ở máy chủ dự án, `~/.config/noteriv/bao-mat-2026-10-26.md`.
 - **Độ tin cậy**: số lỗi Sentry theo tuần, sự cố/downtime trong 6 tuần.
