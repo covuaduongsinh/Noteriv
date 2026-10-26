@@ -161,6 +161,9 @@ pub fn update_vault(id: &str, updates: &Value) -> Option<Vault> {
     let mut current = serde_json::to_value(&cfg.vaults[idx]).ok()?;
     if let (Value::Object(cur), Value::Object(patch)) = (&mut current, updates) {
         for (k, v) in patch {
+            if k == "path" || k == "id" {
+                continue;
+            }
             cur.insert(k.clone(), v.clone());
         }
     }

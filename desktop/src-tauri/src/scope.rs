@@ -110,6 +110,54 @@ impl PathScope {
 
         vault_roots().iter().any(|root| target.starts_with(root))
     }
+
+    /// True when a path is permitted to be registered as a vault root.
+    /// A path is allowed only if:
+    ///   1. It was explicitly picked/granted via a native dialog this session, OR
+    ///   2. It is a descendant directory under the user's default Noteriv directory (`~/Noteriv/<vault-name>`).
+    /// In all cases, it cannot be inside the application's user data dir, nor can it be
+    /// the home directory itself or the root directory.
+    pub fn is_permitted_for_vault(&self, path: &Path) -> bool {
+        let target = resolve(path);
+        if !is_comparable(&target) {
+            return false;
+        }
+
+        if let Ok(data_dir) = dunce::canonicalize(paths::user_data_dir()) {
+            if target.starts_with(&data_dir) {
+                return false;
+            }
+        }
+
+        if target.parent().is_none() {
+            return false;
+        }
+
+        // Home directory itself must never be accepted as a vault root
+        let home = paths::expand_tilde("~");
+        let canon_home = dunce::canonicalize(&home).unwrap_or(home);
+        if target == canon_home {
+            return false;
+        }
+
+        let dialog_granted = self
+            .readable
+            .lock()
+            .map(|set| set.iter().any(|g| target.starts_with(g)))
+            .unwrap_or(false);
+        if dialog_granted {
+            return true;
+        }
+
+        if let Some(default_base) = paths::default_vault_base_dir() {
+            let canon_base = dunce::canonicalize(&default_base).unwrap_or(default_base);
+            if target.starts_with(&canon_base) && target != canon_base {
+                return true;
+            }
+        }
+
+        false
+    }
 }
 
 /// True when a resolved path can be compared against a permitted root.
@@ -280,6 +328,31 @@ mod tests {
         let resolved = resolve(&root.join("does-not-exist-yet.md"));
         assert!(resolved.starts_with(&root));
         assert!(resolved.ends_with("does-not-exist-yet.md"));
+    }
+
+    #[test]
+    fn vault_registration_scope_checks() {
+        let scope = PathScope::default();
+        let home = paths::expand_tilde("~");
+        // Home directory itself must be refused
+        assert!(!scope.is_permitted_for_vault(&home));
+
+        // Arbitrary ungranted path must be refused
+        let arbitrary = tmp("arbitrary");
+        assert!(!scope.is_permitted_for_vault(&arbitrary));
+
+        // Dialog-granted path is allowed
+        scope.grant(&arbitrary.to_string_lossy());
+        assert!(scope.is_permitted_for_vault(&arbitrary));
+        assert!(scope.is_permitted_for_vault(&arbitrary.join("subvault")));
+
+        // Default base child (~/Noteriv/vault1) is allowed
+        if let Some(base) = paths::default_vault_base_dir() {
+            let child = base.join("MyVault");
+            assert!(scope.is_permitted_for_vault(&child));
+            // But base itself is not a vault
+            assert!(!scope.is_permitted_for_vault(&base));
+        }
     }
 
     #[cfg(unix)]

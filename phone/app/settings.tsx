@@ -18,7 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BUILT_IN_THEMES, AccentColors, ThemeDefinition } from '@/constants/theme';
 import { useApp } from '@/context/AppContext';
 import { useTheme } from '@/context/ThemeContext';
-import { KEYS, setItem } from '@/lib/storage';
+import { KEYS, setItem, removeItem } from '@/lib/storage';
 import * as GitSync from '@/lib/provider-sync';
 import { GitProvider } from '@/types';
 import { loadSnippets } from '@/lib/css-snippets';
@@ -180,8 +180,8 @@ export default function SettingsScreen() {
         text: t('phone.settings.disconnect'),
         style: 'destructive',
         onPress: async () => {
-          await AsyncStorage.removeItem(KEYS.GITHUB_TOKEN(vault.id));
-          await AsyncStorage.removeItem(KEYS.GIT_TOKEN(vault.id));
+          await removeItem(KEYS.GITHUB_TOKEN(vault.id));
+          await removeItem(KEYS.GIT_TOKEN(vault.id));
           setGhToken(null);
         },
       },
