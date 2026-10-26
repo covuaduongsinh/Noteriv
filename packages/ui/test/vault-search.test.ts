@@ -75,3 +75,61 @@ describe("VaultSearch", () => {
     expect(onClose).toHaveBeenCalled();
   });
 });
+
+describe("VaultSearch with operators and replace", () => {
+  const settle = () => act(async () => new Promise((r) => setTimeout(r, 20)));
+
+  async function mount(files: Record<string, string>, editNote?: (id: string, f: (t: string) => string | null) => Promise<boolean>) {
+    const { MemoryVaultAdapter } = await import("@noteriv/core/memory-vault-adapter");
+    const adapter = new MemoryVaultAdapter(files);
+    const search = vi.spyOn(adapter, "search");
+    host = document.createElement("div");
+    document.body.appendChild(host);
+    root = createRoot(host);
+    await act(async () => root!.render(createElement(VaultSearch, { adapter, onOpen: vi.fn(), onClose: vi.fn(), debounceMs: 0, editNote })));
+    return { adapter, search, input: host.querySelector<HTMLInputElement>("input.palette-input")! };
+  }
+
+  it("evaluates operators here, listing the matching lines", async () => {
+    const { input, search } = await mount({
+      "Projects/Plan.md": "Meeting with Ann\nother",
+      "Journal/Day.md": "Meeting cancelled",
+    });
+    await typeInto(input, "meeting path:projects");
+    await settle();
+    expect(search).not.toHaveBeenCalled();
+    const options = [...host!.querySelectorAll('[role="option"]')].map((o) => o.textContent);
+    expect(options).toEqual(["Plan:1Meeting with Ann"]);
+  });
+
+  it("explains a query it cannot read", async () => {
+    const { input } = await mount({ "a.md": "x" });
+    await typeInto(input, '"open');
+    await settle();
+    expect(host!.textContent).toContain("Check the search: a quote is not closed");
+  });
+
+  it("replaces in every matching note after a second click, through the host's editor", async () => {
+    const edits: Record<string, string> = {};
+    const files = { "a.md": "old text, old", "b.md": "nothing", "c.md": "OLD here" };
+    const editNote = vi.fn(async (id: string, f: (t: string) => string | null) => {
+      const next = f(files[id as keyof typeof files]);
+      if (next === null) return false;
+      edits[id] = next;
+      return true;
+    });
+    const { input } = await mount(files, editNote);
+    await act(async () => host!.querySelector<HTMLElement>(".search-replace-toggle")!.click());
+    await typeInto(input, '"old"');
+    await settle();
+    await typeInto(host!.querySelector<HTMLInputElement>(".search-replace-input")!, "new");
+    const button = host!.querySelector<HTMLButtonElement>(".search-replace-btn")!;
+    await act(async () => button.click());
+    expect(editNote).not.toHaveBeenCalled(); // first click only asks
+    expect(button.textContent).toBe("Click again to replace in 2 notes");
+    await act(async () => button.click());
+    await settle();
+    expect(edits).toEqual({ "a.md": "new text, new", "c.md": "new here" });
+    expect(host!.textContent).toContain("Replaced in 2 notes");
+  });
+});

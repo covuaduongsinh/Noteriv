@@ -5,7 +5,24 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import dynamic from "next/dynamic";
 import type { EditorView } from "@codemirror/view";
 import SplitPane from "@/components/SplitPane";
-import { QuickOpen, BacklinksPanel, OutlinePanel, TagPane, CommandPalette, BookmarksPanel, ConflictBanner, VaultSearch } from "@noteriv/ui/panels";
+import {
+  QuickOpen,
+  BacklinksPanel,
+  OutgoingLinksPanel,
+  OutlinePanel,
+  TagPane,
+  CommandPalette,
+  BookmarksPanel,
+  ConflictBanner,
+  VaultSearch,
+  PropertiesEditor,
+  PropertiesView,
+  usePropertyTypes,
+  settingsPropertyTypesStore,
+  adapterNoteEditor,
+  type NoteEditor,
+  NoteHoverPreview,
+} from "@noteriv/ui/panels";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, storedLanguage } from "@/lib/i18n";
@@ -15,12 +32,10 @@ import TabBar, { type TabBarTab } from "@/components/TabBar";
 import Ribbon from "@/components/Ribbon";
 import Sidebar from "@/components/Sidebar";
 import NoteToolbar from "@/components/NoteToolbar";
-import FrontmatterEditor from "@/components/FrontmatterEditor";
 import StatusBar from "@/components/StatusBar";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
 import { createUntitledNote } from "@/lib/note-names";
 import { createWebVaultAdapter } from "@/lib/webVaultAdapter";
-import HoverPreview from "@/components/HoverPreview";
 import { setImageLightboxHandler } from "@noteriv/ui/markdown/renderers/images";
 import { setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
 import { CloseIcon } from "@/components/icons";
@@ -72,6 +87,9 @@ import {
 } from "@/lib/hotkeys";
 import { wrapSelection, insertLink, insertImage, insertBlockquote, insertCodeBlock, insertTaskList, insertTable, insertHorizontalRule, insertAtCursor, runFormattingAction } from "@noteriv/ui/editor/editor-commands";
 import { DEFAULT_EDITOR_SETTINGS } from "@/lib/settings";
+import { resolveLinkTarget, rewriteLinksForMoves, updateLinksAfterMove, type LinkUpdateResult, type PathMove } from "@noteriv/core/link-rename";
+import { anchorLine, parseLinkTarget, type Anchor } from "@noteriv/core/note-embed";
+import { bumpEmbedVersion, getEmbedVersion, setEmbedSource } from "@noteriv/ui/markdown/vault-hooks";
 import { useIsPhone } from "@/lib/use-is-phone";
 import TermsGate from "@/components/TermsGate";
 
@@ -125,6 +143,7 @@ const PluginManager = dynamic(() => import("@/components/PluginManager"), { ssr:
 const CSSSnippets = dynamic(() => import("@/components/CSSSnippets"), { ssr: false });
 const SettingsModal = dynamic(() => import("@/components/SettingsModal"), { ssr: false });
 const ImportVault = dynamic(() => import("@/components/ImportVault"), { ssr: false });
+const AppImport = dynamic(() => import("@noteriv/ui/panels").then((m) => m.AppImport), { ssr: false });
 const DiagnosticsModal = dynamic(() => import("@/components/DiagnosticsModal"), { ssr: false });
 const CreateVaultFromGithub = dynamic(() => import("@/components/sync/CreateVaultFromGithub"), { ssr: false });
 const TrashPanel = dynamic(() => import("@/components/TrashPanel"), { ssr: false });
@@ -153,6 +172,8 @@ export default function VaultPage() {
   const searchParams = useSearchParams();
   const vaultId = params.vaultId;
   const vaultAdapter = useMemo(() => createWebVaultAdapter(vaultId), [vaultId]);
+  /** Property types for the vault (one per property name), kept in the vault settings. */
+  const propertyTypes = usePropertyTypes(useMemo(() => settingsPropertyTypesStore(vaultAdapter), [vaultAdapter]));
   const listNotes = useCallback(() => vaultAdapter.listNotes(), [vaultAdapter]);
 
   const [vault, setVault] = useState<ApiVault | null>(null);
@@ -185,13 +206,15 @@ export default function VaultPage() {
   const [sidebarWidth, setSidebarWidth] = useState(DEFAULT_SIDEBAR_WIDTH);
   const [quickOpenVisible, setQuickOpenVisible] = useState(false);
   const [backlinksVisible, setBacklinksVisible] = useState(false);
+  const [outgoingVisible, setOutgoingVisible] = useState(false);
+  const [propertiesVisible, setPropertiesVisible] = useState(false);
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
   /** The vault search box (shared VaultSearch, as on desktop). */
   const [searchVisible, setSearchVisible] = useState(false);
   /** A line to jump to once the note it belongs to is open in the editor (from a search result). */
-  const pendingJumpRef = useRef<{ noteId: string; line: number } | null>(null);
+  const pendingJumpRef = useRef<{ noteId: string; line?: number; anchor?: Anchor } | null>(null);
   /** Asks the sidebar to put a just-created note into rename mode. */
   const [sidebarRenameRequest, setSidebarRenameRequest] = useState<{ id: string; name: string; nonce: number } | null>(null);
   const clearSidebarRenameRequest = useCallback(() => setSidebarRenameRequest(null), []);
@@ -250,6 +273,7 @@ export default function VaultPage() {
   // D5/D6 (docs/plans/2026-10-13-noteriv-web-full-parity.md Phase D nhóm 4).
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [wikilinkHover, setWikilinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
+  const [showAppImport, setShowAppImport] = useState(false);
   const wikilinkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
@@ -383,6 +407,78 @@ export default function VaultPage() {
     refreshIndex();
     void openNoteRef.current(stale.copy.id);
   }
+
+  /**
+   * Notes moved or renamed in the file tree: rewrite the links that pointed at their old paths (setting "Update links
+   * when renaming", on by default). A tab with unsaved edits is not written from here: its text gets the same rewrite
+   * and its own save sends it, against the base it started from.
+   */
+  async function handleNotesMoved(moves: PathMove[], before: string[]) {
+    const renamed = new Map(moves.map((m) => [m.from, m.to]));
+    const backToBefore = new Map(moves.map((m) => [m.to, m.from]));
+    setTabs((prev) =>
+      prev.map((tab) => {
+        const to = renamed.get(tab.path);
+        return to ? { ...tab, path: to, name: to.slice(to.lastIndexOf("/") + 1) } : tab;
+      })
+    );
+    if (!editorSettingsRef.current.autoUpdateLinks) return;
+    const unsavedIds = new Set(tabsRef.current.filter((tab) => tab.content !== tab.savedContent).map((tab) => tab.noteId));
+    let result: LinkUpdateResult;
+    try {
+      result = await updateLinksAfterMove(vaultAdapter, moves, before, (ref) => unsavedIds.has(ref.id));
+    } catch {
+      setPageNotice(t("shell.files.linksNotUpdated"));
+      return;
+    }
+    const byId = new Map(result.changed.map((c) => [c.id, c]));
+    for (const note of result.changed) {
+      serverBaseRef.current[note.id] = note.content;
+      void storeNote({ id: note.id, vaultId, path: note.path, name: note.name, content: note.content });
+    }
+    const rewriteTab = (tab: { path: string; content: string }) => {
+      const sourceAfter = renamed.get(tab.path) ?? tab.path;
+      const sourceBefore = backToBefore.get(sourceAfter) ?? sourceAfter;
+      return rewriteLinksForMoves(tab.content, { sourceBefore, sourceAfter, moves, before });
+    };
+    // A tab with no unsaved text shows the server's new text. One with unsaved text (from before the rename, or typed
+    // while it ran) keeps it, rewritten the same way, and saves it through the usual debounced path; its base is the
+    // server's new text, so that save is not taken for a stale one.
+    const rewritten = new Map<string, string>();
+    for (const tab of tabsRef.current) {
+      if (tab.content === tab.savedContent || !(unsavedIds.has(tab.noteId) || byId.has(tab.noteId))) continue;
+      const content = rewriteTab(tab);
+      if (content !== tab.content) rewritten.set(tab.noteId, content);
+    }
+    setTabs((prev) =>
+      prev.map((tab) => {
+        const note = byId.get(tab.noteId);
+        if (note && tab.content === tab.savedContent) return { ...tab, content: note.content, savedContent: note.content };
+        if (!note && !unsavedIds.has(tab.noteId)) return tab;
+        const content = rewriteTab(tab);
+        return content === tab.content ? tab : { ...tab, content };
+      })
+    );
+    for (const [noteId, content] of rewritten) scheduleSave(noteId, content);
+    const count = result.changed.length + Array.from(rewritten.keys()).filter((id) => !byId.has(id)).length;
+    if (result.failed.length > 0) setPageNotice(t("shell.files.linksNotUpdated"));
+    else if (count > 0) setPageNotice(t("shell.files.linksUpdated", { count }));
+    refreshIndex();
+  }
+
+  /**
+   * Edits from the link panels: a note open in a tab is changed there (the editor shows it, the usual save sends it);
+   * any other note is read and written by the adapter, never over a newer version.
+   */
+  const editNoteInTabs: NoteEditor = async (id, transform) => {
+    const tab = tabsRef.current.find((t) => t.noteId === id);
+    if (!tab) return adapterNoteEditor(vaultAdapter)(id, transform);
+    const next = transform(tab.content);
+    if (next === null || next === tab.content) return false;
+    setTabs((prev) => prev.map((t) => (t.noteId === id ? { ...t, content: transform(t.content) ?? t.content } : t)));
+    scheduleSave(id, next);
+    return true;
+  };
 
   /**
    * A note's text as a tab: the server's (also kept on this device) or, offline, the copy kept here. An edit still
@@ -627,6 +723,8 @@ export default function VaultPage() {
       return ok;
     },
     onVaultChanged: refreshIndex,
+    // `vault.edit` (views, …): a note open in a tab is changed there.
+    editNote: editNoteInTabs,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
@@ -746,13 +844,18 @@ export default function VaultPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [index]);
 
-  // Search results open a note at a line: move the cursor there once that note's editor is ready.
+  // Search results open a note at a line, links to a heading or block (`[[Note#Goals]]`) at that place: move the
+  // cursor there once that note's editor is ready.
   useEffect(() => {
     const pending = pendingJumpRef.current;
     const view = editorViewRef.current;
     if (!pending || pending.noteId !== activeTabId || !view) return;
+    // A heading or block is looked up in the note's own text: wait until the editor holds it (not the previous note's).
+    if (pending.anchor && view.state.doc.toString() !== draft) return;
+    const target = pending.line ?? (pending.anchor ? anchorLine(draft, pending.anchor) : null);
     pendingJumpRef.current = null;
-    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    if (!target) return;
+    const line = view.state.doc.line(Math.min(Math.max(target, 1), view.state.doc.lines));
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
     view.focus();
   }, [activeTabId, editorViewVersion, draft]);
@@ -1184,6 +1287,12 @@ export default function VaultPage() {
       case "toggleBacklinks":
         setBacklinksVisible((v) => !v);
         break;
+      case "toggleOutgoingLinks":
+        setOutgoingVisible((v) => !v);
+        break;
+      case "toggleProperties":
+        setPropertiesVisible((v) => !v);
+        break;
       case "toggleCollab":
         setCollabVisible((v) => !v);
         break;
@@ -1258,6 +1367,9 @@ export default function VaultPage() {
         break;
       case "importNewVault":
         setImportMode("new");
+        break;
+      case "importFromApp":
+        setShowAppImport(true);
         break;
       case "newVaultFromGithub":
         setShowNewFromGithub(true);
@@ -1348,21 +1460,40 @@ export default function VaultPage() {
     if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
     setWikilinkHover(null);
   }
+  // Another tab or view mode replaces the editor (and the link) without the pointer leaving it.
+  useEffect(() => {
+    if (wikilinkHoverTimer.current) clearTimeout(wikilinkHoverTimer.current);
+    setWikilinkHover(null);
+  }, [activeTabId, viewMode]);
 
   /**
    * Opens the note a clicked `[[link]]` names — by path, else by name — or creates it (folders included) when there
    * is none yet, as the link promises.
    */
   async function openWikilink(raw: string) {
-    const target = raw.split("|")[0].split("#")[0].trim();
-    if (!target) return;
-    const wanted = target.replace(/\.md$/i, "").toLowerCase();
+    const parsed = parseLinkTarget(raw);
+    const anchor = parsed.heading || parsed.block ? { heading: parsed.heading, block: parsed.block } : undefined;
+    // `[[#Heading]]`: a place in the note being viewed.
+    if (!parsed.note) {
+      if (anchor && activeTabId) {
+        pendingJumpRef.current = { noteId: activeTabId, anchor };
+        setEditorViewVersion((v) => v + 1);
+      }
+      return;
+    }
+    const target = parsed.note;
+    // Resolved like the editor's links and embeds (same folder first when names repeat).
     const notes = index?.notes ?? [];
-    const base = (p: string) => p.replace(/\.md$/i, "").toLowerCase();
-    const hit =
-      notes.find((n) => base(n.path) === wanted) ??
-      (wanted.includes("/") ? undefined : notes.find((n) => base(n.name) === wanted));
-    if (hit) return openNote(hit.id);
+    const path = resolveLinkTarget(target, activeTab?.path ?? "", notes.map((n) => n.path));
+    const hit = path ? notes.find((n) => n.path === path) : undefined;
+    if (hit) {
+      if (anchor) {
+        pendingJumpRef.current = { noteId: hit.id, anchor };
+        // Already open: nothing else changes, so nudge the jump effect.
+        if (hit.id === activeTabId) setEditorViewVersion((v) => v + 1);
+      }
+      return openNote(hit.id);
+    }
     try {
       const created = await vaultAdapter.createNote(`${target.replace(/\.md$/i, "")}.md`);
       refreshIndex();
@@ -1371,6 +1502,60 @@ export default function VaultPage() {
       setPageNotice(isNetworkError(err) ? t("web.offline.needsNetwork") : t("web.notice.newNoteFailed"));
     }
   }
+
+  // `![[…]]` embeds read notes through this page: an open tab's text (unsaved edits included), else the server's.
+  // `![[pic.png]]` is matched to an attachment by file name.
+  const embedStateRef = useRef({ index, activePath: "", openWikilink });
+  embedStateRef.current = { index, activePath: activeTab?.path ?? "", openWikilink };
+  // A new index means notes changed (saved, renamed, synced): embeds load again.
+  useEffect(() => {
+    if (index) bumpEmbedVersion();
+  }, [index]);
+  useEffect(() => {
+    const noteCache = new Map<string, Promise<string>>();
+    let images: { at: number; list: Promise<{ name: string; url: string }[]> } | null = null;
+    const imageList = () => {
+      if (!images || Date.now() - images.at > 10_000) {
+        images = {
+          at: Date.now(),
+          list: webApi.attachments
+            .list(vaultId)
+            .then(({ attachments }) => attachments.map((a) => ({ name: a.filename, url: webApi.attachments.downloadUrl(vaultId, a.id) })))
+            .catch(() => []),
+        };
+      }
+      return images.list;
+    };
+    setEmbedSource({
+      async load(note) {
+        const { index: idx, activePath } = embedStateRef.current;
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(note)) {
+          const file = note.slice(note.lastIndexOf("/") + 1).toLowerCase();
+          const hit = (await imageList()).find((a) => a.name.toLowerCase() === file);
+          return hit ? { image: hit.url } : null;
+        }
+        const notes = idx?.notes ?? [];
+        const path = resolveLinkTarget(note || activePath, activePath, notes.map((n) => n.path));
+        const hit = path ? notes.find((n) => n.path === path) : undefined;
+        if (!hit) return null;
+        const tab = tabsRef.current.find((t) => t.noteId === hit.id);
+        if (tab) return { path: hit.path, content: tab.content };
+        // Kept until notes change (the version moves on every index refresh, i.e. after saves), so redrawing a page
+        // of embeds does not fetch every note again.
+        const key = `${getEmbedVersion()}:${hit.id}`;
+        let text = noteCache.get(key);
+        if (!text) {
+          if (noteCache.size > 200) noteCache.clear();
+          text = webApi.notes.get(vaultId, hit.id).then((n) => n.content);
+          noteCache.set(key, text);
+          text.catch(() => noteCache.delete(key));
+        }
+        return { path: hit.path, content: await text };
+      },
+      open: (target) => void embedStateRef.current.openWikilink(target),
+    });
+    return () => setEmbedSource(null);
+  }, [vaultId]);
 
   function openNoteByPath(path: string) {
     const note = index?.notes.find((n) => n.path === path);
@@ -1565,9 +1750,12 @@ export default function VaultPage() {
           onUseThisVersion={(originalPath) => useConflictCopy(tab, originalPath)}
         />
         {mode !== "source" && (
-          <FrontmatterEditor
+          <PropertiesEditor
             content={content}
             onChange={onChange}
+            types={propertyTypes.types}
+            onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+            knownKeys={Object.keys(propertyTypes.types)}
             collapsed={frontmatterCollapsed}
             onToggleCollapse={() => setFrontmatterCollapsed((v) => !v)}
           />
@@ -1730,6 +1918,7 @@ export default function VaultPage() {
               onNewNote={handleQuickNewNote}
               renameRequest={sidebarRenameRequest}
               onRenameRequestHandled={clearSidebarRenameRequest}
+              onMoved={(moves, before) => void handleNotesMoved(moves, before)}
             />
           ))}
 
@@ -1816,6 +2005,32 @@ export default function VaultPage() {
                       noteId={activeTab.noteId}
                       onNoteOpen={openNote}
                       onClose={() => setBacklinksVisible(false)}
+                      editNote={editNoteInTabs}
+                    />
+                  </div>
+                )}
+                {propertiesVisible && (
+                  <div className="web-side-panel w-72 border-l border-[var(--border)] overflow-y-auto">
+                    <PropertiesView
+                      adapter={vaultAdapter}
+                      types={propertyTypes.types}
+                      onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+                      onTypeRename={(from, to) => void propertyTypes.renameType(from, to)}
+                      onNoteOpen={openNote}
+                      onClose={() => setPropertiesVisible(false)}
+                      editNote={editNoteInTabs}
+                    />
+                  </div>
+                )}
+                {outgoingVisible && (
+                  <div className="web-side-panel w-72 border-l border-[var(--border)] overflow-y-auto">
+                    <OutgoingLinksPanel
+                      adapter={vaultAdapter}
+                      noteId={activeTab.noteId}
+                      content={activeTab.content}
+                      onNoteOpen={openNote}
+                      onClose={() => setOutgoingVisible(false)}
+                      editNote={editNoteInTabs}
                     />
                   </div>
                 )}
@@ -1903,6 +2118,7 @@ export default function VaultPage() {
             openNote(ref.id);
           }}
           onClose={() => setSearchVisible(false)}
+          editNote={editNoteInTabs}
         />
       )}
 
@@ -2087,13 +2303,7 @@ export default function VaultPage() {
       )}
 
       {wikilinkHover && (
-        <HoverPreview
-          target={wikilinkHover.target}
-          vaultId={vaultId}
-          index={index}
-          position={{ x: wikilinkHover.x, y: wikilinkHover.y }}
-          onDismiss={handleWikilinkLeave}
-        />
+        <NoteHoverPreview target={wikilinkHover.target} position={{ x: wikilinkHover.x, y: wikilinkHover.y }} onDismiss={handleWikilinkLeave} />
       )}
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
@@ -2137,6 +2347,30 @@ export default function VaultPage() {
             setImportMode(null);
             if (id !== vaultId) router.push(`/vaults/${id}`);
             else refreshIndex();
+          }}
+        />
+      )}
+
+      {showAppImport && (
+        <AppImport
+          write={async (result, onProgress, signal) => {
+            const { importConverted } = await import("@/lib/vault-import");
+            const report = await importConverted(vaultId, result, onProgress, signal);
+            refreshIndex();
+            return report;
+          }}
+          existingPaths={async () => (await webApi.vaults.index(vaultId)).notes.map((n) => n.path)}
+          onClose={() => setShowAppImport(false)}
+          onOpen={(path) => {
+            // The index in this render predates the import: the note is looked up in a fresh one.
+            void webApi.vaults
+              .index(vaultId)
+              .then((idx) => {
+                setIndex(idx);
+                const note = idx.notes.find((n) => n.path === path);
+                if (note) openNote(note.id);
+              })
+              .catch(() => undefined);
           }}
         />
       )}

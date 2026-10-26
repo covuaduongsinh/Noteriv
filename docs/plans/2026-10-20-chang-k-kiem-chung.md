@@ -46,6 +46,39 @@ Chủ dự án cần kiểm chứng cả trên **app di động thật**, nên l
   - **M4:** Ghi nhanh, CI job `phone`, tài liệu, APK release ký bằng keystore riêng.
 - **Không làm trong đợt này** (upstream cũng không có): canvas, vẽ, PDF, vim, ghi âm, cộng tác realtime.
 
+## Ngoại lệ 2: lấp khoảng trống so với Obsidian (chốt 2026-10-22)
+
+Chủ dự án chọn **làm luôn cả tính năng lớn** còn thiếu so với Obsidian ngay trong chặng này, song song với việc dùng thật.
+
+- **Nguồn:** chỉ dùng nguồn công khai. Điều khoản của Obsidian cấm dịch ngược và cấm dùng để làm sản phẩm cạnh tranh, nên lần thử dùng REA trên Obsidian đã dừng (xem [moi-mat.md](../kiem-chung/moi-mat.md) mục 4). REA chỉ dùng để soi bản build của chính Noteriv.
+- **Bản đồ khoảng trống:** [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md), gồm G1–G19, chia 4 đợt. **Chủ dự án chốt danh sách và thứ tự trước khi code.**
+- **Mỗi việc là một phiên** `covuaduongsinh/k-obs-<việc>`, cắt từ `main` (dùng worktree riêng nếu nhánh mobile đang dở):
+  1. Viết plan phiên, gồm đặc tả hành vi bằng lời của mình.
+  2. Đặt logic ở `packages/core`/`packages/ui`, đóng gói thành core plugin để web và desktop dùng chung.
+  3. Thêm chuỗi chữ vào i18n en/vi.
+  4. Chạy E2E trên bản build production và smoke desktop 16/16.
+  5. Đẩy staging, rồi hỏi trước khi merge.
+  6. Nếu có migration: backup, chạy `psql -1` lên prod, rồi `migrate resolve`.
+- **Ảnh hưởng:** việc dùng thật hằng ngày và lịch báo cáo quyết định (~2026-12-02) giữ nguyên. Nếu khối lượng làm trễ báo cáo thì hỏi chủ dự án trước khi lùi lịch.
+
+### Kết quả (2026-10-23)
+
+Xong cả 4 đợt trong 11 phiên (O1–O11, PR #26–#36), tất cả đã lên production.
+
+| Đợt | Việc | Phiên |
+|---|---|---|
+| 1. Liên kết và thuộc tính | Đổi tên thì sửa liên kết (G1), liên kết đi ra + nhắc đến chưa liên kết (G3), nhúng note/mục/khối (G2), thuộc tính có kiểu + Tất cả thuộc tính (G4) | O1–O4 |
+| 2. Xem và tìm | Chế độ xem bảng/thẻ/danh sách/kanban, dạng khối và dạng file `.view` (G5); tìm kiếm có toán tử + tìm & thay toàn vault (G6) | O5–O7 |
+| 3. Tiện ích nhỏ | Lệnh `/` (G7), đồ thị cục bộ (G8), note mã thời gian (G9), ô Chú thích cuối trang (G10), xem trước khi rê chuột trên desktop (G11) | O8–O10 |
+| 4. Thu hút người mới | Nhập từ Notion, Evernote, HTML (G12) | O11 |
+
+**Cách làm đã giữ suốt:**
+- Mỗi phiên có review độc lập. Review đã bắt nhiều lỗi thật: mất dữ liệu ở danh sách khi sửa thuộc tính (O4), thay thế ăn vào giữa từ (O6), thuộc tính gán nhầm khi database có hàng trùng tên (O11)…
+- Mỗi phiên chạy E2E web trên bản build production (57 lên 64 test) và smoke desktop (20 lên 22 kiểm tra).
+- Hỏi chủ dự án trước mỗi lần merge.
+
+**Đã dọn ở [phiên K-O12](2026-10-23-phien-k-o12-don-gioi-han.md) (PR #38):** #4 (đồ thị và Vault insights dùng chung một cách phân giải liên kết, nay hiểu cả liên kết dạng đường dẫn), menu `/` không mở trong `$…$`, và nhập dữ liệu có nút huỷ cùng giới hạn dung lượng (1 GB đã chọn, 2 GB sau giải nén, 50 000 file).
+
 ---
 
 ## Tuần 0 – Chuẩn bị (2026-10-20/21)
@@ -112,3 +145,17 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | M2 | App mobile: logic chung, sync | Chưa làm | | |
 | M3 | App mobile: i18n, theme, vault mẫu | Chưa làm | | |
 | M4 | App mobile: Ghi nhanh, CI, APK release | Chưa làm | | |
+| O0 | Obsidian: bản đồ khoảng trống từ nguồn công khai | Xong | 2026-10-22 | [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md); đã dừng dịch ngược vì điều khoản của Obsidian |
+| O1 | G1: đổi tên thì cập nhật liên kết | Xong | 2026-10-22 | [Phiên K-O1](2026-10-22-phien-k-o1-cap-nhat-lien-ket.md); PR #26, đã lên production |
+| O2 | G3: liên kết đi ra + nhắc đến chưa liên kết | Xong | 2026-10-22 | [Phiên K-O2](2026-10-22-phien-k-o2-lien-ket-di-ra.md); PR #27, đã lên production |
+| O3 | G2: nhúng note, section, khối `^id` | Xong | 2026-10-22 | [Phiên K-O3](2026-10-22-phien-k-o3-nhung-note.md); PR #28, đã lên production |
+| O4 | G4: thuộc tính có kiểu + Tất cả thuộc tính | Xong | 2026-10-22 | [Phiên K-O4](2026-10-22-phien-k-o4-thuoc-tinh.md); PR #29, đã lên production; sửa kèm lỗi mất mục list |
+| O5 | G5 (phần 1): khối ```view bảng/thẻ/danh sách/kanban | Xong | 2026-10-22 | [Phiên K-O5](2026-10-22-phien-k-o5-che-do-xem.md); PR #30, đã lên production; loại file `.view` để phiên sau |
+| O6 | G6: tìm kiếm có toán tử + tìm & thay toàn vault | Xong | 2026-10-23 | [Phiên K-O6](2026-10-22-phien-k-o6-tim-kiem.md); PR #31, đã lên production |
+| O7 | G5 (phần 2): file chế độ xem `.view` | Xong | 2026-10-23 | [Phiên K-O7](2026-10-23-phien-k-o7-file-che-do-xem.md); PR #32, đã lên production |
+| O8 | G7: lệnh gạch chéo `/` trong editor | Xong | 2026-10-23 | [Phiên K-O8](2026-10-23-phien-k-o8-lenh-gach-cheo.md); PR #33, đã lên production |
+| O9 | G8: đồ thị cục bộ, độ sâu, màu theo thư mục | Xong | 2026-10-23 | [Phiên K-O9](2026-10-23-phien-k-o9-do-thi-cuc-bo.md); PR #34, đã lên production |
+| O10 | G9 note mã thời gian, G10 ô Chú thích cuối trang, G11 xem trước khi rê chuột trên desktop | Xong | 2026-10-23 | [Phiên K-O10](2026-10-23-phien-k-o10-tien-ich-nho.md); PR #35, đã lên production; hết Đợt 3 |
+| O11 | G12: nhập từ Notion, Evernote, HTML | Xong | 2026-10-23 | [Phiên K-O11](2026-10-23-phien-k-o11-nhap-du-lieu.md); PR #36, đã lên production; hết Đợt 4 |
+| O12 | Dọn giới hạn còn lại: #4, `/` trong công thức, huỷ và giới hạn khi nhập | Xong | 2026-10-23 | [Phiên K-O12](2026-10-23-phien-k-o12-don-gioi-han.md); PR #38 |
+| O2+ | Obsidian: các khoảng trống của 4 đợt | Xong | 2026-10-23 | Làm đủ 4 đợt theo thứ tự chủ dự án chốt (O1–O11). G13–G19 để Chặng 6 hoặc chỉ ghi nhận, theo bản đồ khoảng trống |

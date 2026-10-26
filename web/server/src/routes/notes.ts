@@ -25,10 +25,22 @@ const updateNoteSchema = z.object({
    * Without it, the write is unconditional (collaborative editing, plugins, older clients).
    */
   baseHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
+  /**
+   * SHA-256 (hex) the stored text must still have, or nothing is written: 409 { error: "changed" }, no conflict copy.
+   * For automatic edits (links rewritten after a rename) that should simply be retried on fresh text.
+   */
+  expectHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   frontmatter: z.record(z.any()).optional(),
   name: z.string().min(1).max(255).optional(),
   folderId: z.string().uuid().nullable().optional(),
 });
+
+const containingSchema = z.object({
+  terms: z.array(z.string().min(1).max(255)).min(1).max(200),
+});
+
+/** More notes than this matching one rename is unusual; the cap keeps one request bounded. */
+const CONTAINING_LIMIT = 5000;
 
 export default async function noteRoutes(fastify: FastifyInstance) {
   const { prisma } = fastify;
@@ -49,6 +61,38 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       const note = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!note) return reply.code(404).send({ error: "not_found" });
       return reply.send(note);
+    } catch (err) {
+      if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
+      throw err;
+    }
+  });
+
+  /**
+   * Notes whose text contains any of the given terms (case-insensitive), with that text. The client uses it to find
+   * the notes that may link to a renamed note without fetching every note (packages/core/src/link-rename.ts).
+   */
+  fastify.post("/:vid/notes/containing", async (request, reply) => {
+    const { vid } = request.params as { vid: string };
+    const parsed = containingSchema.safeParse(request.body);
+    if (!parsed.success) return reply.code(400).send({ error: "invalid_body" });
+    try {
+      await assertVaultAccess(vid, request.user!.id);
+      const notes = await prisma.note.findMany({
+        where: {
+          vaultId: vid,
+          deletedAt: null,
+          // Text or file name: a search word may match only the name.
+          OR: parsed.data.terms.flatMap((term) => [
+            { content: { contains: term, mode: "insensitive" as const } },
+            { name: { contains: term, mode: "insensitive" as const } },
+          ]),
+        },
+        select: { id: true, name: true, path: true, content: true },
+        take: CONTAINING_LIMIT + 1,
+      });
+      // Past the cap the client cannot know which notes it missed: it says so and reads every note instead.
+      const truncated = notes.length > CONTAINING_LIMIT;
+      return reply.send({ notes: truncated ? notes.slice(0, CONTAINING_LIMIT) : notes, truncated });
     } catch (err) {
       if (err instanceof VaultAccessError) return reply.code(err.statusCode).send({ error: err.message });
       throw err;
@@ -100,7 +144,11 @@ export default async function noteRoutes(fastify: FastifyInstance) {
       const existing = await prisma.note.findFirst({ where: { id: nid, vaultId: vid, deletedAt: null } });
       if (!existing) return reply.code(404).send({ error: "not_found" });
 
-      const { content, frontmatter, name, folderId, baseHash } = parsed.data;
+      const { content, frontmatter, name, folderId, baseHash, expectHash } = parsed.data;
+
+      if (expectHash && expectHash !== contentHash(existing.content)) {
+        return reply.code(409).send({ error: "changed" });
+      }
 
       if (content !== undefined && baseHash && baseHash !== contentHash(existing.content) && content !== existing.content) {
         // Changed elsewhere since this client read it: keep both. The client's text becomes "<name> (conflict …).md"

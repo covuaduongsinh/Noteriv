@@ -118,6 +118,38 @@ export async function scanZip(zipFile: File): Promise<ImportScan> {
   return finalizeScan(scan);
 }
 
+/**
+ * Puts what an import from another app produced (Notion, Evernote, HTML: notes and attachments at vault paths) through
+ * the same import as a folder: attachments uploaded, links to them rewritten, notes sent in batches. Notes already
+ * at a path are kept.
+ */
+export async function importConverted(
+  vaultId: string,
+  result: { notes: { path: string; content: string }[]; attachments: { path: string; data: Uint8Array }[] },
+  onProgress: (done: number, total: number) => void,
+  signal?: AbortSignal
+): Promise<{ written: number; kept: number; failed: { path: string; error: string }[]; cancelled: boolean }> {
+  const scan: ImportScan = {
+    rootName: "",
+    notes: result.notes.map((n) => ({ path: n.path, size: n.content.length, read: async () => new Blob([n.content], { type: "text/markdown" }) })),
+    attachments: result.attachments.map((a) => ({ path: a.path, size: a.data.length, read: async () => new Blob([a.data as BlobPart]) })),
+    skipped: [],
+  };
+  const files = scan.attachments.length;
+  const total = files + scan.notes.length;
+  const report = await runImport(vaultId, finalizeScan(scan), { onConflict: "skip" }, (p) => {
+    if (p.phase === "attachments") onProgress(p.done, total);
+    else if (p.phase === "notes") onProgress(files + p.done, total);
+    else onProgress(total, total);
+  }, signal);
+  return {
+    written: report.notesCreated + report.notesUpdated + report.attachmentsUploaded + report.attachmentsReused,
+    kept: report.notesSkipped,
+    failed: [...report.failures, ...scan.skipped.map((s) => ({ path: s.path, error: s.reason }))],
+    cancelled: report.cancelled,
+  };
+}
+
 // ── link rewriting ──
 
 function posixDirname(p: string): string {
@@ -334,7 +366,11 @@ export async function runImport(
     }
   }
   await flush();
-  if (stop()) return { ...report, cancelled: true };
+  if (stop()) {
+    // The notes written before the cancel stay: their links across batches still get their backlinks.
+    if (report.notesCreated + report.notesUpdated > 0) await webApi.vaultTransfer.finalize(vaultId).catch(() => undefined);
+    return { ...report, cancelled: true };
+  }
 
   // 3) backlinks across batches
   onProgress({ phase: "finalize", done: 0, total: 1 });

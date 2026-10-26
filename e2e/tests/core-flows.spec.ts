@@ -137,6 +137,261 @@ test("clicking a wiki-link opens the note, or creates it when it does not exist 
   await expect(page.locator(".tab-active")).toContainText("Third idea");
 });
 
+test("renaming a note rewrites the links that point to it", async () => {
+  // "Second" (open in a tab, saved) links to [[Third idea]].
+  const rewritten = noteSaved("[[Third thought]]");
+  await renameViaContextMenu("Third idea", "Third thought");
+  await rewritten;
+  await expect(page.getByText("Updated links in 1 note")).toBeVisible();
+  await sidebarItem("Second").click();
+  await expect(editor()).toContainText("Third thought");
+  await expect(editor()).not.toContainText("Third idea");
+  // The link still resolves: Third thought lists Second as a backlink (the panel may still be open from above).
+  await sidebarItem("Third thought").click();
+  const backlinks = page.locator(".bl-panel .bl-list");
+  if (!(await page.locator(".bl-panel").isVisible())) await page.getByTitle("Backlinks", { exact: true }).click();
+  await expect(backlinks).toContainText("Second");
+});
+
+test("unlinked mentions can be turned into links; Outgoing links lists what a note links to", async () => {
+  // "Third thought" names "Second" without a link.
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const typed = noteSaved("Back to second.");
+  await page.keyboard.type("\n\nBack to second.");
+  await typed;
+
+  await sidebarItem("Second").click();
+  if (!(await page.locator(".bl-panel").isVisible())) await page.getByTitle("Backlinks", { exact: true }).click();
+  const unlinked = page.locator(".bl-unlinked");
+  await expect(unlinked).toContainText("Third thought");
+  // The mention is in a note open in a tab: it is changed there and saved by the tab itself.
+  const linked = noteSaved("Back to [[second]].");
+  await unlinked.locator(".bl-link-btn").first().click();
+  await linked;
+  await expect(unlinked).toContainText("No other note names this one without a link.");
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Outgoing links");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".ol-panel")).toContainText("Third thought");
+  await page.locator(".ol-panel .bl-close").click();
+});
+
+test("embedding a note shows its content; the embed's title opens it", async () => {
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const saved = noteSaved("![[Second#Second]]");
+  await page.keyboard.type("\n\n![[Second#Second");
+  await page.keyboard.press("Escape");
+  await saved;
+  await page.keyboard.press("Control+Home"); // off the embed's line, so it renders
+  const embed = page.locator(".cm-content .md-note-embed").first();
+  await expect(embed).toContainText("The second note.");
+  await expect(embed.locator(".md-note-embed-title")).toHaveText("Second › Second");
+  await embed.locator(".md-note-embed-title").click();
+  await expect(page.locator(".tab-active")).toContainText("Second");
+});
+
+test("a ```view block shows notes by their properties, and a cell edits the note", async () => {
+  // Second gets a status; First holds the view.
+  await sidebarItem("Second").click();
+  const props = page.locator(".fm-editor").first();
+  const created = noteSaved("tags: []");
+  await props.getByRole("button", { name: "Add properties" }).click();
+  await created;
+  if (!(await props.locator(".fm-body").isVisible())) await props.locator(".fm-header").click();
+  await props.getByRole("button", { name: "Add property" }).click();
+  await page.getByPlaceholder("Property name...").fill("status");
+  await page.getByPlaceholder("Property name...").press("Enter");
+  const statusSaved = noteSaved("status: active");
+  const status = props.locator(".fm-property", { has: page.locator(".fm-property-key", { hasText: "status" }) }).locator("input.fm-property-input");
+  await status.fill("active");
+  await status.press("Enter");
+  await statusSaved;
+
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  const toggle = page.locator('[data-core-plugin="views"]').getByRole("switch");
+  if ((await toggle.getAttribute("aria-checked")) !== "true") await toggle.click();
+  await expect(toggle).toHaveAttribute("aria-checked", "true");
+  await page.keyboard.press("Escape");
+
+  await sidebarItem("First").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const viewSaved = noteSaved("where: status exists");
+  // insertText: typed backticks would be paired by the editor.
+  await page.keyboard.insertText("\n\n```view\nwhere: status exists\ncolumns: [file, status]\n```\n");
+  await viewSaved;
+  await page.keyboard.press("Control+Home"); // off the block, so it renders
+  const view = page.locator(".cm-content .nv-view").first();
+  await expect(view.locator("tbody tr")).toHaveCount(1);
+  await expect(view).toContainText("Second");
+  await expect(view).toContainText("active");
+
+  const edited = noteSaved("status: done");
+  await view.locator(".nv-editable").first().click();
+  await view.locator(".nv-input").fill("done");
+  await view.locator(".nv-input").press("Enter");
+  await edited;
+  await expect(view).toContainText("done");
+});
+
+test("New view creates a view file that shows notes; its layout buttons rewrite the file", async () => {
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("New view");
+  await page.keyboard.press("Enter");
+  const file = page.locator(".nv-file");
+  await expect(file.locator(".nv-view tbody tr").first()).toBeVisible();
+  await expect(file.locator(".nv-view")).toContainText("Second");
+  await expect(file.locator(".nv-layout.nv-active")).toHaveText("Table");
+
+  const saved = noteSaved("layout: cards");
+  await file.getByRole("button", { name: "Cards" }).click();
+  await saved;
+  await expect(file.locator(".nv-card").first()).toBeVisible();
+  await expect(file.locator(".nv-layout.nv-active")).toHaveText("Cards");
+});
+
+test("typing / opens the command menu; picking an item formats the line", async () => {
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  await page.keyboard.type("\n/h2");
+  const menu = page.locator(".cm-tooltip-autocomplete");
+  await expect(menu).toContainText("Heading 2");
+  // CodeMirror ignores Enter for 75 ms after a menu first opens (so a key meant for the line is not taken).
+  await page.waitForTimeout(100);
+  const saved = noteSaved("## Slash heading");
+  await page.keyboard.press("Enter");
+  await page.keyboard.type("Slash heading");
+  await saved;
+  await expect(menu).toBeHidden();
+});
+
+test("the local graph shows the open note's links, and All notes the whole vault", async () => {
+  await sidebarItem("Second").click();
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Open local graph");
+  await page.keyboard.press("Enter");
+  const graph = page.locator(".graph-container");
+  await expect(graph.locator(".graph-scope-btn.active")).toHaveText("This note");
+  const notes = graph.locator(".graph-stat-value").first();
+  await expect(notes).not.toHaveText("0");
+  const local = Number(await notes.textContent());
+  await graph.getByRole("button", { name: "All notes" }).click();
+  await expect.poll(async () => Number(await notes.textContent())).toBeGreaterThan(local);
+  await graph.locator(".graph-close-btn").click();
+  await expect(graph).toBeHidden();
+});
+
+test("resting on a link previews the note it names", async () => {
+  await sidebarItem("Third thought").click();
+  await page.keyboard.press("Control+Home");
+  const link = page.locator(".cm-content .md-wikilink", { hasText: "second" }).first();
+  await link.hover();
+  const preview = page.locator(".hp-container");
+  await expect(preview).toContainText("The second note.");
+  // Leaving the link closes it.
+  await page.mouse.move(0, 0);
+  await expect(preview).toBeHidden();
+});
+
+test("Footnotes lists the open note's footnotes; Unique note creator makes a note named by the time", async () => {
+  await page.keyboard.press("Control+Comma");
+  await page.getByText("Core plugins", { exact: true }).click();
+  for (const id of ["footnotes", "unique-note"]) {
+    const toggle = page.locator(`[data-core-plugin="${id}"]`).getByRole("switch");
+    if ((await toggle.getAttribute("aria-checked")) !== "true") await toggle.click();
+    await expect(toggle).toHaveAttribute("aria-checked", "true");
+  }
+  await page.keyboard.press("Escape");
+
+  await sidebarItem("Third thought").click();
+  await editor().click();
+  await page.keyboard.press("Control+End");
+  const saved = noteSaved("[^1]: A footnote for e2e");
+  await page.keyboard.insertText("\nWith a note[^1].\n\n[^1]: A footnote for e2e\n");
+  await saved;
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Toggle Footnotes panel");
+  await page.keyboard.press("Enter");
+  const panel = page.locator(".fn-panel");
+  await expect(panel).toContainText("A footnote for e2e");
+  await expect(panel.locator(".fn-count")).toHaveText("1 footnote");
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("Create unique note");
+  await page.keyboard.press("Enter");
+  await expect(page.locator(".tab-active")).toContainText(/\d{12}/);
+});
+
+test("Import from another app brings in a Notion export and an Evernote notebook", async () => {
+  const JSZip = (await import("jszip")).default;
+  const id1 = "0123456789abcdef0123456789abcdef";
+  const id2 = "fedcba9876543210fedcba9876543210";
+  const zip = new JSZip();
+  zip.file(`Export/Wiki home ${id1}.md`, `# Wiki home\n\nSee [Roadmap](Wiki%20home%20${id1}/Roadmap%20${id2}.md) for e2e.\n`);
+  zip.file(`Export/Wiki home ${id1}/Roadmap ${id2}.md`, "# Roadmap\n\nQ4 e2e plans.\n");
+  const notion = await zip.generateAsync({ type: "nodebuffer" });
+
+  const openDialog = async () => {
+    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.type("Import from Notion");
+    await page.keyboard.press("Enter");
+    await expect(page.locator(".aimp-dialog")).toBeVisible();
+  };
+  await openDialog();
+  const dialog = page.locator(".aimp-dialog");
+  await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Export.zip", mimeType: "application/zip", buffer: notion });
+  await expect(dialog.locator(".aimp-summary")).toContainText("Found 2 notes");
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await expect(dialog).toContainText("Imported 2 items.");
+  await dialog.getByRole("button", { name: "Open the first note" }).click();
+  await expect(page.locator(".tab-active")).toContainText("Wiki home");
+  await expect(editor()).toContainText("for e2e");
+  await expect(page.locator(".cm-content .md-wikilink", { hasText: "Roadmap" })).toBeVisible();
+
+  const enex = `<?xml version="1.0" encoding="UTF-8"?><en-export><note><title>Evernote e2e</title><created>20261001T083000Z</created><tag>imported</tag><content><![CDATA[<en-note><div>From <b>Evernote</b></div></en-note>]]></content></note></en-export>`;
+  await openDialog();
+  await dialog.locator(".aimp-source", { hasText: "Evernote" }).click();
+  await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Book.enex", mimeType: "application/xml", buffer: Buffer.from(enex) });
+  await dialog.getByRole("button", { name: "Import", exact: true }).click();
+  await dialog.getByRole("button", { name: "Open the first note" }).click();
+  await expect(page.locator(".tab-active")).toContainText("Evernote e2e");
+  await expect(editor()).toContainText("From Evernote");
+});
+
+test("typed properties: a number property is set and listed in All properties", async () => {
+  await sidebarItem("Third thought").click();
+  const props = page.locator(".fm-editor").first();
+  const created = noteSaved("tags: []");
+  await props.getByRole("button", { name: "Add properties" }).click();
+  await created;
+  if (!(await props.locator(".fm-body").isVisible())) await props.locator(".fm-header").click();
+  await props.getByRole("button", { name: "Add property" }).click();
+  await page.getByPlaceholder("Property name...").fill("rating");
+  await page.getByPlaceholder("Property name...").press("Enter");
+  const row = props.locator(".fm-property", { has: page.locator(".fm-property-key", { hasText: "rating" }) });
+  await row.locator(".fm-type-select").selectOption("number");
+  await expect(row).toHaveAttribute("data-type", "number");
+  const saved = noteSaved("rating: 5");
+  await row.locator("input.fm-property-input").fill("5");
+  await row.locator("input.fm-property-input").press("Enter");
+  await saved;
+
+  await page.keyboard.press("Control+Shift+P");
+  await page.keyboard.type("All properties");
+  await page.keyboard.press("Enter");
+  const view = page.locator(".pv-panel");
+  await expect(view).toContainText("rating");
+  await expect(view.locator(".pv-row", { hasText: "rating" }).locator(".fm-type-select")).toHaveValue("number");
+  await view.locator(".bl-close").click();
+});
+
 test("search finds the matching line as you type and opens the note there", async () => {
   await sidebarItem("Second").click();
   await page.getByTitle("Search in vault").click();
@@ -153,6 +408,33 @@ test("search finds the matching line as you type and opens the note there", asyn
   await expect(page.locator(".cm-content").first()).toContainText("ZHello e2e world");
   await page.keyboard.press("Backspace");
   await expect(page.locator(".cm-content").first()).not.toContainText("ZHello");
+});
+
+test("search operators narrow results, and replace changes the text in every matching note", async () => {
+  await page.getByTitle("Search in vault").click();
+  const box = page.getByPlaceholder("Search across all notes…");
+  await box.fill('"e2e world" file:first');
+  await expect(page.getByRole("option")).toHaveCount(1);
+  await expect(page.getByRole("option").first()).toContainText("First");
+
+  // Replace there and back (later tests read the original words).
+  const replaceAll = async (from: string, to: string) => {
+    await box.fill(from);
+    await expect(page.getByRole("option").first()).toBeVisible();
+    await page.locator(".search-replace-input").fill(to);
+    const saved = noteSaved(to);
+    await page.locator(".search-replace-btn").click();
+    await expect(page.locator(".search-replace-btn")).toHaveText(/again/);
+    await page.locator(".search-replace-btn").click();
+    await expect(page.getByText(/Replaced in 1 note/)).toBeVisible();
+    await saved;
+  };
+  await page.locator(".search-replace-toggle").click();
+  await replaceAll('"e2e world"', "e2e planet");
+  await replaceAll('"e2e planet"', "e2e world");
+  await box.press("Escape");
+  await sidebarItem("First").click();
+  await expect(editor()).toContainText("Hello e2e world");
 });
 
 test("switching a core plugin on adds its feature", async () => {

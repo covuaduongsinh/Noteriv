@@ -30,6 +30,40 @@
     "toc": {
       "title": "Table of Contents",
       "empty": "No headings found"
+    },
+    "embed": {
+      "open": "Open this note",
+      "loading": "Loading…",
+      "notFound": "“{target}” is not in this vault yet",
+      "anchorNotFound": "“{anchor}” is not in this note",
+      "loop": "This note is already shown above (it embeds itself)",
+      "tooDeep": "Embedded too deep to show",
+      "unavailable": "Embedded notes cannot be shown here"
+    },
+    "slash": {
+      "h1": "Heading 1",
+      "h2": "Heading 2",
+      "h3": "Heading 3",
+      "bullet": "Bulleted list",
+      "numbered": "Numbered list",
+      "task": "Task",
+      "quote": "Quote",
+      "callout": "Callout",
+      "code": "Code block",
+      "math": "Math block",
+      "table": "Table",
+      "divider": "Divider",
+      "bold": "Bold",
+      "italic": "Italic",
+      "strike": "Strikethrough",
+      "highlight": "Highlight",
+      "inlineCode": "Inline code",
+      "link": "Link",
+      "wikilink": "Link to note",
+      "embed": "Embed note",
+      "footnote": "Footnote",
+      "date": "Today's date",
+      "time": "Current time"
     }
   },
   "panels": {
@@ -45,8 +79,31 @@
     "vaultSearch": {
       "placeholder": "Search across all notes…",
       "noResults": "No results found",
-      "hint": "Start typing to search across all notes",
-      "noResultsHint": "Try fewer or different words, or search for a #tag."
+      "hint": "Type to search. Operators: OR, -word, \"phrase\", /regex/, file:, path:, tag:, line:(…), match-case:, [property:value]",
+      "noResultsHint": "Try fewer or different words, or search for a #tag.",
+      "replace": "Replace",
+      "replaceToggle": "Show or hide replace",
+      "replacePlaceholder": "Replace with…",
+      "replaceAll": "Replace all",
+      "replaceConfirm": {
+        "one": "Click again to replace in {count} note",
+        "other": "Click again to replace in {count} notes"
+      },
+      "replaceFailed": "Could not replace: the search failed",
+      "replaceNoTarget": "Replace needs one word, phrase or /regex/ to change (filters like path: are fine; no OR).",
+      "replaced": {
+        "one": "Replaced in {count} note",
+        "other": "Replaced in {count} notes"
+      },
+      "replacedSome": "Replaced in {count} notes; {failed} could not be changed",
+      "invalid": "Check the search: {what}",
+      "errors": {
+        "quote": "a quote is not closed",
+        "regex": "the /regex/ is not valid",
+        "paren": "a parenthesis is not closed",
+        "bracket": "a [property] is not closed",
+        "operator": "an operator has no value"
+      }
     },
     "bookmarks": {
       "title": "Bookmarks",
@@ -92,11 +149,91 @@
       },
       "scanning": "Scanning vault...",
       "empty": "No backlinks found for this note.",
-      "line": "Line {line}"
+      "line": "Line {line}",
+      "unlinked": "Unlinked mentions",
+      "unlinkedEmpty": "No other note names this one without a link.",
+      "link": "Link",
+      "linkTitle": "Turn this mention into a link",
+      "unlinkedFailed": "Could not look for unlinked mentions. Try again later."
     },
     "outline": {
       "title": "Outline",
       "empty": "No headings found"
+    },
+    "outgoing": {
+      "title": "Outgoing links",
+      "empty": "This note has no links.",
+      "unresolved": "“{target}” does not exist yet",
+      "unlinked": "Unlinked mentions",
+      "unlinkedEmpty": "No note names found without a link.",
+      "linkTitle": "Link the first mention of {path}"
+    },
+    "hoverPreview": {
+      "loading": "Loading…",
+      "empty": "This note is empty.",
+      "notFound": "Note not found",
+      "noSection": "This heading or block is not in the note",
+      "readFailed": "Could not load the content"
+    },
+    "appImport": {
+      "title": "Import from another app",
+      "close": "Close",
+      "source": "Import from",
+      "sources": {
+        "notion": {
+          "name": "Notion",
+          "hint": "The .zip from Notion's Export with \"Markdown & CSV\": pages, sub-pages, databases, files."
+        },
+        "evernote": {
+          "name": "Evernote",
+          "hint": "One or more .enex files (export a notebook from Evernote): notes, tags, dates, pictures and files."
+        },
+        "html": {
+          "name": "HTML pages",
+          "hint": "A folder or .zip of HTML pages (Bear, Google Keep from Takeout, saved web pages); Markdown files in it too."
+        }
+      },
+      "pickZip": "Choose file…",
+      "pickEnex": "Choose .enex files…",
+      "pickFolder": "Choose folder…",
+      "reading": "Reading the export…",
+      "found": "Found {notes} notes and {files} attachments.",
+      "skipped": {
+        "one": "{count} file left out",
+        "other": "{count} files left out"
+      },
+      "reasons": {
+        "unsupported": "not a kind of file this import takes",
+        "unreadable": "could not be read",
+        "empty": "empty"
+      },
+      "folder": "Put them in the folder",
+      "folderHint": "A new folder keeps them apart from your notes; nothing already in the vault is overwritten (a note with a taken name gets a number).",
+      "import": "Import",
+      "importing": "Importing… {done}/{total}",
+      "done": {
+        "one": "Imported {count} item.",
+        "other": "Imported {count} items."
+      },
+      "kept": {
+        "one": "{count} item was already at its place in the vault and kept as it was.",
+        "other": "{count} items were already at their place in the vault and kept as they were."
+      },
+      "failed": {
+        "one": "{count} item could not be imported",
+        "other": "{count} items could not be imported"
+      },
+      "open": "Open the first note",
+      "nothing": "No notes in what you picked. Check that it is an export of this kind.",
+      "readFailed": "Could not read what you picked.",
+      "writeFailed": "The import stopped: nothing more could be written. Try again.",
+      "cancel": "Cancel",
+      "stopped": {
+        "one": "Stopped. {count} item was imported before that and stays in the vault.",
+        "other": "Stopped. {count} items were imported before that and stay in the vault."
+      },
+      "tooLarge": "This export is too large to import at once (over {max}). Export it in parts, or a few folders at a time.",
+      "tooManyFiles": "This export has too many files to import at once (over {max}). Export it in parts, or a few folders at a time."
     }
   },
   "settings": {
@@ -236,6 +373,10 @@
       "desc": "Language of the interface.",
       "autoWeb": "Follow the browser",
       "autoDesktop": "Follow the system"
+    },
+    "autoUpdateLinks": {
+      "label": "Update links when renaming",
+      "desc": "Renaming or moving a note rewrites the links that point to it."
     }
   },
   "plugins": {
@@ -458,8 +599,9 @@
     },
     "graph": {
       "name": "Graph view",
-      "description": "Every note and the wiki-links between them; click a note to open it. Ctrl+G or the ribbon button.",
+      "description": "Every note and the wiki-links between them, or the local graph of the open note to a chosen depth; color by folder; click a note to open it. Ctrl+G or the ribbon button.",
       "command": "Open graph view",
+      "localCommand": "Open local graph",
       "title": "Graph View",
       "filter": "Filter nodes...",
       "close": "Close",
@@ -474,7 +616,13 @@
       },
       "oneWay": "one-way",
       "reciprocal": "reciprocal",
-      "legend": "Link direction legend"
+      "legend": "Link direction legend",
+      "allNotes": "All notes",
+      "thisNote": "This note",
+      "noNote": "Open a note first",
+      "depth": "Depth",
+      "colorByFolder": "Color by folder",
+      "rootFolder": "(vault root)"
     },
     "slides": {
       "name": "Slides",
@@ -663,6 +811,57 @@
       "description": "Diagrams from ```mermaid code blocks in the editor, reading view and PDF export. The library loads on the first diagram.",
       "rendering": "Rendering diagram...",
       "error": "Diagram Error"
+    },
+    "views": {
+      "name": "Views",
+      "description": "Show notes by their properties with ```view blocks or view files: a table, cards, a list or a kanban board; edit values in place; Insert view and New view commands.",
+      "insert": "Insert view",
+      "create": "New view",
+      "failed": "Could not create the view.",
+      "notes": {
+        "one": "{count} note",
+        "other": "{count} notes"
+      },
+      "error": "Check the “{setting}” setting of this view.",
+      "empty": "No notes match this view.",
+      "none": "None",
+      "open": "Open note",
+      "edit": "Click to edit",
+      "layouts": {
+        "table": "Table",
+        "cards": "Cards",
+        "list": "List",
+        "kanban": "Kanban"
+      },
+      "fileHint": "Change what this view shows in source mode."
+    },
+    "footnotes": {
+      "name": "Footnotes",
+      "description": "A side panel listing the open note's footnotes and inline footnotes; click one to go to its definition or a reference, see the ones missing a definition or never referred to.",
+      "title": "Footnotes",
+      "command": "Toggle Footnotes panel",
+      "noNote": "Open a note to see its footnotes.",
+      "none": "This note has no footnotes.",
+      "count": {
+        "one": "{count} footnote",
+        "other": "{count} footnotes"
+      },
+      "inline": "inline",
+      "noDefinition": "No definition",
+      "unused": "Not referred to",
+      "goToRef": "Go to reference {n}"
+    },
+    "uniqueNote": {
+      "name": "Unique note creator",
+      "description": "A command that creates a note named by the current time (like 202610231430), in a folder you choose: handy for Zettelkasten-style notes.",
+      "command": "Create unique note",
+      "failed": "Could not create the note.",
+      "settings": "Unique notes",
+      "folder": "Folder",
+      "folderHint": "Where new notes go; empty for the vault root.",
+      "format": "Name format",
+      "preview": "Next note: {path}",
+      "saveFailed": "Could not save the setting."
     }
   },
   "web": {
@@ -725,7 +924,10 @@
         "cssSnippets": "CSS Snippets…",
         "devToolsHint": "Toggle Developer Tools (F12)",
         "reloadApp": "Reload Window",
-        "diagnostics": "Diagnostics…"
+        "diagnostics": "Diagnostics…",
+        "toggleOutgoingLinks": "Outgoing links",
+        "toggleProperties": "All properties",
+        "importFromApp": "Import from Notion, Evernote, HTML…"
       }
     },
     "noteToolbar": {
@@ -898,11 +1100,6 @@
       "new": "New vault",
       "newFromGithub": "New vault from GitHub…",
       "importZip": "Import folder / zip…"
-    },
-    "hoverPreview": {
-      "loading": "Loading…",
-      "readFailed": "Could not load the content",
-      "notFound": "Note not found"
     },
     "collab": {
       "title": "Collaboration",
@@ -1747,7 +1944,12 @@
       "empty": "No notes yet",
       "createNote": "Create a note",
       "resize": "Resize file navigator",
-      "emptyHint": "Write your first note, then type [[ to link it to another."
+      "emptyHint": "Write your first note, then type [[ to link it to another.",
+      "linksUpdated": {
+        "one": "Updated links in {count} note",
+        "other": "Updated links in {count} notes"
+      },
+      "linksNotUpdated": "Some links could not be updated. Check the notes that pointed to the old name."
     },
     "status": {
       "mode": {
@@ -1856,7 +2058,10 @@
     "exportVault": "Export vault as zip",
     "reloadApp": "Reload page (saves first)",
     "diagnostics": "Diagnostics (server, sync, plugins)…",
-    "devToolsHint": "Open browser developer tools (F12)"
+    "devToolsHint": "Open browser developer tools (F12)",
+    "toggleOutgoingLinks": "Toggle Outgoing links",
+    "toggleProperties": "Toggle All properties",
+    "importFromApp": "Import from Notion, Evernote, HTML…"
   },
   "snippets": {
     "loadFailed": "Failed to load community snippets. Check your connection.",
@@ -2012,5 +2217,33 @@
   "files": {
     "untitled": "Untitled",
     "newFolder": "New Folder"
+  },
+  "properties": {
+    "types": {
+      "text": "Text",
+      "list": "List",
+      "number": "Number",
+      "checkbox": "Checkbox",
+      "date": "Date",
+      "datetime": "Date & time",
+      "tags": "Tags"
+    },
+    "typeTitle": "Property type (applies to every note in the vault)",
+    "complex": "Edit in Source mode",
+    "addValue": "Add…",
+    "removeItem": "Remove",
+    "view": {
+      "title": "All properties",
+      "empty": "No note has properties yet.",
+      "failed": "Could not read the notes' properties. Try again later.",
+      "rename": "Rename",
+      "renameHint": "Click to list the notes, double-click to rename",
+      "renamed": {
+        "one": "Renamed in {count} note",
+        "other": "Renamed in {count} notes"
+      },
+      "renamedSome": "Renamed in {count} notes; {skipped} could not be changed",
+      "invalidName": "That name cannot be used for a property: no : # [ ] { } , and no leading - ? ! & * | > quote % @ or backtick."
+    }
   }
 }

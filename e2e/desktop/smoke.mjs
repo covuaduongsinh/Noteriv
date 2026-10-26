@@ -60,6 +60,7 @@ writeFileSync(
   "# Alpha\n\nLink to [[Beta]].\n\nInline math $a^2+b^2$ here.\n\n![pic](pic.png)\n\n![Audio](clip.wav)\n\nsmoke needle line\n"
 );
 writeFileSync(path.join(vault, "Beta.md"), "# Beta\n\nThe second note.\n");
+writeFileSync(path.join(vault, "Embeds.md"), "# Embeds\n\nIntro line.\n\n![[Beta]]\n");
 writeFileSync(path.join(vault, "Alpha (conflict 2026-10-17 0153).md"), "# Alpha\n\nLink to [[Beta]] from the other device.\n");
 writeFileSync(
   path.join(vault, ".noteriv", "plugins", "e2e-panel", "manifest.json"),
@@ -138,7 +139,38 @@ try {
     : null;
   check("local audio clip plays (has a duration)", !!audioState && audioState.error === null && audioState.duration > 0.5, JSON.stringify(audioState));
   check("word count (core plugin) in the status bar", await page.getByText(/^\d+ words?$/).first().isVisible().catch(() => false));
+  // Resting on [[Beta]] previews it
+  // (again if the editor was still drawing the line when the pointer arrived)
+  let hoverText = "";
+  for (let i = 0; i < 3 && !hoverText.includes("The second note."); i++) {
+    await page.mouse.move(0, 0);
+    await page.locator(".cm-content .md-wikilink").first().hover().catch(() => undefined);
+    await page.locator(".hp-container").waitFor({ timeout: 3000 }).catch(() => undefined);
+    hoverText = (await page.locator(".hp-container").textContent().catch(() => "")) ?? "";
+  }
+  await shot("2-hover");
+  check("resting on a link previews the note", hoverText.includes("The second note."), `links=${await page.locator(".cm-content .md-wikilink").count()} preview=${JSON.stringify(hoverText)}`);
+  await page.mouse.move(0, 0);
   await shot("2-note");
+
+  // The properties editor is shown above the note and adds a front matter block to the file
+  await page.locator(".fm-add-frontmatter-btn").first().click().catch(() => undefined);
+  let propsWritten = false;
+  for (let i = 0; i < 20 && !propsWritten; i++) {
+    await sleep(1000);
+    propsWritten = readFileSync(path.join(vault, "Alpha.md"), "utf8").startsWith("---\ntags: []\n---\n");
+  }
+  check("properties editor adds properties to the note", propsWritten);
+
+  // An embedded note shows its content
+  await label("Embeds").click();
+  await page.locator(".cm-content .md-note-embed").first().waitFor({ timeout: 10000 }).catch(() => undefined);
+  await sleep(1000);
+  check(
+    "an embedded note (![[Beta]]) shows its content",
+    (await page.locator(".cm-content .md-note-embed").first().textContent().catch(() => ""))?.includes("The second note.") ?? false
+  );
+  await shot("2b-embed");
 
   // Conflict copy banner
   await label("Alpha (conflict 2026-10-17 0153)").click();
@@ -172,6 +204,53 @@ try {
     saved = readFileSync(path.join(vault, "Alpha.md"), "utf8").includes("autosaved");
   }
   check("auto-save writes the note while editing", saved);
+
+  // Renaming a note rewrites the links to it (Alpha links to [[Beta]])
+  let renameError = "";
+  try {
+    await label("Beta").click({ button: "right" });
+    await shot("4a-menu");
+    await page.locator(".ctx-menu .ctx-item").filter({ hasText: "Rename" }).first().click({ timeout: 5000 });
+    const renameBox = page.locator("input.sb-rename").first();
+    await renameBox.fill("Gamma", { timeout: 5000 });
+    await shot("4a-input");
+    await renameBox.press("Enter");
+  } catch (err) {
+    renameError = String(err).split("\n")[0];
+  }
+  let relinked = false;
+  for (let i = 0; i < 40 && !relinked && !renameError; i++) {
+    await sleep(1000);
+    relinked = readFileSync(path.join(vault, "Alpha.md"), "utf8").includes("[[Gamma]]");
+  }
+  check("renaming a note rewrites the links to it", relinked, renameError || readFileSync(path.join(vault, "Alpha.md"), "utf8").split("\n")[2]);
+  await shot("4b-rename");
+
+  // Import from another app: an Evernote notebook lands in the vault folder
+  let imported = false;
+  let importDetail = "";
+  try {
+    await page.locator(".cm-content").first().click();
+    await page.keyboard.press("Control+Shift+P");
+    await page.keyboard.type("Import from Notion");
+    await page.keyboard.press("Enter");
+    const dialog = page.locator(".aimp-dialog");
+    await dialog.waitFor({ timeout: 5000 });
+    await dialog.locator(".aimp-source", { hasText: "Evernote" }).click();
+    const enex = `<?xml version="1.0"?><en-export><note><title>Smoke import</title><content><![CDATA[<en-note><div>From the smoke enex</div></en-note>]]></content></note></en-export>`;
+    await dialog.locator("[data-testid=aimp-file]").setInputFiles({ name: "Smoke.enex", mimeType: "application/xml", buffer: Buffer.from(enex) });
+    await dialog.getByRole("button", { name: "Import", exact: true }).click();
+    await dialog.getByText("Imported 1 item.").waitFor({ timeout: 10000 });
+    await dialog.getByRole("button", { name: "Close" }).last().click();
+    const file = path.join(vault, "Evernote", "Smoke import.md");
+    for (let i = 0; i < 10 && !imported; i++) {
+      await sleep(500);
+      imported = existsSync(file) && readFileSync(file, "utf8").includes("From the smoke enex");
+    }
+  } catch (err) {
+    importDetail = String(err).split("\n")[0];
+  }
+  check("importing an Evernote notebook writes its notes into the vault", imported, importDetail);
 
   // Community plugin sidebar panel
   await page.getByTitle("Hello panel").click().catch(() => undefined);

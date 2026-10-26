@@ -59,6 +59,13 @@ export function createDesktopVaultAdapter(vaultPath: string): VaultAdapter {
       if (!(await api().writeFile(id, content))) throw new Error(`Could not write ${id}`);
     },
 
+    // Compared just before writing: the file system has no conditional write, but the window is a local read.
+    async writeNoteIfUnchanged(id, content, expected) {
+      if ((await api().readFile(id)) !== expected) return false;
+      if (!(await api().writeFile(id, content))) throw new Error(`Could not write ${id}`);
+      return true;
+    },
+
     async createNote(path, content = "") {
       const target = abs(path);
       if ((await api().readFile(target)) !== null) throw new Error(`Note already exists: ${path}`);

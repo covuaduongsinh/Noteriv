@@ -41,6 +41,7 @@ export interface EditorSettings {
   pdfColumnLayout: 1 | 2;
   pdfChessboardWidth: 75 | 100;
   autoCollapseSidebar: boolean;
+  autoUpdateLinks: boolean;
   /** Interface language; unset follows the browser (web/src/lib/i18n.ts). */
   language?: "en" | "vi";
 }
@@ -282,6 +283,16 @@ export default function SettingsModal({
             onChange={(e) => onEditorSettingsChange({ vimModeEnabled: e.target.checked })}
           />
           <span className="st-hint">{editorSettings.vimModeEnabled ? t("settings.on") : t("settings.off")}</span>
+        </label>
+      </Row>
+      <Row label={t("settings.autoUpdateLinks.label")} desc={t("settings.autoUpdateLinks.desc")}>
+        <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer" }}>
+          <input
+            type="checkbox"
+            checked={editorSettings.autoUpdateLinks}
+            onChange={(e) => onEditorSettingsChange({ autoUpdateLinks: e.target.checked })}
+          />
+          <span className="st-hint">{editorSettings.autoUpdateLinks ? t("settings.on") : t("settings.off")}</span>
         </label>
       </Row>
     </div>

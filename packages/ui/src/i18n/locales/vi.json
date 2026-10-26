@@ -30,6 +30,40 @@
     "toc": {
       "title": "Mục lục",
       "empty": "Không có heading nào"
+    },
+    "embed": {
+      "open": "Mở note này",
+      "loading": "Đang tải…",
+      "notFound": "Vault chưa có “{target}”",
+      "anchorNotFound": "Note này không có “{anchor}”",
+      "loop": "Note này đã hiện ở phía trên (nó tự nhúng chính nó)",
+      "tooDeep": "Nhúng lồng quá sâu, không hiển thị",
+      "unavailable": "Không hiển thị được note nhúng ở đây"
+    },
+    "slash": {
+      "h1": "Tiêu đề 1",
+      "h2": "Tiêu đề 2",
+      "h3": "Tiêu đề 3",
+      "bullet": "Danh sách gạch đầu dòng",
+      "numbered": "Danh sách đánh số",
+      "task": "Việc cần làm",
+      "quote": "Trích dẫn",
+      "callout": "Khung ghi chú",
+      "code": "Khối code",
+      "math": "Khối công thức",
+      "table": "Bảng",
+      "divider": "Đường kẻ ngang",
+      "bold": "In đậm",
+      "italic": "In nghiêng",
+      "strike": "Gạch ngang chữ",
+      "highlight": "Tô sáng",
+      "inlineCode": "Code trong dòng",
+      "link": "Liên kết",
+      "wikilink": "Liên kết tới note",
+      "embed": "Nhúng note",
+      "footnote": "Chú thích cuối trang",
+      "date": "Ngày hôm nay",
+      "time": "Giờ hiện tại"
     }
   },
   "panels": {
@@ -45,8 +79,31 @@
     "vaultSearch": {
       "placeholder": "Tìm trong nội dung các note…",
       "noResults": "Không có kết quả",
-      "hint": "Gõ để tìm trong toàn bộ vault",
-      "noResultsHint": "Thử ít từ hơn hoặc từ khác, hoặc tìm theo #thẻ."
+      "hint": "Gõ để tìm. Toán tử: OR, -từ, \"cụm từ\", /regex/, file:, path:, tag:, line:(…), match-case:, [thuộc_tính:giá_trị]",
+      "noResultsHint": "Thử ít từ hơn hoặc từ khác, hay tìm theo #thẻ.",
+      "replace": "Thay thế",
+      "replaceToggle": "Hiện hoặc ẩn ô thay thế",
+      "replacePlaceholder": "Thay bằng…",
+      "replaceAll": "Thay tất cả",
+      "replaceConfirm": {
+        "one": "Bấm lần nữa để thay trong {count} note",
+        "other": "Bấm lần nữa để thay trong {count} note"
+      },
+      "replaceFailed": "Không thay được: tìm kiếm bị lỗi",
+      "replaceNoTarget": "Thay thế cần đúng một từ, cụm từ hoặc /regex/ để thay (được kèm bộ lọc như path:, không dùng OR).",
+      "replaced": {
+        "one": "Đã thay trong {count} note",
+        "other": "Đã thay trong {count} note"
+      },
+      "replacedSome": "Đã thay trong {count} note; {failed} note không đổi được",
+      "invalid": "Hãy xem lại ô tìm: {what}",
+      "errors": {
+        "quote": "thiếu dấu nháy đóng",
+        "regex": "/regex/ không hợp lệ",
+        "paren": "thiếu dấu ngoặc đóng",
+        "bracket": "thiếu dấu ] của [thuộc tính]",
+        "operator": "toán tử chưa có giá trị"
+      }
     },
     "bookmarks": {
       "title": "Bookmarks",
@@ -90,11 +147,91 @@
       },
       "scanning": "Đang quét vault...",
       "empty": "Chưa có note nào link tới note này.",
-      "line": "Dòng {line}"
+      "line": "Dòng {line}",
+      "unlinked": "Nhắc đến chưa liên kết",
+      "unlinkedEmpty": "Không note nào nhắc tên note này mà chưa có liên kết.",
+      "link": "Liên kết",
+      "linkTitle": "Biến chỗ nhắc đến này thành liên kết",
+      "unlinkedFailed": "Không tìm được các chỗ nhắc đến. Hãy thử lại sau."
     },
     "outline": {
       "title": "Dàn ý",
       "empty": "Không có heading nào"
+    },
+    "outgoing": {
+      "title": "Liên kết đi ra",
+      "empty": "Note này chưa có liên kết nào.",
+      "unresolved": "“{target}” chưa có",
+      "unlinked": "Nhắc đến chưa liên kết",
+      "unlinkedEmpty": "Không thấy tên note nào được nhắc mà chưa liên kết.",
+      "linkTitle": "Liên kết chỗ nhắc đến đầu tiên của {path}"
+    },
+    "hoverPreview": {
+      "loading": "Đang tải…",
+      "empty": "Note này đang trống.",
+      "notFound": "Không tìm thấy note",
+      "noSection": "Note không có tiêu đề hoặc khối này",
+      "readFailed": "Không tải được nội dung"
+    },
+    "appImport": {
+      "title": "Nhập từ app khác",
+      "close": "Đóng",
+      "source": "Nhập từ",
+      "sources": {
+        "notion": {
+          "name": "Notion",
+          "hint": "File .zip từ mục Export của Notion, chọn \"Markdown & CSV\": trang, trang con, database, tệp."
+        },
+        "evernote": {
+          "name": "Evernote",
+          "hint": "Một hoặc nhiều file .enex (xuất sổ tay từ Evernote): note, tag, ngày, ảnh và tệp."
+        },
+        "html": {
+          "name": "Trang HTML",
+          "hint": "Thư mục hoặc .zip trang HTML (Bear, Google Keep từ Takeout, trang web đã lưu); cả file Markdown trong đó."
+        }
+      },
+      "pickZip": "Chọn file…",
+      "pickEnex": "Chọn file .enex…",
+      "pickFolder": "Chọn thư mục…",
+      "reading": "Đang đọc bản xuất…",
+      "found": "Tìm thấy {notes} note và {files} tệp đính kèm.",
+      "skipped": {
+        "one": "Bỏ qua {count} file",
+        "other": "Bỏ qua {count} file"
+      },
+      "reasons": {
+        "unsupported": "không phải loại file mà cách nhập này nhận",
+        "unreadable": "không đọc được",
+        "empty": "trống"
+      },
+      "folder": "Đặt vào thư mục",
+      "folderHint": "Thư mục mới giúp tách riêng khỏi note của bạn; không gì có sẵn trong vault bị ghi đè (note trùng tên được đánh số).",
+      "import": "Nhập",
+      "importing": "Đang nhập… {done}/{total}",
+      "done": {
+        "one": "Đã nhập {count} mục.",
+        "other": "Đã nhập {count} mục."
+      },
+      "kept": {
+        "one": "{count} mục đã có sẵn ở đúng chỗ trong vault nên được giữ nguyên.",
+        "other": "{count} mục đã có sẵn ở đúng chỗ trong vault nên được giữ nguyên."
+      },
+      "failed": {
+        "one": "{count} mục không nhập được",
+        "other": "{count} mục không nhập được"
+      },
+      "open": "Mở note đầu tiên",
+      "nothing": "Không có note nào trong thứ bạn chọn. Hãy kiểm tra đó có đúng là bản xuất loại này không.",
+      "readFailed": "Không đọc được thứ bạn chọn.",
+      "writeFailed": "Việc nhập đã dừng vì không ghi thêm được. Hãy thử lại.",
+      "cancel": "Huỷ",
+      "stopped": {
+        "one": "Đã dừng. {count} mục nhập trước đó vẫn nằm trong vault.",
+        "other": "Đã dừng. {count} mục nhập trước đó vẫn nằm trong vault."
+      },
+      "tooLarge": "Bản xuất này quá lớn để nhập một lần (trên {max}). Hãy xuất thành nhiều phần, hoặc mỗi lần vài thư mục.",
+      "tooManyFiles": "Bản xuất này có quá nhiều file để nhập một lần (trên {max}). Hãy xuất thành nhiều phần, hoặc mỗi lần vài thư mục."
     }
   },
   "settings": {
@@ -229,6 +366,10 @@
       "desc": "Ngôn ngữ của giao diện.",
       "autoWeb": "Theo trình duyệt",
       "autoDesktop": "Theo hệ điều hành"
+    },
+    "autoUpdateLinks": {
+      "label": "Cập nhật liên kết khi đổi tên",
+      "desc": "Đổi tên hoặc chuyển chỗ một note sẽ sửa các liên kết trỏ tới nó."
     }
   },
   "plugins": {
@@ -439,8 +580,9 @@
     },
     "graph": {
       "name": "Graph view",
-      "description": "Sơ đồ mọi note và wiki-link giữa chúng; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
+      "description": "Sơ đồ mọi note và wiki-link giữa chúng, hoặc đồ thị cục bộ của note đang mở theo độ sâu chọn được; tô màu theo thư mục; bấm một note để mở. Ctrl+G hoặc nút ribbon.",
       "command": "Mở graph view",
+      "localCommand": "Mở đồ thị cục bộ",
       "title": "Graph view",
       "filter": "Lọc note...",
       "close": "Đóng",
@@ -454,7 +596,13 @@
       },
       "oneWay": "một chiều",
       "reciprocal": "hai chiều",
-      "legend": "Chú thích chiều liên kết"
+      "legend": "Chú thích chiều liên kết",
+      "allNotes": "Tất cả note",
+      "thisNote": "Note này",
+      "noNote": "Hãy mở một note trước",
+      "depth": "Độ sâu",
+      "colorByFolder": "Tô màu theo thư mục",
+      "rootFolder": "(gốc vault)"
     },
     "slides": {
       "name": "Trình chiếu",
@@ -641,6 +789,57 @@
       "description": "Vẽ sơ đồ từ khối ```mermaid trong editor, chế độ đọc và khi xuất PDF. Thư viện chỉ tải khi gặp sơ đồ đầu tiên.",
       "rendering": "Đang vẽ sơ đồ...",
       "error": "Lỗi sơ đồ"
+    },
+    "views": {
+      "name": "Chế độ xem",
+      "description": "Hiện note theo thuộc tính bằng khối ```view hoặc file chế độ xem: bảng, thẻ, danh sách hoặc kanban; sửa giá trị ngay tại chỗ; lệnh Chèn chế độ xem và Chế độ xem mới.",
+      "insert": "Chèn chế độ xem",
+      "create": "Chế độ xem mới",
+      "failed": "Không tạo được chế độ xem.",
+      "notes": {
+        "one": "{count} note",
+        "other": "{count} note"
+      },
+      "error": "Hãy xem lại mục “{setting}” của chế độ xem này.",
+      "empty": "Không note nào khớp chế độ xem này.",
+      "none": "Không có",
+      "open": "Mở note",
+      "edit": "Bấm để sửa",
+      "layouts": {
+        "table": "Bảng",
+        "cards": "Thẻ",
+        "list": "Danh sách",
+        "kanban": "Kanban"
+      },
+      "fileHint": "Đổi nội dung chế độ xem này trong chế độ source."
+    },
+    "footnotes": {
+      "name": "Chú thích cuối trang",
+      "description": "Ô bên cạnh liệt kê chú thích cuối trang (cả chú thích trong dòng) của note đang mở; bấm để tới định nghĩa hoặc chỗ tham chiếu, thấy ngay chú thích thiếu định nghĩa hoặc chưa được dùng.",
+      "title": "Chú thích cuối trang",
+      "command": "Bật/tắt ô Chú thích cuối trang",
+      "noNote": "Mở một note để xem chú thích của nó.",
+      "none": "Note này chưa có chú thích nào.",
+      "count": {
+        "one": "{count} chú thích",
+        "other": "{count} chú thích"
+      },
+      "inline": "trong dòng",
+      "noDefinition": "Chưa có định nghĩa",
+      "unused": "Chưa được dùng",
+      "goToRef": "Tới chỗ tham chiếu {n}"
+    },
+    "uniqueNote": {
+      "name": "Tạo note mã thời gian",
+      "description": "Lệnh tạo note đặt tên theo thời điểm hiện tại (ví dụ 202610231430) trong thư mục bạn chọn, tiện cho cách ghi chép Zettelkasten.",
+      "command": "Tạo note mã thời gian",
+      "failed": "Không tạo được note.",
+      "settings": "Note mã thời gian",
+      "folder": "Thư mục",
+      "folderHint": "Nơi đặt note mới; để trống là gốc vault.",
+      "format": "Định dạng tên",
+      "preview": "Note kế tiếp: {path}",
+      "saveFailed": "Không lưu được cài đặt."
     }
   },
   "web": {
@@ -703,7 +902,10 @@
         "cssSnippets": "CSS Snippets…",
         "devToolsHint": "Công cụ nhà phát triển (F12)",
         "reloadApp": "Tải lại trang",
-        "diagnostics": "Chẩn đoán…"
+        "diagnostics": "Chẩn đoán…",
+        "toggleOutgoingLinks": "Liên kết đi ra",
+        "toggleProperties": "Tất cả thuộc tính",
+        "importFromApp": "Nhập từ Notion, Evernote, HTML…"
       }
     },
     "noteToolbar": {
@@ -872,11 +1074,6 @@
       "new": "Vault mới",
       "newFromGithub": "Vault mới từ GitHub…",
       "importZip": "Import thư mục / zip…"
-    },
-    "hoverPreview": {
-      "loading": "Đang tải…",
-      "readFailed": "Không tải được nội dung",
-      "notFound": "Không tìm thấy note"
     },
     "collab": {
       "title": "Cộng tác",
@@ -1714,7 +1911,12 @@
       "empty": "Chưa có note nào",
       "createNote": "Tạo một note",
       "resize": "Kéo để đổi độ rộng cây thư mục",
-      "emptyHint": "Viết note đầu tiên, rồi gõ [[ để liên kết tới note khác."
+      "emptyHint": "Viết note đầu tiên, rồi gõ [[ để liên kết tới note khác.",
+      "linksUpdated": {
+        "one": "Đã cập nhật liên kết trong {count} note",
+        "other": "Đã cập nhật liên kết trong {count} note"
+      },
+      "linksNotUpdated": "Không cập nhật được một số liên kết. Hãy xem lại các note từng trỏ tới tên cũ."
     },
     "status": {
       "mode": {
@@ -1821,7 +2023,10 @@
     "exportVault": "Xuất vault ra zip",
     "reloadApp": "Tải lại trang (lưu trước)",
     "diagnostics": "Chẩn đoán (server, đồng bộ, plugin)…",
-    "devToolsHint": "Mở công cụ nhà phát triển của trình duyệt (F12)"
+    "devToolsHint": "Mở công cụ nhà phát triển của trình duyệt (F12)",
+    "toggleOutgoingLinks": "Bật/tắt Liên kết đi ra",
+    "toggleProperties": "Bật/tắt Tất cả thuộc tính",
+    "importFromApp": "Nhập từ Notion, Evernote, HTML…"
   },
   "snippets": {
     "loadFailed": "Không tải được snippet cộng đồng. Kiểm tra kết nối mạng.",
@@ -1973,5 +2178,33 @@
   "files": {
     "untitled": "Chưa đặt tên",
     "newFolder": "Thư mục mới"
+  },
+  "properties": {
+    "types": {
+      "text": "Văn bản",
+      "list": "Danh sách",
+      "number": "Số",
+      "checkbox": "Hộp chọn",
+      "date": "Ngày",
+      "datetime": "Ngày & giờ",
+      "tags": "Thẻ"
+    },
+    "typeTitle": "Kiểu thuộc tính (áp dụng cho mọi note trong vault)",
+    "complex": "Sửa ở chế độ Source",
+    "addValue": "Thêm…",
+    "removeItem": "Bỏ",
+    "view": {
+      "title": "Tất cả thuộc tính",
+      "empty": "Chưa note nào có thuộc tính.",
+      "failed": "Không đọc được thuộc tính của các note. Hãy thử lại sau.",
+      "rename": "Đổi tên",
+      "renameHint": "Bấm để xem các note, bấm đúp để đổi tên",
+      "renamed": {
+        "one": "Đã đổi tên trong {count} note",
+        "other": "Đã đổi tên trong {count} note"
+      },
+      "renamedSome": "Đã đổi tên trong {count} note; {skipped} note không đổi được",
+      "invalidName": "Không dùng được tên này cho thuộc tính: không có : # [ ] { } , và không bắt đầu bằng - ? ! & * | > dấu nháy % @ hay backtick."
+    }
   }
 }

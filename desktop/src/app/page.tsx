@@ -8,7 +8,26 @@ import DocumentTitle from "@/components/DocumentTitle";
 import SplitPane from "@/components/SplitPane";
 import ContextMenu, { ContextMenuItem } from "@/components/ContextMenu";
 import { PluginMirror } from "@noteriv/ui/plugins/sandbox";
-import { QuickOpen, CommandPalette, OutlinePanel, BacklinksPanel, TagPane, BookmarksPanel, ConflictBanner } from "@noteriv/ui/panels";
+import {
+  QuickOpen,
+  CommandPalette,
+  OutlinePanel,
+  BacklinksPanel,
+  OutgoingLinksPanel,
+  PropertiesEditor,
+  PropertiesView,
+  usePropertyTypes,
+  cleanPropertyTypes,
+  type PropertyTypesStore,
+  TagPane,
+  BookmarksPanel,
+  ConflictBanner,
+  adapterNoteEditor,
+  type NoteEditor,
+  NoteHoverPreview,
+  AppImport,
+} from "@noteriv/ui/panels";
+import { writeImportToVault } from "@/lib/app-import";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, languageForStoredSettings } from "@/lib/i18n";
@@ -16,8 +35,10 @@ import { parseConflictCopy } from "@noteriv/core/conflict-copy";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
-import { setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
-import { baseName, refFromAbsolutePath, relativeVaultPath } from "@noteriv/core/vault-adapter";
+import { bumpEmbedVersion, getEmbedVersion, setEmbedSource, setLocalImageLoader, setPostProcessorRunner } from "@noteriv/ui/markdown/vault-hooks";
+import { baseName, refFromAbsolutePath, relativeVaultPath, toPosixPath } from "@noteriv/core/vault-adapter";
+import { notesMovedByRename, resolveLinkTarget, rewriteLinksForMoves, updateLinksAfterMove } from "@noteriv/core/link-rename";
+import { anchorLine, parseLinkTarget, type Anchor } from "@noteriv/core/note-embed";
 import {
   CorePluginRibbonButtons,
   CorePluginStatusItems,
@@ -33,7 +54,6 @@ import {
   useCorePlugins,
 } from "@noteriv/ui/plugins";
 import { desktopCorePluginConfig } from "@/lib/core-plugins";
-import FrontmatterEditor from "@/components/FrontmatterEditor";
 import { isImageFile } from "@/lib/attachment-utils";
 import { trashFile, cleanupOldTrash } from "@/lib/trash-utils";
 import { insertTocPlaceholder, generateTocBlock, updateTocBlocks, hasTocBlock } from "@noteriv/core/toc-utils";
@@ -143,8 +163,24 @@ export default function Home() {
   const [showQuickOpen, setShowQuickOpen] = useState(false);
   const [showVaultSearch, setShowVaultSearch] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showAppImport, setShowAppImport] = useState(false);
+  // A preview of the note a [[link]] names, after the pointer rests on it a moment.
+  const [linkHover, setLinkHover] = useState<{ target: string; x: number; y: number } | null>(null);
+  const linkHoverTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const handleWikilinkHover = useCallback((target: string, x: number, y: number) => {
+    if (linkHoverTimer.current) clearTimeout(linkHoverTimer.current);
+    linkHoverTimer.current = setTimeout(() => setLinkHover({ target, x, y }), 300);
+  }, []);
+  const handleWikilinkLeave = useCallback(() => {
+    if (linkHoverTimer.current) clearTimeout(linkHoverTimer.current);
+    setLinkHover(null);
+  }, []);
+  // Another tab or view mode replaces the editor (and the link) without the pointer leaving it.
+  useEffect(() => handleWikilinkLeave(), [activeTab, viewMode, handleWikilinkLeave]);
   const [showOutline, setShowOutline] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
+  const [showOutgoing, setShowOutgoing] = useState(false);
+  const [showProperties, setShowProperties] = useState(false);
   const [showTagPane, setShowTagPane] = useState(false);
   const [showFileRecovery, setShowFileRecovery] = useState(false);
   const [showAttachments, setShowAttachments] = useState(false);
@@ -154,6 +190,31 @@ export default function Home() {
     () => (activeVaultPath ? createDesktopVaultAdapter(activeVaultPath) : null),
     [activeVaultPath]
   );
+  /**
+   * Property types for the vault (one per property name), kept in the vault itself (`.noteriv/property-types.json`):
+   * the adapter's settings are the whole app's on desktop, shared by every vault.
+   */
+  const propertyTypesStore = useMemo<PropertyTypesStore | null>(() => {
+    if (!activeVaultPath) return null;
+    const sep = activeVaultPath.includes("\\") ? "\\" : "/";
+    const dir = `${activeVaultPath.replace(/[\\/]+$/, "")}${sep}.noteriv`;
+    const file = `${dir}${sep}property-types.json`;
+    return {
+      load: async () => {
+        const text = await window.electronAPI?.readFile(file);
+        try {
+          return cleanPropertyTypes(text ? JSON.parse(text) : {});
+        } catch {
+          return {};
+        }
+      },
+      save: async (types) => {
+        await window.electronAPI?.createDir(dir);
+        await window.electronAPI?.writeFile(file, JSON.stringify(types, null, 2));
+      },
+    };
+  }, [activeVaultPath]);
+  const propertyTypes = usePropertyTypes(propertyTypesStore);
   // The live preview loads local images through the active vault.
   useEffect(() => {
     if (!activeVaultPath) return;
@@ -200,6 +261,13 @@ export default function Home() {
   const [syncStatus, setSyncStatus] = useState<"idle" | "syncing" | "error">("idle");
   /** Shown after a git sync that had to keep both sides of a conflict (click to dismiss). */
   const [syncConflictNotice, setSyncConflictNotice] = useState<string | null>(null);
+  /** "Updated links in N notes" after a rename; hides itself. */
+  const [linkNotice, setLinkNotice] = useState<string | null>(null);
+  useEffect(() => {
+    if (!linkNotice) return;
+    const timer = setTimeout(() => setLinkNotice(null), 5000);
+    return () => clearTimeout(timer);
+  }, [linkNotice]);
   /** Community plugin sidebar panel shown in place of the file tree (`<pluginDbId>:<panelId>`), as on the web. */
   const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [gitChanges, setGitChanges] = useState(0);
@@ -577,6 +645,8 @@ export default function Home() {
     if (appState !== "app" || !window.electronAPI?.onVaultChanged) return;
     const unsub = window.electronAPI.onVaultChanged((changedPath: string) => {
       setSidebarRefresh((n) => n + 1);
+      bumpEmbedVersion(); // embeds of the changed note load again
+
       setTabs((prev) => {
         const tab = prev.find((t) => t.filePath === changedPath);
         if (!tab) return prev;
@@ -881,7 +951,7 @@ export default function Home() {
           return { ...t, filePath: newPath };
         }
         // Handle files inside a renamed folder
-        if (t.filePath.startsWith(oldPath + "/")) {
+        if (t.filePath.startsWith(oldPath + "/") || t.filePath.startsWith(oldPath + "\\")) {
           return { ...t, filePath: t.filePath.replace(oldPath, newPath) };
         }
         return t;
@@ -889,19 +959,83 @@ export default function Home() {
     );
     if (activeTab === oldPath) {
       setActiveTab(newPath);
-    } else if (activeTab?.startsWith(oldPath + "/")) {
+    } else if (activeTab?.startsWith(oldPath + "/") || activeTab?.startsWith(oldPath + "\\")) {
       setActiveTab(activeTab.replace(oldPath, newPath));
     }
-  }, [activeTab]);
+    void updateLinksForRename(oldPath, newPath);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, vaultAdapter, activeVaultPath]);
+
+  /**
+   * Edits from the link panels: a note open in a tab is changed there (the editor shows it and autosave writes it;
+   * writing the file under it would let the vault watcher replace unsaved text); any other note goes through the
+   * adapter, never over a newer version.
+   */
+  const editNoteInTabs: NoteEditor = async (id, transform) => {
+    const key = (p: string) => toPosixPath(p).toLowerCase();
+    const tab = tabsRef.current.find((t) => !t.kind && key(t.filePath) === key(id));
+    if (!tab) return vaultAdapter ? adapterNoteEditor(vaultAdapter)(id, transform) : false;
+    const next = transform(tab.content);
+    if (next === null || next === tab.content) return false;
+    setTabs((prev) => prev.map((t) => (t === tab || (!t.kind && key(t.filePath) === key(id)) ? { ...t, content: transform(t.content) ?? t.content } : t)));
+    // A discrete edit, not typing: saved by the 5 s loop rather than the editor auto-save (30 s, or off).
+    quickSaveRef.current.add(tab.filePath);
+    return true;
+  };
+
+  /**
+   * After a note or folder is renamed or moved on disk, rewrite the links that pointed at the old paths (setting
+   * "Update links when renaming", on by default). A tab with unsaved edits is not written here: its text gets the
+   * same rewrite and autosave writes it (the vault watcher would otherwise replace the unsaved text with the file's).
+   */
+  const updateLinksForRename = async (oldPath: string, newPath: string) => {
+    if (!vaultAdapter || !activeVaultPath || !window.electronAPI || !settingsRef.current.autoUpdateLinks) return;
+    try {
+      const notes = await window.electronAPI.listAllFiles(activeVaultPath);
+      const plan = notesMovedByRename(activeVaultPath, oldPath, newPath, notes.map((n) => n.filePath));
+      if (!plan) return;
+      const key = (p: string) => toPosixPath(p).toLowerCase();
+      const unsaved = new Set(tabsRef.current.filter((tab) => !tab.kind && tab.content !== tab.savedContent).map((tab) => key(tab.filePath)));
+      const result = await updateLinksAfterMove(vaultAdapter, plan.moves, plan.before, (ref) => unsaved.has(key(ref.id)));
+      const written = new Map(result.changed.map((c) => [key(c.id), c.content]));
+      const backToBefore = new Map(plan.moves.map((m) => [m.to.toLowerCase(), m.from]));
+      const rewrite = (tab: { filePath: string; content: string }) => {
+        const sourceAfter = relativeVaultPath(activeVaultPath, tab.filePath);
+        const sourceBefore = backToBefore.get(sourceAfter.toLowerCase()) ?? sourceAfter;
+        return rewriteLinksForMoves(tab.content, { sourceBefore, sourceAfter, moves: plan.moves, before: plan.before });
+      };
+      const rewritten = tabsRef.current.filter((tab) => unsaved.has(key(tab.filePath)) && rewrite(tab) !== tab.content);
+      const rewrittenTabs = rewritten.length;
+      for (const tab of rewritten) quickSaveRef.current.add(tab.filePath);
+      // Decided against each tab's text at update time: a clean tab shows the file's new text; one with unsaved text
+      // (from before, or typed while the rewrite ran) keeps it, rewritten the same way, for autosave to write.
+      setTabs((prev) =>
+        prev.map((tab) => {
+          const fresh = written.get(key(tab.filePath));
+          if (fresh !== undefined && tab.content === tab.savedContent) return { ...tab, content: fresh, savedContent: fresh };
+          if (fresh === undefined && !unsaved.has(key(tab.filePath))) return tab;
+          const content = rewrite(tab);
+          return content === tab.content ? tab : { ...tab, content };
+        })
+      );
+      const count = result.changed.length + rewrittenTabs;
+      if (result.failed.length > 0) setLinkNotice(t("shell.files.linksNotUpdated"));
+      else if (count > 0) setLinkNotice(t("shell.files.linksUpdated", { count }));
+    } catch {
+      setLinkNotice(t("shell.files.linksNotUpdated"));
+    }
+  };
 
   const handleRenameCurrentFile = useCallback(async (newName: string) => {
     if (!window.electronAPI || !currentTab) return;
     const oldPath = currentTab.filePath;
-    const dir = oldPath.substring(0, oldPath.lastIndexOf("/"));
-    const oldFileName = oldPath.split("/").pop() || "";
+    // Either separator: Windows paths from the file listing end in `\name`.
+    const cut = Math.max(oldPath.lastIndexOf("/"), oldPath.lastIndexOf("\\"));
+    const dir = oldPath.substring(0, cut);
+    const oldFileName = oldPath.substring(cut + 1);
     const ext = oldFileName.match(/\.(md|markdown)$/i)?.[0] || ".md";
     const newFileName = newName + ext;
-    const newPath = `${dir}/${newFileName}`;
+    const newPath = `${dir}${oldPath[cut] ?? "/"}${newFileName}`;
     if (newPath === oldPath) return;
     const success = await window.electronAPI.rename(oldPath, newPath);
     if (success) {
@@ -918,7 +1052,7 @@ export default function Home() {
 
   const handleMoveFile = useCallback(async (sourcePath: string, destDir: string) => {
     if (!window.electronAPI) return;
-    const name = sourcePath.split("/").pop() || "";
+    const name = sourcePath.split(/[\\/]/).pop() || "";
     const newPath = `${destDir}/${name}`;
     if (newPath === sourcePath) return;
     const success = await window.electronAPI.rename(sourcePath, newPath);
@@ -1193,14 +1327,17 @@ export default function Home() {
     }
   }, [zenMode]);
 
-  /** A line to jump to once its file is open in the editor (from a search result). */
-  const pendingJumpRef = useRef<{ filePath: string; line: number } | null>(null);
+  /** A line to jump to once its file is open in the editor (a search result), or a heading/block a link names. */
+  const pendingJumpRef = useRef<{ filePath: string; line?: number; anchor?: Anchor } | null>(null);
   const jumpIfPending = useCallback(() => {
     const pending = pendingJumpRef.current;
     const view = editorViewRef.current;
     if (!pending || !view || activeTabRef.current !== pending.filePath) return;
+    const target = pending.line ?? (pending.anchor ? anchorLine(view.state.doc.toString(), pending.anchor) : null);
+    // The editor may still hold the previous note's text: keep the jump for when this note's text arrives.
+    if (!target) return;
     pendingJumpRef.current = null;
-    const line = view.state.doc.line(Math.min(Math.max(pending.line, 1), view.state.doc.lines));
+    const line = view.state.doc.line(Math.min(Math.max(target, 1), view.state.doc.lines));
     view.dispatch({ selection: { anchor: line.from }, scrollIntoView: true });
     view.focus();
   }, []);
@@ -1209,14 +1346,85 @@ export default function Home() {
     jumpIfPending();
   }, [jumpIfPending]);
   const openFileAtLine = useCallback(
-    async (filePath: string, line?: number) => {
-      if (line !== undefined) pendingJumpRef.current = { filePath, line };
+    async (filePath: string, line?: number, anchor?: Anchor) => {
+      if (line !== undefined || anchor) pendingJumpRef.current = { filePath, line, anchor };
       await openFile(filePath);
       // The editor may already be showing this file (no new view): try now, then once the content has landed.
       setTimeout(jumpIfPending, 50);
     },
     [openFile, jumpIfPending]
   );
+
+  /**
+   * Opens what a `[[link]]` names: the note (resolved from the open note, like the editor's links), at the heading or
+   * block after `#` when there is one; `[[#Heading]]` jumps within the open note.
+   */
+  const openWikilinkTarget = useCallback(
+    async (raw: string) => {
+      if (!window.electronAPI || !activeVault) return;
+      const parsed = parseLinkTarget(raw);
+      const anchor = parsed.heading || parsed.block ? { heading: parsed.heading, block: parsed.block } : undefined;
+      const current = activeTabRef.current;
+      if (!parsed.note) {
+        if (anchor && current) {
+          pendingJumpRef.current = { filePath: current, anchor };
+          jumpIfPending();
+        }
+        return;
+      }
+      const files = await window.electronAPI.listAllFiles(activeVault.path);
+      const rels = files.map((f) => relativeVaultPath(activeVault.path, f.filePath));
+      const from = current ? relativeVaultPath(activeVault.path, current) : "";
+      const path = resolveLinkTarget(parsed.note, from, rels);
+      const match = path ? files[rels.indexOf(path)] : undefined;
+      if (match) await openFileAtLine(match.filePath, undefined, anchor);
+    },
+    [activeVault, openFileAtLine, jumpIfPending]
+  );
+
+  // `![[…]]` embeds read notes through this window: an open tab's text (unsaved edits included), else the file.
+  // `![[pic.png]]` is loaded like the editor's local images.
+  const embedStateRef = useRef({ openWikilinkTarget });
+  embedStateRef.current = { openWikilinkTarget };
+  useEffect(() => {
+    if (!activeVault) return;
+    const vaultPath = activeVault.path;
+    const images = createDesktopImageLoader(vaultPath);
+    // The vault's file list, kept until notes change (the vault watcher bumps the embed version): a page of embeds
+    // lists the vault once, not once per embed.
+    let listing: { version: number; files: Promise<{ filePath: string }[]> } | null = null;
+    const vaultFiles = () => {
+      if (!listing || listing.version !== getEmbedVersion()) {
+        listing = { version: getEmbedVersion(), files: window.electronAPI.listAllFiles(vaultPath) };
+      }
+      return listing.files;
+    };
+    setEmbedSource({
+      async load(note) {
+        if (!window.electronAPI) return null;
+        if (/\.(png|jpe?g|gif|webp|svg|bmp|avif)$/i.test(note)) {
+          const abs = images.resolve(note);
+          const data = abs ? await images.load(abs) : null;
+          const ext = note.slice(note.lastIndexOf(".") + 1).toLowerCase();
+          const mime = ext === "svg" ? "image/svg+xml" : ext === "jpg" ? "image/jpeg" : `image/${ext}`;
+          return data ? { image: `data:${mime};base64,${data}` } : null;
+        }
+        const files = await vaultFiles();
+        const rels = files.map((f) => relativeVaultPath(vaultPath, f.filePath));
+        const current = activeTabRef.current;
+        const from = current ? relativeVaultPath(vaultPath, current) : "";
+        const path = resolveLinkTarget(note || from, from, rels);
+        if (!path) return null;
+        const file = files[rels.indexOf(path)].filePath;
+        const key = (p: string) => toPosixPath(p).toLowerCase();
+        const tab = tabsRef.current.find((t) => !t.kind && key(t.filePath) === key(file));
+        const content = tab ? tab.content : await window.electronAPI.readFile(file);
+        return content === null ? null : { path, content };
+      },
+      open: (target) => void embedStateRef.current.openWikilinkTarget(target),
+    });
+    return () => setEmbedSource(null);
+  }, [activeVault]);
 
   // Wiki link click handler — global mousedown capture
   useEffect(() => {
@@ -1230,21 +1438,12 @@ export default function Home() {
 
       e.stopImmediatePropagation();
       e.preventDefault();
-
-      const normalized = linkTarget.replace(/\.md$/i, "").toLowerCase();
-      window.electronAPI.listAllFiles(activeVault.path).then((files) => {
-        const match = files.find((f) => {
-          const rel = f.relativePath.replace(/\.(md|markdown)$/i, "").toLowerCase();
-          const name = (f.filePath.split("/").pop() || "").replace(/\.(md|markdown)$/i, "").toLowerCase();
-          return name === normalized || rel === normalized;
-        });
-        if (match) openFile(match.filePath);
-      });
+      void openWikilinkTarget(linkTarget);
     };
 
     document.addEventListener("mousedown", handleWikiClick, true);
     return () => document.removeEventListener("mousedown", handleWikiClick, true);
-  }, [activeVault, openFile]);
+  }, [activeVault, openWikilinkTarget]);
 
   // External link click handler — open in system browser
   useEffect(() => {
@@ -1366,6 +1565,8 @@ export default function Home() {
       gitSync: handleGitSync,
       toggleOutline: () => setShowOutline((o) => !o),
       toggleBacklinks: () => setShowBacklinks((b) => !b),
+      toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
+      toggleProperties: () => setShowProperties((p) => !p),
       toggleTags: () => setShowTagPane((t) => !t),
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -1380,6 +1581,7 @@ export default function Home() {
       publishNote: handlePublish,
       startCollab: () => setShowCollab(true),
       openTrash: () => setShowTrash(true),
+      importFromApp: () => setShowAppImport(true),
       togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
       splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
       closeSplit: handleCloseSplit,
@@ -1540,6 +1742,8 @@ export default function Home() {
         toggleOutline: () => setShowOutline((o) => !o),
         // New features
         toggleBacklinks: () => setShowBacklinks((b) => !b),
+        toggleOutgoingLinks: () => setShowOutgoing((o) => !o),
+        toggleProperties: () => setShowProperties((p) => !p),
         toggleTags: () => setShowTagPane((t) => !t),
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
@@ -1554,6 +1758,7 @@ export default function Home() {
         publishNote: handlePublish,
         startCollab: () => setShowCollab(true),
         openTrash: () => setShowTrash(true),
+        importFromApp: () => setShowAppImport(true),
         togglePinTab: () => { if (activeTab) handleTogglePin(activeTab); },
         splitEditor: () => { if (activeTab) handleSplitRight(activeTab); },
         closeSplit: handleCloseSplit,
@@ -1654,6 +1859,8 @@ export default function Home() {
       return true;
     },
     onVaultChanged: () => setSidebarRefresh((k) => k + 1),
+    // `vault.edit` (views, …): a note open in a tab is changed there.
+    editNote: editNoteInTabs,
   });
   const corePlugins = useCorePlugins(corePluginHost.host);
   useCorePluginHotkeys(corePlugins.contributions.commands);
@@ -1974,6 +2181,21 @@ export default function Home() {
                     onKeepOriginal={handleDeleteFile}
                     onUseThisVersion={useConflictCopy}
                   />
+                  {!zenMode && !mainFileView && viewMode !== "source" && (
+                    <PropertiesEditor
+                      content={content}
+                      onChange={(next) => {
+                        handleContentChange(next);
+                        // A discrete edit, not typing: saved by the 5 s loop rather than the editor auto-save.
+                        quickSaveRef.current.add(currentTab.filePath);
+                      }}
+                      types={propertyTypes.types}
+                      onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+                      knownKeys={Object.keys(propertyTypes.types)}
+                      collapsed={frontmatterCollapsed}
+                      onToggleCollapse={() => setFrontmatterCollapsed((v) => !v)}
+                    />
+                  )}
                   {!zenMode &&
                     !mainFileView &&
                     viewMode !== "view" && (
@@ -1993,7 +2215,7 @@ export default function Home() {
                     ) : viewMode === "source" ? (
                       <SourceEditor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" />
                     ) : (
-                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} />
+                      <Editor content={content} onChange={handleContentChange} onViewReady={handleEditorViewReady} adapter={vaultAdapter} wikilinkLabel="path" onImageDrop={onImageDrop} focusMode={focusMode} onWikilinkHover={handleWikilinkHover} onWikilinkLeave={handleWikilinkLeave} />
                     )}
                   </div>
                 </div>
@@ -2101,6 +2323,28 @@ export default function Home() {
             noteId={currentTab.filePath}
             onNoteOpen={openFile}
             onClose={() => setShowBacklinks(false)}
+            editNote={editNoteInTabs}
+          />
+        )}
+        {showProperties && vaultAdapter && (
+          <PropertiesView
+            adapter={vaultAdapter}
+            types={propertyTypes.types}
+            onTypeChange={(key, type) => void propertyTypes.setType(key, type)}
+            onTypeRename={(from, to) => void propertyTypes.renameType(from, to)}
+            onNoteOpen={openFile}
+            onClose={() => setShowProperties(false)}
+            editNote={editNoteInTabs}
+          />
+        )}
+        {showOutgoing && vaultAdapter && currentTab && !currentTab.kind && (
+          <OutgoingLinksPanel
+            adapter={vaultAdapter}
+            noteId={currentTab.filePath}
+            content={currentTab.content}
+            onNoteOpen={openFile}
+            onClose={() => setShowOutgoing(false)}
+            editNote={editNoteInTabs}
           />
         )}
         <TagPane
@@ -2208,6 +2452,24 @@ export default function Home() {
         />
       )}
 
+      {linkHover && <NoteHoverPreview target={linkHover.target} position={{ x: linkHover.x, y: linkHover.y }} onDismiss={handleWikilinkLeave} />}
+
+      {showAppImport && activeVault && (
+        <AppImport
+          write={async (result, onProgress, signal) => {
+            const report = await writeImportToVault(activeVault.path, result, onProgress, signal);
+            setSidebarRefresh((k) => k + 1);
+            return report;
+          }}
+          existingPaths={async () => (await window.electronAPI.listAllFiles(activeVault.path)).map((f) => relativeVaultPath(activeVault.path, f.filePath))}
+          onClose={() => setShowAppImport(false)}
+          onOpen={(path) => {
+            const sep = activeVault.path.includes("\\") ? "\\" : "/";
+            void openFile(`${activeVault.path.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+          }}
+        />
+      )}
+
       {/* Quick open (Ctrl+P) */}
       {showQuickOpen && activeVault && (
         <QuickOpen
@@ -2224,6 +2486,7 @@ export default function Home() {
           adapter={vaultAdapter}
           onOpen={(ref, line) => void openFileAtLine(ref.id, line)}
           onClose={() => setShowVaultSearch(false)}
+          editNote={editNoteInTabs}
         />
       )}
 
@@ -2373,8 +2636,18 @@ export default function Home() {
       <div ref={sandboxHost.containerRef} style={{ display: "none" }} />
 
       {/* Notices from plugins (api.ui.showNotice) and from sync */}
-      {corePluginHost.notices.length + sandboxHost.notices.length > 0 || syncConflictNotice ? (
+      {corePluginHost.notices.length + sandboxHost.notices.length > 0 || syncConflictNotice || linkNotice ? (
         <div className="fixed right-4 z-50 flex flex-col gap-2" style={{ bottom: 36 }}>
+          {linkNotice && (
+            <div
+              onClick={() => setLinkNotice(null)}
+              role="status"
+              className="px-3 py-2 rounded-lg bg-[var(--bg-tertiary)] border border-[var(--border)] text-sm cursor-pointer shadow-lg"
+              style={{ maxWidth: 420 }}
+            >
+              {linkNotice}
+            </div>
+          )}
           {syncConflictNotice && (
             <div
               onClick={() => setSyncConflictNotice(null)}

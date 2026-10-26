@@ -11,7 +11,7 @@
  * here; the sandbox offers the mirrored-HTML subset that existed before v1 (see the spec, "Sandbox subset").
  */
 
-export const PLUGIN_API_VERSION = "1.0.0-draft.10";
+export const PLUGIN_API_VERSION = "1.0.0-draft.11";
 
 // ─── Permissions (community tier) ───
 
@@ -77,6 +77,14 @@ export interface VaultApi {
   list(dir?: string): Promise<VaultEntry[]>;
   exists(path: string): Promise<boolean>;
   delete(path: string): Promise<boolean>;
+  /**
+   * Core tier only. Changes a note's text with `transform` (return null to leave it): through the note's open tab when
+   * it has one (the tab shows the change and saves it), otherwise written only if the note did not change in between.
+   * Resolves to whether the note changed. Prefer it to `write` for editing a note the user may have open.
+   */
+  edit(path: string, transform: (text: string) => string | null): Promise<boolean>;
+  /** Core tier only. The front matter block (`---` … `---`) of every note that has one, with the note's path. */
+  frontmatter(): Promise<{ path: string; block: string }[]>;
   /** Core tier only. Creation / last-change time of every note, keyed by vault-relative path (absent: unknown). */
   stats(): Promise<Record<string, NoteStats>>;
   /**

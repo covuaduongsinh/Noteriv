@@ -29,6 +29,8 @@ export type HotkeyAction =
   | "toggleOutline"
   | "toggleTags"
   | "toggleBacklinks"
+  | "toggleOutgoingLinks"
+  | "toggleProperties"
   | "toggleCollab"
   | "exportPDF"
   | "previewPDF"
@@ -62,6 +64,7 @@ export type HotkeyAction =
   | "importVault"
   | "exportVault"
   | "importNewVault"
+  | "importFromApp"
   | "newVaultFromGithub"
   | "randomNote"
   | "zenMode"
@@ -96,6 +99,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "toggleOutline", label: "Toggle Outline", keys: "Ctrl+Shift+O", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
+  { action: "toggleOutgoingLinks", label: "Toggle Outgoing links", keys: "", category: "View" },
+  { action: "toggleProperties", label: "Toggle All properties", keys: "", category: "View" },
   { action: "toggleCollab", label: "Toggle Collaboration", keys: "", category: "View" },
   { action: "splitEditor", label: "Split Editor", keys: "Ctrl+\\", category: "View" },
   { action: "closeSplit", label: "Close Split", keys: "Ctrl+Shift+\\", category: "View" },
@@ -110,6 +115,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   { action: "themePicker", label: "Themes", keys: "", category: "Ecosystem" },
   { action: "importVault", label: "Import folder / zip into this vault…", keys: "", category: "File" },
   { action: "importNewVault", label: "Import folder / zip as a new vault…", keys: "", category: "File" },
+  { action: "importFromApp", label: "Import from Notion, Evernote, HTML…", keys: "", category: "File" },
   { action: "newVaultFromGithub", label: "New vault from GitHub repo…", keys: "", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "", category: "Navigation" },
   { action: "zenMode", label: "Zen Mode (hide all chrome)", keys: "Ctrl+Shift+Z", category: "View" },

@@ -46,6 +46,8 @@ export type HotkeyAction =
   | "toggleOutline"
   // New features
   | "toggleBacklinks"
+  | "toggleOutgoingLinks"
+  | "toggleProperties"
   | "toggleTags"
   | "toggleBookmark"
   | "randomNote"
@@ -61,6 +63,7 @@ export type HotkeyAction =
   | "publishNote"
   | "startCollab"
   | "openTrash"
+  | "importFromApp"
   | "togglePinTab"
   | "splitEditor"
   | "closeSplit";
@@ -129,6 +132,8 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
 
   // New features
   { action: "toggleBacklinks", label: "Toggle Backlinks", keys: "", category: "View" },
+  { action: "toggleOutgoingLinks", label: "Toggle Outgoing links", keys: "", category: "View" },
+  { action: "toggleProperties", label: "Toggle All properties", keys: "", category: "View" },
   { action: "toggleTags", label: "Toggle Tag Pane", keys: "", category: "View" },
   { action: "toggleBookmark", label: "Toggle Bookmark", keys: "Ctrl+Shift+B", category: "File" },
   { action: "randomNote", label: "Open Random Note", keys: "Ctrl+Shift+R", category: "Navigation" },
@@ -147,6 +152,7 @@ export const DEFAULT_HOTKEYS: HotkeyBinding[] = [
   // PDF
   // Trash
   { action: "openTrash", label: "Open Trash", keys: "", category: "File" },
+  { action: "importFromApp", label: "Import from Notion, Evernote, HTML…", keys: "", category: "File" },
   // Tab pinning
   { action: "togglePinTab", label: "Pin/Unpin Tab", keys: "Ctrl+Shift+T", category: "File" },
   // Note history & lint
