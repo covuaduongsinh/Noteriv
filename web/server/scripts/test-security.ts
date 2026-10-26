@@ -116,7 +116,8 @@ try {
 } catch (err) {
   refused = String(err);
 }
-check("a local remote is refused by default", /not allowed|transport|not a public address/i.test(refused), refused);
+// Refused by the host check ("D:\…" parses as a URL without a host; "/tmp/…" does not parse) or by git's transport list.
+check("a local remote is refused by default", /not allowed|transport|not a public address|invalid remote URL/i.test(refused), refused);
 
 process.env.SYNC_ALLOW_LOCAL_REMOTES = "1";
 const wc2 = path.join(root, "wc2");
