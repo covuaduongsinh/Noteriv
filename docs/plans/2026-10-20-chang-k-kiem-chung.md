@@ -134,12 +134,17 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | Tuần | Nội dung | Trạng thái | Ngày | Ghi chú |
 |---|---|---|---|---|
 | 0 | Chuẩn bị | Đang làm | 2026-10-20 | Đã tạo mẫu, đã chốt tiêu chí và trọng số; còn: nhập ghi chú thật, ghi số liệu nền |
-| 1 | Dùng thật + kịch bản | Đang làm | 21–27/10 | Phần Claude (2026-10-26): kịch bản 20 đạt có vướng; 16–17 chờ cho phép ghi vault thử vào database dev; số liệu nền VPS đã ghi (số tài khoản/note chờ chủ dự án xem `/admin/stats`). Phần chủ dự án (nhật ký, kịch bản C, nhập ghi chú thật) chưa có ghi nhận |
-| 2 | Dùng thật + kịch bản + bắt đầu đối thủ | Đang làm | 28/10–3/11 | Làm sớm (2026-10-26): hồ sơ bàn giấy đủ 12 app cộng Noteriv, có nguồn và ngày tra; điểm bàn giấy; bản nháp mục 5–6 của [doi-thu.md](../kiem-chung/doi-thu.md) |
-| 3 | Đối thủ + mọi mặt | Chưa làm | 4–10/11 | |
-| 4 | Đối thủ (dùng thử 4 app) + mọi mặt | Chưa làm | 11–17/11 | |
+| 1 | Dùng thật + kịch bản + vá lỗi bảo mật | Xong phần kỹ thuật | 21–27/10 | K-B1 (PR #47), K-B2 (PR #49), K-B3 (PR #50), Lỗi #5 (PR #51) đã merge main. Phần chủ dự án: chờ ghi nhật ký hồi cứu và thử kịch bản C trên máy thật |
+| 2 | Dùng thật + đối thủ + mọi mặt | Đang làm (vượt tiến độ) | 28/10–3/11 | Đã hoàn thành hồ sơ 12 đối thủ, xác minh sandbox plugin, khảo sát nhãn hiệu, giả thuyết giá & điểm hoà vốn, đánh giá năng lực 1 người + AI |
+| 3 | Đối thủ + mọi mặt | Đang làm sớm | 4–10/11 | Đã điền xong chi phí theo quy mô, pháp lý, mô hình MoR Polar/Lemon Squeezy |
+| 4 | Đối thủ (dùng thử 4 app) + mọi mặt | Chưa làm | 11–17/11 | Chờ chủ dự án dùng thử 4 app tiêu biểu (Obsidian, Notion, Anytype/AFFiNE, Bear) |
 | 5 | Mọi mặt + sửa lỗi cuối | Chưa làm | 18–24/11 | |
 | 6 | Báo cáo quyết định | Chưa làm | 25/11–1/12 | |
+| B1 | Bảo mật worker sync (C1–C3, H1) | Xong | 2026-10-26 | [Phiên K-B1](2026-10-26-phien-k-b1-bao-mat-server.md); PR #47, đã merge; vá symlink, branch, host nội bộ |
+| B2 | Bảo mật desktop & phone | Xong | 2026-10-26 | [Phiên K-B2](2026-10-26-phien-k-b2-bao-mat-desktop-phone.md); PR #49, đã merge; WebDAV path traversal, git scope, SecureStore, allowBackup |
+| B3 | Bảo mật server (Mức Trung bình & Thấp) | Xong | 2026-10-26 | [Phiên K-B3](2026-10-26-phien-k-b3-bao-mat-server.md); PR #50, đã merge; email verification, attachment header, refresh token replay, non-root |
+| #5 | Đọc note hàng loạt cho plugin (scanVault) | Xong | 2026-10-26 | [Phiên Lỗi #5](2026-10-26-phien-loi-5-doc-note-hang-loat.md); PR #51, đã merge; xoá bỏ nghẽn 300 req/phút của plugin |
+| KC | Kiểm chứng đối thủ, nhãn hiệu, giá & năng lực | Xong | 2026-10-26 | [Phiên K-Claude](2026-10-26-phien-k-claude-kiem-chung.md); xác minh sandbox/tiếng Việt, 10 nhãn hiệu, điểm hoà vốn, chiến lược ngách cờ vua |
 | M1 | App mobile: khôi phục, APK debug | Xong | 2026-10-21 | [Phiên K-M1](2026-10-21-phien-k-m1-khoi-phuc-phone.md); `phone/` lấy từ upstream `013fa8c`; APK chạy trên máy thật |
 | M1b | App mobile: bật/tắt core plugin như web | Xong | 2026-10-26 | [Phiên K-M1b](2026-10-21-phien-k-m1b-core-plugins-phone.md); PR #39 (gộp cả M1), đã merge; sửa sync qua 2 lượt review; APK mới chưa thử trên máy thật |
 | M2 | App mobile: logic chung, sync | Xong | 2026-10-26 | [Phiên K-M2](2026-10-26-phien-k-m2-dung-chung-sync.md); PR #41, đã merge |
