@@ -10,9 +10,13 @@ import { getNoteGitHistory, getNoteContentAtCommit } from "../lib/noteHistory.js
 import { contentHash } from "../lib/contentHash.js";
 import { conflictCopyPath } from "../lib/gitSync.js";
 import { logAudit } from "../lib/auditLog.js";
+import { vaultSegmentError } from "../lib/vaultPaths.js";
+
+// A name is one path segment: no "/", "..", ".git" (it becomes a file under the sync working copy).
+const noteName = z.string().min(1).max(255).refine((n) => vaultSegmentError(n) === null, "invalid_name");
 
 const createNoteSchema = z.object({
-  name: z.string().min(1).max(255),
+  name: noteName,
   folderId: z.string().uuid().nullable().optional(),
   content: z.string().default(""),
 });
@@ -31,7 +35,7 @@ const updateNoteSchema = z.object({
    */
   expectHash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   frontmatter: z.record(z.any()).optional(),
-  name: z.string().min(1).max(255).optional(),
+  name: noteName.optional(),
   folderId: z.string().uuid().nullable().optional(),
 });
 

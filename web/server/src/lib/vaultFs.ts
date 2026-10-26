@@ -8,6 +8,7 @@ import path from "node:path";
 import { recomputeBacklinksForNote } from "./backlinks.js";
 import { snapshotBeforeOverwrite } from "./noteSnapshots.js";
 import { trashNote } from "./trash.js";
+import { isSafeVaultPath, safeJoin } from "./vaultPaths.js";
 import { conflictCopyPath } from "./gitSync.js";
 
 export interface ImportOptions {
@@ -43,7 +44,12 @@ export async function exportNotesToDir(
 
   await mkdir(dir, { recursive: true });
   for (const note of notes) {
-    const dest = path.join(dir, note.path.replace(/\//g, path.sep));
+    // A path that is not a safe vault path (older data: "..", ".git") is left out of the working copy.
+    if (!isSafeVaultPath(note.path)) {
+      console.warn(`[sync] skipped unsafe note path ${JSON.stringify(note.path)} in vault ${vaultId}`);
+      continue;
+    }
+    const dest = safeJoin(dir, note.path);
     await mkdir(path.dirname(dest), { recursive: true });
     await writeFile(dest, transform(note.path, note.content), "utf8");
   }
@@ -98,8 +104,10 @@ export async function importDirToNotes(
       const full = path.join(cur, entry.name);
       if (entry.isDirectory()) {
         await recurse(full);
-      } else if (entry.name.toLowerCase().endsWith(".md")) {
-        files.push({ rel: path.relative(dir, full).replace(/\\/g, "/"), full });
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        // Regular files only: a symlink in a remote repository could point anywhere on this machine.
+        const rel = path.relative(dir, full).replace(/\\/g, "/");
+        if (isSafeVaultPath(rel)) files.push({ rel, full });
       }
     }
   }
@@ -223,8 +231,10 @@ export async function importNewNotesOnly(
       const full = path.join(cur, entry.name);
       if (entry.isDirectory()) {
         await recurse(full);
-      } else if (entry.name.toLowerCase().endsWith(".md")) {
-        files.push({ rel: path.relative(dir, full).replace(/\\/g, "/"), full });
+      } else if (entry.isFile() && entry.name.toLowerCase().endsWith(".md")) {
+        // Regular files only: a symlink in a remote repository could point anywhere on this machine.
+        const rel = path.relative(dir, full).replace(/\\/g, "/");
+        if (isSafeVaultPath(rel)) files.push({ rel, full });
       }
     }
   }
