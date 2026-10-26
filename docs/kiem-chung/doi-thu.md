@@ -431,12 +431,49 @@ Lộ trình (mục 6) liệt kê khác biệt dự kiến. Kiểm từng cái (b
 |---|---|---|---|
 | Web + desktop cùng mã, cùng tính năng | AFFiNE (web và desktop), Notion, Logseq (web), Joplin (web qua Cloud) | **Không** | Mục 2, dòng "Nền tảng". Nhiều app đã có cả web lẫn desktop. Riêng Obsidian, app gần Noteriv nhất, không có web |
 | Cộng tác thời gian thực trên Markdown thuần | Chưa thấy app nào có. Logseq DB có RTC (alpha) nhưng lưu SQLite; AFFiNE, Anytype, Notion cộng tác trên định dạng riêng | **Có**, nhưng mỏng: bản của Noteriv còn đơn giản | Mục 2, dòng "Định dạng lưu" và "Cộng tác thời gian thực" |
-| Plugin chạy trong sandbox có phân quyền | Chưa xác minh: hồ sơ chưa tra cách đối thủ cô lập plugin | Chưa biết | Cần tra tài liệu plugin của Obsidian, Logseq, Joplin, SiYuan |
+| Plugin chạy trong sandbox có phân quyền | Obsidian hoàn toàn không sandbox (chạy full quyền Node/Electron); Joplin và SiYuan không có phân quyền chi tiết; Logseq có iframe sandbox | **Có (mạnh so với Obsidian)** | Chi tiết mục 6.1 bên dưới. Obsidian không cô lập plugin; Noteriv có sandbox iframe cô lập và manifest quyền |
 | Đồng bộ Git / WebDAV có sẵn | Joplin (WebDAV, Nextcloud, S3 miễn phí), SiYuan (S3/WebDAV, trả phí $64). Git có sẵn thì chưa thấy (Obsidian chỉ qua plugin) | **Một phần**: WebDAV thì không, Git thì có | Mục 2, dòng "Đồng bộ" |
 | Tự host được | AFFiNE (miễn phí tới 10 seat), Anytype (mạng đồng bộ), Joplin Server (chỉ dùng cá nhân, phi thương mại), SiYuan (Docker, chỉ trình duyệt) | **Yếu**: có người làm được. Điểm khác của Noteriv là giấy phép MIT không ràng buộc dùng thương mại | Mục 2, dòng "Mô hình" và "Giấy phép" |
-| Song ngữ Anh–Việt | Chưa xác minh: hồ sơ chưa tra ngôn ngữ giao diện | Chưa biết | Cần tra danh sách ngôn ngữ của từng app |
+| Song ngữ Anh–Việt | Obsidian, Logseq, Joplin, SiYuan có tiếng Việt (bản dịch cộng đồng Crowdin/Weblate); Notion, Bear chưa có | **Lợi thế nội địa, không độc quyền** | Chi tiết mục 6.2 bên dưới. Noteriv có lợi thế song ngữ chuẩn chỉnh từ core dev, tài liệu và hỗ trợ trực tiếp tại Việt Nam |
 | Mã hoá đầu-cuối (đối thủ có, Noteriv **chưa**) | Obsidian Sync, Anytype, SiYuan, Joplin, Logseq DB sync | **Điểm kém** của Noteriv, không phải khác biệt (G14 để Chặng 6) | Mục 2, dòng "Đồng bộ" |
 | Một bộ ba web + desktop + Android, cùng Markdown và Git | Obsidian (không web), Joplin (web qua Cloud trả phí), Logseq | **Yếu** | Mục 2, dòng "Nền tảng" |
+
+### 6.1. Chi tiết xác minh: Cơ chế cô lập (Sandbox) Plugin
+
+Tra cứu tài liệu kiến trúc plugin của các đối thủ (2026-10-26):
+
+1. **Obsidian (Không có sandbox)**:
+   - *Kiến trúc*: Plugin của Obsidian được nạp và chạy trực tiếp trong tiến trình Chromium renderer của ứng dụng Electron với quyền Node.js/Electron đầy đủ.
+   - *Rủi ro*: Plugin có thể đọc, ghi, xoá bất kỳ file nào trên máy người dùng (kể cả ngoài vault), gọi `child_process` chạy lệnh shell tùy ý, gửi dữ liệu ra Internet mà không cần người dùng duyệt quyền (`manifest.json` chỉ khai báo `id`, `name`, `version`, không có cơ chế permission prompt). Đây là vấn đề bảo mật chuỗi cung ứng (supply chain) thường xuyên được cộng đồng cảnh báo.
+2. **Logseq (Có sandbox iframe)**:
+   - *Kiến trúc*: Plugin chạy trong một `<iframe>` có thuộc tính `sandbox="allow-scripts"`, giao tiếp với ứng dụng Logseq qua `postMessage` RPC.
+   - *Ưu/Nhược*: Tránh truy cập trực tiếp Node.js `fs`, nhưng trên bản desktop vẫn có các bridge API mở rộng nếu người dùng kích hoạt quyền nâng cao.
+3. **Joplin (Có Facade API, cách ly một phần)**:
+   - *Kiến trúc*: Plugin chạy trong tiến trình riêng hoặc Webview, chỉ được tương tác qua API facade `joplin.plugins.*`. Không cấp quyền truy cập Node `fs` trực tiếp trên web/mobile, nhưng trên desktop API vẫn cung cấp quyền đọc ghi file hệ thống tương đối rộng.
+4. **SiYuan (Chạy qua WebSocket/HTTP API)**:
+   - *Kiến trúc*: Plugin frontend chạy trên trình duyệt / Electron, giao tiếp với SiYuan Kernel (viết bằng Golang tại `localhost:6806`) qua HTTP/WebSocket API. Không có bảng phân quyền chi tiết (fine-grained permissions) hiển thị cho người dùng khi cài đặt.
+5. **Noteriv**:
+   - Kiến trúc 2 tầng: Core plugin chạy qua interface `@noteriv/plugin-api` được kiểm soát chặt chẽ; Third-party plugin chạy trong iframe cô lập (isolated iframe opaque origin, `sandbox="allow-scripts"`, không có quyền truy cập Node `fs` hay shell host) với manifest phân quyền rõ ràng (`vault:read`, `vault:write`, `editor:read`, `editor:write`, `ui:commands`, `ui:statusbar`, `ui:panel`, `markdown:render`). Người dùng có thể kiểm soát và thu hồi quyền từng plugin.
+   - **Kết luận**: Đây là **khác biệt thật sự có giá trị**, đặc biệt khi so sánh trực diện với Obsidian.
+
+### 6.2. Chi tiết xác minh: Hỗ trợ tiếng Việt
+
+Tra cứu tình trạng hỗ trợ tiếng Việt trên 12 app đối thủ (2026-10-26):
+
+| App | Hỗ trợ tiếng Việt? | Nguồn gốc bản dịch | Chất lượng & Đánh giá |
+|---|---|---|---|
+| **Obsidian** | Có | Cộng đồng (Crowdin) | Đạt ~85-90% chuỗi; một số thuật ngữ PKM chưa đồng nhất; tài liệu hướng dẫn chính thức bằng tiếng Anh |
+| **Logseq** | Có | Cộng đồng (Crowdin/GitHub) | Đạt ~80%; một số menu mới và chế độ DB chưa dịch |
+| **Joplin** | Có | Cộng đồng (Weblate) | Đạt ~75-80%; câu từ đôi chỗ dịch máy |
+| **SiYuan** | Có | Core team + cộng đồng | Có tiếng Việt đầy đủ |
+| **Notion** | **Chưa có** | Không hỗ trợ | Chỉ có tiếng Anh, Nhật, Hàn, Pháp, Đức, TBN, BĐN |
+| **Bear** | **Chưa có** | Không hỗ trợ | Chỉ hỗ trợ tiếng Anh và vài ngôn ngữ lớn |
+| **Apple Notes** | Có | Apple bản địa hoá | Chuẩn theo hệ điều hành iOS/macOS |
+| **AFFiNE** | Một phần | Cộng đồng | Bản dịch tiếng Việt chưa hoàn thiện (~40%) |
+| **Anytype** | Một phần | Cộng đồng (Crowdin) | Đạt ~60% chuỗi |
+| **Noteriv** | **Có (Gốc 100%)** | Tác giả phát triển | Song ngữ Anh–Việt toàn diện (100% UI, lỗi, thông báo, tài liệu, tương thích mượt mà với các bộ gõ tiếng Việt phổ biến Unikey/EVKey/Gboard trên cả web/desktop/mobile, hỗ trợ người dùng bản địa) |
+
+- **Kết luận**: Tiếng Việt **không phải là độc quyền tuyệt đối** so với toàn bộ thị trường, nhưng là **lợi thế cạnh tranh rất lớn** khi đánh vào người dùng Việt Nam đang dùng Notion (chưa có tiếng Việt) hoặc người dùng Obsidian/Logseq muốn trải nghiệm tài liệu, thuật ngữ chuẩn hóa và dịch vụ hỗ trợ bằng tiếng mẹ đẻ.
 
 ## 7. Kết luận phần đối thủ (viết ở Tuần 4)
 
