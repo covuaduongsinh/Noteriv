@@ -14,6 +14,7 @@ import type { Readable } from "node:stream";
 import path from "node:path";
 import { getObjectStream, putObject, makeStorageKey } from "./attachments.js";
 import { limitsOf, ownerOfVault, planForUser, usageFor } from "./plans.js";
+import { isSafeVaultPath, prepareWrite, vaultSegmentError } from "./vaultPaths.js";
 import { isAssetFile, MAX_ASSET_BYTES } from "./attachmentLinks.js";
 
 /** What went wrong with attachments during one sync; the note sync itself carries on. */
@@ -45,7 +46,9 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 function safeName(filename: string): string {
-  return filename.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(-150) || "file";
+  const name = filename.replace(/[\\/:*?"<>|\u0000-\u001f]/g, "_").slice(-150);
+  // "", "." and ".." are not file names; ".git" is reserved.
+  return vaultSegmentError(name) === null ? name : `_${name || "file"}`;
 }
 
 const sha256 = (b: Buffer) => createHash("sha256").update(b).digest("hex");
@@ -81,7 +84,8 @@ export async function exportAttachmentsToDir(
       await prisma.attachment.update({ where: { id: a.id }, data: { syncPath: rel } });
     }
 
-    const dest = path.join(dir, rel.split("/").join(path.sep));
+    if (!isSafeVaultPath(rel)) continue;
+    const dest = await prepareWrite(dir, rel);
     let upToDate = false;
     if (existsSync(dest)) upToDate = (await stat(dest)).size === a.size;
     if (!upToDate) {
@@ -135,7 +139,8 @@ export async function importAttachmentsFromDir(
       if (SKIP_DIRS.has(e.name)) continue;
       const full = path.join(cur, e.name);
       if (e.isDirectory()) await walk(full);
-      else if (isAssetFile(e.name)) {
+      // Regular files only (a symlink could point anywhere on this machine), under safe paths.
+      else if (e.isFile() && isAssetFile(e.name) && isSafeVaultPath(path.relative(dir, full).split(path.sep).join("/"))) {
         const size = (await stat(full)).size;
         if (size <= MAX_ASSET_BYTES) found.push({ rel: path.relative(dir, full).split(path.sep).join("/"), full, size });
       }

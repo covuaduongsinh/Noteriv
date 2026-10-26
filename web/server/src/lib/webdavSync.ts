@@ -6,6 +6,8 @@ import { XMLParser } from "fast-xml-parser";
 import { readdir, readFile, writeFile, mkdir, stat, unlink } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { isSafeVaultPath, prepareWrite } from "./vaultPaths.js";
+import { assertPublicRemote } from "./remoteHost.js";
 import { conflictCopyPath } from "./gitSync.js";
 
 const SYNC_EXTS = new Set([".md", ".markdown"]);
@@ -37,7 +39,7 @@ async function walkLocalFiles(base: string): Promise<LocalFile[]> {
       const full = path.join(cur, entry.name);
       if (entry.isDirectory()) {
         await recurse(full);
-      } else {
+      } else if (entry.isFile()) {
         const ext = path.extname(entry.name).toLowerCase();
         if (SYNC_EXTS.has(ext)) {
           const s = await stat(full);
@@ -56,6 +58,8 @@ function buildClient(cfg: WebdavConfig): AxiosInstance {
     auth: { username: cfg.username, password: cfg.password },
     headers: { "User-Agent": "Noteriv" },
     validateStatus: () => true, // we check status manually (WebDAV uses 207 Multi-Status)
+    // No redirects: a server could send the request on to an address inside our network and return its answer.
+    maxRedirects: 0,
   });
 }
 
@@ -107,7 +111,8 @@ function parsePropfind(xml: string, basePath: string): WebdavEntry[] {
     rel = rel.replace(/^\/+/, "").replace(/\/+$/, "");
 
     const mtimeMs = lastModRaw ? Date.parse(lastModRaw) || 0 : 0;
-    if (rel) out.push({ rel, href: decoded, isDir: !!isDir, mtimeMs, tag: etag ? `etag:${etag}` : `mtime:${mtimeMs}` });
+    // A server's listing may not name anything outside the synced folder ("..", ".git", absolute paths).
+    if (rel && isSafeVaultPath(rel)) out.push({ rel, href: decoded, isDir: !!isDir, mtimeMs, tag: etag ? `etag:${etag}` : `mtime:${mtimeMs}` });
   }
   return out;
 }
@@ -163,6 +168,7 @@ async function ensureDir(client: AxiosInstance, baseUrl: string, relDir: string)
 
 export async function webdavTest(cfg: WebdavConfig): Promise<{ ok: boolean; error?: string }> {
   try {
+    await assertPublicRemote(cfg.url);
     const client = buildClient(cfg);
     const baseUrl = joinUrl(cfg.url, cfg.remotePath);
     await propfind(client, `${baseUrl.replace(/\/+$/, "")}/`, 0);
@@ -220,6 +226,7 @@ async function listRemote(client: AxiosInstance, baseUrl: string): Promise<Map<s
  * Content is compared by hash: the export rewrites every local file, so mtimes say nothing.
  */
 export async function webdavSyncCore(dir: string, cfg: WebdavConfig, prev: WebdavSyncState = {}): Promise<WebdavSyncResult> {
+  await assertPublicRemote(cfg.url);
   const client = buildClient(cfg);
   const baseUrl = joinUrl(cfg.url, cfg.remotePath);
   const serverRoot = new URL(cfg.url).origin;
@@ -251,8 +258,7 @@ export async function webdavSyncCore(dir: string, cfg: WebdavConfig, prev: Webda
     if (res.status !== 404 && (res.status < 200 || res.status >= 300)) throw new Error(`DELETE HTTP ${res.status}`);
   };
   const writeLocal = async (rel: string, bytes: Buffer) => {
-    const dest = path.join(dir, rel.replace(/\//g, path.sep));
-    await mkdir(path.dirname(dest), { recursive: true });
+    const dest = await prepareWrite(dir, rel);
     await writeFile(dest, bytes);
   };
   /** Keeps `bytes` (the remote version of `rel`) as a conflict copy on both sides. */

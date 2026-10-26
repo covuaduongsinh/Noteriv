@@ -4,6 +4,7 @@ import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { ensureFolderChain } from "../lib/vaultFs.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { logAudit } from "../lib/auditLog.js";
+import { isSafeVaultPath } from "../lib/vaultPaths.js";
 import { quickNoteFolder, quickNoteName } from "../lib/quickNoteName.js";
 
 // Quick note (/quick): one request that files a new note into a folder (Inbox/ by default), creating the folder on
@@ -25,7 +26,7 @@ export default async function quickNoteRoutes(fastify: FastifyInstance) {
     const parsed = quickNoteSchema.safeParse(request.body);
     if (!parsed.success) return reply.code(400).send({ error: "invalid_body", details: parsed.error.flatten() });
     const folderPath = quickNoteFolder(parsed.data.folder);
-    if (folderPath === null) return reply.code(400).send({ error: "invalid_folder" });
+    if (folderPath === null || (folderPath && !isSafeVaultPath(folderPath))) return reply.code(400).send({ error: "invalid_folder" });
     const userId = request.user!.id;
 
     try {

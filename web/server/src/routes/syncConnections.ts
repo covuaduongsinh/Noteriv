@@ -11,6 +11,8 @@ import { requireVerifiedEmail } from "../lib/emailGate.js";
 import { checkLimit, ownerOfVault, PlanLimitError, planLimitReply } from "../lib/plans.js";
 import { SCRATCH_ROOT } from "../lib/syncRunner.js";
 import path from "node:path";
+import { isSafeBranch } from "../lib/vaultPaths.js";
+import { privateRemotesAllowed } from "../lib/remoteHost.js";
 import {
   GithubApiError,
   githubUser,
@@ -29,10 +31,19 @@ const commonFields = {
   pullOnOpen: z.boolean().default(false),
 };
 
+// Remotes are HTTPS URLs (no file://, ssh, or other transports into the worker), and branch names follow git's
+// rules and can never be read as a git option.
+// A self-hosted server that sets SYNC_ALLOW_PRIVATE_REMOTES=1 (Gitea or WebDAV on its own network) may use http://.
+const httpsUrl = z
+  .string()
+  .url()
+  .refine((u) => /^https:\/\//i.test(u) || (privateRemotesAllowed() && /^http:\/\//i.test(u)), "https_only");
+const branchName = z.string().min(1).max(200).refine(isSafeBranch, "invalid_branch");
+
 const gitProviderSchema = z.object({
   providerType: z.enum(["github", "gitlab", "gitea", "forgejo"]),
-  remoteUrl: z.string().url(),
-  branch: z.string().min(1).max(200).default("main"),
+  remoteUrl: httpsUrl,
+  branch: branchName.default("main"),
   username: z.string().max(200).default(""),
   token: z.string().min(1).max(2000),
   ...commonFields,
@@ -50,8 +61,8 @@ const webdavProviderSchema = z.object({
 const createSchema = z.union([gitProviderSchema, webdavProviderSchema]);
 
 const patchSchema = z.object({
-  remoteUrl: z.string().url().optional(),
-  branch: z.string().min(1).max(200).optional(),
+  remoteUrl: httpsUrl.optional(),
+  branch: branchName.optional(),
   username: z.string().max(200).optional(),
   token: z.string().min(1).max(2000).optional(),
   webdavUrl: z.string().url().optional(),

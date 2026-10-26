@@ -9,6 +9,7 @@ import { ensureFolderChain } from "../lib/vaultFs.js";
 import { recomputeBacklinksForNote } from "../lib/backlinks.js";
 import { getObjectStream } from "../lib/attachments.js";
 import { toRelativeLinks } from "../lib/attachmentLinks.js";
+import { isSafeVaultPath } from "../lib/vaultPaths.js";
 import { logAudit } from "../lib/auditLog.js";
 
 // archiver 7 is CommonJS (module.exports = factory) while its typings declare named exports only.
@@ -37,7 +38,8 @@ function cleanImportPath(raw: string): string | null {
   if (parts.some((s) => s === ".." || s === "." || s === "")) return null;
   if (parts.some((s) => s.length > 255)) return null;
   if (!/\.md$/i.test(p)) return null;
-  return parts.join("/");
+  const clean = parts.join("/");
+  return isSafeVaultPath(clean) ? clean : null;
 }
 
 function safeZipName(name: string): string {
@@ -160,11 +162,12 @@ export default async function vaultTransferRoutes(fastify: FastifyInstance) {
       reply.header("Content-Disposition", `attachment; filename*=UTF-8''${encodeURIComponent(safeZipName(vault.name))}.zip`);
       reply.send(archive);
 
-      for (const n of notes) archive.append(rewrite(n.path, n.content), { name: n.path });
+      // A path that is not a safe vault path (older data: "..") would unpack outside the user's folder: left out.
+      for (const n of notes) if (isSafeVaultPath(n.path)) archive.append(rewrite(n.path, n.content), { name: n.path });
       for (const a of attachments) {
         try {
           const body = await getObjectStream(a.storageKey);
-          if (body) archive.append(body as Readable, { name: zipPathById.get(a.id)! });
+          if (body && isSafeVaultPath(zipPathById.get(a.id)!)) archive.append(body as Readable, { name: zipPathById.get(a.id)! });
         } catch (err) {
           fastify.log.warn({ err, attachment: a.id }, "export: attachment missing in storage, skipped");
         }

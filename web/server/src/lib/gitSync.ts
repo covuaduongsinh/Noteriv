@@ -11,6 +11,8 @@ import { writeFile, rm, mkdir, realpath, rename } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { isSafeBranch } from "./vaultPaths.js";
+import { assertPublicRemote, privateRemotesAllowed } from "./remoteHost.js";
 import { randomBytes } from "node:crypto";
 
 export interface GitCredentials {
@@ -109,6 +111,17 @@ function runGit(args: string[], cwd: string, creds?: GitCredentials | null, time
       "-c", "credential.modalPrompt=false",
       "-c", "core.autocrlf=false",
       "-c", "core.safecrlf=false",
+      // A symlink committed to a remote repository is checked out as a plain file holding its target, so the
+      // import never reads through it into this machine's files.
+      "-c", "core.symlinks=false",
+      // Remotes are reached over HTTPS only: no file:// or local paths into this machine, no ext:: commands.
+      // The sync scenarios script runs against local bare repositories and opens file:// with this variable.
+      "-c", "protocol.allow=never",
+      "-c", "protocol.https.allow=always",
+      // ...and never follows a redirect, which could lead it to an internal address after the host check.
+      "-c", "http.followRedirects=false",
+      ...(privateRemotesAllowed() ? ["-c", "protocol.http.allow=always"] : []),
+      ...(process.env.SYNC_ALLOW_LOCAL_REMOTES === "1" ? ["-c", "protocol.file.allow=always"] : []),
       ...args,
     ];
 
@@ -268,6 +281,11 @@ function effectiveUrl(remote: string, creds: GitCredentials | null): string {
   return creds?.token ? toHttpsUrl(remote) : remote;
 }
 
+/** A branch name git cannot read as an option or a path trick (see isSafeBranch). */
+function assertSafeBranch(branch: string): void {
+  if (!isSafeBranch(branch)) throw new Error(`invalid branch name: ${JSON.stringify(branch)}`);
+}
+
 export async function gitIsInstalled(): Promise<boolean> {
   return (await runGit(["--version"], process.cwd())).success;
 }
@@ -289,9 +307,14 @@ export async function testGitRemote(
   remoteUrl: string,
   creds: GitCredentials | null
 ): Promise<{ ok: boolean; error?: string }> {
+  try {
+    await assertPublicRemote(remoteUrl);
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : String(err) };
+  }
   // No --exit-code: a reachable but empty repo (no refs yet) exits 0 here, which is a
   // working connection; only network/auth failures exit non-zero.
-  const r = await runGit(["ls-remote", effectiveUrl(remoteUrl, creds)], process.cwd(), creds, 20_000);
+  const r = await runGit(["ls-remote", "--", effectiveUrl(remoteUrl, creds)], process.cwd(), creds, 20_000);
   return r.success ? { ok: true } : { ok: false, error: r.stderr || "could not reach remote" };
 }
 
@@ -340,6 +363,8 @@ export async function ensureWorkingCopy(
   branch: string,
   creds: GitCredentials | null
 ): Promise<void> {
+  assertSafeBranch(branch);
+  await assertPublicRemote(remoteUrl);
   await mkdir(dir, { recursive: true });
   if (hasOwnGitDir(dir)) {
     const existing = await runGit(["remote", "get-url", "origin"], dir);
@@ -357,7 +382,7 @@ export async function ensureWorkingCopy(
 
   // Try to fetch+checkout the branch if it already exists on the remote (repo
   // isn't necessarily empty — the user may be connecting an existing vault).
-  const fetch = await runGit(["fetch", effectiveUrl(remoteUrl, creds), branch], dir, creds);
+  const fetch = await runGit(["fetch", "--", effectiveUrl(remoteUrl, creds), branch], dir, creds);
   if (fetch.success) {
     okOrThrow(await runGit(["checkout", "-B", branch, "FETCH_HEAD"], dir));
   } else if (!isMissingRemoteBranch(fetch.stderr)) {
@@ -417,6 +442,7 @@ export async function gitSyncCore(
   message: string | ((changedCount: number) => string),
   opts: GitSyncOptions = {}
 ): Promise<GitSyncResult> {
+  assertSafeBranch(branch);
   const doPull = opts.pull !== false;
   const doPush = opts.push !== false;
   const commitMessage = (changed: number) => (typeof message === "function" ? message(changed) : message);
@@ -457,7 +483,7 @@ export async function gitSyncCore(
     }
 
     // An empty remote (no branch yet) fails here; there is simply nothing to merge.
-    const fetch = await runGit(["fetch", pullUrl, branch], dir, creds);
+    const fetch = await runGit(["fetch", "--", pullUrl, branch], dir, creds);
     if (fetch.success) {
       let merge = await runGit(["merge", "--no-edit", "FETCH_HEAD"], dir);
       if (!merge.success && /unrelated histories/i.test(merge.stderr)) {
@@ -486,7 +512,7 @@ export async function gitSyncCore(
     if (conflictCopies.length > 0) pushedCommit = true;
 
     if (remote) {
-      const push = await runGit(["push", "-u", effectiveUrl(remote, creds), branch], dir, creds);
+      const push = await runGit(["push", "-u", "--", effectiveUrl(remote, creds), branch], dir, creds);
       if (!push.success) {
         // Unreachable host, bad credentials, and non-fast-forward rejections all land
         // here — this result was previously discarded entirely, which is how a sync
@@ -519,10 +545,11 @@ export async function adoptRemoteTip(
   creds: GitCredentials | null,
   mode: "hard" | "mixed"
 ): Promise<void> {
+  assertSafeBranch(branch);
   await assertIsOwnRepoRoot(dir);
   if (await rebaseInProgress(dir)) await runGit(["rebase", "--abort"], dir);
   if (await mergeInProgress(dir)) await runGit(["merge", "--abort"], dir);
-  okOrThrow(await runGit(["fetch", effectiveUrl(remote, creds), branch], dir, creds));
+  okOrThrow(await runGit(["fetch", "--", effectiveUrl(remote, creds), branch], dir, creds));
   okOrThrow(await runGit(["reset", mode === "hard" ? "--hard" : "--mixed", "FETCH_HEAD"], dir));
 }
 
@@ -540,7 +567,9 @@ export async function getRemoteState(
   branch: string,
   creds: GitCredentials | null
 ): Promise<RemoteState> {
-  const ls = await runGit(["ls-remote", effectiveUrl(remoteUrl, creds), `refs/heads/${branch}`], process.cwd(), creds, 20_000);
+  assertSafeBranch(branch);
+  await assertPublicRemote(remoteUrl);
+  const ls = await runGit(["ls-remote", "--", effectiveUrl(remoteUrl, creds), `refs/heads/${branch}`], process.cwd(), creds, 20_000);
   if (!ls.success) return { remoteChanged: false, remoteReachable: false, error: ls.stderr || "could not reach remote" };
   const remoteSha = ls.stdout.split(/\s+/)[0] ?? "";
   if (!hasOwnGitDir(dir)) return { remoteChanged: !!remoteSha, remoteReachable: true };

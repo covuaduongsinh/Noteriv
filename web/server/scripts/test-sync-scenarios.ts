@@ -6,6 +6,9 @@
 // Uses the dev database (DATABASE_URL) and removes everything it creates.
 
 import { PrismaClient } from "@prisma/client";
+
+// The remotes here are local bare repositories; the worker otherwise only talks HTTPS (lib/gitSync.ts runGit).
+process.env.SYNC_ALLOW_LOCAL_REMOTES = "1";
 import { execFileSync } from "node:child_process";
 import { mkdtempSync, rmSync, writeFileSync, readFileSync, existsSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";

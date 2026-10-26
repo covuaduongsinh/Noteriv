@@ -3,9 +3,11 @@ import { z } from "zod";
 import { requireVaultAccess, VaultAccessError } from "../lib/vaultAccess.js";
 import { resolvePath } from "../lib/notePath.js";
 import { trashFolder } from "../lib/trash.js";
+import { vaultSegmentError } from "../lib/vaultPaths.js";
 
 const createFolderSchema = z.object({
-  name: z.string().min(1).max(255),
+  // One path segment: no "/", "..", ".git" (it becomes a folder under the sync working copy).
+  name: z.string().min(1).max(255).refine((n) => vaultSegmentError(n) === null, "invalid_name"),
   parentId: z.string().uuid().nullable().optional(),
 });
 
