@@ -7,6 +7,8 @@ order: 1
 
 Noteriv on a phone or tablet is the same web app, installed to the home screen. There is no separate app to download from a store: install it from the browser and it opens full screen from its own icon, with your vaults, notes and settings exactly as on your computer.
 
+On Android there is also a separate [Android app](android-app.md) that keeps vaults as folders on the phone and syncs them through Git, like the desktop app.
+
 ## Installing
 
 ### Android (Chrome)

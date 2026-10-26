@@ -2314,7 +2314,7 @@
       "lastSync": "Last sync",
       "syncNow": "Sync Now",
       "autoSync": "Auto-sync",
-      "autoSyncEvery": "Every 5s",
+      "autoSyncEvery": "Every minute",
       "disconnectRemote": "Disconnect Remote",
       "gitHint": "Connect GitHub, GitLab, Gitea, or Forgejo to sync notes across devices.",
       "connectGitHub": "Connect GitHub",
@@ -2791,6 +2791,11 @@
     },
     "calendar": {
       "monthYear": "{month} {year}"
+    },
+    "quick": {
+      "openNote": "Open the note",
+      "invalidFolder": "Not a folder name: use letters and \"/\" between folders, without \"..\".",
+      "failed": "Couldn't save. The text is still in the box above; try again."
     }
   }
 }
