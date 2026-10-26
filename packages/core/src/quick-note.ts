@@ -17,10 +17,14 @@ export function quickNoteName(content: string, fallback: string): string {
     .replace(FORBIDDEN, " ")
     .replace(/\s+/g, " ")
     .trim()
-    .replace(/^\.+/, "");
+    .replace(/^\.+/, "")
+    .trim();
   if (!cleaned) return fallback.replace(FORBIDDEN, " ").replace(/\s+/g, " ").trim() || "Quick note";
-  if (cleaned.length <= MAX_NAME) return cleaned;
-  const cut = cleaned.slice(0, MAX_NAME);
+  // Counted and cut by character, not UTF-16 unit: a cut through an emoji leaves half a surrogate pair, which
+  // cannot be URL-encoded or written as a file name.
+  const chars = Array.from(cleaned);
+  if (chars.length <= MAX_NAME) return cleaned;
+  const cut = chars.slice(0, MAX_NAME).join("");
   const space = cut.lastIndexOf(" ");
   return (space > MAX_NAME / 2 ? cut.slice(0, space) : cut).trim();
 }

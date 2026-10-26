@@ -2735,7 +2735,8 @@
     },
     "quick": {
       "openNote": "Mở note",
-      "invalidFolder": "Tên thư mục không hợp lệ: dùng chữ và \"/\" giữa các thư mục, không dùng \"..\"."
+      "invalidFolder": "Tên thư mục không hợp lệ: dùng chữ và \"/\" giữa các thư mục, không dùng \"..\".",
+      "failed": "Chưa lưu được. Chữ vẫn còn trong ô phía trên, hãy thử lại."
     }
   }
 }

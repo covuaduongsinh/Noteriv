@@ -208,6 +208,10 @@ function ThemedNavigation() {
   );
 }
 
+// The notes list sits under any screen opened straight from a link (the icon's Quick note shortcut), so Back
+// returns to it instead of leaving the app.
+export const unstable_settings = { initialRouteName: 'index' };
+
 export default function RootLayout() {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>

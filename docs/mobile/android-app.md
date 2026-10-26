@@ -19,13 +19,13 @@ Every release is signed with the same Noteriv key, so an update installs over th
 
 ## First start
 
-The setup screen asks for a vault name and, optionally, connects it to GitHub: pick an existing repository or create a new one. A new vault can start with the **getting started notes** (on by default). They are not added when you connect a repository that already has notes.
+The setup screen asks for a vault name and, optionally, connects it to GitHub: pick an existing repository or create a new one. A new vault can start with the **getting started notes** (on by default). They are added when the vault has no sync or a new repository, not when you connect an existing one.
 
 GitLab and Gitea/Forgejo are set up afterwards in **Settings → Git Sync**, with the repository address and an access token.
 
 ## Sync
 
-- Sync runs when the vault opens, every minute while the app is open, and from **Settings → Git Sync → Sync Now**.
+- For a vault connected to a repository, sync runs when the vault opens, every minute while the app is open, and from **Settings → Git Sync → Sync Now**.
 - A note edited on both sides keeps both versions: yours stays in place, the other one is saved next to it as `name (conflict 2026-10-26 0930).md`, the same name the web and desktop apps use, so the web app lists it as a conflict.
 - Deleting or renaming a note on the phone deletes or renames it in the repository too, unless someone edited it there in the meantime: then the edit wins and the note comes back.
 - Notes deleted from the notes list go to **Trash** (folders too) and can be restored from there.

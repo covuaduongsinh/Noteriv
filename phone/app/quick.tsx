@@ -31,16 +31,25 @@ export default function QuickNoteScreen() {
       return;
     }
     const now = new Date();
-    const stamp = `${now.toISOString().slice(0, 10)} ${String(now.getHours()).padStart(2, '0')}${String(now.getMinutes()).padStart(2, '0')}`;
+    const two = (n: number) => String(n).padStart(2, '0');
+    const stamp = `${now.getFullYear()}-${two(now.getMonth() + 1)}-${two(now.getDate())} ${two(now.getHours())}${two(now.getMinutes())}`;
     const base = quickNoteName(text, t('web.quick.fallbackName', { stamp }));
     const pathOf = (name: string) => (dir ? `${dir}/${name}` : name);
-    let path = pathOf(`${base}.md`);
-    for (let i = 2; !fileMissing(vaultFileUri(vault.path, path)); i++) path = pathOf(`${base} ${i}.md`);
-    const uri = vaultFileUri(vault.path, path);
-    if (!writeFile(uri, text)) {
-      // The text stays in the box, so nothing typed is lost.
-      setMessage({ text: t('web.quick.failed'), error: true });
-      return;
+    // On any failure the text stays in the box (it is not saved anywhere else), so nothing typed is lost.
+    const fail = () => setMessage({ text: t('phone.quick.failed'), error: true });
+    let path: string | null = null;
+    let uri = '';
+    try {
+      // A bounded search: `fileMissing` says false when the check itself fails, which must not loop forever.
+      for (let i = 1; i <= 100 && path === null; i++) {
+        const candidate = pathOf(i === 1 ? `${base}.md` : `${base} ${i}.md`);
+        if (fileMissing(vaultFileUri(vault.path, candidate))) path = candidate;
+      }
+      if (path === null) return fail();
+      uri = vaultFileUri(vault.path, path);
+      if (!writeFile(uri, text)) return fail();
+    } catch {
+      return fail();
     }
     refreshFiles();
     setText('');

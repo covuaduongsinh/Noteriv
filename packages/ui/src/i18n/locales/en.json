@@ -2794,7 +2794,8 @@
     },
     "quick": {
       "openNote": "Open the note",
-      "invalidFolder": "Not a folder name: use letters and \"/\" between folders, without \"..\"."
+      "invalidFolder": "Not a folder name: use letters and \"/\" between folders, without \"..\".",
+      "failed": "Couldn't save. The text is still in the box above; try again."
     }
   }
 }

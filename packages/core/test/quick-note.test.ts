@@ -10,6 +10,11 @@ describe("quickNoteName", () => {
     expect(quickNoteName("- [ ] buy milk", "x")).toBe("buy milk");
     expect(quickNoteName("   \n", "Quick note 2026-10-26 0930")).toBe("Quick note 2026-10-26 0930");
     expect(quickNoteName("a ".repeat(50), "x").length).toBeLessThanOrEqual(60);
+    // 60 characters, never half an emoji (which would make the name impossible to encode).
+    const emoji = quickNoteName("a" + "\u{1F600}".repeat(70), "x");
+    expect(Array.from(emoji)).toHaveLength(60);
+    expect(() => encodeURIComponent(emoji)).not.toThrow();
+    expect(quickNoteName(" .. hidden", "x")).toBe("hidden");
   });
 
   it("files into Inbox by default and refuses paths that leave the vault", () => {
