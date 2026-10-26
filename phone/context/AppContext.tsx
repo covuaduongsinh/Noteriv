@@ -81,18 +81,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   // Every sync, whoever starts it (the timers below, Settings), saves the open note first and checks it after.
   useEffect(() => {
     GitSync.setSyncHooks({
-      before: () => {
+      before: async () => {
         const open = editorRef.current;
         if (open.isDirty && open.currentFile && FS.writeFile(open.currentFile, open.content)) {
-          diskText.current = open.content;
           setIsDirty(false);
         }
+        // What is on disk now, as read back: the comparison after the sync must not trip over the write itself.
+        if (open.currentFile) diskText.current = await FS.readFile(open.currentFile);
       },
       after: async () => {
+        const file = editorRef.current.currentFile;
+        if (!file) return;
+        const disk = await FS.readFile(file);
+        // The note open and its typing as of now, not as of before the read.
         const open = editorRef.current;
-        if (!open.currentFile) return;
-        const disk = await FS.readFile(open.currentFile);
-        if (disk === null || disk === diskText.current) return;
+        if (open.currentFile !== file || disk === null || disk === diskText.current) return;
         if (open.isDirty) {
           // Typed during the sync, over text the sync replaced: the editor keeps the typing, and the version the
           // sync brought stays beside the note, so saving does not silently drop it.

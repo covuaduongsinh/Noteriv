@@ -12,6 +12,16 @@ import * as FS from '@/lib/file-system';
 
 const STATE_FILE = '.noteriv/sync-state.json';
 
+/**
+ * `fetch` with a time limit. React Native's has none, and syncs run one at a time, so a single stuck connection
+ * would hold every later sync until the app restarts.
+ */
+export function fetchWithTimeout(url: string, init: RequestInit = {}, ms = 60_000): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), ms);
+  return fetch(url, { ...init, signal: controller.signal }).finally(() => clearTimeout(timer));
+}
+
 interface StoredState {
   remote: string;
   files: Record<string, string>;

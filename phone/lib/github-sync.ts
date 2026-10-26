@@ -2,6 +2,7 @@ import * as FS from '@/lib/file-system';
 import {
   contentHash,
   loadSyncBase,
+  fetchWithTimeout,
   loadSyncShas,
   mayUpload,
   pullAction,
@@ -112,7 +113,7 @@ async function ghFetch(
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string> ?? {}),
   };
-  return fetch(`${API_BASE}${path}`, {
+  return fetchWithTimeout(`${API_BASE}${path}`, {
     ...options,
     headers,
   });
@@ -134,13 +135,13 @@ async function getTree(
   repo: string,
   branch: string,
   token: string
-): Promise<GitHubTreeItem[]> {
+): Promise<GitHubTreeItem[] | null> {
   const res = await ghFetch(
     `/repos/${owner}/${repo}/git/trees/${branch}?recursive=1`,
     token
   );
-  // A repository with no commits yet answers 409 ("Git Repository is empty"): nothing to pull, everything to push.
-  if (res.status === 409) return [];
+  // A repository with no commits yet answers 409 ("Git Repository is empty"): null, nothing to pull.
+  if (res.status === 409) return null;
   if (!res.ok) throw new Error(`Failed to get tree: ${await describeFailure(res)}`);
   const data = await res.json();
   // A cut-off listing would make every note past the cut look deleted on the remote.
@@ -255,21 +256,18 @@ export async function pull(
   try {
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
     const tree = await getTree(owner, repo, branchName, token);
-    let base = await loadSyncBase(vaultPath, remote, branch);
-    let shas = await loadSyncShas(vaultPath, remote, branch);
+    // An empty repository (new, or recreated under the same name) shares no history with this device: start
+    // over rather than delete every note here. A repository whose notes were all deleted still has commits.
+    const base = tree ? await loadSyncBase(vaultPath, remote, branch) : {};
+    const shas = tree ? await loadSyncShas(vaultPath, remote, branch) : {};
 
     // Filter to markdown files only, skip .noteriv/
-    const remoteFiles = tree.filter(
+    const remoteFiles = (tree ?? []).filter(
       (item) =>
         item.type === 'blob' &&
         isMarkdownFile(item.path) &&
         !shouldSkipPath(item.path)
     );
-    // No notes at all on the remote (a new or recreated repository): start over rather than delete every note here.
-    if (remoteFiles.length === 0) {
-      base = {};
-      shas = {};
-    }
 
     // Update sha cache
     for (const item of remoteFiles) {
@@ -285,8 +283,7 @@ export async function pull(
       if (shouldSkipPath(rel) || rel.startsWith('.trash/')) continue;
       if (remotePathSet.has(rel)) continue;
       const localContent = await FS.readFile(file.filePath);
-      if (shouldDeleteLocal(localContent, base[rel])) {
-        FS.deleteFile(file.filePath);
+      if (shouldDeleteLocal(localContent, base[rel]) && FS.deleteFile(file.filePath)) {
         delete base[rel];
         delete shas[rel];
         result.pulled++;
@@ -364,22 +361,17 @@ export async function push(
 
   try {
     const branchName = branch ?? (await getDefaultBranch(owner, repo, token));
-    let base = await loadSyncBase(vaultPath, remote, branch);
-    let shas = await loadSyncShas(vaultPath, remote, branch);
-
     // Get the remote tree to know current shas
     const tree = await getTree(owner, repo, branchName, token);
+    // As in pull: an empty repository is new, so every note here is uploaded.
+    const base = tree ? await loadSyncBase(vaultPath, remote, branch) : {};
+    const shas = tree ? await loadSyncShas(vaultPath, remote, branch) : {};
     const remoteFileMap = new Map<string, string>(); // path -> sha
-    for (const item of tree) {
+    for (const item of tree ?? []) {
       if (item.type === 'blob') {
         remoteFileMap.set(item.path, item.sha);
         shaCache.set(shaCacheKey(owner, repo, item.path), item.sha);
       }
-    }
-    // As in pull: a remote with no notes is new, so every note here is uploaded.
-    if (![...remoteFileMap.keys()].some((path) => isMarkdownFile(path) && !shouldSkipPath(path))) {
-      base = {};
-      shas = {};
     }
 
     // List all local markdown files
@@ -469,7 +461,7 @@ export async function freshClone(
       FS.deleteFile(file.filePath);
     }
 
-    const remoteFiles = tree.filter(
+    const remoteFiles = (tree ?? []).filter(
       (item) => item.type === 'blob' && isMarkdownFile(item.path) && !shouldSkipPath(item.path)
     );
     const clonedBase: Record<string, string> = {};

@@ -89,7 +89,9 @@ Review độc lập tìm thấy 3 lỗi nặng: sync của phone có thể **ghi
 - **Xung đột lần hai trong cùng ngày** không còn bị bỏ: bản sao có số thứ tự riêng (`… (conflict 2026-10-26 2).md`). Chỉ khi đã ghi được bản sao thì push mới được tải bản của phone lên.
 - **Note đang mở:** mọi lần sync (hẹn giờ, nút trong Settings) đều lưu note đang mở trước và kiểm lại sau. Sync đổi note đó thì editor nạp bản mới. Nếu người dùng đang gõ dở, chữ đang gõ được giữ, còn bản sync mang về nằm cạnh note thành bản sao xung đột. Pull cũng đọc lại file ngay trước khi ghi.
 - **Một lần sync tại một thời điểm**, bất kể ai gọi (hàng đợi trong `provider-sync.ts`). Trước đây nút Sync trong Settings có thể chạy song song với auto-sync, và hai lần chạy ghi đè `sync-state.json` của nhau.
-- **Remote không còn note nào** (repo tạo lại cùng tên) thì bắt đầu lại từ đầu và tải mọi note lên, thay vì xoá mọi note trên máy.
+- **Repo GitHub rỗng** (chưa có commit nào, ví dụ xoá rồi tạo lại cùng tên) thì bắt đầu lại từ đầu và tải mọi note lên, thay vì xoá mọi note trên máy. Còn repo vẫn có commit mà không còn note nào (nơi khác đã xoá hết) thì phone xoá theo như thường.
+- **Mỗi request có giới hạn 60 giây.** `fetch` của React Native không tự hết hạn. Vì sync chạy lần lượt, một kết nối bị treo sẽ chặn mọi lần sync sau.
+- Xoá file thất bại thì không coi là đã xoá, nên note không bị tải lên lại một cách lặng lẽ.
 - **Danh sách file của GitHub bị cắt** (repo rất lớn) thì dừng sync và báo lỗi, thay vì coi phần bị cắt là đã xoá.
 - **Ghi file thất bại** thì báo lỗi và không ghi nhận là đã thống nhất.
 - **Fresh Clone** chỉ thay note (trước đây xoá cả ảnh và các file khác mà sync không tải lại được), và tải qua blobs API (file trên 1 MB trước đây thành file rỗng).
@@ -97,8 +99,15 @@ Review độc lập tìm thấy 3 lỗi nặng: sync của phone có thể **ghi
 - **Core plugin:** `plugin-config.json` hỏng thì không ghi đè (để không mất thiết lập của community plugin). Bật/tắt trước khi lựa chọn cũ nạp xong, hoặc bấm nhanh hai lần, không còn làm mất lựa chọn.
 - **Server:** git chạy với `LC_ALL=C`, vì sync đọc thông báo tiếng Anh của git (`couldn't find remote ref`).
 
+Review lần hai (trên chính các bản sửa) không thấy lỗi nặng mới. Đã sửa thêm:
+- Quy tắc "bắt đầu lại" ban đầu áp dụng cho mọi remote không còn note, nên làm sống lại các note đã xoá có chủ đích ở nơi khác. Nay chỉ áp dụng cho repo rỗng.
+- Thêm giới hạn thời gian cho request.
+- Hook sau sync đọc lại trạng thái editor sau khi đọc file, để không nuốt chữ gõ trong lúc đó.
+- Lựa chọn core plugin đang chờ lưu không bị ghi nhầm sang vault khác khi chuyển vault.
+- Lỗi trong bước kiểm note đang mở không làm sync báo thất bại.
+
 Kiểm chứng:
-- Giả lập GitHub cùng hệ thống file trong bộ nhớ: 21 kịch bản PASS, gồm 11 kịch bản cũ và 10 kịch bản mới cho từng lỗi trên. Chạy 10 kịch bản mới với code cũ thì trượt 7, trong đó kịch bản "repo tạo lại rỗng" xoá sạch 305 note trên máy.
+- Giả lập GitHub cùng hệ thống file trong bộ nhớ: 23 kịch bản PASS, gồm 11 kịch bản cũ và 12 kịch bản mới cho từng lỗi trên. Chạy các kịch bản mới với code cũ thì trượt 7, trong đó kịch bản "repo tạo lại rỗng" xoá sạch 305 note trên máy.
 - `scripts/test-sync-scenarios.ts` của server: 52/52 PASS.
 - `npx tsc --noEmit` trong `phone/`: exit 0.
 

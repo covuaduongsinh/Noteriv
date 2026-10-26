@@ -39,11 +39,13 @@ export function CorePluginsProvider({ children }: { children: React.ReactNode })
   const setEnabled = useCallback(
     (id: string, enabled: boolean) => {
       setState((prev) => ({ ...prev, [id]: enabled }));
+      // Taken now, with the vault this switch belongs to (a vault switch replaces `loaded` for the next one).
+      const next = loaded.current.then((saved) => ({ ...saved, [id]: enabled }));
+      loaded.current = next;
+      const path = vaultPath;
       const run = saving.current.then(async () => {
-        const saved = await loaded.current;
-        const next = { ...saved, [id]: enabled };
-        loaded.current = Promise.resolve(next);
-        if (vaultPath) await saveCorePluginState(vaultPath, next);
+        const state = await next;
+        if (path) await saveCorePluginState(path, state);
       });
       saving.current = run.catch(() => undefined);
       return run;

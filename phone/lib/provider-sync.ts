@@ -4,6 +4,7 @@ import * as GitHub from '@/lib/github-sync';
 import { getItem, KEYS } from '@/lib/storage';
 import {
   contentHash,
+  fetchWithTimeout,
   loadSyncBase,
   mayUpload,
   pullAction,
@@ -104,7 +105,7 @@ function api(remote: Remote, path: string, token: string, options: RequestInit =
     ? { 'PRIVATE-TOKEN': token, 'Content-Type': 'application/json', ...(options.headers as Record<string, string>) }
     : { Authorization: `token ${token}`, 'Content-Type': 'application/json', ...(options.headers as Record<string, string>) };
   const prefix = remote.provider === 'gitlab' ? '/api/v4' : '/api/v1';
-  return fetch(`${remote.baseUrl}${prefix}${path}`, { ...options, headers });
+  return fetchWithTimeout(`${remote.baseUrl}${prefix}${path}`, { ...options, headers });
 }
 
 async function branch(remote: Remote, token: string): Promise<string> {
@@ -178,16 +179,14 @@ async function pullOnce(vaultPath: string, token: string, remoteUrl: string, bra
   const result: SyncResult = { pulled: 0, pushed: 0, errors: [] };
   try {
     const ref = branchName || await branch(remote, token);
+    const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
     const files = (await listFiles(remote, token, ref)).filter((file) => markdown(file.path));
-    // No notes at all on the remote (a new or recreated project): start over rather than delete every note here.
-    const base = files.length ? await loadSyncBase(vaultPath, remoteUrl, branchName) : {};
     const paths = new Set(files.map((file) => file.path));
     // Apply remote deletions only to notes that haven't changed here since the last sync.
     for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
       const path = vaultRelativePath(vaultPath, file.filePath);
       if (path.startsWith('.trash/') || !markdown(path) || paths.has(path)) continue;
-      if (shouldDeleteLocal(await FS.readFile(file.filePath), base[path])) {
-        FS.deleteFile(file.filePath);
+      if (shouldDeleteLocal(await FS.readFile(file.filePath), base[path]) && FS.deleteFile(file.filePath)) {
         delete base[path];
         result.pulled++;
       }
@@ -228,9 +227,8 @@ async function pushOnce(vaultPath: string, token: string, remoteUrl: string, bra
   const result: SyncResult = { pulled: 0, pushed: 0, errors: [] };
   try {
     const ref = branchName || await branch(remote, token);
+    const base = await loadSyncBase(vaultPath, remoteUrl, branchName);
     const files = new Map((await listFiles(remote, token, ref)).map((file) => [file.path, file]));
-    // As in pull: a remote with no notes is new, so every note here is uploaded.
-    const base = [...files.keys()].some(markdown) ? await loadSyncBase(vaultPath, remoteUrl, branchName) : {};
     for (const file of await FS.listAllMarkdownFiles(vaultPath)) {
       const path = vaultRelativePath(vaultPath, file.filePath);
       if (!markdown(path)) continue;
@@ -279,7 +277,12 @@ function serialized(run: () => Promise<SyncResult>): Promise<SyncResult> {
   const next = queue.then(async () => {
     await hooks.before?.();
     const result = await run();
-    await hooks.after?.(result);
+    // The sync itself is done and saved; a failing check of the open note must not report it as failed.
+    try {
+      await hooks.after?.(result);
+    } catch (error) {
+      console.warn('[Noteriv] After-sync check failed:', error);
+    }
     return result;
   });
   queue = next.catch(() => undefined);
