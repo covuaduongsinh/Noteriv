@@ -2391,7 +2391,9 @@
       "vaultReady": "Your vault \"{name}\" is ready.",
       "githubConfigured": "GitHub sync is configured.",
       "connectLater": "You can connect GitHub later in Settings.",
-      "startWriting": "Start Writing"
+      "startWriting": "Start Writing",
+      "sampleNotes": "Add the getting started notes",
+      "sampleNotesHint": "A few short notes on links, tags and plugins. Delete them any time. Not added when you connect a repository that already has notes."
     },
     "plugins": {
       "uninstallTitle": "Uninstall Plugin",

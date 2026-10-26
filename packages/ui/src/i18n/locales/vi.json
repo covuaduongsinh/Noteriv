@@ -2351,7 +2351,9 @@
       "vaultReady": "Vault \"{name}\" của bạn đã sẵn sàng.",
       "githubConfigured": "Đã cấu hình đồng bộ GitHub.",
       "connectLater": "Bạn có thể kết nối GitHub sau trong Cài đặt.",
-      "startWriting": "Bắt đầu viết"
+      "startWriting": "Bắt đầu viết",
+      "sampleNotes": "Thêm các note hướng dẫn",
+      "sampleNotesHint": "Vài note ngắn giới thiệu liên kết, thẻ và plugin. Xoá lúc nào cũng được. Không thêm khi nối với một repo đã có sẵn note."
     },
     "plugins": {
       "uninstallTitle": "Gỡ cài đặt plugin",

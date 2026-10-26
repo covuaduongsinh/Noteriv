@@ -143,7 +143,7 @@ Viết [bao-cao-quyet-dinh.md](../kiem-chung/bao-cao-quyet-dinh.md): đối chi�
 | M1 | App mobile: khôi phục, APK debug | Xong | 2026-10-21 | [Phiên K-M1](2026-10-21-phien-k-m1-khoi-phuc-phone.md); `phone/` lấy từ upstream `013fa8c`; APK chạy trên máy thật |
 | M1b | App mobile: bật/tắt core plugin như web | Xong | 2026-10-26 | [Phiên K-M1b](2026-10-21-phien-k-m1b-core-plugins-phone.md); PR #39 (gộp cả M1), đã merge; sửa sync qua 2 lượt review; APK mới chưa thử trên máy thật |
 | M2 | App mobile: logic chung, sync | Đang làm | 2026-10-26 | [Phiên K-M2](2026-10-26-phien-k-m2-dung-chung-sync.md) |
-| M3 | App mobile: i18n, theme, vault mẫu | Đang làm | 2026-10-26 | Tách đôi: [M3a i18n](2026-10-26-phien-k-m3a-i18n-phone.md); M3b theme, vault mẫu, bố cục |
+| M3 | App mobile: i18n, theme, vault mẫu | Đang làm | 2026-10-26 | Tách đôi: [M3a i18n](2026-10-26-phien-k-m3a-i18n-phone.md) (PR #42); [M3b theme chung, vault mẫu](2026-10-26-phien-k-m3b-theme-vault-mau.md); bố cục theo web chờ góp ý trên máy thật |
 | M4 | App mobile: Ghi nhanh, CI, APK release | Chưa làm | | |
 | O0 | Obsidian: bản đồ khoảng trống từ nguồn công khai | Xong | 2026-10-22 | [obsidian-cong-khai.md](../kiem-chung/obsidian-cong-khai.md); đã dừng dịch ngược vì điều khoản của Obsidian |
 | O1 | G1: đổi tên thì cập nhật liên kết | Xong | 2026-10-22 | [Phiên K-O1](2026-10-22-phien-k-o1-cap-nhat-lien-ket.md); PR #26, đã lên production |
