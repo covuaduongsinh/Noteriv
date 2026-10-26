@@ -1,4 +1,4 @@
-import { useSyncExternalStore } from 'react';
+import { useCallback, useSyncExternalStore } from 'react';
 // The same module and catalogs as web and desktop (packages/ui/src/i18n). Its React hook (react.ts) is not used:
 // it would import the web's React, not the phone's.
 import { getLocale, onLocaleChange, registerCatalog, setLocale, t, type Locale } from '@noteriv/ui/i18n';
@@ -25,10 +25,14 @@ export function applyLanguage(choice: AppSettings['language'] | undefined): void
   void setLocale(choice === 'en' || choice === 'vi' ? choice : deviceLocale());
 }
 
-/** `t`, with the component re-rendered when the language changes. */
+/**
+ * `t`, with the component re-rendered when the language changes. A new function per language, so a memo, effect
+ * or list row that lists it in its deps is rebuilt in the new language too.
+ */
 export function useT(): typeof t {
-  useSyncExternalStore(onLocaleChange, getLocale, getLocale);
-  return t;
+  const locale = useSyncExternalStore(onLocaleChange, getLocale, getLocale);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  return useCallback<typeof t>((key, params) => t(key, params), [locale]);
 }
 
 applyLanguage('auto');

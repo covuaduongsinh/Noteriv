@@ -2226,13 +2226,13 @@
       "syncing": "Đang đồng bộ...",
       "syncFailed": "Đồng bộ thất bại: {error}",
       "disconnectGitHubTitle": "Ngắt kết nối GitHub",
-      "disconnectGitHubMessage": "Xóa token đã lưu cho vault này?",
-      "cancel": "Hủy",
+      "disconnectGitHubMessage": "Xoá token đã lưu cho vault này?",
+      "cancel": "Huỷ",
       "disconnect": "Ngắt kết nối",
       "freshCloneTitle": "Clone mới",
       "freshCloneMessage": "Thao tác này sẽ XÓA toàn bộ ghi chú trên máy và tải lại mọi thứ từ GitHub. Bạn có chắc không?",
-      "deleteAndClone": "Xóa và clone",
-      "deletingAndCloning": "Đang xóa tệp trên máy và clone...",
+      "deleteAndClone": "Xoá và clone",
+      "deletingAndCloning": "Đang xoá tệp trên máy và clone...",
       "clonedWithErrors": "Đã clone: {pulled} tệp, Lỗi: {errors}\n{first}",
       "freshCloneDone": "Clone mới: đã tải {pulled} tệp",
       "cloneFailed": "Clone thất bại: {error}",
@@ -2241,7 +2241,7 @@
       "themeInstalled": "Đã cài đặt chủ đề \"{name}\".",
       "themeInstallFailed": "Không cài đặt được chủ đề.",
       "resetApp": "Đặt lại ứng dụng",
-      "resetAppMessage": "Thao tác này sẽ xóa toàn bộ vault, cài đặt và dữ liệu. Bạn sẽ phải thiết lập lại từ đầu. Không thể hoàn tác.",
+      "resetAppMessage": "Thao tác này sẽ xoá toàn bộ vault, cài đặt và dữ liệu. Bạn sẽ phải thiết lập lại từ đầu. Không thể hoàn tác.",
       "resetEverything": "Đặt lại tất cả",
       "general": "Chung",
       "language": "Ngôn ngữ",
@@ -2287,7 +2287,7 @@
       "sourceCode": "Mã nguồn",
       "reportIssue": "Báo lỗi",
       "dangerZone": "Vùng nguy hiểm",
-      "resetAppHint": "Xóa toàn bộ vault, cài đặt và bắt đầu lại",
+      "resetAppHint": "Xoá toàn bộ vault, cài đặt và bắt đầu lại",
       "tagline": "Ứng dụng ghi chú markdown được làm tỉ mỉ.",
       "tokenHint": "Nhập Personal Access Token có quyền repo.",
       "connect": "Kết nối",
@@ -2302,15 +2302,15 @@
       "settings": "Cài đặt",
       "snippets": "CSS snippet",
       "plugins": "Plugin",
-      "templates": "Mẫu",
+      "templates": "Templates",
       "recovery": "Khôi phục tệp",
-      "composer": "Ghép ghi chú",
+      "composer": "Note composer",
       "attachments": "Tệp đính kèm",
-      "backlinks": "Backlink",
+      "backlinks": "Backlinks",
       "frontmatter": "Frontmatter",
       "calendar": "Lịch",
-      "flashcards": "Flashcard",
-      "graph": "Đồ thị",
+      "flashcards": "Flashcards",
+      "graph": "Graph view",
       "publish": "Xuất bản",
       "trash": "Thùng rác"
     },
@@ -2355,8 +2355,8 @@
     },
     "plugins": {
       "uninstallTitle": "Gỡ cài đặt plugin",
-      "uninstallMessage": "Gỡ cài đặt \"{name}\"? Toàn bộ tệp của plugin sẽ bị xóa.",
-      "cancel": "Hủy",
+      "uninstallMessage": "Gỡ cài đặt \"{name}\"? Toàn bộ tệp của plugin sẽ bị xoá.",
+      "cancel": "Huỷ",
       "uninstall": "Gỡ cài đặt",
       "installed": "Đã cài đặt",
       "installedMessage": "Đã cài đặt \"{name}\".",
@@ -2374,10 +2374,10 @@
       "communityEmptyHint": "Hãy kiểm tra kết nối mạng hoặc thử lại sau"
     },
     "snippets": {
-      "deleteTitle": "Xóa snippet",
-      "deleteMessage": "Xóa \"{name}\"? Không thể hoàn tác.",
-      "cancel": "Hủy",
-      "delete": "Xóa",
+      "deleteTitle": "Xoá snippet",
+      "deleteMessage": "Xoá \"{name}\"? Không thể hoàn tác.",
+      "cancel": "Huỷ",
+      "delete": "Xoá",
       "installed": "Đã cài đặt",
       "installedMessage": "Đã cài đặt \"{name}\".",
       "error": "Lỗi",
@@ -2411,14 +2411,14 @@
       "renameSaveFailed": "Không lưu được ghi chú trước khi đổi tên.",
       "renameFailed": "Không đổi được tên: có thể đã có ghi chú tên \"{name}\".",
       "renameLinksFailed": {
-        "other": "Đã đổi tên, nhưng không cập nhật được link trong {count} ghi chú."
+        "other": "Đã đổi tên, nhưng không cập nhật được liên kết trong {count} ghi chú."
       },
       "untitled": "Chưa đặt tên",
       "save": "Lưu",
       "bookmark": "Bookmark",
       "removeBookmark": "Bỏ bookmark",
       "templates": "Templates",
-      "noteComposer": "Note Composer",
+      "noteComposer": "Note composer",
       "backlinks": "Backlinks",
       "fileRecovery": "Khôi phục file",
       "frontmatter": "Frontmatter",
@@ -2529,7 +2529,7 @@
       "shareFailed": "Không chia sẻ được file HTML."
     },
     "graph": {
-      "title": "Graph",
+      "title": "Graph view",
       "building": "Đang dựng graph...",
       "oneWay": "một chiều",
       "reciprocal": "hai chiều"
@@ -2727,6 +2727,9 @@
       "noVault": "Chưa chọn vault",
       "noVaultHint": "Tạo một vault để bắt đầu ghi chú",
       "createVault": "Tạo vault"
+    },
+    "calendar": {
+      "monthYear": "{month} năm {year}"
     }
   }
 }

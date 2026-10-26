@@ -2344,13 +2344,13 @@
       "plugins": "Plugins",
       "templates": "Templates",
       "recovery": "File Recovery",
-      "composer": "Note Composer",
+      "composer": "Note composer",
       "attachments": "Attachments",
       "backlinks": "Backlinks",
       "frontmatter": "Frontmatter",
       "calendar": "Calendar",
       "flashcards": "Flashcards",
-      "graph": "Graph",
+      "graph": "Graph view",
       "publish": "Publish",
       "trash": "Trash"
     },
@@ -2459,7 +2459,7 @@
       "bookmark": "Bookmark",
       "removeBookmark": "Remove Bookmark",
       "templates": "Templates",
-      "noteComposer": "Note Composer",
+      "noteComposer": "Note composer",
       "backlinks": "Backlinks",
       "fileRecovery": "File Recovery",
       "frontmatter": "Frontmatter",
@@ -2578,7 +2578,7 @@
       "shareFailed": "Failed to share HTML file."
     },
     "graph": {
-      "title": "Graph View",
+      "title": "Graph view",
       "building": "Building graph...",
       "oneWay": "one-way",
       "reciprocal": "reciprocal"
@@ -2786,6 +2786,9 @@
       "noVault": "No vault selected",
       "noVaultHint": "Create a vault to start taking notes",
       "createVault": "Create a vault"
+    },
+    "calendar": {
+      "monthYear": "{month} {year}"
     }
   }
 }

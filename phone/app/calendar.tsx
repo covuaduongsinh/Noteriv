@@ -122,7 +122,7 @@ export default function CalendarScreen() {
             <Ionicons name="chevron-back" size={20} color={colors.textPrimary} />
           </TouchableOpacity>
           <Text style={[styles.monthTitle, { color: colors.textPrimary }]}>
-            {monthNames[month]} {year}
+            {t('phone.calendar.monthYear', { month: monthNames[month], year })}
           </Text>
           <TouchableOpacity onPress={nextMonth} style={styles.navBtn}>
             <Ionicons name="chevron-forward" size={20} color={colors.textPrimary} />
