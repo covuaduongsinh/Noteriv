@@ -370,7 +370,7 @@ export default function Home() {
 
   const tabInfos = tabs.map((t) => ({
     filePath: t.filePath,
-    name: (t.filePath.split("/").pop()?.split("\\").pop() || "Untitled").replace(/\.(md|markdown)$/i, ""),
+    name: baseName(t.filePath).replace(/\.(md|markdown)$/i, "") || "Untitled",
     isDirty: t.content !== t.savedContent,
   }));
 
@@ -992,7 +992,9 @@ export default function Home() {
     if (!vaultAdapter || !activeVaultPath || !window.electronAPI || !settingsRef.current.autoUpdateLinks) return;
     try {
       const notes = await window.electronAPI.listAllFiles(activeVaultPath);
-      const plan = notesMovedByRename(activeVaultPath, oldPath, newPath, notes.map((n) => n.filePath));
+      const attachments = (await vaultAdapter.listAttachments?.()) ?? [];
+      const allFiles = [...notes.map((n) => n.filePath), ...attachments.map((a) => a.target)];
+      const plan = notesMovedByRename(activeVaultPath, oldPath, newPath, allFiles);
       if (!plan) return;
       const key = (p: string) => toPosixPath(p).toLowerCase();
       const unsaved = new Set(tabsRef.current.filter((tab) => !tab.kind && tab.content !== tab.savedContent).map((tab) => key(tab.filePath)));
@@ -1571,7 +1573,7 @@ export default function Home() {
       toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
       randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
       fileRecovery: () => setShowFileRecovery(true),
-      exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
+      exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, baseName(currentTab.filePath).replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
       attachments: () => setShowAttachments(true),
       pluginManager: () => setShowPluginManager(true),
       cssSnippets: () => setShowCSSSnippets(true),
@@ -1748,7 +1750,7 @@ export default function Home() {
         toggleBookmark: () => { if (activeTab) setBookmarks((b) => toggleBookmark(b, activeTab)); },
         randomNote: async () => { if (activeVault) { const f = await getRandomNote(activeVault.path); if (f) openFile(f); } },
         fileRecovery: () => setShowFileRecovery(true),
-        exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, currentTab.filePath.split("/").pop()?.replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
+        exportPDF: () => { if (currentTab && !currentTab.kind) exportToPDF(content, baseName(currentTab.filePath).replace(/\.md$/i, "") || "note", { columnLayout: settings.pdfColumnLayout, chessboardWidthPercent: settings.pdfChessboardWidth }); },
         attachments: () => setShowAttachments(true),
         pluginManager: () => setShowPluginManager(true),
         cssSnippets: () => setShowCSSSnippets(true),
@@ -1854,7 +1856,7 @@ export default function Home() {
       // Not a note: a file a plugin shows itself (a .canvas or .drawing it just created).
       if (!activeVaultPath || !(await vaultAdapter?.fileExists?.(path))) return false;
       const sep = activeVaultPath.includes("\\") ? "\\" : "/";
-      await openFile(`${activeVaultPath.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+      await openFile(`${activeVaultPath.replace(/[\\/]+$/, "")}${sep}${toPosixPath(path).split("/").join(sep)}`);
       setSidebarRefresh((k) => k + 1);
       return true;
     },
@@ -2035,10 +2037,16 @@ export default function Home() {
           }}
           onRevealInSidebar={(filePath) => {
             // Expand parent folders and scroll to file
-            const parts = filePath.split("/");
+            const sep = filePath.includes("\\") ? "\\" : "/";
+            const norm = toPosixPath(filePath);
+            const isUnc = filePath.startsWith("\\\\") || norm.startsWith("//");
+            const cleanNorm = isUnc ? norm.replace(/^\/+/,"") : norm;
+            const parts = cleanNorm.split("/");
             const folders: string[] = [];
-            for (let i = 1; i < parts.length - 1; i++) {
-              folders.push(parts.slice(0, i + 1).join("/"));
+            const startIdx = isUnc ? 2 : 1;
+            for (let i = startIdx; i < parts.length - 1; i++) {
+              const prefix = isUnc ? `${sep}${sep}` : "";
+              folders.push(prefix + parts.slice(0, i + 1).join(sep));
             }
             setExpandedFolders((prev) => {
               const next = new Set(prev);
@@ -2225,7 +2233,7 @@ export default function Home() {
                   <div className="flex flex-col h-full overflow-hidden">
                     <div className="flex items-center justify-between px-3 py-1.5 border-b border-[var(--border)] bg-[var(--bg-secondary)]">
                       <span className="text-xs text-[var(--text-secondary)] truncate">
-                        {splitTabState.filePath.split("/").pop()}
+                        {baseName(splitTabState.filePath)}
                       </span>
                       <button
                         onClick={handleCloseSplit}
@@ -2465,7 +2473,7 @@ export default function Home() {
           onClose={() => setShowAppImport(false)}
           onOpen={(path) => {
             const sep = activeVault.path.includes("\\") ? "\\" : "/";
-            void openFile(`${activeVault.path.replace(/[\\/]+$/, "")}${sep}${path.split("/").join(sep)}`);
+            void openFile(`${activeVault.path.replace(/[\\/]+$/, "")}${sep}${toPosixPath(path).split("/").join(sep)}`);
           }}
         />
       )}
@@ -2604,7 +2612,7 @@ export default function Home() {
       {showPublish && currentTab && activeVault && (
         <PublishPreview
           content={content}
-          title={currentTab.filePath.split("/").pop()?.replace(/\.(md|markdown)$/i, "") || "note"}
+          title={baseName(currentTab.filePath).replace(/\.(md|markdown)$/i, "") || "note"}
           vaultPath={activeVault.path}
           onClose={() => setShowPublish(false)}
         />

@@ -1,3 +1,4 @@
+import { baseName } from "@noteriv/core/vault-adapter";
 /**
  * Trash / Soft Delete utilities
  * Moves files to .noteriv/trash/ instead of permanently deleting them.
@@ -21,7 +22,7 @@ export async function trashFile(vaultPath: string, filePath: string): Promise<bo
   const trashDir = `${vaultPath}/.noteriv/trash`;
   await window.electronAPI.createDir(trashDir);
 
-  const fileName = filePath.split("/").pop() || "unknown";
+  const fileName = baseName(filePath) || "unknown";
   const id = `${Date.now()}-${fileName}`;
   const contentDest = `${trashDir}/${id}`;
   const metaDest = `${trashDir}/${id}.meta.json`;
@@ -119,7 +120,8 @@ export async function restoreFile(vaultPath: string, trashId: string): Promise<b
   if (content === null) return false;
 
   // Ensure parent directory exists
-  const parentDir = meta.originalPath.substring(0, meta.originalPath.lastIndexOf("/"));
+  const cut = Math.max(meta.originalPath.lastIndexOf("/"), meta.originalPath.lastIndexOf("\\"));
+  const parentDir = cut > 0 ? meta.originalPath.substring(0, cut) : "";
   if (parentDir) {
     await window.electronAPI.createDir(parentDir);
   }

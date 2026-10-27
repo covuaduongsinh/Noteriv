@@ -253,13 +253,23 @@ export function notesMovedByRename(
   const oldRel = relativeVaultPath(vaultPath, oldPath);
   const newRel = relativeVaultPath(vaultPath, newPath);
   const after = notesAfter.map((p) => relativeVaultPath(vaultPath, p));
-  const isNote = after.some((p) => p.toLowerCase() === newRel.toLowerCase());
-  const moves = isNote
-    ? [{ from: oldRel, to: newRel }]
-    : expandFolderMove(newRel, oldRel, after).map((m) => ({ from: m.to, to: m.from }));
+  const folderMoves = expandFolderMove(newRel, oldRel, after).map((m) => ({ from: m.to, to: m.from }));
+  const isDirectFile =
+    after.some((p) => p.toLowerCase() === newRel.toLowerCase()) ||
+    (/\.[a-z0-9]+$/i.test(newRel) && !newRel.endsWith("/"));
+  const moves =
+    folderMoves.length > 0
+      ? folderMoves
+      : isDirectFile
+      ? [{ from: oldRel, to: newRel }]
+      : [];
   if (moves.length === 0) return null;
   const back = new Map(moves.map((m) => [m.to.toLowerCase(), m.from]));
-  return { moves, before: after.map((p) => back.get(p.toLowerCase()) ?? p) };
+  const before = after.map((p) => back.get(p.toLowerCase()) ?? p);
+  if (folderMoves.length === 0 && !before.some((p) => p.toLowerCase() === oldRel.toLowerCase())) {
+    before.push(oldRel);
+  }
+  return { moves, before };
 }
 
 /**

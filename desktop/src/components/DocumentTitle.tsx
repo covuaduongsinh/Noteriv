@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { baseName } from "@noteriv/core/vault-adapter";
 
 interface DocumentTitleProps {
   filePath: string;
@@ -8,7 +9,7 @@ interface DocumentTitleProps {
 }
 
 export default function DocumentTitle({ filePath, onRename }: DocumentTitleProps) {
-  const fileName = filePath.split("/").pop() || "";
+  const fileName = baseName(filePath);
   const displayName = fileName.replace(/\.(md|markdown)$/i, "");
 
   const [editing, setEditing] = useState(false);
