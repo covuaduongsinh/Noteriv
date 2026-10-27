@@ -246,7 +246,17 @@ export default function EditorScreen() {
             >
               <Text style={[styles.saveButtonText, { color: colors.bgPrimary }]}>{t('phone.editor.save')}</Text>
             </TouchableOpacity>
-          )}
+          )}          <TouchableOpacity
+            style={styles.headerButton}
+            onPress={() => {
+              router.push({
+                pathname: '/ai-chat',
+                params: { filePath: currentFile, vaultPath: vault?.path },
+              });
+            }}
+          >
+            <Ionicons name="sparkles-outline" size={20} color={colors.accent} />
+          </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerButton}
             onPress={toggleViewMode}

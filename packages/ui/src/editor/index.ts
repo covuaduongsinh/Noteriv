@@ -6,3 +6,4 @@ export { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completio
 export { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
 export { vimExtension } from "./vim-mode";
 export * from "./editor-commands";
+export * from "./inline-edit-extension";

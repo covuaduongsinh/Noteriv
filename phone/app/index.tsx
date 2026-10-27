@@ -184,6 +184,12 @@ export default function HomeScreen() {
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.headerBtn}
+            onPress={() => router.push('/ai-chat')}
+          >
+            <Ionicons name="sparkles-outline" size={22} color={colors.accent} />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.headerBtn}
             onPress={() => setSearchVisible(true)}
           >
             <Ionicons name="search" size={22} color={colors.textPrimary} />

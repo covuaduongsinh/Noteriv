@@ -58,6 +58,15 @@ function ThemedNavigation() {
         <Stack.Screen name="index" options={{ headerShown: false }} />
         <Stack.Screen name="editor" options={{ headerShown: false }} />
         <Stack.Screen
+          name="ai-chat"
+          options={{
+            presentation: 'modal',
+            title: 'AI Assistant',
+            headerStyle: { backgroundColor: colors.bgSecondary },
+            headerTintColor: colors.textPrimary,
+          }}
+        />
+        <Stack.Screen
           name="settings"
           options={{
             presentation: 'modal',

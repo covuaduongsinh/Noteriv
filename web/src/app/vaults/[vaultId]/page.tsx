@@ -22,7 +22,10 @@ import {
   adapterNoteEditor,
   type NoteEditor,
   NoteHoverPreview,
+  AiChatPanel,
+  AiSettingsModal,
 } from "@noteriv/ui/panels";
+import type { AiProviderConfig } from "@noteriv/core";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, storedLanguage } from "@/lib/i18n";
@@ -208,6 +211,27 @@ export default function VaultPage() {
   const [backlinksVisible, setBacklinksVisible] = useState(false);
   const [outgoingVisible, setOutgoingVisible] = useState(false);
   const [propertiesVisible, setPropertiesVisible] = useState(false);
+  const [aiChatVisible, setAiChatVisible] = useState(false);
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProviderConfig>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("noteriv_ai_provider");
+        return raw ? JSON.parse(raw) : { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+      } catch {
+        return { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+      }
+    }
+    return { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+  });
+
+  const handleSaveAiProvider = useCallback((cfg: AiProviderConfig) => {
+    setAiProvider(cfg);
+    try {
+      localStorage.setItem("noteriv_ai_provider", JSON.stringify(cfg));
+    } catch {}
+  }, []);
+
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
@@ -1976,6 +2000,20 @@ export default function VaultPage() {
                     }
                   />
                 </div>
+                {aiChatVisible && vaultAdapter && (
+                  <div className="web-side-panel w-80 border-l border-[var(--border)] overflow-hidden flex flex-col bg-[var(--bg-secondary)]" style={{ zIndex: 10 }}>
+                    <AiChatPanel
+                      adapter={vaultAdapter}
+                      activeNotePath={activeTab?.path ?? null}
+                      onOpenNote={(targetPath: string) => {
+                        const note = index?.notes.find((n) => n.path === targetPath);
+                        if (note) openNote(note.id);
+                      }}
+                      provider={aiProvider}
+                      onOpenSettings={() => setShowAiSettings(true)}
+                    />
+                  </div>
+                )}
                 {outlineVisible && (
                   <div className="web-side-panel w-64 border-l border-[var(--border)] overflow-y-auto">
                     <OutlinePanel content={draft} onHeadingClick={handleHeadingClick} onClose={() => setOutlineVisible(false)} />
@@ -2308,6 +2346,14 @@ export default function VaultPage() {
 
       {/* Hidden sandboxed <iframe> per enabled plugin — see usePluginHost.ts */}
       <div ref={pluginHost.containerRef} style={{ display: "none" }} />
+
+      {showAiSettings && (
+        <AiSettingsModal
+          currentConfig={aiProvider}
+          onSave={handleSaveAiProvider}
+          onClose={() => setShowAiSettings(false)}
+        />
+      )}
 
       {pdfPreview && (
         <PdfPreviewModal

@@ -13,6 +13,7 @@ import { search, searchKeymap } from "@codemirror/search";
 import { tags } from "@lezer/highlight";
 import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completion";
 import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
+import { inlineEditExtension } from "./inline-edit-extension";
 
 const sourceHighlight = HighlightStyle.define([
   { tag: tags.heading1, color: "var(--accent)", fontWeight: "bold", fontSize: "1.2em" },
@@ -91,6 +92,7 @@ export default function SourceEditor({ content, onChange, onViewReady, adapter =
           if (update.docChanged) onChangeRef.current(update.state.doc.toString());
         }),
         EditorView.lineWrapping,
+        inlineEditExtension(),
       ],
     });
 

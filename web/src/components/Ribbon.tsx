@@ -46,6 +46,8 @@ interface RibbonProps {
   outlineActive?: boolean;
   tagsActive?: boolean;
   bookmarksActive?: boolean;
+  onAiChat?: () => void;
+  aiChatActive?: boolean;
 }
 
 const ACTIVE_STYLE = { color: "var(--accent)", background: "rgba(137,180,250,0.12)" } as const;
@@ -63,7 +65,7 @@ export default function Ribbon(props: RibbonProps) {
   const {
     onQuickOpen, onNewNote, onCommandPalette, onSearch, onSettings,
     onOutline, onTags, onBookmarks, onSync, onPlugins, syncAttention, pluginPanels = [], activePluginPanel = null,
-    onPluginPanel, outlineActive, tagsActive, bookmarksActive, coreRibbon,
+    onPluginPanel, outlineActive, tagsActive, bookmarksActive, coreRibbon, onAiChat, aiChatActive,
   } = props;
 
   const [moreOpen, setMoreOpen] = useState(false);
@@ -134,6 +136,13 @@ export default function Ribbon(props: RibbonProps) {
         <button className="ribbon-btn" title={t("web.ribbon.bookmarks")} onClick={onBookmarks} style={bookmarksActive ? ACTIVE_STYLE : undefined}>
           <BookmarkIcon />
         </button>
+                {onAiChat && (
+          <button className="ribbon-btn" title="AI Assistant (Chat & Vault)" onClick={onAiChat} style={aiChatActive ? ACTIVE_STYLE : undefined}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+            </svg>
+          </button>
+        )}
         {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
         {coreRibbon}
       </div>

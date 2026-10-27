@@ -26,12 +26,15 @@ import {
   type NoteEditor,
   NoteHoverPreview,
   AppImport,
+  AiChatPanel,
+  AiSettingsModal,
 } from "@noteriv/ui/panels";
 import { writeImportToVault } from "@/lib/app-import";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, languageForStoredSettings } from "@/lib/i18n";
 import { parseConflictCopy } from "@noteriv/core/conflict-copy";
+import type { AiProviderConfig } from "@noteriv/core";
 import "@/styles/bookmarks.css";
 import { createDesktopVaultAdapter } from "@/lib/desktopVaultAdapter";
 import { createDesktopImageLoader, createDesktopImageDrop, createDesktopFileLister } from "@/lib/ui-hooks";
@@ -177,6 +180,27 @@ export default function Home() {
   }, []);
   // Another tab or view mode replaces the editor (and the link) without the pointer leaving it.
   useEffect(() => handleWikilinkLeave(), [activeTab, viewMode, handleWikilinkLeave]);
+  const [showAiChat, setShowAiChat] = useState(false);
+  const [showAiSettings, setShowAiSettings] = useState(false);
+  const [aiProvider, setAiProvider] = useState<AiProviderConfig>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const raw = localStorage.getItem("noteriv_ai_provider");
+        return raw ? JSON.parse(raw) : { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+      } catch {
+        return { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+      }
+    }
+    return { id: "claude-sdk", label: "Claude Code CLI (Local / Subscription)" };
+  });
+
+  const handleSaveAiProvider = useCallback((cfg: AiProviderConfig) => {
+    setAiProvider(cfg);
+    try {
+      localStorage.setItem("noteriv_ai_provider", JSON.stringify(cfg));
+    } catch {}
+  }, []);
+
   const [showOutline, setShowOutline] = useState(false);
   const [showBacklinks, setShowBacklinks] = useState(false);
   const [showOutgoing, setShowOutgoing] = useState(false);
@@ -2093,6 +2117,16 @@ export default function Home() {
                   <path d="M14 13l1 1" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
                 </svg>
               </button>
+              <button
+                className="ribbon-btn"
+                title="AI Assistant (Chat & Vault)"
+                onClick={() => setShowAiChat((v) => !v)}
+                style={showAiChat ? { color: "var(--accent)" } : undefined}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z" />
+                </svg>
+              </button>
               {/* Core plugins (daily note, calendar, flashcards, …): everyday tools, so on the top rail. */}
               <CorePluginRibbonButtons
                 icons={corePlugins.contributions.ribbonIcons}
@@ -2376,6 +2410,17 @@ export default function Home() {
           open={corePluginHost.openPanels}
           onClose={corePluginHost.togglePanel}
         />
+        {showAiChat && vaultAdapter && (
+          <div className="w-80 border-l border-[var(--border)] overflow-hidden flex flex-col bg-[var(--bg-secondary)]" style={{ zIndex: 10 }}>
+            <AiChatPanel
+              adapter={vaultAdapter}
+              activeNotePath={currentTab?.filePath ?? null}
+              onOpenNote={openFile}
+              provider={aiProvider}
+              onOpenSettings={() => setShowAiSettings(true)}
+            />
+          </div>
+        )}
       </div>
 
       {/* Status bar */}
@@ -2457,6 +2502,14 @@ export default function Home() {
           onToggleCorePlugin={(id, enabled) => void corePlugins.setEnabled(id, enabled)}
           corePluginSettingsTabs={corePlugins.contributions.settingsTabs}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showAiSettings && (
+        <AiSettingsModal
+          currentConfig={aiProvider}
+          onSave={handleSaveAiProvider}
+          onClose={() => setShowAiSettings(false)}
         />
       )}
 

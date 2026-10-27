@@ -22,6 +22,7 @@ import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completio
 import { vimExtension } from "./vim-mode";
 import { linkClickHandler } from "./link-click";
 import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
+import { inlineEditExtension } from "./inline-edit-extension";
 
 export interface EditorProps {
   content: string;
@@ -132,6 +133,7 @@ export default function Editor({
           },
         }),
         EditorView.lineWrapping,
+        inlineEditExtension(),
       ],
     });
 
