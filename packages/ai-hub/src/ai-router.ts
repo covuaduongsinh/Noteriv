@@ -27,7 +27,7 @@ export async function* streamChat(
   const { provider, messages, systemPrompt, tools, relayUrl } = options;
 
   try {
-    if (provider.kind === "cli" && provider.id === "claude-sdk") {
+    if (provider.id === "claude-sdk" || provider.kind === "cli") {
       yield* streamClaudeSdk({
         model: provider.model,
         messages,

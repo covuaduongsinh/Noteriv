@@ -1,0 +1,111 @@
+import type { FastifyInstance } from "fastify";
+import { spawn } from "node:child_process";
+
+export default async function aiRoutes(fastify: FastifyInstance) {
+  fastify.post("/claude-stream", async (request, reply) => {
+    const body = (request.body || {}) as any;
+    const { messages = [], systemPrompt = "" } = body;
+
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
+    const userPrompt = lastUserMsg?.content || "Xin chào";
+
+    const baseInstruction =
+      systemPrompt ||
+      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Hãy đọc và phân tích kỹ nội dung trong thẻ <context> hoặc <active_note> nếu có để trả lời chính xác, súc tích và thân thiện bằng tiếng Việt.";
+
+    const prompt = `[HƯỚNG DẪN HỆ THỐNG]:\n${baseInstruction}\n\n[CÂU HỎI NGƯỜI DÙNG]:\n${userPrompt}`;
+
+    reply.raw.setHeader("Content-Type", "text/event-stream");
+    reply.raw.setHeader("Cache-Control", "no-cache");
+    reply.raw.setHeader("Connection", "keep-alive");
+    reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+    reply.raw.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (typeof (reply.raw as any).flushHeaders === "function") {
+      (reply.raw as any).flushHeaders();
+    }
+
+    // Spawn claude CLI with stdin piping to avoid Windows shell argument truncation
+    const child = spawn(
+      "claude.exe",
+      ["-p", "--output-format", "stream-json", "--verbose"],
+      {
+        stdio: ["pipe", "pipe", "pipe"],
+        cwd: process.env.TEMP || "C:\\",
+        shell: process.platform === "win32",
+      }
+    );
+
+    // Pipe the full prompt safely via stdin
+    child.stdin.write(prompt);
+    child.stdin.end();
+
+    let lastDeliveredText = "";
+    let buffer = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("{")) continue;
+
+        try {
+          const event = JSON.parse(trimmed);
+          if (event.type === "assistant" && event.message?.content) {
+            for (const part of event.message.content) {
+              if (part.type === "text" && typeof part.text === "string") {
+                const fullText = part.text;
+                if (fullText.length > lastDeliveredText.length && fullText.startsWith(lastDeliveredText)) {
+                  const delta = fullText.slice(lastDeliveredText.length);
+                  lastDeliveredText = fullText;
+                  reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: delta })}\n\n`);
+                } else if (fullText !== lastDeliveredText && fullText.length > 0) {
+                  const delta = fullText.startsWith(lastDeliveredText)
+                    ? fullText.slice(lastDeliveredText.length)
+                    : fullText;
+                  lastDeliveredText = fullText;
+                  reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: delta })}\n\n`);
+                }
+              }
+            }
+          } else if (event.type === "result" && event.result) {
+            if (typeof event.result === "string" && event.result.length > lastDeliveredText.length) {
+              const delta = event.result.slice(lastDeliveredText.length);
+              lastDeliveredText = event.result;
+              reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: delta })}\n\n`);
+            }
+          }
+        } catch {
+          // ignore partial JSON
+        }
+      }
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0 && lastDeliveredText.length === 0) {
+        reply.raw.write(
+          `data: ${JSON.stringify({
+            type: "error",
+            message: `Claude Code exited with code ${code}`,
+          })}\n\n`
+        );
+      } else {
+        reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        reply.raw.write("data: [DONE]\n\n");
+      }
+      reply.raw.end();
+    });
+
+    child.on("error", (err) => {
+      reply.raw.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          message: `Failed to spawn Claude CLI: ${err.message}`,
+        })}\n\n`
+      );
+      reply.raw.end();
+    });
+  });
+}

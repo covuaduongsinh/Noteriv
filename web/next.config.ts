@@ -39,7 +39,7 @@ const nextConfig: NextConfig = {
   // them (the output then nests the app under .next/standalone/web/, see web/Dockerfile).
   outputFileTracingRoot: path.join(__dirname, ".."),
   // @noteriv/core and @noteriv/ui ship TypeScript source (no build step); compile them with the app.
-  transpilePackages: ["@noteriv/core", "@noteriv/ui", "@noteriv/plugin-api", "@noteriv/plugins"],
+  transpilePackages: ["@noteriv/core", "@noteriv/ui", "@noteriv/ai-hub", "@noteriv/plugin-api", "@noteriv/plugins"],
   // Shown in Developer > Diagnostics so "which version is deployed?" has an answer.
   env: { NEXT_PUBLIC_BUILD_TIME: new Date().toISOString() },
   async rewrites() {

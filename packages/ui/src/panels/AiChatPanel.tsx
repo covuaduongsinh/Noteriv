@@ -9,6 +9,7 @@ export interface AiChatPanelProps {
   activeNotePath?: string | null;
   onOpenNote?: (path: string) => void;
   provider: AiProviderConfig;
+  relayUrl?: string;
   onOpenSettings?: () => void;
   safetyNet?: GitSafetyNet;
 }
@@ -18,6 +19,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   activeNotePath,
   onOpenNote,
   provider,
+  relayUrl,
   onOpenSettings,
   safetyNet: initialSafetyNet,
 }) => {
@@ -75,19 +77,29 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     setInput("");
     setMentionQuery(null);
 
-    // Build context
-    const context: AiContextRef = {};
+    // Build context with active note content
+    let activeContent = "";
     if (activeNotePath) {
-      context.activeNote = { path: activeNotePath };
+      try {
+        activeContent = await adapter.readNote(activeNotePath);
+      } catch {}
     }
 
-    const fullPrompt = buildPromptWithContext(userText, context);
+    let userPromptWithContext = userText;
+    if (activeNotePath) {
+      userPromptWithContext = `${userText}\n\n<context>\n  <active_note path="${activeNotePath}">\n<![CDATA[\n${activeContent}\n]]>\n  </active_note>\n</context>`;
+    }
 
     const userMsg: AiMessage = {
       id: `msg-${Date.now()}`,
       role: "user",
       content: userText,
       createdAt: Date.now(),
+    };
+
+    const userMsgForApi: AiMessage = {
+      ...userMsg,
+      content: userPromptWithContext,
     };
 
     const assistantMsgId = `asst-${Date.now()}`;
@@ -106,11 +118,12 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     const toolDefs = vfsTools.getToolDefinitions();
 
     try {
-      const allMessages = [...messages, userMsg];
+      const allMessages = [...messages, userMsgForApi];
       const stream = streamChat({
         provider,
         messages: allMessages,
         tools: toolDefs,
+        relayUrl,
       });
 
       let accumulatedText = "";

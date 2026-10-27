@@ -232,6 +232,20 @@ export default function VaultPage() {
     } catch {}
   }, []);
 
+  const [relayUrl, setRelayUrl] = useState<string>(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("noteriv_ai_relay_url") || "http://localhost:4001";
+    }
+    return "http://localhost:4001";
+  });
+
+  const handleSaveRelayUrl = useCallback((url: string) => {
+    setRelayUrl(url);
+    try {
+      localStorage.setItem("noteriv_ai_relay_url", url);
+    } catch {}
+  }, []);
+
   const [outlineVisible, setOutlineVisible] = useState(false);
   const [tagPaneVisible, setTagPaneVisible] = useState(false);
   const [frontmatterCollapsed, setFrontmatterCollapsed] = useState(true);
@@ -2016,6 +2030,7 @@ export default function VaultPage() {
                         if (note) openNote(note.id);
                       }}
                       provider={aiProvider}
+                      relayUrl={relayUrl}
                       onOpenSettings={() => setShowAiSettings(true)}
                     />
                   </div>
@@ -2356,7 +2371,9 @@ export default function VaultPage() {
       {showAiSettings && (
         <AiSettingsModal
           currentConfig={aiProvider}
+          relayUrl={relayUrl}
           onSave={handleSaveAiProvider}
+          onSaveRelayUrl={handleSaveRelayUrl}
           onClose={() => setShowAiSettings(false)}
         />
       )}

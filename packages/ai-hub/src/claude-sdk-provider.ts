@@ -17,9 +17,12 @@ export interface ClaudeSdkOptions {
 export async function* streamClaudeSdk(
   options: ClaudeSdkOptions
 ): AsyncGenerator<AiStreamEvent, void, unknown> {
-  // If relay URL is configured (e.g. from mobile or web connecting to local desktop sidecar)
-  if (options.relayUrl) {
-    const resp = await fetch(`${options.relayUrl}/ai/claude-stream`, {
+  const relayBase = options.relayUrl?.trim() || (typeof window !== "undefined" ? "http://localhost:4001" : undefined);
+
+  // If relay URL is configured (or fallback in browser)
+  if (relayBase) {
+    const cleanBase = relayBase.replace(/\/+$/, "");
+    const resp = await fetch(`${cleanBase}/ai/claude-stream`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
