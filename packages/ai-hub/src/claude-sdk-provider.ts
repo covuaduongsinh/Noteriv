@@ -1,7 +1,8 @@
-import type { AiMessage, AiStreamEvent, AiToolDefinition } from "@noteriv/core";
+import type { AiMessage, AiStreamEvent, AiToolDefinition, AiReasoningEffort } from "@noteriv/core";
 
 export interface ClaudeSdkOptions {
   model?: string;
+  reasoningEffort?: AiReasoningEffort;
   messages: AiMessage[];
   systemPrompt?: string;
   tools?: AiToolDefinition[];
@@ -26,7 +27,8 @@ export async function* streamClaudeSdk(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        model: options.model || "claude-3-5-sonnet-latest",
+        model: options.model || "sonnet",
+        reasoningEffort: options.reasoningEffort,
         messages: options.messages,
         systemPrompt: options.systemPrompt,
         tools: options.tools,

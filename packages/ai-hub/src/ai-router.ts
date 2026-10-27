@@ -43,6 +43,7 @@ export async function* streamChat(
     if (provider.id === "claude-sdk" || provider.kind === "cli") {
       yield* streamClaudeSdk({
         model: provider.model,
+        reasoningEffort: provider.reasoningEffort,
         messages,
         systemPrompt,
         tools,

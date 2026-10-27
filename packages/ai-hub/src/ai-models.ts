@@ -38,10 +38,17 @@ export const PROVIDER_GROUPS: ProviderGroup[] = [
     kind: "cli",
     category: "subscription",
     models: [
+      { id: "sonnet", name: "Claude Sonnet 5.5 (Mới nhất - Mặc định)", supportsReasoning: true },
+      { id: "opus", name: "Claude Opus 5.5 (Mới nhất)", supportsReasoning: true },
+      { id: "claude-sonnet-5-5", name: "Claude Sonnet 5.5 (High Reasoning)", supportsReasoning: true },
+      { id: "claude-opus-5-5", name: "Claude Opus 5.5 (High Reasoning)", supportsReasoning: true },
       { id: "claude-3-7-sonnet-latest", name: "Claude 3.7 Sonnet (Thinking)", supportsReasoning: true },
-      { id: "claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet", supportsReasoning: false },
+      { id: "haiku", name: "Claude Haiku (Tốc độ cao)", supportsReasoning: false },
+      { id: "claude-3-5-sonnet-latest", name: "Claude 3.5 Sonnet v2", supportsReasoning: false },
       { id: "claude-3-5-haiku-latest", name: "Claude 3.5 Haiku", supportsReasoning: false },
       { id: "claude-3-opus-latest", name: "Claude 3 Opus", supportsReasoning: false },
+      { id: "claude-sonnet-4", name: "Claude Sonnet 4 (Next-Gen Preview)", supportsReasoning: true },
+      { id: "claude-opus-4", name: "Claude Opus 4 (Next-Gen Preview)", supportsReasoning: true },
     ],
   },
   {

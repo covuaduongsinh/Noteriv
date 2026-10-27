@@ -6,7 +6,7 @@ import fs from "node:fs";
 export default async function aiRoutes(fastify: FastifyInstance) {
   fastify.post("/claude-stream", async (request, reply) => {
     const body = (request.body || {}) as any;
-    const { messages = [], systemPrompt = "" } = body;
+    const { messages = [], systemPrompt = "", model, reasoningEffort } = body;
 
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
     const userPrompt = lastUserMsg?.content || "Xin chào";
@@ -26,10 +26,24 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       (reply.raw as any).flushHeaders();
     }
 
+    const args = ["-p", "--output-format", "stream-json", "--verbose"];
+    if (model && model !== "default") {
+      args.push("--model", model);
+    }
+    if (reasoningEffort && reasoningEffort !== "none") {
+      const effortMap: Record<string, string> = {
+        low: "low",
+        medium: "medium",
+        high: "high",
+        max: "max",
+      };
+      args.push("--effort", effortMap[reasoningEffort] || "medium");
+    }
+
     // Spawn claude CLI with stdin piping to avoid Windows shell argument truncation
     const child = spawn(
       "claude.exe",
-      ["-p", "--output-format", "stream-json", "--verbose"],
+      args,
       {
         stdio: ["pipe", "pipe", "pipe"],
         cwd: process.env.TEMP || "C:\\",
