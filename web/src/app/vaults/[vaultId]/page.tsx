@@ -2025,6 +2025,7 @@ export default function VaultPage() {
                     <AiChatPanel
                       adapter={vaultAdapter}
                       activeNotePath={activeTab?.path ?? null}
+                      activeNoteContent={draft ?? activeTab?.content ?? null}
                       onOpenNote={(targetPath: string) => {
                         const note = index?.notes.find((n) => n.path === targetPath);
                         if (note) openNote(note.id);

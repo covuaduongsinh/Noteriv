@@ -7,6 +7,7 @@ import ContextUsageMeter from "./ContextUsageMeter";
 export interface AiChatPanelProps {
   adapter: VaultAdapter;
   activeNotePath?: string | null;
+  activeNoteContent?: string | null;
   onOpenNote?: (path: string) => void;
   provider: AiProviderConfig;
   relayUrl?: string;
@@ -17,6 +18,7 @@ export interface AiChatPanelProps {
 export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   adapter,
   activeNotePath,
+  activeNoteContent,
   onOpenNote,
   provider,
   relayUrl,
@@ -78,10 +80,16 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     setMentionQuery(null);
 
     // Build context with active note content
-    let activeContent = "";
-    if (activeNotePath) {
+    let activeContent = activeNoteContent || "";
+    if (!activeContent && activeNotePath) {
       try {
-        activeContent = await adapter.readNote(activeNotePath);
+        const notes = await adapter.listNotes();
+        const found = notes.find((n) => n.path === activeNotePath || n.name === activeNotePath);
+        if (found) {
+          activeContent = (await adapter.readNote(found.id)) || "";
+        } else {
+          activeContent = (await adapter.readNote(activeNotePath)) || "";
+        }
       } catch {}
     }
 
