@@ -668,6 +668,10 @@ export default function VaultPage() {
       });
   }, [vaultId]);
 
+  useEffect(() => {
+    refreshIndex();
+  }, [refreshIndex]);
+
   // Once the vault is on screen, fetch the editor while the browser is idle, so opening a note does not wait for it.
   const vaultShown = index !== null;
   useEffect(() => {
@@ -1869,6 +1873,8 @@ export default function VaultPage() {
             onSearch={() => setSearchVisible(true)}
             onSettings={() => openSettings("general")}
             onOutline={() => setOutlineVisible((v) => !v)}
+            onAiChat={() => setAiChatVisible((v) => !v)}
+            aiChatActive={aiChatVisible}
             onTags={() => setTagPaneVisible((v) => !v)}
             onTrash={() => setShowTrash(true)}
             onBookmarks={() => setBookmarksVisible((v) => !v)}
