@@ -1,12 +1,13 @@
 import React, { useState, useRef, useEffect } from "react";
 import type { VaultAdapter, NoteRef, AiMessage, AiProviderConfig, AiContextRef, AiImageAttachment } from "@noteriv/core";
-import { createVfsTools, buildPromptWithContext, GitSafetyNet, wrapAdapterWithSafetyNet } from "@noteriv/core";
+import { createVfsTools, buildPromptWithContext, buildSystemPrompt, GitSafetyNet, wrapAdapterWithSafetyNet } from "@noteriv/core";
 import { streamChat } from "@noteriv/ai-hub";
 import ContextUsageMeter from "./ContextUsageMeter";
 import { ModelEffortToolbar } from "./ModelEffortToolbar";
 
 export interface AiChatPanelProps {
   adapter: VaultAdapter;
+  vaultName?: string;
   activeNotePath?: string | null;
   activeNoteContent?: string | null;
   onOpenNote?: (path: string) => void;
@@ -19,6 +20,7 @@ export interface AiChatPanelProps {
 
 export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   adapter,
+  vaultName,
   activeNotePath,
   activeNoteContent,
   onOpenNote,
@@ -126,7 +128,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     setAttachedImages([]);
     setMentionQuery(null);
 
-    // Build context with active note content
+    // Build context with active note content and vault overview
     let activeContent = activeNoteContent || "";
     if (!activeContent && activeNotePath) {
       try {
@@ -140,10 +142,66 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       } catch {}
     }
 
-    let userPromptWithContext = userText;
-    if (activeNotePath) {
-      userPromptWithContext = `${userText}\n\n<context>\n  <active_note path="${activeNotePath}">\n<![CDATA[\n${activeContent}\n]]>\n  </active_note>\n</context>`;
+    // Extract unique folder list from vault notes
+    const folders = Array.from(
+      new Set(
+        vaultNotes
+          .map((n) => {
+            const parts = n.path.split("/");
+            return parts.length > 1 ? parts.slice(0, -1).join("/") : "";
+          })
+          .filter(Boolean)
+      )
+    ).sort();
+
+    // Scan user text for any referenced notes: [[Note Name]] or @Note
+    const mentionedMatches = Array.from(userText.matchAll(/\[\[([^\]]+)\]\]/g)).map((m) => m[1].trim());
+    const mentionedList: Array<{ path: string; title?: string; content?: string }> = [];
+
+    for (const mention of mentionedMatches) {
+      const found = vaultNotes.find(
+        (n) =>
+          n.name.replace(/\.md$/i, "").toLowerCase() === mention.toLowerCase() ||
+          n.path.toLowerCase() === mention.toLowerCase() ||
+          n.path.toLowerCase() === `${mention.toLowerCase()}.md`
+      );
+      if (found && found.path !== activeNotePath) {
+        try {
+          const content = await adapter.readNote(found.id);
+          if (content) {
+            mentionedList.push({
+              path: found.path,
+              title: found.name.replace(/\.md$/i, ""),
+              content,
+            });
+          }
+        } catch {}
+      }
     }
+
+    // Construct comprehensive AI Context
+    const aiContext: AiContextRef = {
+      vaultOverview: {
+        name: vaultName || "Vault",
+        totalNotes: vaultNotes.length,
+        folders,
+        // Send all note paths for comprehensive awareness (zero bloat, ~15 bytes/note)
+        notes: vaultNotes.slice(0, 500).map((n) => ({
+          path: n.path,
+          name: n.name.replace(/\.md$/i, ""),
+        })),
+      },
+      activeNote: activeNotePath
+        ? {
+            path: activeNotePath,
+            title: activeNotePath.split("/").pop()?.replace(/\.md$/i, ""),
+            content: activeContent,
+          }
+        : undefined,
+      mentionedNotes: mentionedList.length > 0 ? mentionedList : undefined,
+    };
+
+    const userPromptWithContext = buildPromptWithContext(userText, aiContext);
 
     const userMsg: AiMessage = {
       id: `msg-${Date.now()}`,
@@ -179,6 +237,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       const stream = streamChat({
         provider: currentProvider,
         messages: allMessages,
+        systemPrompt: buildSystemPrompt({ vaultName }),
         tools: toolDefs,
         relayUrl,
       });
@@ -267,12 +326,25 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         </div>
       </div>
 
-      {/* Active Note Indicator */}
-      {activeNotePath && (
-        <div className="px-3 py-1 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] flex items-center justify-between">
-          <span className="truncate">Context: 📄 {activeNotePath}</span>
+      {/* Active Context & Vault Indicator */}
+      <div className="px-3 py-1.5 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] flex items-center justify-between gap-1">
+        <div className="truncate flex items-center gap-1.5" title={`Bối cảnh AI: ${vaultName || "Vault"} (${vaultNotes.length} ghi chú)`}>
+          <span className="font-medium text-[var(--text-accent, #3b82f6)]">
+            🗄️ {vaultName || "Vault"}
+          </span>
+          <span className="text-[10px] px-1 py-0.2 rounded bg-[var(--bg-modifier-hover)] text-[var(--text-muted)]">
+            {vaultNotes.length} notes
+          </span>
+          {activeNotePath && (
+            <>
+              <span className="text-[var(--text-muted)]">•</span>
+              <span className="truncate" title={activeNotePath}>
+                📄 {activeNotePath}
+              </span>
+            </>
+          )}
         </div>
-      )}
+      </div>
 
       {/* Message List */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">

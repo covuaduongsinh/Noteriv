@@ -45,12 +45,25 @@ export interface AiMessage {
   createdAt: number;
 }
 
+export interface AiVaultOverview {
+  name?: string;
+  totalNotes: number;
+  folders?: string[];
+  notes?: Array<{
+    path: string;
+    name?: string;
+  }>;
+}
+
 /** Structured context references attached to user prompts (Zero Context Bloat). */
 export interface AiContextRef {
+  /** Overview statistics and file tree of the active vault */
+  vaultOverview?: AiVaultOverview;
   /** The note currently open in the active editor tab. */
   activeNote?: {
     path: string;
     title?: string;
+    content?: string;
   };
   /** Text highlighted by the user in the editor. */
   selection?: {
@@ -63,6 +76,7 @@ export interface AiContextRef {
   mentionedNotes?: Array<{
     path: string;
     title?: string;
+    content?: string;
   }>;
   /** Current editor cursor position. */
   cursor?: {

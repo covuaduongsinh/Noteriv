@@ -2024,6 +2024,7 @@ export default function VaultPage() {
                   <div className="web-side-panel w-80 border-l border-[var(--border)] overflow-hidden flex flex-col bg-[var(--bg-secondary)]" style={{ zIndex: 10 }}>
                     <AiChatPanel
                       adapter={vaultAdapter}
+                      vaultName={vault?.name}
                       activeNotePath={activeTab?.path ?? null}
                       activeNoteContent={draft ?? activeTab?.content ?? null}
                       onOpenNote={(targetPath: string) => {

@@ -13,7 +13,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     const baseInstruction =
       systemPrompt ||
-      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Hãy đọc và phân tích kỹ nội dung trong thẻ <context> hoặc <active_note> nếu có để trả lời chính xác, súc tích và thân thiện bằng tiếng Việt.";
+      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Bạn nắm toàn diện cấu trúc Vault thông qua thẻ <vault_overview> trong <context> (gồm tên vault, tổng số ghi chú, danh sách các thư mục, và toàn bộ file trong vault). Khi người dùng hỏi về số lượng file, danh sách thư mục, hoặc tìm ghi chú, hãy sử dụng thông tin trong <vault_overview> để trả lời chính xác, đầy đủ và thân thiện bằng tiếng Việt. Không trả lời rằng bạn thiếu công cụ đếm file vì toàn bộ danh sách đã có trong <vault_overview>.";
 
     const prompt = `[HƯỚNG DẪN HỆ THỐNG]:\n${baseInstruction}\n\n[CÂU HỎI NGƯỜI DÙNG]:\n${userPrompt}`;
 
@@ -134,7 +134,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     const baseInstruction =
       systemPrompt ||
-      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Hãy đọc và phân tích kỹ nội dung trong thẻ <context> hoặc <active_note> nếu có để trả lời chính xác, súc tích và thân thiện bằng tiếng Việt.";
+      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Bạn nắm toàn diện cấu trúc Vault thông qua thẻ <vault_overview> trong <context> (gồm tên vault, tổng số ghi chú, danh sách các thư mục, và toàn bộ file trong vault). Khi người dùng hỏi về số lượng file, danh sách thư mục, hoặc tìm ghi chú, hãy sử dụng thông tin trong <vault_overview> để trả lời chính xác, đầy đủ và thân thiện bằng tiếng Việt. Không trả lời rằng bạn thiếu công cụ đếm file vì toàn bộ danh sách đã có trong <vault_overview>.";
 
     const prompt = `[HƯỚNG DẪN HỆ THỐNG]:\n${baseInstruction}\n\n[CÂU HỎI NGƯỜI DÙNG]:\n${userPrompt}`;
 

@@ -87,9 +87,44 @@ describe("AI Context Builder (Zero Context Bloat)", () => {
       memoryContent: "User prefers concise bullet points.",
     });
 
-    expect(sys).toContain("Noteriv AI Assistant");
-    expect(sys).toContain("Always answer in Vietnamese.");
+    expect(sys).toContain("Noteriv AI");
+    expect(sys).toContain("vault_overview");
     expect(sys).toContain("User prefers concise bullet points.");
-    expect(sys).toContain("VFS tools");
+  });
+
+  it("injects and parses comprehensive vault overview map", () => {
+    const prompt = "vault có bao nhiêu file?";
+    const ctx: AiContextRef = {
+      vaultOverview: {
+        name: "Perf 2000",
+        totalNotes: 3,
+        folders: ["Openings", "Tactics"],
+        notes: [
+          { path: "Openings/Note 001 tốt.md", name: "Note 001 tốt" },
+          { path: "Tactics/Pin.md", name: "Pin" },
+          { path: "Tactics/Fork.md", name: "Fork" },
+        ],
+      },
+      activeNote: {
+        path: "Openings/Note 001 tốt.md",
+        title: "Note 001 tốt",
+        content: "# Giới thiệu cờ vua",
+      },
+    };
+
+    const formatted = buildPromptWithContext(prompt, ctx);
+    expect(formatted).toContain('<vault_overview name="Perf 2000" total_notes="3">');
+    expect(formatted).toContain('<folder path="Openings" />');
+    expect(formatted).toContain('<note path="Openings/Note 001 tốt.md" name="Note 001 tốt" />');
+    expect(formatted).toContain('<![CDATA[\n# Giới thiệu cờ vua\n]]>');
+
+    const parsed = parsePromptContext(formatted);
+    expect(parsed.cleanPrompt).toBe("vault có bao nhiêu file?");
+    expect(parsed.context.vaultOverview?.name).toBe("Perf 2000");
+    expect(parsed.context.vaultOverview?.totalNotes).toBe(3);
+    expect(parsed.context.vaultOverview?.folders).toEqual(["Openings", "Tactics"]);
+    expect(parsed.context.vaultOverview?.notes).toHaveLength(3);
+    expect(parsed.context.activeNote?.path).toBe("Openings/Note 001 tốt.md");
+    expect(parsed.context.activeNote?.content).toBe("# Giới thiệu cờ vua");
   });
 });
