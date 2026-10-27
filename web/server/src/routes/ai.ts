@@ -1,5 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { spawn } from "node:child_process";
+import path from "node:path";
+import fs from "node:fs";
 
 export default async function aiRoutes(fastify: FastifyInstance) {
   fastify.post("/claude-stream", async (request, reply) => {
@@ -103,6 +105,125 @@ export default async function aiRoutes(fastify: FastifyInstance) {
         `data: ${JSON.stringify({
           type: "error",
           message: `Failed to spawn Claude CLI: ${err.message}`,
+        })}\n\n`
+      );
+      reply.raw.end();
+    });
+  });
+
+  fastify.post("/antigravity-stream", async (request, reply) => {
+    const body = (request.body || {}) as any;
+    const { messages = [], systemPrompt = "", model, reasoningEffort } = body;
+
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user");
+    const userPrompt = lastUserMsg?.content || "Xin chào";
+
+    const baseInstruction =
+      systemPrompt ||
+      "Bạn là trợ lý Noteriv AI thông minh cho sổ tay ghi chú Markdown (Vault). Hãy đọc và phân tích kỹ nội dung trong thẻ <context> hoặc <active_note> nếu có để trả lời chính xác, súc tích và thân thiện bằng tiếng Việt.";
+
+    const prompt = `[HƯỚNG DẪN HỆ THỐNG]:\n${baseInstruction}\n\n[CÂU HỎI NGƯỜI DÙNG]:\n${userPrompt}`;
+
+    reply.raw.setHeader("Content-Type", "text/event-stream");
+    reply.raw.setHeader("Cache-Control", "no-cache");
+    reply.raw.setHeader("Connection", "keep-alive");
+    reply.raw.setHeader("Access-Control-Allow-Origin", "*");
+    reply.raw.setHeader("Access-Control-Allow-Headers", "Content-Type");
+    if (typeof (reply.raw as any).flushHeaders === "function") {
+      (reply.raw as any).flushHeaders();
+    }
+
+    const defaultAgyPath = process.env.LOCALAPPDATA
+      ? path.join(process.env.LOCALAPPDATA, "agy", "bin", "agy.EXE")
+      : "agy.exe";
+    const agyBin = fs.existsSync(defaultAgyPath) ? defaultAgyPath : "agy.exe";
+
+    const args = ["-p", prompt, "--output-format", "stream-json", "--input-format", "text"];
+    if (model && model !== "default") {
+      args.push("--model", model);
+    }
+    if (reasoningEffort && reasoningEffort !== "none") {
+      const effortMap: Record<string, string> = {
+        low: "low",
+        medium: "medium",
+        high: "high",
+        max: "max",
+      };
+      args.push("--effort", effortMap[reasoningEffort] || "medium");
+    }
+
+    const child = spawn(agyBin, args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      cwd: process.env.TEMP || "C:\\",
+      shell: process.platform === "win32",
+    });
+
+    child.stdin.end();
+
+    let buffer = "";
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed.startsWith("{")) continue;
+
+        try {
+          const event = JSON.parse(trimmed);
+          if (event.event === "step_update" && event.step_update) {
+            const update = event.step_update;
+            if (update.text_delta) {
+              reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: update.text_delta })}\n\n`);
+            }
+            if (update.usage) {
+              reply.raw.write(
+                `data: ${JSON.stringify({
+                  type: "usage",
+                  inputTokens: update.usage.input_tokens || 0,
+                  outputTokens: update.usage.output_tokens || 0,
+                })}\n\n`
+              );
+            }
+          } else if (event.event === "result" && event.result) {
+            if (event.result.usage) {
+              reply.raw.write(
+                `data: ${JSON.stringify({
+                  type: "usage",
+                  inputTokens: event.result.usage.input_tokens || 0,
+                  outputTokens: event.result.usage.output_tokens || 0,
+                })}\n\n`
+              );
+            }
+          }
+        } catch {
+          // ignore partial JSON
+        }
+      }
+    });
+
+    child.on("close", (code) => {
+      if (code !== 0) {
+        reply.raw.write(
+          `data: ${JSON.stringify({
+            type: "error",
+            message: `Antigravity CLI exited with code ${code}`,
+          })}\n\n`
+        );
+      } else {
+        reply.raw.write(`data: ${JSON.stringify({ type: "done" })}\n\n`);
+        reply.raw.write("data: [DONE]\n\n");
+      }
+      reply.raw.end();
+    });
+
+    child.on("error", (err) => {
+      reply.raw.write(
+        `data: ${JSON.stringify({
+          type: "error",
+          message: `Failed to spawn Antigravity CLI: ${err.message}`,
         })}\n\n`
       );
       reply.raw.end();

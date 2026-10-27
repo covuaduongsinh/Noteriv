@@ -2417,6 +2417,7 @@ export default function Home() {
               activeNotePath={currentTab?.filePath ?? null}
               onOpenNote={openFile}
               provider={aiProvider}
+              onProviderChange={handleSaveAiProvider}
               onOpenSettings={() => setShowAiSettings(true)}
             />
           </div>

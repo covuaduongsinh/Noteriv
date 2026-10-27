@@ -69,8 +69,17 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
     } else if (selectedId === "codex-oauth") {
       name = "ChatGPT Plus (Codex OAuth)";
       kind = "oauth";
+    } else if (selectedId === "antigravity-cli") {
+      name = "Google Antigravity Agentic CLI";
+      kind = "cli";
     } else if (selectedId === "gemini-api") {
       name = "Google Gemini";
+      kind = "api";
+    } else if (selectedId === "grok") {
+      name = "xAI Grok";
+      kind = "api";
+    } else if (selectedId === "deepseek") {
+      name = "DeepSeek";
       kind = "api";
     } else if (selectedId === "openai-api") {
       name = "OpenAI GPT-4o";
@@ -80,11 +89,22 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
       kind = "local";
     }
 
+    const defaultModel =
+      selectedId === "antigravity-cli"
+        ? "gemini-2.0-flash"
+        : selectedId === "gemini-api"
+        ? "gemini-2.0-flash"
+        : selectedId === "grok"
+        ? "grok-2-latest"
+        : selectedId === "deepseek"
+        ? "deepseek-reasoner"
+        : "gpt-4o";
+
     onSave({
       id: selectedId,
       kind,
       name,
-      model: model || (selectedId === "gemini-api" ? "gemini-2.0-flash" : "gpt-4o"),
+      model: model || defaultModel,
       apiKey: apiKey.trim() || undefined,
     });
 
@@ -113,13 +133,16 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
             onChange={(e) => setSelectedId(e.target.value)}
             className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm"
           >
-            <optgroup label="Gói Thuê bao Tháng (Miễn phí Token)">
-              <option value="claude-sdk">Claude Code (Gói Claude Pro / Max)</option>
+            <optgroup label="Gói Thuê bao Tháng / Agentic CLI (Miễn phí Token)">
+              <option value="claude-sdk">Claude Code (Gói Claude Pro / Max qua CLI)</option>
               <option value="codex-oauth">ChatGPT Plus / Team (Codex Device OAuth)</option>
+              <option value="antigravity-cli">Google Antigravity Agentic CLI (Gemini / Claude / DeepSeek)</option>
             </optgroup>
             <optgroup label="Tự cấp API Key (BYOK)">
+              <option value="deepseek">DeepSeek (R1 Reasoning / V3 Chat)</option>
+              <option value="grok">xAI Grok (Grok-2 Vision / Grok-3)</option>
               <option value="gemini-api">Google Gemini (Gemini 2.0 Flash / Pro)</option>
-              <option value="openai-api">OpenAI (GPT-4o / GPT-4o-mini)</option>
+              <option value="openai-api">OpenAI (GPT-4o / o3-mini)</option>
               <option value="ollama">Ollama Local (Offline trên máy cá nhân)</option>
             </optgroup>
           </select>
@@ -158,7 +181,7 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
         )}
 
         {/* BYOK API Key Section */}
-        {selectedId !== "claude-sdk" && selectedId !== "codex-oauth" && selectedId !== "ollama" && (
+        {selectedId !== "claude-sdk" && selectedId !== "codex-oauth" && selectedId !== "antigravity-cli" && selectedId !== "ollama" && (
           <div className="space-y-1.5">
             <label className="font-medium text-xs text-[var(--text-secondary)]">API Key</label>
             <input

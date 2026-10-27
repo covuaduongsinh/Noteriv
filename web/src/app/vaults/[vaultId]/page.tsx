@@ -2031,6 +2031,7 @@ export default function VaultPage() {
                         if (note) openNote(note.id);
                       }}
                       provider={aiProvider}
+                      onProviderChange={handleSaveAiProvider}
                       relayUrl={relayUrl}
                       onOpenSettings={() => setShowAiSettings(true)}
                     />

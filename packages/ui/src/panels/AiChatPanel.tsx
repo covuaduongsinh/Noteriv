@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from "react";
-import type { VaultAdapter, NoteRef, AiMessage, AiProviderConfig, AiContextRef } from "@noteriv/core";
+import type { VaultAdapter, NoteRef, AiMessage, AiProviderConfig, AiContextRef, AiImageAttachment } from "@noteriv/core";
 import { createVfsTools, buildPromptWithContext, GitSafetyNet, wrapAdapterWithSafetyNet } from "@noteriv/core";
 import { streamChat } from "@noteriv/ai-hub";
 import ContextUsageMeter from "./ContextUsageMeter";
+import { ModelEffortToolbar } from "./ModelEffortToolbar";
 
 export interface AiChatPanelProps {
   adapter: VaultAdapter;
@@ -10,6 +11,7 @@ export interface AiChatPanelProps {
   activeNoteContent?: string | null;
   onOpenNote?: (path: string) => void;
   provider: AiProviderConfig;
+  onProviderChange?: (provider: AiProviderConfig) => void;
   relayUrl?: string;
   onOpenSettings?: () => void;
   safetyNet?: GitSafetyNet;
@@ -21,10 +23,13 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   activeNoteContent,
   onOpenNote,
   provider,
+  onProviderChange,
   relayUrl,
   onOpenSettings,
   safetyNet: initialSafetyNet,
 }) => {
+  const [currentProvider, setCurrentProvider] = useState<AiProviderConfig>(provider);
+  const [attachedImages, setAttachedImages] = useState<AiImageAttachment[]>([]);
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [input, setInput] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -33,6 +38,15 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [vaultNotes, setVaultNotes] = useState<NoteRef[]>([]);
   const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+
+  useEffect(() => {
+    setCurrentProvider(provider);
+  }, [provider]);
+
+  const handleProviderChange = (updated: AiProviderConfig) => {
+    setCurrentProvider(updated);
+    onProviderChange?.(updated);
+  };
 
   const [safetyNet] = useState(() => initialSafetyNet || new GitSafetyNet());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -72,11 +86,44 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     setMentionQuery(null);
   };
 
-  const handleSend = async () => {
-    if (!input.trim() || isGenerating) return;
+  const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith("image/")) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        e.preventDefault();
+        const reader = new FileReader();
+        reader.onload = () => {
+          const result = reader.result as string;
+          const base64Data = result.includes(",") ? result.split(",")[1] : result;
+          setAttachedImages((prev) => [
+            ...prev,
+            {
+              mimeType: file.type,
+              data: base64Data,
+              name: file.name || `screenshot-${Date.now()}.png`,
+            },
+          ]);
+        };
+        reader.readAsDataURL(file);
+      }
+    }
+  };
 
-    const userText = input.trim();
+  const handleRemoveImage = (index: number) => {
+    setAttachedImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleSend = async () => {
+    if ((!input.trim() && attachedImages.length === 0) || isGenerating) return;
+
+    const userText = input.trim() || (attachedImages.length > 0 ? "Phân tích ảnh này giúp tôi" : "");
+    const imagesToSend = [...attachedImages];
     setInput("");
+    setAttachedImages([]);
     setMentionQuery(null);
 
     // Build context with active note content
@@ -102,12 +149,14 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       id: `msg-${Date.now()}`,
       role: "user",
       content: userText,
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
       createdAt: Date.now(),
     };
 
     const userMsgForApi: AiMessage = {
       ...userMsg,
       content: userPromptWithContext,
+      images: imagesToSend.length > 0 ? imagesToSend : undefined,
     };
 
     const assistantMsgId = `asst-${Date.now()}`;
@@ -128,7 +177,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     try {
       const allMessages = [...messages, userMsgForApi];
       const stream = streamChat({
-        provider,
+        provider: currentProvider,
         messages: allMessages,
         tools: toolDefs,
         relayUrl,
@@ -200,7 +249,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm">Noteriv AI</span>
           <span className="text-[11px] px-1.5 py-0.5 rounded bg-[var(--bg-modifier-hover)] text-[var(--text-secondary)]">
-            {provider.name}
+            {currentProvider.name}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -246,6 +295,20 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
                     : "bg-[var(--bg-secondary)] border border-[var(--border-subtle)]"
                 }`}
               >
+                {/* Attached Images in User Message */}
+                {m.images && m.images.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {m.images.map((img, idx) => (
+                      <img
+                        key={idx}
+                        src={`data:${img.mimeType};base64,${img.data}`}
+                        alt={img.name || "attachment"}
+                        className="max-h-36 max-w-full rounded border border-white/20 object-contain shadow-sm"
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <div className="whitespace-pre-wrap">{m.content || (isGenerating && m.role === "assistant" ? "Đang suy nghĩ..." : "")}</div>
 
                 {/* Render Tool Invocations */}
@@ -284,26 +347,58 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         </div>
       )}
 
-      {/* Composer Input */}
-      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)]">
+      {/* Composer Input Area */}
+      <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)] space-y-2">
+        {/* Model & Reasoning Effort Toolbar */}
+        <ModelEffortToolbar
+          provider={currentProvider}
+          onProviderChange={handleProviderChange}
+          onAttachImage={(img) => setAttachedImages((prev) => [...prev, img])}
+          onOpenSettings={onOpenSettings}
+        />
+
+        {/* Attached Images Preview Strip */}
+        {attachedImages.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-1.5 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md">
+            {attachedImages.map((img, idx) => (
+              <div key={idx} className="relative group rounded border border-[var(--border-subtle)] overflow-hidden">
+                <img
+                  src={`data:${img.mimeType};base64,${img.data}`}
+                  alt={img.name || "preview"}
+                  className="h-12 w-12 object-cover"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveImage(idx)}
+                  className="absolute top-0.5 right-0.5 bg-black/70 hover:bg-red-600 text-white rounded-full w-4 h-4 flex items-center justify-center text-[10px]"
+                  title="Xóa ảnh"
+                >
+                  ✕
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="flex gap-2">
           <textarea
             value={input}
             onChange={handleInputChange}
+            onPaste={handlePaste}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
-            placeholder="Hỏi AI hoặc gõ @ để chọn file..."
+            placeholder="Hỏi AI, gõ @ chọn file, hoặc Ctrl+V dán ảnh..."
             rows={2}
             className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2.5 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--interactive-accent, #3b82f6)]"
           />
           <button
             type="button"
             onClick={handleSend}
-            disabled={!input.trim() || isGenerating}
+            disabled={(!input.trim() && attachedImages.length === 0) || isGenerating}
             className="self-end px-3 py-1.5 rounded-md text-sm font-medium bg-[var(--interactive-accent, #3b82f6)] text-white hover:opacity-90 disabled:opacity-50"
           >
             {isGenerating ? "..." : "Gửi"}

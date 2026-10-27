@@ -62,4 +62,83 @@ describe("Universal AI Stream Router", () => {
     expect(textDeltas.join("")).toBe("Pleased to meet you!");
     expect(events.some((e) => e.type === "done")).toBe(true);
   });
+
+  it("routes Grok requests to xAI endpoint with reasoning support", async () => {
+    let capturedUrl = "";
+    let capturedBody: any = null;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((url, init) => {
+        capturedUrl = String(url);
+        capturedBody = JSON.parse(init.body);
+        const sse = 'data: {"choices":[{"delta":{"content":"Grok answer"}}]}\n\ndata: [DONE]\n\n';
+        return Promise.resolve(new Response(sse, { headers: { "Content-Type": "text/event-stream" } }));
+      })
+    );
+
+    const grokProvider: AiProviderConfig = {
+      id: "grok",
+      kind: "api",
+      name: "xAI Grok",
+      model: "grok-2-latest",
+      apiKey: "xai-test-key",
+      reasoningEffort: "high",
+    };
+
+    const events: any[] = [];
+    for await (const evt of streamChat({
+      provider: grokProvider,
+      messages: [{ id: "1", role: "user", content: "What is 2+2?", createdAt: Date.now() }],
+    })) {
+      events.push(evt);
+    }
+
+    expect(capturedUrl).toBe("https://api.x.ai/v1/chat/completions");
+    expect(capturedBody.reasoning_effort).toBe("high");
+    expect(events[0].type).toBe("text_delta");
+    expect(events[0].text).toBe("Grok answer");
+  });
+
+  it("handles multimodal image attachments in OpenAI-compatible stream", async () => {
+    let capturedBody: any = null;
+
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockImplementation((_url, init) => {
+        capturedBody = JSON.parse(init.body);
+        const sse = 'data: {"choices":[{"delta":{"content":"I see a chess board."}}]}\n\ndata: [DONE]\n\n';
+        return Promise.resolve(new Response(sse, { headers: { "Content-Type": "text/event-stream" } }));
+      })
+    );
+
+    const visionProvider: AiProviderConfig = {
+      id: "openai-api",
+      kind: "api",
+      name: "OpenAI GPT-4o Vision",
+      model: "gpt-4o",
+      apiKey: "sk-mock",
+    };
+
+    const events: any[] = [];
+    for await (const evt of streamChat({
+      provider: visionProvider,
+      messages: [{
+        id: "1",
+        role: "user",
+        content: "What is this image?",
+        images: [{ mimeType: "image/png", data: "base64mock" }],
+        createdAt: Date.now(),
+      }],
+    })) {
+      events.push(evt);
+    }
+
+    expect(capturedBody.messages[0].content).toEqual([
+      { type: "text", text: "What is this image?" },
+      { type: "image_url", image_url: { url: "data:image/png;base64,base64mock" } },
+    ]);
+    expect(events[0].type).toBe("text_delta");
+    expect(events[0].text).toBe("I see a chess board.");
+  });
 });

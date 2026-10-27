@@ -43,6 +43,7 @@ export interface StreamOpenAiOptions {
   systemPrompt?: string;
   tools?: AiToolDefinition[];
   temperature?: number;
+  reasoningEffort?: "none" | "low" | "medium" | "high" | "max";
 }
 
 /**
@@ -59,12 +60,24 @@ export async function* streamOpenAiCompatible(
     headers["Authorization"] = `Bearer ${options.apiKey}`;
   }
 
-  const formattedMessages: Array<{ role: string; content: string }> = [];
+  const formattedMessages: Array<{ role: string; content: string | any[] }> = [];
   if (options.systemPrompt) {
     formattedMessages.push({ role: "system", content: options.systemPrompt });
   }
   for (const m of options.messages) {
-    formattedMessages.push({ role: m.role, content: m.content });
+    if (m.images && m.images.length > 0) {
+      const parts: any[] = [{ type: "text", text: m.content }];
+      for (const img of m.images) {
+        const url = img.data.startsWith("data:") ? img.data : `data:${img.mimeType};base64,${img.data}`;
+        parts.push({
+          type: "image_url",
+          image_url: { url },
+        });
+      }
+      formattedMessages.push({ role: m.role, content: parts });
+    } else {
+      formattedMessages.push({ role: m.role, content: m.content });
+    }
   }
 
   const body: Record<string, unknown> = {
@@ -73,6 +86,10 @@ export async function* streamOpenAiCompatible(
     stream: true,
     temperature: options.temperature ?? 0.7,
   };
+
+  if (options.reasoningEffort && options.reasoningEffort !== "none") {
+    body.reasoning_effort = options.reasoningEffort;
+  }
 
   if (options.tools && options.tools.length > 0) {
     body.tools = formatOpenAiTools(options.tools);
@@ -122,6 +139,12 @@ export async function* streamOpenAiCompatible(
           const parsed = JSON.parse(dataStr);
           const choice = parsed.choices?.[0];
           if (!choice) continue;
+
+          // Reasoning / Thinking content (DeepSeek R1, Grok, etc.)
+          const reasoning = choice.delta?.reasoning_content || choice.delta?.thinking;
+          if (reasoning) {
+            yield { type: "thinking_delta", thinking: reasoning };
+          }
 
           // Text content
           const content = choice.delta?.content;

@@ -6,6 +6,7 @@ import type {
 } from "@noteriv/core";
 import { streamOpenAiCompatible } from "./direct-api-provider";
 import { streamClaudeSdk } from "./claude-sdk-provider";
+import { streamAntigravityCli } from "./antigravity-cli-provider";
 import { analyzeProviderError, type LimitAnalysis } from "./limit-learner";
 
 export interface StreamChatOptions {
@@ -27,6 +28,18 @@ export async function* streamChat(
   const { provider, messages, systemPrompt, tools, relayUrl } = options;
 
   try {
+    if (provider.id === "antigravity-cli") {
+      yield* streamAntigravityCli({
+        model: provider.model,
+        reasoningEffort: provider.reasoningEffort,
+        messages,
+        systemPrompt,
+        tools,
+        relayUrl,
+      });
+      return;
+    }
+
     if (provider.id === "claude-sdk" || provider.kind === "cli") {
       yield* streamClaudeSdk({
         model: provider.model,
@@ -38,11 +51,19 @@ export async function* streamChat(
       return;
     }
 
-    // Default: Universal OpenAI-compatible stream (OpenAI, Gemini, Ollama, OpenRouter, Groq, DeepSeek)
+    // Determine endpoint URL by provider ID if not explicitly configured
     let endpoint = provider.endpointUrl;
     if (!endpoint) {
       if (provider.id === "ollama") {
         endpoint = "http://localhost:11434/v1/chat/completions";
+      } else if (provider.id === "grok" || provider.id.includes("grok")) {
+        endpoint = "https://api.x.ai/v1/chat/completions";
+      } else if (provider.id === "deepseek" || provider.id.includes("deepseek")) {
+        endpoint = "https://api.deepseek.com/chat/completions";
+      } else if (provider.id === "gemini-api") {
+        endpoint = "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions";
+      } else if (provider.id === "groq") {
+        endpoint = "https://api.groq.com/openai/v1/chat/completions";
       } else {
         endpoint = "https://api.openai.com/v1/chat/completions";
       }
@@ -56,6 +77,7 @@ export async function* streamChat(
       systemPrompt,
       tools,
       temperature: provider.temperature,
+      reasoningEffort: provider.reasoningEffort,
     });
   } catch (err: unknown) {
     const analysis: LimitAnalysis = analyzeProviderError(err);

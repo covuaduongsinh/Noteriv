@@ -28,10 +28,17 @@ export interface AiToolResult {
   error?: string;
 }
 
+export interface AiImageAttachment {
+  mimeType: string;
+  data: string; // base64 string or data URL
+  name?: string;
+}
+
 export interface AiMessage {
   id: string;
   role: AiRole;
   content: string;
+  images?: AiImageAttachment[];
   toolCalls?: AiToolCall[];
   toolCallId?: string;
   name?: string;
@@ -82,6 +89,8 @@ export type AiStreamEvent =
 
 export type AiProviderKind = "cli" | "oauth" | "api" | "local";
 
+export type AiReasoningEffort = "none" | "low" | "medium" | "high" | "max";
+
 export interface AiProviderConfig {
   id: string;
   kind: AiProviderKind;
@@ -90,4 +99,5 @@ export interface AiProviderConfig {
   apiKey?: string;
   endpointUrl?: string;
   temperature?: number;
+  reasoningEffort?: AiReasoningEffort;
 }
