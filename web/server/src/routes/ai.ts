@@ -138,10 +138,25 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       : "agy.exe";
     const agyBin = fs.existsSync(defaultAgyPath) ? defaultAgyPath : "agy.exe";
 
-    const args = ["-p", prompt, "--output-format", "stream-json", "--input-format", "text"];
-    if (model && model !== "default") {
-      args.push("--model", model);
-    }
+    const validAgyModels = [
+      "gemini-3.8-flash-high",
+      "gemini-3.8-flash-medium",
+      "gemini-3.8-flash-low",
+      "gemini-4-argon-high",
+      "gemini-4-argon-medium",
+      "gemini-4-argon-low",
+      "claude-sonnet-5-5-high",
+      "claude-sonnet-5-5-medium",
+      "claude-sonnet-5-5-low",
+      "claude-opus-5-5-high",
+      "claude-opus-5-5-medium",
+      "claude-opus-5-5-low",
+      "gpt-oss-120b-medium",
+    ];
+
+    const targetModel = model && validAgyModels.includes(model) ? model : "gemini-3.8-flash-high";
+    const args = ["--input-format", "text", "--output-format", "stream-json", "--model", targetModel];
+
     if (reasoningEffort && reasoningEffort !== "none") {
       const effortMap: Record<string, string> = {
         low: "low",
@@ -158,9 +173,18 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       shell: process.platform === "win32",
     });
 
+    // Pipe prompt safely via stdin to prevent Windows cmd.exe argument corruption
+    child.stdin.write(prompt);
     child.stdin.end();
 
     let buffer = "";
+    let stderrBuffer = "";
+    let lastDeliveredText = "";
+    let lastErrorMessage = "";
+
+    child.stderr?.on("data", (chunk: Buffer) => {
+      stderrBuffer += chunk.toString();
+    });
 
     child.stdout.on("data", (chunk: Buffer) => {
       buffer += chunk.toString();
@@ -176,6 +200,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
           if (event.event === "step_update" && event.step_update) {
             const update = event.step_update;
             if (update.text_delta) {
+              lastDeliveredText += update.text_delta;
               reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: update.text_delta })}\n\n`);
             }
             if (update.usage) {
@@ -188,6 +213,9 @@ export default async function aiRoutes(fastify: FastifyInstance) {
               );
             }
           } else if (event.event === "result" && event.result) {
+            if (event.result.status === "ERROR") {
+              lastErrorMessage = event.result.error || "Antigravity CLI execution error";
+            }
             if (event.result.usage) {
               reply.raw.write(
                 `data: ${JSON.stringify({
@@ -205,11 +233,12 @@ export default async function aiRoutes(fastify: FastifyInstance) {
     });
 
     child.on("close", (code) => {
-      if (code !== 0) {
+      if (code !== 0 && lastDeliveredText.length === 0) {
+        const errMsg = lastErrorMessage || stderrBuffer.trim() || `Antigravity CLI exited with code ${code}`;
         reply.raw.write(
           `data: ${JSON.stringify({
             type: "error",
-            message: `Antigravity CLI exited with code ${code}`,
+            message: errMsg,
           })}\n\n`
         );
       } else {

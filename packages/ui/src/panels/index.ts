@@ -28,4 +28,4 @@ export { default as VaultSearch, type VaultSearchProps, type VaultSearchLabels }
 export { default as ContextUsageMeter, type ContextUsageMeterProps } from "./ContextUsageMeter";
 export { default as AiChatPanel, type AiChatPanelProps } from "./AiChatPanel";
 export { default as AiSettingsModal, type AiSettingsModalProps } from "./AiSettingsModal";
-export { ModelEffortToolbar, type ModelEffortToolbarProps, type PresetModelOption, PRESET_MODELS } from "./ModelEffortToolbar";
+export { ModelEffortToolbar, type ModelEffortToolbarProps } from "./ModelEffortToolbar";

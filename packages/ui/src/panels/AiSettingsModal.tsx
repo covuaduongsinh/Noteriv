@@ -1,6 +1,13 @@
 import React, { useState } from "react";
 import type { AiProviderConfig } from "@noteriv/core";
-import { startCodexDeviceAuth, pollCodexDeviceToken, type CodexDeviceAuthSession } from "@noteriv/ai-hub";
+import {
+  startCodexDeviceAuth,
+  pollCodexDeviceToken,
+  type CodexDeviceAuthSession,
+  PROVIDER_GROUPS,
+  getModelsForProvider,
+  getDefaultModelForProvider,
+} from "@noteriv/ai-hub";
 
 export interface AiSettingsModalProps {
   currentConfig: AiProviderConfig;
@@ -19,13 +26,37 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
 }) => {
   const [selectedId, setSelectedId] = useState(currentConfig.id);
   const [apiKey, setApiKey] = useState(currentConfig.apiKey || "");
-  const [model, setModel] = useState(currentConfig.model || "");
+  const [selectedModel, setSelectedModel] = useState(() => {
+    return currentConfig.model || getDefaultModelForProvider(currentConfig.id);
+  });
+  const [isCustomModel, setIsCustomModel] = useState(() => {
+    const available = getModelsForProvider(currentConfig.id);
+    return currentConfig.model ? !available.some((m) => m.id === currentConfig.model) : false;
+  });
+  const [customModelText, setCustomModelText] = useState(currentConfig.model || "");
   const [relayUrl, setRelayUrl] = useState(initialRelayUrl);
 
   // Device Code State for ChatGPT Plus
   const [deviceSession, setDeviceSession] = useState<CodexDeviceAuthSession | null>(null);
   const [deviceAuthStatus, setDeviceAuthStatus] = useState<"idle" | "waiting" | "success" | "error">("idle");
   const [authError, setAuthError] = useState<string | null>(null);
+
+  const handleProviderSelect = (newId: string) => {
+    setSelectedId(newId);
+    const defaultMod = getDefaultModelForProvider(newId);
+    setSelectedModel(defaultMod);
+    setIsCustomModel(false);
+  };
+
+  const handleModelSelect = (val: string) => {
+    if (val === "__custom__") {
+      setIsCustomModel(true);
+      if (!customModelText) setCustomModelText(selectedModel);
+    } else {
+      setIsCustomModel(false);
+      setSelectedModel(val);
+    }
+  };
 
   const handleStartDeviceAuth = async () => {
     try {
@@ -60,51 +91,19 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
   };
 
   const handleSave = () => {
-    let name = "Custom AI";
-    let kind: AiProviderConfig["kind"] = "api";
+    const group = PROVIDER_GROUPS.find((g) => g.id === selectedId);
+    const name = group?.name || "Custom AI";
+    const kind = group?.kind || "api";
 
-    if (selectedId === "claude-sdk") {
-      name = "Claude Code Subscription (Claude Pro/Max)";
-      kind = "cli";
-    } else if (selectedId === "codex-oauth") {
-      name = "ChatGPT Plus (Codex OAuth)";
-      kind = "oauth";
-    } else if (selectedId === "antigravity-cli") {
-      name = "Google Antigravity Agentic CLI";
-      kind = "cli";
-    } else if (selectedId === "gemini-api") {
-      name = "Google Gemini";
-      kind = "api";
-    } else if (selectedId === "grok") {
-      name = "xAI Grok";
-      kind = "api";
-    } else if (selectedId === "deepseek") {
-      name = "DeepSeek";
-      kind = "api";
-    } else if (selectedId === "openai-api") {
-      name = "OpenAI GPT-4o";
-      kind = "api";
-    } else if (selectedId === "ollama") {
-      name = "Ollama Local";
-      kind = "local";
-    }
-
-    const defaultModel =
-      selectedId === "antigravity-cli"
-        ? "gemini-2.0-flash"
-        : selectedId === "gemini-api"
-        ? "gemini-2.0-flash"
-        : selectedId === "grok"
-        ? "grok-2-latest"
-        : selectedId === "deepseek"
-        ? "deepseek-reasoner"
-        : "gpt-4o";
+    const finalModel = isCustomModel
+      ? customModelText.trim() || getDefaultModelForProvider(selectedId)
+      : selectedModel || getDefaultModelForProvider(selectedId);
 
     onSave({
       id: selectedId,
       kind,
       name,
-      model: model || defaultModel,
+      model: finalModel,
       apiKey: apiKey.trim() || undefined,
     });
 
@@ -114,6 +113,8 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
 
     onClose();
   };
+
+  const availableModels = getModelsForProvider(selectedId);
 
   return (
     <div className="fixed inset-0 bg-black/60 flex items-center justify-center p-4 z-50">
@@ -127,25 +128,54 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
 
         {/* Provider Selection */}
         <div className="space-y-1.5">
-          <label className="font-medium text-xs text-[var(--text-secondary)]">Nguồn cung cấp mô hình</label>
+          <label className="font-medium text-xs text-[var(--text-secondary)]">Nguồn cung cấp mô hình (Provider)</label>
           <select
             value={selectedId}
-            onChange={(e) => setSelectedId(e.target.value)}
+            onChange={(e) => handleProviderSelect(e.target.value)}
             className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm"
           >
             <optgroup label="Gói Thuê bao Tháng / Agentic CLI (Miễn phí Token)">
+              <option value="antigravity-cli">Google Antigravity Agentic CLI (Gemini / Claude / DeepSeek)</option>
               <option value="claude-sdk">Claude Code (Gói Claude Pro / Max qua CLI)</option>
               <option value="codex-oauth">ChatGPT Plus / Team (Codex Device OAuth)</option>
-              <option value="antigravity-cli">Google Antigravity Agentic CLI (Gemini / Claude / DeepSeek)</option>
             </optgroup>
             <optgroup label="Tự cấp API Key (BYOK)">
               <option value="deepseek">DeepSeek (R1 Reasoning / V3 Chat)</option>
               <option value="grok">xAI Grok (Grok-2 Vision / Grok-3)</option>
-              <option value="gemini-api">Google Gemini (Gemini 2.0 Flash / Pro)</option>
-              <option value="openai-api">OpenAI (GPT-4o / o3-mini)</option>
+              <option value="gemini-api">Google Gemini API (Gemini 2.0 Flash / Pro)</option>
+              <option value="openai-api">OpenAI API (GPT-4o / o3-mini)</option>
               <option value="ollama">Ollama Local (Offline trên máy cá nhân)</option>
             </optgroup>
           </select>
+        </div>
+
+        {/* Model Selection per Provider */}
+        <div className="space-y-1.5">
+          <label className="font-medium text-xs text-[var(--text-secondary)]">
+            Mô hình của Provider ({selectedId})
+          </label>
+          <select
+            value={isCustomModel ? "__custom__" : selectedModel}
+            onChange={(e) => handleModelSelect(e.target.value)}
+            className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm"
+          >
+            {availableModels.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name} {m.supportsReasoning ? "🧠" : ""} ({m.id})
+              </option>
+            ))}
+            <option value="__custom__">-- Tự nhập model khác... --</option>
+          </select>
+
+          {isCustomModel && (
+            <input
+              type="text"
+              value={customModelText}
+              onChange={(e) => setCustomModelText(e.target.value)}
+              placeholder="Nhập định danh model (VD: gemini-3.8-flash-high, gpt-4o)..."
+              className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm mt-1 font-mono text-xs"
+            />
+          )}
         </div>
 
         {/* ChatGPT Plus Device OAuth Section */}
@@ -207,7 +237,7 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
             className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm font-mono text-xs"
           />
           <p className="text-[11px] text-[var(--text-secondary)]">
-            Dành cho Web hoặc Điện thoại kết nối về máy tính ở nhà để dùng Claude Code Subscription.
+            Dành cho Web hoặc Điện thoại kết nối về máy tính ở nhà để dùng Antigravity hoặc Claude Code Subscription.
           </p>
         </div>
 

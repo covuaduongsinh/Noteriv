@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import type { AiProviderConfig, AiReasoningEffort, AiImageAttachment } from "@noteriv/core";
+import { PROVIDER_GROUPS, type ProviderGroup, type ModelOption } from "@noteriv/ai-hub";
 
 export interface ModelEffortToolbarProps {
   provider: AiProviderConfig;
@@ -7,105 +8,6 @@ export interface ModelEffortToolbarProps {
   onAttachImage?: (img: AiImageAttachment) => void;
   onOpenSettings?: () => void;
 }
-
-export interface PresetModelOption {
-  id: string;
-  name: string;
-  model: string;
-  kind: AiProviderConfig["kind"];
-  supportsReasoning?: boolean;
-  group: "subscription" | "reasoning" | "direct" | "local";
-}
-
-export const PRESET_MODELS: PresetModelOption[] = [
-  // Subscription Models (Free Tokens)
-  {
-    id: "claude-sdk",
-    name: "Claude Code (Claude Pro/Max)",
-    model: "claude-3-5-sonnet-latest",
-    kind: "cli",
-    supportsReasoning: true,
-    group: "subscription",
-  },
-  {
-    id: "codex-oauth",
-    name: "ChatGPT Plus (Codex OAuth)",
-    model: "gpt-4o",
-    kind: "oauth",
-    supportsReasoning: false,
-    group: "subscription",
-  },
-  {
-    id: "antigravity-cli",
-    name: "Antigravity Agentic CLI",
-    model: "gemini-2.0-flash",
-    kind: "cli",
-    supportsReasoning: true,
-    group: "subscription",
-  },
-
-  // Deep Reasoning Models
-  {
-    id: "deepseek",
-    name: "DeepSeek R1 (Reasoning)",
-    model: "deepseek-reasoner",
-    kind: "api",
-    supportsReasoning: true,
-    group: "reasoning",
-  },
-  {
-    id: "deepseek",
-    name: "DeepSeek V3 (Chat)",
-    model: "deepseek-chat",
-    kind: "api",
-    supportsReasoning: false,
-    group: "reasoning",
-  },
-  {
-    id: "openai-api",
-    name: "OpenAI o3-mini (Reasoning)",
-    model: "o3-mini",
-    kind: "api",
-    supportsReasoning: true,
-    group: "reasoning",
-  },
-
-  // Direct & Multimodal Models
-  {
-    id: "gemini-api",
-    name: "Google Gemini 2.0 Flash",
-    model: "gemini-2.0-flash",
-    kind: "api",
-    supportsReasoning: false,
-    group: "direct",
-  },
-  {
-    id: "grok",
-    name: "xAI Grok-2 (Vision)",
-    model: "grok-2-latest",
-    kind: "api",
-    supportsReasoning: true,
-    group: "direct",
-  },
-  {
-    id: "openai-api",
-    name: "OpenAI GPT-4o (Vision)",
-    model: "gpt-4o",
-    kind: "api",
-    supportsReasoning: false,
-    group: "direct",
-  },
-
-  // Local / Offline
-  {
-    id: "ollama",
-    name: "Ollama Local (Offline)",
-    model: "llama3.2",
-    kind: "local",
-    supportsReasoning: false,
-    group: "local",
-  },
-];
 
 export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
   provider,
@@ -132,13 +34,13 @@ export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
 
   const currentEffort: AiReasoningEffort = provider.reasoningEffort || "none";
 
-  const handleSelectModel = (preset: PresetModelOption) => {
+  const handleSelectModel = (group: ProviderGroup, m: ModelOption) => {
     onProviderChange({
       ...provider,
-      id: preset.id,
-      name: preset.name,
-      model: preset.model,
-      kind: preset.kind,
+      id: group.id,
+      name: group.name,
+      model: m.id,
+      kind: group.kind,
     });
     setShowModelMenu(false);
   };
@@ -158,9 +60,10 @@ export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
+      const base64Data = result.includes(",") ? result.split(",")[1] : result;
       onAttachImage({
         mimeType: file.type || "image/png",
-        data: result,
+        data: base64Data,
         name: file.name,
       });
     };
@@ -175,6 +78,28 @@ export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
     high: { icon: "🔥", label: "Cao" },
     max: { icon: "💥", label: "Max" },
   };
+
+  // Find active model & group for readable label on button
+  const activeGroup = PROVIDER_GROUPS.find((g) => g.id === provider.id);
+  const activeModel = activeGroup?.models.find((m) => m.id === provider.model);
+
+  const getProviderShortName = (id: string) => {
+    switch (id) {
+      case "antigravity-cli": return "Antigravity";
+      case "claude-sdk": return "Claude";
+      case "codex-oauth": return "ChatGPT";
+      case "deepseek": return "DeepSeek";
+      case "grok": return "Grok";
+      case "gemini-api": return "Gemini";
+      case "openai-api": return "OpenAI";
+      case "ollama": return "Ollama";
+      default: return id;
+    }
+  };
+
+  const displayLabel = activeModel
+    ? `${getProviderShortName(provider.id)} • ${activeModel.name.split(" ")[0]} ${activeModel.name.split(" ")[1] || ""}`.trim()
+    : (provider.name || provider.model || "Chọn mô hình");
 
   return (
     <div
@@ -191,65 +116,41 @@ export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
               setShowModelMenu((prev) => !prev);
               setShowEffortMenu(false);
             }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-modifier-hover)] text-[var(--text-primary)] font-medium text-[11px] transition-colors max-w-[145px] truncate"
-            title="Đổi mô hình AI nhanh"
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-modifier-hover)] text-[var(--text-primary)] font-medium text-[11px] transition-colors max-w-[170px] truncate"
+            title="Đổi mô hình AI nhanh của từng provider"
           >
-            <span className="truncate">{provider.name || provider.model || "Chọn mô hình"}</span>
+            <span className="truncate">{displayLabel}</span>
             <span className="text-[10px] text-[var(--text-secondary)] opacity-70">▾</span>
           </button>
 
           {/* Model Menu Dropdown */}
           {showModelMenu && (
-            <div className="absolute bottom-full left-0 mb-1.5 w-64 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded shadow-xl py-1 z-50 text-xs overflow-hidden max-h-72 overflow-y-auto">
-              <div className="px-2.5 py-1 font-semibold text-[10px] text-[var(--text-muted)] tracking-wider uppercase border-b border-[var(--border-subtle)]">
-                Gói Thuê Bao (Miễn phí Token)
-              </div>
-              {PRESET_MODELS.filter((p) => p.group === "subscription").map((p) => (
-                <button
-                  key={`${p.id}-${p.model}`}
-                  type="button"
-                  onClick={() => handleSelectModel(p)}
-                  className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-[var(--bg-modifier-hover)] ${
-                    provider.id === p.id && provider.model === p.model ? "text-[var(--interactive-accent, #3b82f6)] font-semibold" : ""
-                  }`}
-                >
-                  <span className="truncate">{p.name}</span>
-                  {p.supportsReasoning && <span className="text-[10px] opacity-75">🧠</span>}
-                </button>
-              ))}
-
-              <div className="px-2.5 py-1 font-semibold text-[10px] text-[var(--text-muted)] tracking-wider uppercase border-t border-b border-[var(--border-subtle)] mt-1">
-                Mô hình Suy Luận Sâu (Reasoning)
-              </div>
-              {PRESET_MODELS.filter((p) => p.group === "reasoning").map((p) => (
-                <button
-                  key={`${p.id}-${p.model}`}
-                  type="button"
-                  onClick={() => handleSelectModel(p)}
-                  className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-[var(--bg-modifier-hover)] ${
-                    provider.id === p.id && provider.model === p.model ? "text-[var(--interactive-accent, #3b82f6)] font-semibold" : ""
-                  }`}
-                >
-                  <span className="truncate">{p.name}</span>
-                  <span className="text-[10px] opacity-75">🧠</span>
-                </button>
-              ))}
-
-              <div className="px-2.5 py-1 font-semibold text-[10px] text-[var(--text-muted)] tracking-wider uppercase border-t border-b border-[var(--border-subtle)] mt-1">
-                Đa Phương Tiện & Trực Tiếp (BYOK)
-              </div>
-              {PRESET_MODELS.filter((p) => p.group === "direct" || p.group === "local").map((p) => (
-                <button
-                  key={`${p.id}-${p.model}`}
-                  type="button"
-                  onClick={() => handleSelectModel(p)}
-                  className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-[var(--bg-modifier-hover)] ${
-                    provider.id === p.id && provider.model === p.model ? "text-[var(--interactive-accent, #3b82f6)] font-semibold" : ""
-                  }`}
-                >
-                  <span className="truncate">{p.name}</span>
-                  {p.group === "local" ? <span className="text-[10px] opacity-75">💻</span> : <span className="text-[10px] opacity-75">👁️</span>}
-                </button>
+            <div className="absolute bottom-full left-0 mb-1.5 w-72 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-2xl py-1 z-50 text-xs overflow-hidden max-h-80 overflow-y-auto">
+              {PROVIDER_GROUPS.map((group, gIdx) => (
+                <div key={group.id} className={gIdx > 0 ? "border-t border-[var(--border-subtle)] mt-1 pt-1" : ""}>
+                  <div className="px-2.5 py-1 font-semibold text-[10px] text-[var(--text-muted)] tracking-wider uppercase flex items-center justify-between bg-[var(--bg-secondary)]/50">
+                    <span>{group.name}</span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-[var(--bg-modifier-hover)] lowercase">
+                      {group.category}
+                    </span>
+                  </div>
+                  {group.models.map((m) => {
+                    const isSelected = provider.id === group.id && provider.model === m.id;
+                    return (
+                      <button
+                        key={`${group.id}-${m.id}`}
+                        type="button"
+                        onClick={() => handleSelectModel(group, m)}
+                        className={`w-full text-left px-2.5 py-1.5 flex items-center justify-between hover:bg-[var(--bg-modifier-hover)] transition-colors ${
+                          isSelected ? "text-[var(--interactive-accent, #3b82f6)] font-semibold bg-[var(--bg-modifier-hover)]/40" : ""
+                        }`}
+                      >
+                        <span className="truncate text-[11px]">{m.name}</span>
+                        {m.supportsReasoning && <span className="text-[10px] opacity-75 shrink-0 ml-1">🧠</span>}
+                      </button>
+                    );
+                  })}
+                </div>
               ))}
             </div>
           )}

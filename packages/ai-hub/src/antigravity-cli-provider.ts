@@ -26,7 +26,7 @@ export async function* streamAntigravityCli(
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: options.model || "gemini-2.0-flash",
+          model: options.model || "gemini-3.8-flash-high",
           reasoningEffort: options.reasoningEffort,
           messages: options.messages,
           systemPrompt: options.systemPrompt,
