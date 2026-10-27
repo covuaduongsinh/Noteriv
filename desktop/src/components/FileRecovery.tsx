@@ -5,6 +5,7 @@ import { getSnapshots, loadSnapshot } from "@/lib/file-recovery";
 import "@/styles/file-recovery.css";
 import { formatDate as formatIntl, t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { baseName } from "@noteriv/core/vault-adapter";
 
 interface FileRecoveryProps {
   vaultPath: string;
@@ -35,7 +36,7 @@ export default function FileRecovery({
   const [loadingPreview, setLoadingPreview] = useState(false);
   const overlayRef = useRef<HTMLDivElement>(null);
 
-  const fileName = (currentFile.split("/").pop() || t("files.untitled")).replace(
+  const fileName = (baseName(currentFile) || t("files.untitled")).replace(
     /\.(md|markdown)$/i,
     ""
   );

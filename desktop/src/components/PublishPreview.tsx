@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { generatePublishHTML } from "@/lib/publish";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { baseName } from "@noteriv/core/vault-adapter";
 
 interface PublishPreviewProps {
   content: string;
@@ -55,7 +56,7 @@ export default function PublishPreview({ content, title, vaultPath, onClose }: P
       for (const fp of selectedFiles) {
         const noteContent = await window.electronAPI.readFile(fp);
         if (noteContent) {
-          const name = fp.split("/").pop()?.replace(/\.(md|markdown)$/i, "") || "";
+          const name = baseName(fp).replace(/\.(md|markdown)$/i, "") || "";
           combined += `\n\n---\n\n# ${name}\n\n${noteContent}`;
         }
       }

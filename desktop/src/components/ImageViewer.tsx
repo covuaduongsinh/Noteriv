@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
+import { baseName } from "@noteriv/core/vault-adapter";
 
 const MIME: Record<string, string> = {
   png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", gif: "image/gif",
@@ -48,7 +49,7 @@ export default function ImageViewer({ filePath }: { filePath: string }) {
       ) : src ? (
         <img
           src={src}
-          alt={filePath.split("/").pop() || ""}
+          alt={baseName(filePath)}
           onClick={() => setActualSize((s) => !s)}
           draggable={false}
           style={

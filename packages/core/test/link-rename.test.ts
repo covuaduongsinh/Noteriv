@@ -135,6 +135,27 @@ describe("notesMovedByRename", () => {
   it("returns null when no note moved", () => {
     expect(notesMovedByRename(vault, "C:\\Vault\\empty", "C:\\Vault\\still-empty", ["C:\\Vault\\b.md"])).toBeNull();
   });
+
+  it("plans an attachment rename even if notesAfter only lists markdown files", () => {
+    expect(
+      notesMovedByRename(vault, "C:\\Vault\\img\\old-photo.png", "C:\\Vault\\img\\new-photo.png", ["C:\\Vault\\Note.md"])
+    ).toEqual({
+      moves: [{ from: "img/old-photo.png", to: "img/new-photo.png" }],
+      before: ["Note.md", "img/old-photo.png"],
+    });
+  });
+
+  it("plans an attachment rename when attachments are included in files list", () => {
+    expect(
+      notesMovedByRename(vault, "C:\\Vault\\img\\old-photo.png", "C:\\Vault\\img\\new-photo.png", [
+        "C:\\Vault\\Note.md",
+        "C:\\Vault\\img\\new-photo.png",
+      ])
+    ).toEqual({
+      moves: [{ from: "img/old-photo.png", to: "img/new-photo.png" }],
+      before: ["Note.md", "img/old-photo.png"],
+    });
+  });
 });
 
 describe("linkSearchTerms", () => {
