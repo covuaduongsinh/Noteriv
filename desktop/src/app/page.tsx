@@ -2039,10 +2039,14 @@ export default function Home() {
             // Expand parent folders and scroll to file
             const sep = filePath.includes("\\") ? "\\" : "/";
             const norm = toPosixPath(filePath);
-            const parts = norm.split("/");
+            const isUnc = filePath.startsWith("\\\\") || norm.startsWith("//");
+            const cleanNorm = isUnc ? norm.replace(/^\/+/,"") : norm;
+            const parts = cleanNorm.split("/");
             const folders: string[] = [];
-            for (let i = 1; i < parts.length - 1; i++) {
-              folders.push(parts.slice(0, i + 1).join(sep));
+            const startIdx = isUnc ? 2 : 1;
+            for (let i = startIdx; i < parts.length - 1; i++) {
+              const prefix = isUnc ? `${sep}${sep}` : "";
+              folders.push(prefix + parts.slice(0, i + 1).join(sep));
             }
             setExpandedFolders((prev) => {
               const next = new Set(prev);
