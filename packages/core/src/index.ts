@@ -32,3 +32,7 @@ export * from "./conflict-copy";
 export * from "./sample-vault";
 export * from "./themes";
 export * from "./quick-note";
+export * from "./ai-types";
+export * from "./ai-vfs-tools";
+export * from "./ai-context-builder";
+export * from "./ai-git-safety-net";
