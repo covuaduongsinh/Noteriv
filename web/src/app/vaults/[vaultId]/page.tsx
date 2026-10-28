@@ -1821,6 +1821,8 @@ export default function VaultPage() {
               content={content}
               onChange={onChange}
               adapter={vaultAdapter}
+              aiProvider={aiProvider}
+              relayUrl={relayUrl}
               vimMode={editorSettings.vimModeEnabled}
               prefs={{ spellCheck: editorSettings.spellCheck, tabSize: editorSettings.tabSize }}
               focusMode={focusMode}

@@ -7,3 +7,4 @@ export { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-pre
 export { vimExtension } from "./vim-mode";
 export * from "./editor-commands";
 export * from "./inline-edit-extension";
+export { default as InlineEditOverlay, type InlineEditOverlayProps } from "./InlineEditOverlay";

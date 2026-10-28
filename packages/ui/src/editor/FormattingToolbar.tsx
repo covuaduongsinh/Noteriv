@@ -9,11 +9,12 @@ import { useT } from "../i18n/react";
 
 // `label` and `short` are i18n keys under editor.toolbar; `content` is a symbol that needs no translation.
 const actions: { action: FormattingAction; label: string; shortcut?: string; content?: string; short?: string; className?: string }[] = [
+  { action: "inlineAiEdit", label: "aiEdit", shortcut: "Ctrl+K", content: "✨ AI", className: "formatting-toolbar-ai font-semibold text-[var(--interactive-accent,#3b82f6)]" },
   { action: "toggleBold", label: "bold", content: "B", className: "formatting-toolbar-bold" },
   { action: "toggleItalic", label: "italic", shortcut: "Ctrl+I", content: "I", className: "formatting-toolbar-italic" },
   { action: "toggleStrikethrough", label: "strikethrough", content: "S", className: "formatting-toolbar-strike" },
   { action: "toggleCode", label: "code", shortcut: "Ctrl+`", content: "<>" },
-  { action: "insertLink", label: "link", shortcut: "Ctrl+K", short: "link" },
+  { action: "insertLink", label: "link", short: "link" },
   { action: "insertImage", label: "image", short: "image" },
   { action: "insertBlockquote", label: "blockquote", short: "blockquote" },
   { action: "insertCodeBlock", label: "codeBlock", short: "codeBlock" },
@@ -32,7 +33,7 @@ export default function FormattingToolbar({ onAction }: { onAction: (action: For
   return (
     <div className="formatting-toolbar" aria-label={t("editor.toolbar.label")}>
       {actions.map(({ action, label: labelKey, shortcut, content, short, className }) => {
-        const label = t(`editor.toolbar.${labelKey}`);
+        const label = labelKey === "aiEdit" ? "Sửa bằng AI" : t(`editor.toolbar.${labelKey}`);
         return (
           <button
             key={action}

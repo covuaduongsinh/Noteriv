@@ -1,5 +1,5 @@
 import { StateField, StateEffect, type Extension, type EditorState, type TransactionSpec } from "@codemirror/state";
-import { keymap, type Command } from "@codemirror/view";
+import { keymap, type Command, type EditorView } from "@codemirror/view";
 
 export interface DiffLine {
   type: "insert" | "delete" | "equal";
@@ -124,6 +124,29 @@ export function rejectInlineEditCommand(state: EditorState): TransactionSpec | n
   };
 }
 
+/**
+ * Programmatically triggers inline edit on the current selection or current line.
+ */
+export function openInlineEdit(view: EditorView): void {
+  const { from, to } = view.state.selection.main;
+  let selFrom = from;
+  let selTo = to;
+  let text = view.state.sliceDoc(from, to);
+
+  // If no text selected, expand to current line
+  if (selFrom === selTo) {
+    const line = view.state.doc.lineAt(selFrom);
+    selFrom = line.from;
+    selTo = line.to;
+    text = line.text;
+  }
+
+  view.dispatch({
+    selection: { anchor: selFrom, head: selTo },
+    effects: openInlineEditEffect.of({ from: selFrom, to: selTo, originalText: text }),
+  });
+}
+
 export function inlineEditExtension(): Extension {
   return [
     inlineEditState,
@@ -131,11 +154,7 @@ export function inlineEditExtension(): Extension {
       {
         key: "Mod-k",
         run: (view) => {
-          const { from, to } = view.state.selection.main;
-          const text = view.state.sliceDoc(from, to);
-          view.dispatch({
-            effects: openInlineEditEffect.of({ from, to, originalText: text }),
-          });
+          openInlineEdit(view);
           return true;
         },
       },

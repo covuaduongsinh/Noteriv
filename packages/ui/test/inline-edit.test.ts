@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { EditorState } from "@codemirror/state";
+import { EditorView } from "@codemirror/view";
 import {
   inlineEditExtension,
   inlineEditState,
@@ -8,6 +9,7 @@ import {
   acceptInlineEditCommand,
   rejectInlineEditCommand,
   computeLineDiff,
+  openInlineEdit,
 } from "../src/editor/inline-edit-extension";
 
 describe("CodeMirror 6 Inline Edit Extension (Claudian Style)", () => {
@@ -113,5 +115,24 @@ describe("CodeMirror 6 Inline Edit Extension (Claudian Style)", () => {
 
     expect(nextState.doc.toString()).toBe("Hello world\nThis is a test note.");
     expect(nextState.field(inlineEditState).status).toBe("idle");
+  });
+
+  it("openInlineEdit expands to current line when selection is empty", () => {
+    const container = document.createElement("div");
+    const state = EditorState.create({
+      doc: "Line 1\nLine 2 target\nLine 3",
+      selection: { anchor: 10, head: 10 }, // Inside "Line 2 target"
+      extensions: [inlineEditExtension()],
+    });
+    const view = new EditorView({ state, parent: container });
+
+    openInlineEdit(view);
+
+    const edit = view.state.field(inlineEditState);
+    expect(edit.status).toBe("prompting");
+    expect(edit.originalText).toBe("Line 2 target");
+    expect(edit.from).toBe(7);
+    expect(edit.to).toBe(20);
+    view.destroy();
   });
 });

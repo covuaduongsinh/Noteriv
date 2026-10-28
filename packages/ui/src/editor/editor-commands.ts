@@ -1,4 +1,5 @@
 import type { EditorView } from "@codemirror/view";
+import { openInlineEdit } from "./inline-edit-extension";
 
 /** Toggle wrap around selection (e.g. **bold**, *italic*). Unwraps if already wrapped. */
 export function wrapSelection(view: EditorView, before: string, after: string) {
@@ -175,12 +176,15 @@ export type FormattingAction =
   | "insertCodeBlock"
   | "insertTaskList"
   | "insertTable"
-  | "insertHorizontalRule";
+  | "insertHorizontalRule"
+  | "inlineAiEdit";
 
 /** Run a toolbar action directly against an editor. A host without its own command dispatcher can use this. */
 export function runFormattingAction(view: EditorView | null, action: FormattingAction): void {
   if (!view) return;
   switch (action) {
+    case "inlineAiEdit":
+      return openInlineEdit(view);
     case "toggleBold":
       return wrapSelection(view, "**", "**");
     case "toggleItalic":

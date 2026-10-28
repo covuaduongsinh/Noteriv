@@ -22,7 +22,15 @@ import { wikilinkAutocompletion, type WikilinkLabel } from "./wikilink-completio
 import { vimExtension } from "./vim-mode";
 import { linkClickHandler } from "./link-click";
 import { prefsCompartment, prefsExtension, type EditorPrefs } from "./editor-prefs";
-import { inlineEditExtension } from "./inline-edit-extension";
+import type { AiProviderConfig } from "@noteriv/core";
+import {
+  inlineEditExtension,
+  inlineEditState,
+  type InlineEditValue,
+  acceptInlineEditCommand,
+  rejectInlineEditCommand,
+} from "./inline-edit-extension";
+import InlineEditOverlay from "./InlineEditOverlay";
 
 export interface EditorProps {
   content: string;
@@ -49,6 +57,8 @@ export interface EditorProps {
    * nothing). When absent the editor refuses file drops, as the web app does until attachments exist there.
    */
   onImageDrop?: (files: File[]) => Promise<string | null>;
+  aiProvider?: AiProviderConfig;
+  relayUrl?: string;
 }
 
 export default function Editor({
@@ -65,6 +75,8 @@ export default function Editor({
   vimMode = false,
   prefs,
   onImageDrop,
+  aiProvider,
+  relayUrl,
 }: EditorProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -77,6 +89,13 @@ export default function Editor({
   const adapterRef = useRef(adapter);
   const prefsRef = useRef(prefs);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [inlineEdit, setInlineEdit] = useState<InlineEditValue>({
+    status: "idle",
+    from: 0,
+    to: 0,
+    originalText: "",
+  });
+  const [overlayCoords, setOverlayCoords] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => { onChangeRef.current = onChange; });
   useEffect(() => { onWikilinkHoverRef.current = onWikilinkHover; });
@@ -115,6 +134,21 @@ export default function Editor({
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
             onChangeRef.current(update.state.doc.toString());
+          }
+          const editVal = update.state.field(inlineEditState, false);
+          if (editVal && editVal.status !== "idle") {
+            setInlineEdit(editVal);
+            const coords = update.view.coordsAtPos(editVal.from);
+            if (coords && editorRef.current) {
+              const rect = editorRef.current.getBoundingClientRect();
+              setOverlayCoords({
+                top: Math.max(8, coords.bottom - rect.top + 8),
+                left: Math.max(16, Math.min(rect.width - 450, coords.left - rect.left)),
+              });
+            }
+          } else if (editVal && editVal.status === "idle") {
+            setInlineEdit(editVal);
+            setOverlayCoords(null);
           }
         }),
         // A click on a rendered link opens it (to edit the link text, put the cursor beside it).
@@ -237,7 +271,29 @@ export default function Editor({
   return (
     <div
       ref={editorRef}
-      className={`h-full overflow-hidden ${className}${isDragOver ? " editor-drop-active" : ""}`}
-    />
+      className={`relative h-full overflow-hidden ${className}${isDragOver ? " editor-drop-active" : ""}`}
+    >
+      {inlineEdit.status !== "idle" && viewRef.current && (
+        <InlineEditOverlay
+          view={viewRef.current}
+          inlineEdit={inlineEdit}
+          coords={overlayCoords}
+          provider={aiProvider}
+          relayUrl={relayUrl}
+          onClose={() => {
+            if (viewRef.current) {
+              const tr = rejectInlineEditCommand(viewRef.current.state);
+              if (tr) viewRef.current.dispatch(tr);
+            }
+          }}
+          onAccept={() => {
+            if (viewRef.current) {
+              const tr = acceptInlineEditCommand(viewRef.current.state);
+              if (tr) viewRef.current.dispatch(tr);
+            }
+          }}
+        />
+      )}
+    </div>
   );
 }
