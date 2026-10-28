@@ -4,6 +4,7 @@ import { createVfsTools, buildPromptWithContext, buildSystemPrompt, GitSafetyNet
 import { streamChat } from "@noteriv/ai-hub";
 import ContextUsageMeter from "./ContextUsageMeter";
 import { ModelEffortToolbar } from "./ModelEffortToolbar";
+import VaultInsightsPanel from "./VaultInsightsPanel";
 import { useMentionSlash, MentionSlashPopup, DEFAULT_SLASH_COMMANDS, type SlashCommand } from "../chat";
 
 export interface AiChatPanelProps {
@@ -39,6 +40,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const [usedTokens, setUsedTokens] = useState(1200);
   const [maxTokens] = useState(128000);
   const [vaultNotes, setVaultNotes] = useState<NoteRef[]>([]);
+  const [activeTab, setActiveTab] = useState<"chat" | "insights">("chat");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const {
@@ -353,6 +355,34 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         </div>
       </div>
 
+      {/* Tab Switcher: Chat vs Vault Insights */}
+      <div className="flex border-b border-[var(--border-subtle)] bg-[var(--bg-secondary)] px-2 pt-1 gap-1 text-xs">
+        <button
+          type="button"
+          onClick={() => setActiveTab("chat")}
+          className={`flex-1 py-1.5 px-2 rounded-t-md font-medium flex items-center justify-center gap-1.5 transition-colors ${
+            activeTab === "chat"
+              ? "bg-[var(--bg-primary)] text-[var(--text-primary)] border-t border-x border-[var(--border-subtle)]"
+              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          <span>💬</span>
+          <span>Trò chuyện</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("insights")}
+          className={`flex-1 py-1.5 px-2 rounded-t-md font-medium flex items-center justify-center gap-1.5 transition-colors ${
+            activeTab === "insights"
+              ? "bg-[var(--bg-primary)] text-[var(--text-primary)] border-t border-x border-[var(--border-subtle)]"
+              : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+          }`}
+        >
+          <span>🕸️</span>
+          <span>Khám phá Vault</span>
+        </button>
+      </div>
+
       {/* Active Context & Vault Indicator */}
       <div className="px-3 py-1.5 bg-[var(--bg-secondary)] border-b border-[var(--border-subtle)] text-[11px] text-[var(--text-secondary)] flex items-center justify-between gap-1">
         <div className="truncate flex items-center gap-1.5" title={`Bối cảnh AI: ${vaultName || "Vault"} (${vaultNotes.length} ghi chú)`}>
@@ -373,71 +403,88 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         </div>
       </div>
 
-      {/* Message List */}
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
-        {messages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-center text-[var(--text-secondary)] p-4 text-xs space-y-2">
-            <span className="text-2xl">✨</span>
-            <p className="font-medium text-sm text-[var(--text-primary)]">Hỏi đáp & Tương tác Vault</p>
-            <p>Hỏi bất kỳ điều gì về ghi chú, gõ @ để nhắc đến file, hoặc bôi đen văn bản bấm Ctrl+K để chỉnh sửa trực tiếp.</p>
-          </div>
-        ) : (
-          messages.map((m) => (
-            <div
-              key={m.id}
-              className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
-            >
-              <div
-                className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
-                  m.role === "user"
-                    ? "bg-[var(--interactive-accent, #3b82f6)] text-white"
-                    : "bg-[var(--bg-secondary)] border border-[var(--border-subtle)]"
-                }`}
-              >
-                {/* Attached Images in User Message */}
-                {m.images && m.images.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mb-2">
-                    {m.images.map((img, idx) => (
-                      <img
-                        key={idx}
-                        src={`data:${img.mimeType};base64,${img.data}`}
-                        alt={img.name || "attachment"}
-                        className="max-h-36 max-w-full rounded border border-white/20 object-contain shadow-sm"
-                      />
-                    ))}
-                  </div>
-                )}
-
-                <div className="whitespace-pre-wrap">{m.content || (isGenerating && m.role === "assistant" ? "Đang suy nghĩ..." : "")}</div>
-
-                {/* Render Tool Invocations */}
-                {m.toolCalls && m.toolCalls.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1 text-xs">
-                    {m.toolCalls.map((tc) => (
-                      <div key={tc.id} className="flex items-center gap-1.5 text-[var(--text-secondary)] font-mono">
-                        <span>⚡ {tc.name}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
+      {activeTab === "insights" ? (
+        <VaultInsightsPanel
+          adapter={adapter}
+          notes={vaultNotes}
+          activeNotePath={activeNotePath}
+          activeNoteContent={activeNoteContent}
+          onOpenNote={onOpenNote}
+          onAskAi={(prompt) => {
+            setActiveTab("chat");
+            setInput(prompt);
+            setTimeout(() => textareaRef.current?.focus(), 50);
+          }}
+        />
+      ) : (
+        <>
+          {/* Message List */}
+          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+            {messages.length === 0 ? (
+              <div className="h-full flex flex-col items-center justify-center text-center text-[var(--text-secondary)] p-4 text-xs space-y-2">
+                <span className="text-2xl">✨</span>
+                <p className="font-medium text-sm text-[var(--text-primary)]">Hỏi đáp & Tương tác Vault</p>
+                <p>Hỏi bất kỳ điều gì về ghi chú, gõ / chọn lệnh nhanh, gõ @ nhắc file, hoặc bôi đen văn bản bấm Ctrl+K để chỉnh sửa trực tiếp.</p>
               </div>
-            </div>
-          ))
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+            ) : (
+              messages.map((m) => (
+                <div
+                  key={m.id}
+                  className={`flex flex-col ${m.role === "user" ? "items-end" : "items-start"}`}
+                >
+                  <div
+                    className={`max-w-[85%] rounded-lg px-3 py-2 text-sm ${
+                      m.role === "user"
+                        ? "bg-[var(--interactive-accent, #3b82f6)] text-white"
+                        : "bg-[var(--bg-secondary)] border border-[var(--border-subtle)]"
+                    }`}
+                  >
+                    {/* Attached Images in User Message */}
+                    {m.images && m.images.length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {m.images.map((img, idx) => (
+                          <img
+                            key={idx}
+                            src={`data:${img.mimeType};base64,${img.data}`}
+                            alt={img.name || "attachment"}
+                            className="max-h-36 max-w-full rounded border border-white/20 object-contain shadow-sm"
+                          />
+                        ))}
+                      </div>
+                    )}
 
-      {/* Mention & Slash Command Popup */}
-      <MentionSlashPopup
-        mode={popupMode}
-        filteredCommands={filteredCommands}
-        filteredNotes={filteredNotes}
-        selectedIndex={selectedIndex}
-        getNotePath={(n) => n.path}
-        getNoteName={(n) => n.name.replace(/\.md$/i, "")}
-        onSelectCommand={handleSelectCommand}
-        onSelectNote={handleSelectMention}
-      />
+                    <div className="whitespace-pre-wrap">{m.content || (isGenerating && m.role === "assistant" ? "Đang suy nghĩ..." : "")}</div>
+
+                    {/* Render Tool Invocations */}
+                    {m.toolCalls && m.toolCalls.length > 0 && (
+                      <div className="mt-2 pt-2 border-t border-[var(--border-subtle)] space-y-1 text-xs">
+                        {m.toolCalls.map((tc) => (
+                          <div key={tc.id} className="flex items-center gap-1.5 text-[var(--text-secondary)] font-mono">
+                            <span>⚡ {tc.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Mention & Slash Command Popup */}
+          <MentionSlashPopup
+            mode={popupMode}
+            filteredCommands={filteredCommands}
+            filteredNotes={filteredNotes}
+            selectedIndex={selectedIndex}
+            getNotePath={(n) => n.path}
+            getNoteName={(n) => n.name.replace(/\.md$/i, "")}
+            onSelectCommand={handleSelectCommand}
+            onSelectNote={handleSelectMention}
+          />
+        </>
+      )}
 
       {/* Composer Input Area */}
       <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)] space-y-2">

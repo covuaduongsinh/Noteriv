@@ -36,3 +36,4 @@ export * from "./ai-types";
 export * from "./ai-vfs-tools";
 export * from "./ai-context-builder";
 export * from "./ai-git-safety-net";
+export * from "./vault-graph-insights";

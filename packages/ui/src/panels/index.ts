@@ -27,6 +27,7 @@ export { default as ConflictBanner, type ConflictBannerProps, type ConflictLabel
 export { default as VaultSearch, type VaultSearchProps, type VaultSearchLabels } from "./VaultSearch";
 export { default as ContextUsageMeter, type ContextUsageMeterProps } from "./ContextUsageMeter";
 export { default as AiChatPanel, type AiChatPanelProps } from "./AiChatPanel";
+export { default as VaultInsightsPanel, type VaultInsightsPanelProps } from "./VaultInsightsPanel";
 export { default as AiSettingsModal, type AiSettingsModalProps } from "./AiSettingsModal";
 export { ModelEffortToolbar, type ModelEffortToolbarProps } from "./ModelEffortToolbar";
 export * from "../chat";

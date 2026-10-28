@@ -4,14 +4,22 @@ Tài liệu này tổng hợp toàn bộ kế hoạch, kiến trúc và lộ tr�
 
 ---
 
-## 1. Trạng thái hiện tại (Đã hoàn thành Lựa chọn 1)
+## 1. Trạng thái hiện tại (Đã hoàn thành toàn bộ Lựa chọn 1, 2 và 3)
 
-- [x] **Inline Edit (`Ctrl+K` / `Cmd+K`) với Diff Preview thời gian thực**:
+- [x] **Lựa chọn 1: Inline Edit (`Ctrl+K` / `Cmd+K`) với Diff Preview thời gian thực**:
   - CodeMirror 6 extension: `inline-edit-extension.ts`.
   - UI Overlay: `InlineEditOverlay.tsx` với 6 chip tác vụ thông minh (viết lại, sửa chính tả, tóm tắt, dịch thuật, danh sách, mở rộng ý).
   - Trực quan hóa Diff 2 màu đỏ (xóa/thay thế) và xanh (bổ sung mới).
   - Tích hợp phím tắt, nút bấm trên FormattingToolbar, chấp nhận (`Enter`) / từ chối (`Esc`) / thử lại (`🔄`).
   - Đã vượt qua 100% unit tests (7/7 tests) và typecheck.
+- [x] **Lựa chọn 2: Smart Mentions (`@`) & Slash Commands (`/`) trong AI Chat**:
+  - Hook & Parser: `useMentionSlash.ts` hỗ trợ 7 lệnh chuẩn hóa (`/summarize`, `/action-items`, `/brainstorm`, `/qa`, `/translate`, `/explain`, `/mindmap`) và tìm kiếm `@note` theo thời gian thực.
+  - UI Component: `MentionSlashPopup.tsx` với điều hướng phím mũi tên, tự động mở rộng prompt lệnh khi gửi.
+  - Đã vượt qua 100% unit tests (5/5 tests) và typecheck.
+- [x] **Lựa chọn 3: Vault AI Graph & Relationship Discovery**:
+  - Core Engine: `vault-graph-insights.ts` phân tích Hub Notes, Orphan Notes, độ kết nối toàn Vault và gợi ý liên kết thông minh (Unlinked Mentions & Shared Tags `#tag`).
+  - UI Component: `VaultInsightsPanel.tsx` tích hợp trực tiếp vào tab `🕸️ Khám phá Vault` trong AI Assistant Sidebar.
+  - Đã vượt qua 100% unit tests (3/3 tests) và typecheck.
 
 ---
 
