@@ -4,6 +4,7 @@ import { createVfsTools, buildPromptWithContext, buildSystemPrompt, GitSafetyNet
 import { streamChat } from "@noteriv/ai-hub";
 import ContextUsageMeter from "./ContextUsageMeter";
 import { ModelEffortToolbar } from "./ModelEffortToolbar";
+import { useMentionSlash, MentionSlashPopup, DEFAULT_SLASH_COMMANDS, type SlashCommand } from "../chat";
 
 export interface AiChatPanelProps {
   adapter: VaultAdapter;
@@ -37,9 +38,23 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [usedTokens, setUsedTokens] = useState(1200);
   const [maxTokens] = useState(128000);
-  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   const [vaultNotes, setVaultNotes] = useState<NoteRef[]>([]);
-  const [selectedMentionIndex, setSelectedMentionIndex] = useState(0);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const {
+    mode: popupMode,
+    query: popupQuery,
+    selectedIndex,
+    filteredCommands,
+    filteredNotes,
+    handleInputChange: handleTriggerChange,
+    handleKeyDown: handlePopupKeyDown,
+    close: closePopup,
+  } = useMentionSlash({
+    notes: vaultNotes,
+    getNotePath: (n) => n.path,
+    getNoteName: (n) => n.name.replace(/\.md$/i, ""),
+  });
 
   useEffect(() => {
     setCurrentProvider(provider);
@@ -63,29 +78,31 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Handle @mention trigger
+  // Handle @mention and /slash command trigger
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInput(val);
+    handleTriggerChange(val, e.target.selectionStart || 0);
+  };
 
-    const cursorPos = e.target.selectionStart;
-    const textBeforeCursor = val.slice(0, cursorPos);
-    const lastAt = textBeforeCursor.lastIndexOf("@");
-
-    if (lastAt !== -1 && !textBeforeCursor.slice(lastAt + 1).includes(" ")) {
-      setMentionQuery(textBeforeCursor.slice(lastAt + 1).toLowerCase());
-      setSelectedMentionIndex(0);
-    } else {
-      setMentionQuery(null);
-    }
+  const handleSelectCommand = (cmd: SlashCommand) => {
+    const slashIdx = input.lastIndexOf("/");
+    const nextInput = slashIdx !== -1 ? input.slice(0, slashIdx) + `${cmd.command} ` : `${cmd.command} `;
+    setInput(nextInput);
+    closePopup();
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handleSelectMention = (note: NoteRef) => {
     const cursorPos = input.lastIndexOf("@");
     if (cursorPos === -1) return;
-    const nextInput = input.slice(0, cursorPos) + `[[${note.name.replace(/\.md$/i, "")}]] ` + input.slice(cursorPos + 1 + (mentionQuery?.length || 0));
+    const nextInput =
+      input.slice(0, cursorPos) +
+      `[[${note.name.replace(/\.md$/i, "")}]] ` +
+      input.slice(cursorPos + 1 + (popupQuery?.length || 0));
     setInput(nextInput);
-    setMentionQuery(null);
+    closePopup();
+    setTimeout(() => textareaRef.current?.focus(), 0);
   };
 
   const handlePaste = (e: React.ClipboardEvent<HTMLTextAreaElement>) => {
@@ -126,7 +143,21 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
     const imagesToSend = [...attachedImages];
     setInput("");
     setAttachedImages([]);
-    setMentionQuery(null);
+    closePopup();
+
+    // Check if userText starts with a slash command (/summarize, /action-items, etc.)
+    let expandedPrompt = userText;
+    const slashMatch = userText.match(/^\/([a-zA-Z0-9_-]+)(?:\s+(.*))?$/s);
+    if (slashMatch) {
+      const cmdKey = `/${slashMatch[1].toLowerCase()}`;
+      const matchedCmd = DEFAULT_SLASH_COMMANDS.find((c) => c.command.toLowerCase() === cmdKey);
+      if (matchedCmd) {
+        const userArg = slashMatch[2]?.trim();
+        expandedPrompt = userArg
+          ? `${matchedCmd.promptTemplate}\n\nYêu cầu bổ sung: ${userArg}`
+          : matchedCmd.promptTemplate;
+      }
+    }
 
     // Build context with active note content and vault overview
     let activeContent = activeNoteContent || "";
@@ -201,7 +232,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       mentionedNotes: mentionedList.length > 0 ? mentionedList : undefined,
     };
 
-    const userPromptWithContext = buildPromptWithContext(userText, aiContext);
+    const userPromptWithContext = buildPromptWithContext(expandedPrompt, aiContext);
 
     const userMsg: AiMessage = {
       id: `msg-${Date.now()}`,
@@ -296,10 +327,6 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       setIsGenerating(false);
     }
   };
-
-  const filteredNotes = mentionQuery !== null
-    ? vaultNotes.filter((n) => n.path.toLowerCase().includes(mentionQuery)).slice(0, 5)
-    : [];
 
   return (
     <div className="flex flex-col h-full bg-[var(--bg-primary)] border-l border-[var(--border-subtle)] text-[var(--text-primary)]">
@@ -400,24 +427,17 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Mention Popup */}
-      {mentionQuery !== null && filteredNotes.length > 0 && (
-        <div className="mx-3 mb-1 bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded shadow-lg overflow-hidden text-xs">
-          {filteredNotes.map((n, idx) => (
-            <button
-              key={n.id}
-              type="button"
-              onClick={() => handleSelectMention(n)}
-              className={`w-full text-left px-3 py-1.5 flex items-center gap-2 hover:bg-[var(--bg-modifier-hover)] ${
-                idx === selectedMentionIndex ? "bg-[var(--bg-modifier-hover)] font-medium" : ""
-              }`}
-            >
-              <span>📄</span>
-              <span className="truncate">{n.path}</span>
-            </button>
-          ))}
-        </div>
-      )}
+      {/* Mention & Slash Command Popup */}
+      <MentionSlashPopup
+        mode={popupMode}
+        filteredCommands={filteredCommands}
+        filteredNotes={filteredNotes}
+        selectedIndex={selectedIndex}
+        getNotePath={(n) => n.path}
+        getNoteName={(n) => n.name.replace(/\.md$/i, "")}
+        onSelectCommand={handleSelectCommand}
+        onSelectNote={handleSelectMention}
+      />
 
       {/* Composer Input Area */}
       <div className="p-3 border-t border-[var(--border-subtle)] bg-[var(--bg-secondary)] space-y-2">
@@ -454,16 +474,34 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
 
         <div className="flex gap-2">
           <textarea
+            ref={textareaRef}
             value={input}
             onChange={handleInputChange}
             onPaste={handlePaste}
             onKeyDown={(e) => {
+              if (popupMode) {
+                if (e.key === "Enter" || e.key === "Tab") {
+                  if (popupMode === "slash" && filteredCommands[selectedIndex]) {
+                    e.preventDefault();
+                    handleSelectCommand(filteredCommands[selectedIndex]);
+                    return;
+                  }
+                  if (popupMode === "mention" && filteredNotes[selectedIndex]) {
+                    e.preventDefault();
+                    handleSelectMention(filteredNotes[selectedIndex]);
+                    return;
+                  }
+                }
+                if (handlePopupKeyDown(e)) {
+                  return;
+                }
+              }
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
                 handleSend();
               }
             }}
-            placeholder="Hỏi AI, gõ @ chọn file, hoặc Ctrl+V dán ảnh..."
+            placeholder="Hỏi AI, gõ / chọn lệnh, @ nhắc file, hoặc Ctrl+V dán ảnh..."
             rows={2}
             className="flex-1 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-md px-2.5 py-1.5 text-sm resize-none focus:outline-none focus:border-[var(--interactive-accent, #3b82f6)]"
           />
