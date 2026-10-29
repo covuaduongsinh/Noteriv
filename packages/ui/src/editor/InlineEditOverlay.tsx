@@ -35,7 +35,7 @@ export const InlineEditOverlay: React.FC<InlineEditOverlayProps> = ({
   inlineEdit,
   coords,
   provider,
-  relayUrl = "http://localhost:4001",
+  relayUrl = "",
   onClose,
   onAccept,
 }) => {

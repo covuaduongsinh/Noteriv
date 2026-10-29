@@ -233,10 +233,15 @@ export default function VaultPage() {
   }, []);
 
   const [relayUrl, setRelayUrl] = useState<string>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("noteriv_ai_relay_url") || "http://localhost:4001";
+    // Empty = same-origin /api (the providers fall back to it). A saved localhost URL is useless off localhost.
+    if (typeof window === "undefined") return "";
+    try {
+      const saved = localStorage.getItem("noteriv_ai_relay_url") || "";
+      const onLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+      return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(saved) && !onLocalhost ? "" : saved;
+    } catch {
+      return "";
     }
-    return "http://localhost:4001";
   });
 
   const handleSaveRelayUrl = useCallback((url: string) => {
