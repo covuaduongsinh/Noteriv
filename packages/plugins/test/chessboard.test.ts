@@ -9,7 +9,12 @@ import { renderBoardSVG } from "../src/chessboard/render";
 
 const START = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 const CTX = { source: "", language: "chessboard", sourcePath: null };
-const TEXT = { missingFen: "no fen", invalidFen: (e: string) => `bad: ${e}`, renderError: (m: string) => `render: ${m}` };
+const TEXT = {
+  missingFen: "no fen",
+  invalidFen: (e: string) => `bad: ${e}`,
+  renderError: (m: string) => `render: ${m}`,
+  diagramLabel: (fen: string) => `diagram: ${fen}`,
+};
 const DEFAULTS = () => ({ pieceSet: "classic", boardTheme: "classic" });
 
 function render(source: string, defaults = DEFAULTS) {
@@ -21,8 +26,15 @@ function render(source: string, defaults = DEFAULTS) {
 describe("parseChessboardBlock", () => {
   it("reads the fields, with defaults for the optional ones", () => {
     const c = parseChessboardBlock(`fen: ${START}\norientation: BLACK\nstrict: false\nannotations: He4/g, Ae2-e4\npieceset: Spatial\nboardtheme: Ocean`);
-    expect(c).toEqual({ fen: START, orientation: "black", strict: false, annotations: ["He4/g", "Ae2-e4"], pieceset: "spatial", boardtheme: "ocean" });
-    expect(parseChessboardBlock(`fen: ${START}`)).toMatchObject({ orientation: "white", strict: true, annotations: [], pieceset: null, boardtheme: null });
+    expect(c).toEqual({ fen: START, orientation: "black", strict: false, annotations: ["He4/g", "Ae2-e4"], labels: false, size: null, pieceset: "spatial", boardtheme: "ocean" });
+    expect(parseChessboardBlock(`fen: ${START}`)).toMatchObject({ orientation: "white", strict: true, annotations: [], labels: false, size: null, pieceset: null, boardtheme: null });
+  });
+
+  it("reads labels and size, ignoring a size that is out of range or not a number", () => {
+    expect(parseChessboardBlock(`fen: ${START}\nlabels: true\nsize: 280`)).toMatchObject({ labels: true, size: 280 });
+    expect(parseChessboardBlock(`fen: ${START}\nlabels: Yes\nsize: 320px`)).toMatchObject({ labels: true, size: 320 });
+    for (const size of ["50", "601", "big", "-5", ""]) expect(parseChessboardBlock(`fen: ${START}\nsize: ${size}`).size).toBeNull();
+    expect(parseChessboardBlock(`fen: ${START}\nlabels: false`).labels).toBe(false);
   });
 
   it("lets an empty key take the following lines", () => {
@@ -42,10 +54,10 @@ describe("validateFEN", () => {
     expect(validateFEN("rnbqkbnx/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR")).toMatchObject({ valid: false });
   });
 
-  it("needs exactly one king of each colour", () => {
-    expect(validateFEN("8/8/8/8/8/8/8/k7")).toMatchObject({ valid: false, error: expect.stringContaining("white king") });
-    expect(validateFEN("K7/8/8/8/8/8/8/8")).toMatchObject({ valid: false, error: expect.stringContaining("black king") });
-    expect(validateFEN("KK6/8/8/8/8/8/8/k7")).toMatchObject({ valid: false, error: expect.stringContaining("white king") });
+  it("does not need kings: lesson positions have one king, none, or several pieces of a kind", () => {
+    for (const fen of ["8/8/8/8/8/8/8/8", "8/8/8/8/8/8/8/k7", "K7/8/8/8/8/8/8/8", "KK6/8/8/8/8/8/8/k7", "8/2P5/8/8/8/8/8/8 w - - 0 1", "8/6N1/8/8/5q2/8/8/8 w - - 0 1"]) {
+      expect(validateFEN(fen)).toEqual({ valid: true });
+    }
   });
 
   it("rejects bad side, castling and en passant fields", () => {
@@ -116,6 +128,37 @@ describe("renderBoardSVG", () => {
     expect(el.querySelectorAll("svg > svg")).toHaveLength(8);
   });
 
+  it("draws file letters and rank numbers only when asked, flipped for black", () => {
+    const plain = document.createElement("div");
+    plain.innerHTML = renderBoardSVG(config);
+    expect(plain.querySelectorAll("text")).toHaveLength(0);
+    expect(plain.querySelector("svg")!.getAttribute("viewBox")).toBe("0 0 400 400");
+
+    const white = document.createElement("div");
+    white.innerHTML = renderBoardSVG({ ...config, labels: true });
+    const letters = (el: HTMLElement) => Array.from(el.querySelectorAll("text")).map((t) => t.textContent).join("");
+    expect(letters(white)).toBe("a8b7c6d5e4f3g2h1");
+    expect(white.querySelector("svg")!.getAttribute("viewBox")).toBe("-20 0 420 420");
+
+    const black = document.createElement("div");
+    black.innerHTML = renderBoardSVG({ ...config, labels: true, orientation: "black" });
+    expect(letters(black)).toBe("h1g2f3e4d5c6b7a8");
+  });
+
+  it("sets the width from size, and describes the diagram for screen readers with the text escaped", () => {
+    const el = document.createElement("div");
+    el.innerHTML = renderBoardSVG({ ...config, size: 280, title: 'Diagram "<b>x</b>"' });
+    const svg = el.querySelector("svg")!;
+    expect(svg.style.maxWidth).toBe("280px");
+    expect(svg.getAttribute("role")).toBe("img");
+    expect(svg.getAttribute("aria-label")).toBe('Diagram "<b>x</b>"');
+    expect(svg.querySelector("title")?.textContent).toBe('Diagram "<b>x</b>"');
+    expect(el.querySelector("b")).toBeNull();
+    el.innerHTML = renderBoardSVG(config);
+    expect(el.querySelector("svg")!.style.maxWidth).toBe("360px");
+    expect(el.querySelector("title")).toBeNull();
+  });
+
   it("has artwork for all twelve pieces in every set", () => {
     for (const set of Object.values(PIECE_SETS)) expect(Object.keys(set.pieces).sort().join("")).toBe("BKNPQRbknpqr");
   });
@@ -138,6 +181,22 @@ describe("chessboard block", () => {
     const bad = render("fen: <img src=x onerror=alert(1)>/8/8/8/8/8/8/8");
     expect(bad.el.querySelector("img")).toBeNull();
     expect(bad.el.querySelector(".chessboard-error")?.textContent).toMatch(/^bad: /);
+  });
+
+  it("draws positions with no king or one king without strict: false", () => {
+    for (const fen of ["8/2P5/8/8/8/8/8/8 w - - 0 1", "8/6N1/8/8/5q2/8/8/8 w - - 0 1", "8/8/8/8/8/8/8/8 w - - 0 1", "8/8/8/8/8/8/8/K7"]) {
+      const { el } = render(`fen: ${fen}`);
+      expect(el.querySelector(".chessboard-error")).toBeNull();
+      expect(el.querySelector("svg.chessboard-plugin-svg")).not.toBeNull();
+    }
+  });
+
+  it("passes labels, size and a description to the board", () => {
+    const { el } = render(`fen: ${START}\nlabels: true\nsize: 300`);
+    const svg = el.querySelector("svg")!;
+    expect(svg.querySelectorAll("text")).toHaveLength(16);
+    expect(svg.style.maxWidth).toBe("300px");
+    expect(svg.getAttribute("aria-label")).toBe(`diagram: ${START}`);
   });
 
   it("draws an invalid FEN anyway when strict is false", () => {
@@ -196,6 +255,8 @@ describe("chessboard plugin", () => {
     container.querySelector("button")!.click();
     await new Promise((r) => setTimeout(r, 0));
     expect(ok.save).toHaveBeenCalledWith({ pieceSet: "spatial", boardTheme: "forest" });
+    // Saved defaults redraw the open boards: the language is registered once more.
+    expect(ok.registerCodeBlockProcessor).toHaveBeenCalledTimes(2);
     expect(ok.showNotice).toHaveBeenCalledWith(testI18n("vi").t("plugins.chessboard.saved"), 4000);
 
     const failing = fakeApi({}, vi.fn(async () => { throw new Error("quota"); }));
@@ -206,6 +267,7 @@ describe("chessboard plugin", () => {
     failContainer.querySelector("button")!.click();
     await new Promise((r) => setTimeout(r, 0));
     expect(failing.showNotice).toHaveBeenCalledWith(testI18n("vi").t("plugins.chessboard.saveFailed"), 6000);
+    expect(failing.registerCodeBlockProcessor).toHaveBeenCalledTimes(1);
     errors.mockRestore();
     chessboardPlugin.onunload?.();
   });

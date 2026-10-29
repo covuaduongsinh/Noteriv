@@ -853,7 +853,9 @@
       "hint": "Các bàn cờ đang mở trong ghi chú giữ nguyên giao diện cho tới khi bạn mở lại ghi chú.",
       "missingFen": "Thiếu trường \"fen:\"",
       "invalidFen": "FEN không hợp lệ: {error}",
-      "renderError": "Lỗi vẽ bàn cờ: {message}"
+      "renderError": "Lỗi vẽ bàn cờ: {message}",
+      "diagramLabel": "Sơ đồ bàn cờ vua: {fen}",
+      "syntax": "Các tuỳ chọn trong khối ```chessboard:\nfen: <thế cờ>              bắt buộc\norientation: white | black\nlabels: true               hiện a-h và 1-8\nsize: 280                  rộng bao nhiêu px, từ 100 đến 600\nstrict: false              vẽ cả FEN sai cấu trúc\npieceset: classic | spatial | minimal\nboardtheme: classic | forest | ocean | midnight\nannotations: He4/g, Ae2-e4\n  H<ô>/g|r|b|y       tô sáng một ô\n  A<ô>-<ô>          vẽ mũi tên\nKhông bắt buộc phải có Vua."
     }
   },
   "web": {

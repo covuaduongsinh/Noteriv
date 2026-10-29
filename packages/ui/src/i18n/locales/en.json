@@ -875,7 +875,9 @@
       "hint": "Boards already open in a note keep their current look until you reopen the note.",
       "missingFen": "Missing \"fen:\" field",
       "invalidFen": "Invalid FEN: {error}",
-      "renderError": "Render error: {message}"
+      "renderError": "Render error: {message}",
+      "diagramLabel": "Chess diagram: {fen}",
+      "syntax": "Options in a ```chessboard block:\nfen: <position>            required\norientation: white | black\nlabels: true               show a-h and 1-8\nsize: 280                  width in px, 100 to 600\nstrict: false              draw even a malformed FEN\npieceset: classic | spatial | minimal\nboardtheme: classic | forest | ocean | midnight\nannotations: He4/g, Ae2-e4\n  H<square>/g|r|b|y  highlight a square\n  A<square>-<square> draw an arrow\nKings are not required."
     }
   },
   "web": {

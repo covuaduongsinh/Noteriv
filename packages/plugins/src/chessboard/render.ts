@@ -7,6 +7,30 @@ export interface BoardRenderConfig {
   annotations: string[];
   pieceSet: string;
   boardTheme: string;
+  /** Draw file letters and rank numbers around the board. */
+  labels?: boolean;
+  /** Width in pixels; undefined = DEFAULT_WIDTH. */
+  size?: number | null;
+  /** Accessible description of the diagram (shown as a tooltip and read by screen readers). */
+  title?: string;
+}
+
+export const DEFAULT_WIDTH = 360;
+
+function escapeAttr(text: string): string {
+  return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+/** File letters along the bottom and rank numbers down the left side, in the board's drawing space (outside the squares). */
+function labelsSvg(orientation: "white" | "black"): string {
+  const files = orientation === "black" ? "hgfedcba" : "abcdefgh";
+  const ranks = orientation === "black" ? "12345678" : "87654321";
+  let out = '<g fill="currentColor" fill-opacity="0.75" font-family="sans-serif" font-size="13" text-anchor="middle" aria-hidden="true">';
+  for (let i = 0; i < 8; i++) {
+    out += `<text x="${i * 50 + 25}" y="414">${files[i]}</text>`;
+    out += `<text x="-10" y="${i * 50 + 30}">${ranks[i]}</text>`;
+  }
+  return `${out}</g>`;
 }
 
 /** Every board gets its own arrowhead id: with one shared id, the first board's marker wins on the whole page. */
@@ -24,8 +48,11 @@ export function renderBoardSVG(config: BoardRenderConfig): string {
   const pieceSet = PIECE_SETS[config.pieceSet] ?? PIECE_SETS.classic;
   const markerId = `cb-arrowhead-${++boardCounter}`;
   const ranks = config.fen.split(" ")[0].split("/");
-  let svg =
-    '<svg viewBox="0 0 400 400" class="chessboard-plugin-svg" style="display:block;width:100%;max-width:360px;margin:12px auto;" xmlns="http://www.w3.org/2000/svg">';
+  const width = Math.round(config.size ?? DEFAULT_WIDTH);
+  const viewBox = config.labels ? "-20 0 420 420" : "0 0 400 400";
+  const a11y = config.title ? ` role="img" aria-label="${escapeAttr(config.title)}"` : "";
+  let svg = `<svg viewBox="${viewBox}" class="chessboard-plugin-svg"${a11y} style="display:block;width:100%;max-width:${width}px;margin:12px auto;" xmlns="http://www.w3.org/2000/svg">`;
+  if (config.title) svg += `<title>${escapeAttr(config.title)}</title>`;
 
   for (let row = 0; row < 8; row++) {
     for (let col = 0; col < 8; col++) {
@@ -55,6 +82,8 @@ export function renderBoardSVG(config: BoardRenderConfig): string {
       file++;
     }
   }
+
+  if (config.labels) svg += labelsSvg(config.orientation);
 
   svg += `<defs><marker id="${markerId}" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="${theme.arrow}" fill-opacity="0.85"/></marker></defs>`;
   for (const annotation of config.annotations) {

@@ -2,9 +2,16 @@
 export interface ChessboardConfig {
   fen: string | null;
   orientation: "white" | "black";
-  /** True (the default) checks the FEN before drawing; false draws whatever it can. */
+  /**
+   * True (the default) checks the FEN's structure before drawing (8 ranks, 8 squares each, known letters); false draws
+   * whatever it can. Kings are never required: lesson positions often have one king or none.
+   */
   strict: boolean;
   annotations: string[];
+  /** Draw the file letters (a-h) and rank numbers (1-8) around the board. Off by default. */
+  labels: boolean;
+  /** Board width in pixels, 100 to 600; null = the default width. */
+  size: number | null;
   /** Per-block override of the saved default piece set; null = no override. */
   pieceset: string | null;
   /** Per-block override of the saved default board theme; null = no override. */
@@ -43,9 +50,22 @@ export function parseChessboardBlock(source: string): ChessboardConfig {
       .split(/[,\n]/)
       .map((s) => s.trim())
       .filter(Boolean),
+    labels: /^(true|yes|on|1)$/i.test(fields.labels ?? ""),
+    size: parseSize(fields.size),
     pieceset: fields.pieceset ? fields.pieceset.toLowerCase() : null,
     boardtheme: fields.boardtheme ? fields.boardtheme.toLowerCase() : null,
   };
+}
+
+export const MIN_SIZE = 100;
+export const MAX_SIZE = 600;
+
+/** `size: 280` (or `280px`); anything else, or a number out of range, means the default width. */
+function parseSize(value: string | undefined): number | null {
+  const m = /^(\d{1,4})(?:px)?$/i.exec((value ?? "").trim());
+  if (!m) return null;
+  const n = Number(m[1]);
+  return n >= MIN_SIZE && n <= MAX_SIZE ? n : null;
 }
 
 export function validateFEN(fen: unknown): FenCheck {
@@ -63,10 +83,6 @@ export function validateFEN(fen: unknown): FenCheck {
     }
     if (count !== 8) return { valid: false, error: `Rank "${row}" does not sum to 8 squares` };
   }
-
-  const board = parts[0];
-  if ((board.match(/K/g) ?? []).length !== 1) return { valid: false, error: "Position must have exactly one white king (K)" };
-  if ((board.match(/k/g) ?? []).length !== 1) return { valid: false, error: "Position must have exactly one black king (k)" };
 
   if (parts[1] && !/^[wb]$/.test(parts[1])) return { valid: false, error: `Invalid side to move "${parts[1]}"` };
   if (parts[2] && !/^(-|[KQkq]{1,4})$/.test(parts[2])) return { valid: false, error: `Invalid castling field "${parts[2]}"` };

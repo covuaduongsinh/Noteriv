@@ -2,6 +2,8 @@
 
 > **Cập nhật 2026-10-29:** plugin đã chuyển thành plugin lõi `packages/plugins/src/chessboard/` (TypeScript, tắt sẵn, chạy trên web/desktop/phone); bản ví dụ `desktop/examples/plugins/chessboard/` đã xóa. **Phase 1 (P1.1–P1.5) đã làm xong và có test** (`packages/plugins/test/chessboard.test.ts`; `squareToXY` trả `null` cho ô không hợp lệ thay vì `{x:0,y:0}`). Phase 2–4 còn lại; các đường dẫn `main.js` bên dưới là của bản cũ.
 >
+> **Cập nhật 2026-10-29 (2):** P1.4 (bắt buộc đúng một vua mỗi bên) **đã bỏ**: giáo án cờ vua cần thế cờ không vua hoặc một vua, và bàn cờ luôn phải hiện kể cả khi không có `strict: false` (strict vẫn bắt lỗi cấu trúc FEN). Đã làm thêm từ Phase 2/4: `labels: true` (nhãn a-h, 1-8, mặc định tắt), `size:` (100–600 px), `role="img"` + `aria-label` + `<title>`, làm mới bàn cờ đang mở khi lưu mặc định, bảng cú pháp trong tab cài đặt.
+>
 > **Plugin (bản cũ):** `desktop/examples/plugins/chessboard/`  
 > **Phiên bản hiện tại:** 0.2.0  
 > **Ngày lập kế hoạch:** 2026-10-12  

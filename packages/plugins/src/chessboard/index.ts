@@ -27,6 +27,7 @@ export interface ChessboardText {
   missingFen: string;
   invalidFen: (error: string) => string;
   renderError: (message: string) => string;
+  diagramLabel: (fen: string) => string;
 }
 
 function showError(el: HTMLElement, message: string): void {
@@ -61,6 +62,9 @@ export const createChessboardProcessor =
         annotations: config.annotations,
         pieceSet: config.pieceset ?? base.pieceSet,
         boardTheme: config.boardtheme ?? base.boardTheme,
+        labels: config.labels,
+        size: config.size,
+        title: text.diagramLabel(config.fen),
       });
       const widget = document.createElement("div");
       widget.className = "chessboard-plugin-widget";
@@ -90,7 +94,7 @@ function selectField(label: string, options: Record<string, { name: string }>, v
   return { wrap, select };
 }
 
-function renderSettings(api: PluginApi, t: Translate, container: HTMLElement): void {
+function renderSettings(api: PluginApi, t: Translate, container: HTMLElement, onSaved: () => void): void {
   const row = container.appendChild(document.createElement("div"));
   row.style.cssText = "display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;";
   const pieces = selectField(t("pieceSet"), PIECE_SETS, current.pieceSet);
@@ -121,6 +125,7 @@ function renderSettings(api: PluginApi, t: Translate, container: HTMLElement): v
     api.settings.save({ ...next }).then(
       () => {
         current = next;
+        onSaved();
         api.ui.showNotice(t("saved"), 4000);
       },
       (err) => {
@@ -133,6 +138,9 @@ function renderSettings(api: PluginApi, t: Translate, container: HTMLElement): v
   const hint = container.appendChild(document.createElement("div"));
   hint.style.cssText = "margin-top:8px;font-size:11px;opacity:0.7;";
   hint.textContent = t("hint");
+  const syntax = container.appendChild(document.createElement("pre"));
+  syntax.style.cssText = "margin-top:12px;font-size:11px;opacity:0.8;white-space:pre-wrap;";
+  syntax.textContent = t("syntax");
 }
 
 /** Chessboard: static chess diagrams from ```chessboard blocks (FEN, highlights, arrows), with a default piece set and board theme. */
@@ -141,15 +149,16 @@ const chessboardPlugin: CorePlugin = {
     const t = pluginT(api, "chessboard");
     // Before registering, so the first render of an already open note uses the saved defaults.
     current = normalize(await api.settings.load().catch(() => ({}) as Record<string, unknown>));
-    api.markdown.registerCodeBlockProcessor(
-      "chessboard",
-      createChessboardProcessor({
-        missingFen: t("missingFen"),
-        invalidFen: (error) => t("invalidFen", { error }),
-        renderError: (message) => t("renderError", { message }),
-      })
-    );
-    api.ui.addSettingsTab({ id: "settings", name: t("settings"), render: (container) => renderSettings(api, t, container) });
+    const processor = createChessboardProcessor({
+      missingFen: t("missingFen"),
+      invalidFen: (error) => t("invalidFen", { error }),
+      renderError: (message) => t("renderError", { message }),
+      diagramLabel: (fen) => t("diagramLabel", { fen }),
+    });
+    const register = () => api.markdown.registerCodeBlockProcessor("chessboard", processor);
+    register();
+    // Registering again makes open notes redraw their boards, so a saved default shows at once.
+    api.ui.addSettingsTab({ id: "settings", name: t("settings"), render: (container) => renderSettings(api, t, container, register) });
   },
   onunload() {
     current = { ...DEFAULTS };
