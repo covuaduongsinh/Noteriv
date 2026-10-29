@@ -78,6 +78,8 @@ model User {
   emailTokens      EmailToken[]
   activityDays     UserActivityDay[]
   llmApiKeys       LlmApiKey[]
+  usageEvents      UsageEvent[]
+  subscription     UserSubscription?
 
   @@map("users")
 }
@@ -529,4 +531,37 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+/// One AI chat request's token usage and estimated cost (lib/usageTracker.ts). Rows are only ever appended; the
+/// monthly counter sums them from the first of the month (UTC).
+model UsageEvent {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  provider  String
+  model     String
+  tokensIn  Int      @default(0) @map("tokens_in")
+  tokensOut Int      @default(0) @map("tokens_out")
+  /// Estimated from lib/pricing.ts at the time of the request; later price changes do not rewrite history.
+  costUsd   Decimal  @default(0) @map("cost_usd") @db.Decimal(12, 6)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@map("usage_events")
+}
+
+/// A user's AI tier and optional overrides. No row means the "free" tier. A null limit means "the tier's default"
+/// (lib/pricing.ts TIER_DEFAULTS); the "max" tier's default is unlimited.
+model UserSubscription {
+  userId             String   @id @map("user_id")
+  tier               String   @default("free")
+  monthlyBudgetUsd   Decimal? @map("monthly_budget_usd") @db.Decimal(10, 2)
+  monthlyLimitTokens Int?     @map("monthly_limit_tokens")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_subscriptions")
 }

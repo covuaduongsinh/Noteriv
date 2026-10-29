@@ -1,9 +1,37 @@
-import type { FastifyInstance } from "fastify";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 import { spawn } from "node:child_process";
 import path from "node:path";
 import fs from "node:fs";
+import { verifyAccessToken } from "../lib/jwt.js";
+import { recordUsage } from "../lib/usageTracker.js";
+
+/**
+ * The signed-in user, if the request carries a valid access cookie. These relay routes are also used by clients
+ * without a session (a local sidecar), so a missing user means "do not record usage", never a 401.
+ */
+function optionalUserId(request: FastifyRequest): string | null {
+  const token = request.cookies?.["noteriv_access"];
+  if (!token) return null;
+  try {
+    return verifyAccessToken(token).sub;
+  } catch {
+    return null;
+  }
+}
+
+const asCount = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0);
 
 export default async function aiRoutes(fastify: FastifyInstance) {
+  /** Never throws: a failed write must not break a chat that already streamed. */
+  async function record(userId: string | null, provider: string, model: string, tokensIn: number, tokensOut: number) {
+    if (!userId) return;
+    try {
+      await recordUsage(fastify.prisma, { userId, provider, model, tokensIn, tokensOut });
+    } catch (err) {
+      fastify.log.error({ err, userId, provider }, "failed to record AI usage");
+    }
+  }
+
   fastify.post("/claude-stream", async (request, reply) => {
     const body = (request.body || {}) as any;
     const { messages = [], systemPrompt = "", model, reasoningEffort } = body;
@@ -55,6 +83,10 @@ export default async function aiRoutes(fastify: FastifyInstance) {
     child.stdin.write(prompt);
     child.stdin.end();
 
+    const userId = optionalUserId(request);
+    // The CLI's final "result" event carries the totals for the whole request (cache reads count as input).
+    let tokensIn = 0;
+    let tokensOut = 0;
     let lastDeliveredText = "";
     let buffer = "";
 
@@ -87,6 +119,11 @@ export default async function aiRoutes(fastify: FastifyInstance) {
               }
             }
           } else if (event.type === "result" && event.result) {
+            const u = event.usage;
+            if (u) {
+              tokensIn = asCount(u.input_tokens) + asCount(u.cache_creation_input_tokens) + asCount(u.cache_read_input_tokens);
+              tokensOut = asCount(u.output_tokens);
+            }
             if (typeof event.result === "string" && event.result.length > lastDeliveredText.length) {
               const delta = event.result.slice(lastDeliveredText.length);
               lastDeliveredText = event.result;
@@ -99,7 +136,9 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       }
     });
 
-    child.on("close", (code) => {
+    child.on("close", async (code) => {
+      // Before the stream ends, so the client's refresh right after "done" sees this request.
+      await record(userId, "claude-sdk", model && model !== "default" ? String(model) : "default", tokensIn, tokensOut);
       if (code !== 0 && lastDeliveredText.length === 0) {
         reply.raw.write(
           `data: ${JSON.stringify({
@@ -195,6 +234,13 @@ export default async function aiRoutes(fastify: FastifyInstance) {
     let stderrBuffer = "";
     let lastDeliveredText = "";
     let lastErrorMessage = "";
+    const userId = optionalUserId(request);
+    // The CLI reports usage both per step and in the final result. Counting each report would double count, so keep
+    // one figure: the final result's if it came, else the largest step report (assumed cumulative, not a delta).
+    let stepIn = 0;
+    let stepOut = 0;
+    let finalIn = 0;
+    let finalOut = 0;
 
     child.stderr?.on("data", (chunk: Buffer) => {
       stderrBuffer += chunk.toString();
@@ -218,6 +264,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
               reply.raw.write(`data: ${JSON.stringify({ type: "text_delta", text: update.text_delta })}\n\n`);
             }
             if (update.usage) {
+              stepIn = Math.max(stepIn, asCount(update.usage.input_tokens));
+              stepOut = Math.max(stepOut, asCount(update.usage.output_tokens));
               reply.raw.write(
                 `data: ${JSON.stringify({
                   type: "usage",
@@ -231,6 +279,8 @@ export default async function aiRoutes(fastify: FastifyInstance) {
               lastErrorMessage = event.result.error || "Antigravity CLI execution error";
             }
             if (event.result.usage) {
+              finalIn = asCount(event.result.usage.input_tokens);
+              finalOut = asCount(event.result.usage.output_tokens);
               reply.raw.write(
                 `data: ${JSON.stringify({
                   type: "usage",
@@ -246,7 +296,9 @@ export default async function aiRoutes(fastify: FastifyInstance) {
       }
     });
 
-    child.on("close", (code) => {
+    child.on("close", async (code) => {
+      const hasFinal = finalIn > 0 || finalOut > 0;
+      await record(userId, "antigravity-cli", targetModel, hasFinal ? finalIn : stepIn, hasFinal ? finalOut : stepOut);
       if (code !== 0 && lastDeliveredText.length === 0) {
         const errMsg = lastErrorMessage || stderrBuffer.trim() || `Antigravity CLI exited with code ${code}`;
         reply.raw.write(
