@@ -231,9 +231,11 @@ export const AiSettingsModal: React.FC<AiSettingsModalProps> = ({
           </label>
           <input
             type="text"
+            name="noteriv-ai-relay-url"
+            autoComplete="off"
             value={relayUrl}
             onChange={(e) => setRelayUrl(e.target.value)}
-            placeholder="Ví dụ: http://localhost:4001 hoặc http://192.168.1.5:4001"
+            placeholder="Để trống = dùng máy chủ Noteriv. Hoặc ví dụ: http://192.168.1.5:4001"
             className="w-full bg-[var(--bg-secondary)] border border-[var(--border-subtle)] rounded px-3 py-1.5 text-sm font-mono text-xs"
           />
           <p className="text-[11px] text-[var(--text-secondary)]">

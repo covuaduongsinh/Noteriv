@@ -3,7 +3,9 @@ import { spawn } from "node:child_process";
 import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
+import type { PrismaClient } from "@prisma/client";
 import { verifyAccessToken } from "../lib/jwt.js";
+import { isAdmin } from "../lib/registration.js";
 import { recordUsage } from "../lib/usageTracker.js";
 
 /**
@@ -24,16 +26,18 @@ function optionalUser(request: FastifyRequest): { id: string; email: string } | 
 const optionalUserId = (request: FastifyRequest): string | null => optionalUser(request)?.id ?? null;
 
 /**
- * The Claude Code CLI runs on the owner's personal subscription, so on the server only the accounts listed in
- * CLAUDE_CLI_ALLOWED_EMAILS may use it. Variable unset (local sidecar, dev) = no restriction; set but empty = nobody.
+ * The Claude Code CLI runs on the owner's personal subscription, so with CLAUDE_CLI_ADMIN_ONLY=1 (the server) only
+ * admins may use it. Unset (local sidecar, dev) = no restriction.
  */
-function claudeCliAllowed(request: FastifyRequest): boolean {
-  const raw = process.env.CLAUDE_CLI_ALLOWED_EMAILS;
-  if (raw === undefined) return true;
+async function claudeCliAllowed(request: FastifyRequest, prisma: PrismaClient): Promise<boolean> {
+  if (process.env.CLAUDE_CLI_ADMIN_ONLY !== "1") return true;
   const user = optionalUser(request);
   if (!user) return false;
-  const allowed = raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
-  return allowed.includes(user.email.trim().toLowerCase());
+  const row = await prisma.user.findUnique({
+    where: { id: user.id },
+    select: { role: true, email: true, emailVerifiedAt: true, lockedAt: true },
+  });
+  return !!row && row.lockedAt === null && isAdmin(row);
 }
 
 const asCount = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0);
@@ -50,7 +54,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
   }
 
   fastify.post("/claude-stream", async (request, reply) => {
-    if (!claudeCliAllowed(request)) return reply.code(403).send({ error: "forbidden" });
+    if (!(await claudeCliAllowed(request, fastify.prisma))) return reply.code(403).send({ error: "forbidden" });
     const body = (request.body || {}) as any;
     const { messages = [], systemPrompt = "", model, reasoningEffort } = body;
 

@@ -96,9 +96,8 @@ services:
       SENTRY_RELEASE: ${SOURCE_COMMIT:-}
       # Public status page (UptimeRobot) linked in the page footers; unset = no link.
       STATUS_PAGE_URL: ${STATUS_PAGE_URL:-}
-      # Only these accounts may use the Claude Code relay (a personal subscription is not shared). Defaults to the
-      # ADMIN_EMAILS list; empty = relay refuses everyone.
-      CLAUDE_CLI_ALLOWED_EMAILS: ${CLAUDE_CLI_ALLOWED_EMAILS:-${ADMIN_EMAILS:-}}
+      # Only admins may use the Claude Code relay: it runs on the owner's personal subscription, which is not shared.
+      CLAUDE_CLI_ADMIN_ONLY: "1"
     volumes:
       - noteriv-prod-claude:/claude-config
     depends_on:

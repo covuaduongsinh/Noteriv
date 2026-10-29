@@ -236,7 +236,9 @@ export default function VaultPage() {
     // Empty = same-origin /api (the providers fall back to it). A saved localhost URL is useless off localhost.
     if (typeof window === "undefined") return "";
     try {
-      const saved = localStorage.getItem("noteriv_ai_relay_url") || "";
+      const stored = localStorage.getItem("noteriv_ai_relay_url") || "";
+      // Browsers sometimes autofill the field with an email; anything that is not an http(s) URL is dropped.
+      const saved = /^https?:\/\//.test(stored) ? stored : "";
       const onLocalhost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
       return /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?\/?$/.test(saved) && !onLocalhost ? "" : saved;
     } catch {
