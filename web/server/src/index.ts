@@ -95,6 +95,11 @@ await fastify.register(quickNoteRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(diagnosticsRoutes, { prefix: "/api/v1/diagnostics" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
+// Quick test route to debug plugin registration
+fastify.get("/api/v1/usage/test", async (request, reply) => {
+  return { message: "usage route test works" };
+});
+
 await fastify.register(usageRoutes, { prefix: "/api/v1/usage" });
 await fastify.register(adminRoutes, { prefix: "/api/v1/admin" });
 await fastify.register(opsRoutes, { prefix: "/api/v1" });
