@@ -277,6 +277,14 @@ services:
     depends_on:
       - noteriv-api
     mem_limit: 384m
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.noteriv-api.rule=Host(`noteriv.dsc.edu.vn`) && PathPrefix(`/api`)
+      - traefik.http.routers.noteriv-api.entrypoints=websecure,web
+      - traefik.http.services.noteriv-api.loadbalancer.server.port=3000
+      - traefik.http.routers.noteriv-collab.rule=Host(`noteriv.dsc.edu.vn`) && PathPrefix(`/collab`)
+      - traefik.http.routers.noteriv-collab.entrypoints=websecure,web
+      - traefik.http.services.noteriv-collab.loadbalancer.server.port=3000
 
 volumes:
   noteriv-prod-pgdata:
