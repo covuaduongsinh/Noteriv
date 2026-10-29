@@ -17,7 +17,7 @@ export interface AntigravityCliOptions {
 export async function* streamAntigravityCli(
   options: AntigravityCliOptions
 ): AsyncGenerator<AiStreamEvent, void, unknown> {
-  const relayBase = options.relayUrl?.trim() || (typeof window !== "undefined" ? "http://localhost:4001" : undefined);
+  const relayBase = options.relayUrl?.trim() || (typeof window !== "undefined" ? "/api" : undefined);
 
   if (relayBase) {
     const cleanBase = relayBase.replace(/\/+$/, "");

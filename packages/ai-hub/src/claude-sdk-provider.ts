@@ -18,7 +18,7 @@ export interface ClaudeSdkOptions {
 export async function* streamClaudeSdk(
   options: ClaudeSdkOptions
 ): AsyncGenerator<AiStreamEvent, void, unknown> {
-  const relayBase = options.relayUrl?.trim() || (typeof window !== "undefined" ? "http://localhost:4001" : undefined);
+  const relayBase = options.relayUrl?.trim() || (typeof window !== "undefined" ? "/api" : undefined);
 
   // If relay URL is configured (or fallback in browser)
   if (relayBase) {
