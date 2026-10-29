@@ -18,6 +18,10 @@ export interface AiChatPanelProps {
   relayUrl?: string;
   onOpenSettings?: () => void;
   safetyNet?: GitSafetyNet;
+  /** Lock the model picker (e.g. the account's monthly AI limit is used up). */
+  modelSelectionDisabled?: boolean;
+  /** Called when a reply finishes (or fails or is stopped), e.g. to refresh a usage counter. */
+  onGenerationEnd?: () => void;
 }
 
 export const AiChatPanel: React.FC<AiChatPanelProps> = ({
@@ -31,6 +35,8 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
   relayUrl,
   onOpenSettings,
   safetyNet: initialSafetyNet,
+  modelSelectionDisabled,
+  onGenerationEnd,
 }) => {
   const [currentProvider, setCurrentProvider] = useState<AiProviderConfig>(provider);
   const [attachedImages, setAttachedImages] = useState<AiImageAttachment[]>([]);
@@ -327,6 +333,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
       );
     } finally {
       setIsGenerating(false);
+      onGenerationEnd?.();
     }
   };
 
@@ -492,6 +499,7 @@ export const AiChatPanel: React.FC<AiChatPanelProps> = ({
         <ModelEffortToolbar
           provider={currentProvider}
           onProviderChange={handleProviderChange}
+          modelSelectionDisabled={modelSelectionDisabled}
           onAttachImage={(img) => setAttachedImages((prev) => [...prev, img])}
           onOpenSettings={onOpenSettings}
         />

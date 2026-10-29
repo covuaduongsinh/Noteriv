@@ -22,13 +22,13 @@ import {
   adapterNoteEditor,
   type NoteEditor,
   NoteHoverPreview,
-  AiChatPanel,
   AiSettingsModal,
 } from "@noteriv/ui/panels";
 import type { AiProviderConfig } from "@noteriv/core";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
 import { applyLanguage, storedLanguage } from "@/lib/i18n";
+import ChatLayout from "@/components/ChatLayout";
 import CollabPanel from "@/components/CollabPanel";
 import VaultHeader from "@/components/VaultHeader";
 import TabBar, { type TabBarTab } from "@/components/TabBar";
@@ -2024,7 +2024,7 @@ export default function VaultPage() {
                 </div>
                 {aiChatVisible && vaultAdapter && (
                   <div className="web-side-panel w-80 border-l border-[var(--border)] overflow-hidden flex flex-col bg-[var(--bg-secondary)]" style={{ zIndex: 10 }}>
-                    <AiChatPanel
+                    <ChatLayout
                       adapter={vaultAdapter}
                       vaultName={vault?.name}
                       activeNotePath={activeTab?.path ?? null}

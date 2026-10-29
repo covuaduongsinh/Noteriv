@@ -1473,6 +1473,17 @@
     "account": {
       "verifyFirst": "Hãy xác minh email trước: bấm liên kết trong thư chúng tôi đã gửi. Có thể gửi lại ở Vault của bạn → Tài khoản."
     },
+    "usage": {
+      "label": "Mức dùng AI tháng này",
+      "tokens": "Token đã dùng: {used} / {limit}",
+      "remaining": "còn {remaining}",
+      "budget": "Ngân sách: {cost} / {budget}",
+      "progress": "Đã dùng {percent}% hạn mức tháng",
+      "model": "Mô hình: {model}",
+      "warning": "Đã dùng {percent}% hạn mức AI của tháng này.",
+      "critical": "Sắp hết: đã dùng {percent}% hạn mức AI của tháng này.",
+      "exceeded": "Đã hết hạn mức AI của tháng. Không thể đổi mô hình cho đến khi hạn mức được đặt lại."
+    },
     "plan": {
       "current": "Gói hiện tại",
       "hint": "Hạn mức tính mọi thứ trong các vault bạn sở hữu.",

@@ -11,6 +11,7 @@
  */
 
 import type { Locale } from "@noteriv/ui/i18n";
+import type { UsageSnapshot } from "@/types/usage";
 import { setReportingUser } from "./error-reporting";
 
 export interface ApiUser {
@@ -753,6 +754,11 @@ export const webApi = {
       request<{ entries: ApiAuditEntry[]; next: string | null }>(
         `/admin/audit?${new URLSearchParams(Object.entries(filter).filter((e): e is [string, string] => !!e[1]))}`
       ),
+  },
+
+  usage: {
+    /** Token and cost usage against this month's limits (the chat header's usage counter). */
+    current: () => request<UsageSnapshot>("/usage/current"),
   },
 
   pdf: {
