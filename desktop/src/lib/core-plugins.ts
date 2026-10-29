@@ -68,6 +68,10 @@ export const CORE_PLUGINS: CorePluginDef<PluginApi>[] = [
     load: () => import("@noteriv/plugins/mermaid"),
   },
   {
+    id: "chessboard",
+    load: () => import("@noteriv/plugins/chessboard"),
+  },
+  {
     id: "dataview",
     load: () => import("@noteriv/plugins/dataview"),
   },

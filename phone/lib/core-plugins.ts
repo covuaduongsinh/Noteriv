@@ -27,6 +27,7 @@ export const CORE_PLUGINS: CorePluginDef[] = [
   { id: 'note-history', defaultEnabled: true, onPhone: true },
   { id: 'board', onPhone: true },
   { id: 'mermaid', defaultEnabled: true, onPhone: true },
+  { id: 'chessboard', onPhone: true },
   { id: 'dataview', onPhone: true },
   { id: 'views', onPhone: false },
   { id: 'footnotes', onPhone: false },

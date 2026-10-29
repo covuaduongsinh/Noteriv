@@ -9,6 +9,7 @@ import board from "../src/board";
 import calendar from "../src/calendar";
 import canvas from "../src/canvas";
 import dataview from "../src/dataview";
+import chessboard from "../src/chessboard";
 import drawing from "../src/drawing";
 import flashcards from "../src/flashcards";
 import graph from "../src/graph";
@@ -31,6 +32,7 @@ const PLUGINS: Record<string, CorePlugin> = {
   calendar,
   canvas,
   dataview,
+  chessboard,
   drawing,
   flashcards,
   graph,

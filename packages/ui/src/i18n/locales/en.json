@@ -862,6 +862,20 @@
       "format": "Name format",
       "preview": "Next note: {path}",
       "saveFailed": "Could not save the setting."
+    },
+    "chessboard": {
+      "name": "Chessboard",
+      "description": "Chess diagrams from ```chessboard code blocks: a FEN position with optional highlights and arrows, in a choice of piece sets and board colours.",
+      "settings": "Chessboard",
+      "pieceSet": "Piece set",
+      "boardTheme": "Board theme",
+      "save": "Save as default",
+      "saved": "Chessboard defaults saved.",
+      "saveFailed": "Could not save the chessboard defaults.",
+      "hint": "Boards already open in a note keep their current look until you reopen the note.",
+      "missingFen": "Missing \"fen:\" field",
+      "invalidFen": "Invalid FEN: {error}",
+      "renderError": "Render error: {message}"
     }
   },
   "web": {

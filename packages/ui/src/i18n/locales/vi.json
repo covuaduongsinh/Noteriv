@@ -840,6 +840,20 @@
       "format": "Định dạng tên",
       "preview": "Note kế tiếp: {path}",
       "saveFailed": "Không lưu được cài đặt."
+    },
+    "chessboard": {
+      "name": "Bàn cờ vua",
+      "description": "Vẽ thế cờ từ khối mã ```chessboard: vị trí FEN, có thể thêm ô tô sáng và mũi tên, chọn bộ quân và màu bàn cờ.",
+      "settings": "Bàn cờ vua",
+      "pieceSet": "Bộ quân",
+      "boardTheme": "Giao diện bàn cờ",
+      "save": "Lưu làm mặc định",
+      "saved": "Đã lưu mặc định bàn cờ.",
+      "saveFailed": "Không lưu được mặc định bàn cờ.",
+      "hint": "Các bàn cờ đang mở trong ghi chú giữ nguyên giao diện cho tới khi bạn mở lại ghi chú.",
+      "missingFen": "Thiếu trường \"fen:\"",
+      "invalidFen": "FEN không hợp lệ: {error}",
+      "renderError": "Lỗi vẽ bàn cờ: {message}"
     }
   },
   "web": {

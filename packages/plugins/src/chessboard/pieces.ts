@@ -1,131 +1,25 @@
-// Chessboard plugin for Noteriv
-//
-// Renders ```chessboard code blocks as a static SVG chess diagram, parsed
-// from a FEN string plus a few optional fields. Requires the
-// `api.markdown.registerCodeBlockProcessor` hook (Noteriv >= 1.3.0).
-//
-// Syntax:
-//
-//   ```chessboard
-//   fen: rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-//   orientation: white
-//   strict: true
-//   annotations: He4/g, Ae2-e4
-//   ```
-//
-// Fields:
-//   fen          required. Full or partial FEN string.
-//   orientation  "white" (default) or "black".
-//   strict       "true" (default) validates the FEN before drawing;
-//                "false" tries to draw it anyway.
-//   annotations  comma/newline separated list of:
-//                  H<square>/<color>  highlight a square (color: g, r, b, y; default g)
-//                  A<square>-<square> draw an arrow between two squares
-//   pieceset     optional. One of PIECE_SETS below (classic, spatial, minimal).
-//                Overrides the plugin-wide default saved via the Settings tab.
-//   boardtheme   optional. One of BOARD_THEMES below (classic, forest, ocean,
-//                midnight). Overrides the plugin-wide default saved via the
-//                Settings tab.
+// Chess piece artwork and board colours. Artwork sources and licences: THIRD-PARTY-LICENSES.md in this folder.
 
-function escapeHtml(s) {
-  return String(s)
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
+export type PieceMap = Record<string, string>;
+
+export interface PieceSet {
+  name: string;
+  /** Coordinate space of this set's artwork, drawn inside a 50x50 square. */
+  viewBox: string;
+  /** Uppercase keys are white pieces, lowercase black. */
+  pieces: PieceMap;
 }
 
-function parseChessboardBlock(source) {
-  var fields = {};
-  var lines = source.split("\n");
-  var pendingKey = null;
-
-  for (var i = 0; i < lines.length; i++) {
-    var line = lines[i].trim();
-    if (!line) {
-      pendingKey = null;
-      continue;
-    }
-
-    var kv = line.match(/^([a-zA-Z]+)\s*:\s*(.*)$/);
-    if (kv) {
-      var key = kv[1].toLowerCase();
-      var value = kv[2].trim();
-      fields[key] = value;
-      pendingKey = value === "" ? key : null;
-      continue;
-    }
-
-    if (pendingKey) {
-      fields[pendingKey] = fields[pendingKey] ? fields[pendingKey] + "," + line : line;
-    }
-  }
-
-  return {
-    fen: fields.fen || null,
-    orientation: (fields.orientation || "white").toLowerCase() === "black" ? "black" : "white",
-    strict: fields.strict === undefined ? true : fields.strict.toLowerCase() !== "false",
-    annotations: (fields.annotations || "")
-      .split(/[,\n]/)
-      .map(function (s) { return s.trim(); })
-      .filter(Boolean),
-    // Optional per-block overrides for the default piece set / board theme
-    // (see currentSettings). null means "no override, fall back to default".
-    pieceset: fields.pieceset ? fields.pieceset.toLowerCase() : null,
-    boardtheme: fields.boardtheme ? fields.boardtheme.toLowerCase() : null,
-  };
+export interface BoardTheme {
+  name: string;
+  light: string;
+  dark: string;
+  /** Highlight colour by code: g, r, b, y. */
+  highlight: Record<string, string>;
+  arrow: string;
 }
 
-function validateFEN(fen) {
-  if (typeof fen !== "string" || !fen.trim()) {
-    return { valid: false, error: "FEN is empty" };
-  }
-  var parts = fen.trim().split(/\s+/);
-  var rows = (parts[0] || "").split("/");
-  if (rows.length !== 8) {
-    return { valid: false, error: "Expected 8 ranks, got " + rows.length };
-  }
-
-  for (var r = 0; r < rows.length; r++) {
-    var row = rows[r];
-    var count = 0;
-    for (var i = 0; i < row.length; i++) {
-      var ch = row[i];
-      if (/[1-8]/.test(ch)) {
-        count += Number(ch);
-      } else if (/[prnbqkPRNBQK]/.test(ch)) {
-        count += 1;
-      } else {
-        return { valid: false, error: 'Invalid character "' + ch + '" in rank "' + row + '"' };
-      }
-    }
-    if (count !== 8) {
-      return { valid: false, error: 'Rank "' + row + '" does not sum to 8 squares' };
-    }
-  }
-
-  if (parts[1] && !/^[wb]$/.test(parts[1])) {
-    return { valid: false, error: 'Invalid side to move "' + parts[1] + '"' };
-  }
-  if (parts[2] && !/^(-|[KQkq]{1,4})$/.test(parts[2])) {
-    return { valid: false, error: 'Invalid castling field "' + parts[2] + '"' };
-  }
-  if (parts[3] && !/^(-|[a-h][36])$/.test(parts[3])) {
-    return { valid: false, error: 'Invalid en passant field "' + parts[3] + '"' };
-  }
-
-  return { valid: true };
-}
-
-function squareToXY(square, orientation) {
-  var file = square.charCodeAt(0) - 97; // a-h -> 0-7
-  var rank = Number(square[1]) - 1;     // 1-8 -> 0-7
-  var col = orientation === "black" ? 7 - file : file;
-  var row = orientation === "black" ? rank : 7 - rank;
-  return { x: col * 50, y: row * 50 };
-}
-
-var PIECE_SVG = {
+const PIECE_SVG: PieceMap = {
   K: '<g><g><path style="fill:#FFFFFF;" d="M405.3,700c-59.8,0-116.1-5.3-158.7-14.8c-47.4-10.6-71.1-24.6-72.1-42.8L158.1,576v-1.1 c0-9.1,5.2-18,15.2-26.5c-6.2-21.9-21.6-45.5-36.6-68.4c-18.4-28-35.7-54.4-35.7-77.7c0-25.5,18.4-41.4,47.8-41.4 c0.4,0,0.9,0,1.3,0c2.2,0,4.5,0.1,7,0.1c6,0.1,12.9,0.2,19.3,0.2c-5.4-26.7-3.8-45.9,5-59.9c13.3-21.5,36.9-24,53.6-24 c14.1,0,29.8,2.1,46.4,4.4c1.8-16.3,7.5-28.5,17.2-36.9c7.8-6.8,17-10.3,27-10.3c21.3,0,42.2,14.9,60.8,28c7,5,13.6,9.7,19,12.5 c5.4-2.9,12.1-7.6,19-12.5c18.5-13.1,39.5-28,60.7-28c10.2,0,19.2,3.5,27,10.3c9.6,8.4,15.3,20.5,17.1,36.9 c16.6-2.3,32.3-4.4,46.4-4.4c16.6,0,40.3,2.5,53.6,24c8.6,14,10.3,33.3,4.9,60c6.6,0,13.6-0.1,19.8-0.2c2.3,0,4.4-0.1,6.5-0.1 c0.4,0,0.9,0,1.3,0c29.5,0,47.1,15.4,47.1,41.4c0,23.2-17.6,49.7-36.3,77.7c-15.2,22.8-30.8,46.3-37,68.1 c10.7,8.2,16.1,17.3,16.1,26.8v1.1l-15.8,67.2c-1.6,17.9-25.5,31.9-72.8,42.3C520.7,694.8,464.6,700,405.3,700z"/><path d="M325.6,243.8c28.2,0,60.4,33.6,79.8,41.5c19.4-8,51.6-41.5,79.8-41.5c7.3,0,14.5,2.3,21.1,8c10.2,8.9,14.3,22.9,14.6,40.4 c20-2.8,38.8-5.7,55-5.7c20.2,0,36.4,4.5,45.8,19.7s7.9,38,1.2,64.3c2.5,0,5.1,0.1,7.8,0.1c10.3,0,21.7-0.2,30.1-0.3 c0.4,0,0.8,0,1.2,0c21.4,0,37.9,9.2,37.9,32.2c0,39.1-60.9,95.7-73.9,146.7v3.3c10.8,6.9,16.5,14.5,16.5,22.5l-15.6,66.9 c-1.3,27.2-100,49.1-221.5,49.1c-122.3,0-221.5-22.2-221.5-49.7l-16.3-66.3c0-7.9,5.8-15.6,15.6-22.5v-3.6 c-11.9-51-72.8-107.6-72.8-146.7c0-23,17.3-32.2,38.7-32.2c0.4,0,0.8,0,1.2,0c8.5,0.1,20.3,0.4,30.6,0.4c2.6,0,5.1,0,7.5-0.1 c-6.7-26.4-8.1-49.1,1.3-64.3c9.4-15.1,25.5-19.7,45.8-19.7c16.2,0,35,2.9,55,5.7c0.3-17.5,4.4-31.6,14.6-40.4 C311.1,246.1,318.2,243.8,325.6,243.8 M325.6,225.5L325.6,225.5c-12.4,0-23.5,4.2-33,12.5c-9.4,8.1-15.6,19.3-18.7,33.5 c-13.7-1.8-26.7-3.2-38.9-3.2c-13.3,0-24.3,1.7-33.7,5.4c-11.9,4.6-21.2,12.3-27.8,22.9c-8.6,14-11.3,32-8.1,55.5 c-2.8,0-5.6-0.1-8.2-0.1c-2.5,0-4.9-0.1-7-0.1c-0.4,0-1,0-1.4,0c-15.2,0-28.5,3.8-38.2,11c-8.5,6.4-18.8,18.4-18.8,39.4 c0,26,18.1,53.6,37.3,82.7c13.4,20.4,27.3,41.4,34,60.5c-9.2,9.2-13.6,19-13.6,29.4v2.3l0.3,2.2l15.8,64.6 c1.1,12.9,10.2,24,27,32.8c12.6,6.7,30.1,12.5,52.1,17.5c43.1,9.6,100.2,15,160.6,15c60,0,116.7-5.3,159.7-14.8 c21.8-4.9,39.4-10.7,52.1-17.3c17-8.9,26.4-19.8,27.8-32.5l15.1-65.6l0.3-2.1v-2.2c0-10.8-4.8-20.7-14.4-29.8 c6.8-19,20.7-39.9,34.2-60c19.4-29.2,37.8-56.7,37.8-82.7c0-21.1-9.8-33-18.1-39.3c-9.8-7.5-22.6-11.2-38-11.2c-0.4,0-1,0-1.4,0 c-2.1,0-4.2,0.1-6.5,0.1c-2.8,0-5.7,0.1-8.7,0.1c3.3-23.5,0.6-41.6-8-55.5c-6.6-10.6-15.9-18.3-27.8-22.9 c-9.3-3.7-20.3-5.4-33.6-5.4c-12.2,0-25.2,1.4-38.9,3.2c-3.1-14.1-9.3-25.4-18.7-33.5c-9.5-8.3-20.6-12.5-33-12.5 c-24.2,0-47.4,16.4-66.1,29.7c-4.8,3.3-9.6,6.8-13.7,9.4c-4.1-2.6-9-6-13.7-9.4C373,241.9,349.8,225.5,325.6,225.5L325.6,225.5z" /></g><g><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M187.4,370.4c-11.9,0.3-25.9-0.1-37.5-0.3c-21.9-0.3-39.4,8.7-39.4,32.2c0,39.1,60.6,95.7,73.3,146.7"/><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M289.5,292.4c-45.6-6.3-83.3-13.8-100.3,13.7c-27,43.6,35.6,150.7,55.1,222.4"/><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M404.3,285.7c-24.3-9-67.9-61.7-99.8-33.9c-43.6,37.9,22.9,173.9,38.1,260.5"/><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M623.3,370.4c11.9,0.3,25.9-0.1,37.5-0.3c21.9-0.3,39.4,8.7,39.4,32.2c0,39.1-60.6,95.7-73.3,146.7"/><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M521.3,292.4c45.6-6.3,83.3-13.8,100.3,13.7c27,43.6-35.6,150.7-55.1,222.4"/><path style="fill:none;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M406.5,285.7c24.3-9,67.9-61.7,99.8-33.9c43.6,37.9-22.9,173.9-38.1,260.5"/><line style="fill:none;stroke:#000000;stroke-width:15.12;stroke-linecap:round;stroke-miterlimit:10;" x1="405.4" y1="271.7" x2="405.4" y2="456.2"/></g><path style="fill:#FFFFFF;stroke:#000000;stroke-width:18.36;stroke-miterlimit:10;" d="M632.9,552.5l27.8-68.8 c-11.1,14.6-24.8,16.8-33.9,14.3c-27-8-26.5-40.6-24.4-66.5c-16.4,29.5-39.3,44.7-63.9,39.5c-24.9-5.3-40-40.5-39-68.6 c-17.5,35.6-49.4,54.1-94.1,54.1c-44.7,0-76.6-18.5-94.1-54.1c1.1,28.1-14,63.3-39,68.6c-24.6,5.2-47.4-10-63.9-39.5 c1.9,25.9,2.6,58.5-24.4,66.5c-9.1,2.7-22.9,0.3-33.9-14.3l27.8,68.8"/><g><path style="fill:none;stroke:#000000;stroke-width:21.6;stroke-linecap:round;stroke-miterlimit:10;" d="M167.9,574.8 c0-34.3,106.3-61.7,237.4-61.7c131.1,0,237.4,27.3,237.4,61.7"/><line style="fill:none;stroke:#000000;stroke-width:21.6;stroke-linecap:round;stroke-miterlimit:10;" x1="167.7" y1="576.7" x2="183.9" y2="641.7"/><line style="fill:none;stroke:#000000;stroke-width:21.6;stroke-linecap:round;stroke-miterlimit:10;" x1="643.1" y1="576.7" x2="626.9" y2="641.7"/><ellipse style="fill:none;stroke:#000000;stroke-width:21.6;stroke-linecap:round;stroke-miterlimit:10;" cx="405.4" cy="641.1" rx="221.4" ry="49.7"/></g><g><line style="fill:none;stroke:#000000;stroke-width:30.24;stroke-miterlimit:10;" x1="404.3" y1="94.6" x2="404.3" y2="283.6"/><line style="fill:none;stroke:#000000;stroke-width:30.24;stroke-miterlimit:10;" x1="342.8" y1="159.4" x2="468" y2="159.4"/></g></g>',
   Q: '<g><path style="fill:#FFFFFF;stroke:#000000;stroke-width:20.52;stroke-miterlimit:10;" d="M401.1,704.4 c-62,0-120.5-5.5-164.8-15.4c-49.6-11.1-74.1-25.8-75-44.7l-10.2-54v-0.9c0-5.4,1.6-13.2,8.6-21.4c-8-46.5-25.9-125.2-44.6-195.5 c-18.4-6.9-30.8-24.5-30.8-44.6c0-26.4,21.4-47.7,47.7-47.7s47.7,21.4,47.7,47.7c0,11.1-3.7,21.5-10.6,29.9 c21.1,67.1,46.9,136.7,64.9,175.2l5.3-1.3c-0.5-55.3-9.1-164.3-20.6-261.6c-18.6-8-31-26.6-31-47.1c0-28.3,23-51.3,51.3-51.3 c28.3,0,51.3,23,51.3,51.3c0,13.8-5.4,26.7-15,36.3c17.9,93.5,47.7,211.6,65.3,258.9l5.4-0.3c8.6-66,19.4-184.5,24.6-294.5 c-14.9-10-23.8-26.6-23.8-44.6c0-29.8,24.2-54,54-54c29.8,0,54,24.2,54,54c0,18-8.9,34.6-23.5,44.6c5.2,110.1,16,228.5,24.6,294.5 l5.4,0.3c17.6-47.3,47.4-165.3,65.3-258.9c-9.6-9.6-15-22.5-15-36.3c0-28.3,23-51.3,51.3-51.3s51.3,23,51.3,51.3 c0,20.6-12.4,39.1-31,47.1c-11.6,97.3-20.2,206.3-20.6,261.6l5.3,1.3c18-38.4,43.8-108.1,64.9-175.2c-6.9-8.4-10.6-18.9-10.6-29.9 c0-26.4,21.4-47.7,47.7-47.7s47.7,21.4,47.7,47.7c0,20.1-12.4,37.7-30.8,44.6c-18.7,70.3-36.5,148.9-44.6,195.5 c5.7,6.7,8.6,13.8,8.6,21.3v0.9l-10.3,54.3c-1.2,18.9-25.7,33.5-75,44.6C521.7,698.9,463.2,704.4,401.1,704.4z M211.7,613.7 c1.4,3,13.7,12.4,54.6,20.3c36.5,7,84.2,11,134.6,11c50.3,0,98.2-3.9,134.6-11c40.9-8,53.4-17.3,54.6-20.3 c-1.4-3-13.7-12.4-54.6-20.3c-36.5-7-84.2-11-134.6-11c-50.3,0-98.2,3.9-134.6,11C225.5,601.3,213.2,610.7,211.7,613.7z"/><path style="fill:#FFFFFF;stroke:#000000;stroke-width:16.2;stroke-miterlimit:10;" d="M592.9,607.6 c-41.8,13.8-112.3,23.2-191.8,23.2c-80.4,0-148.9-9.5-190.6-23.5C197,610.8,171,628.4,171,643c0,28.5,103,51.6,230,51.6 c127,0,230-23.1,230-51.6C631.1,628.8,606.6,611.3,592.9,607.6z"/><path style="fill:#FFFFFF;stroke:#000000;stroke-width:17.28;stroke-miterlimit:10;" d="M401.1,591.4 c127.1,0,230.1,23.1,230.1,51.6l10.2-60.3c0-6.3-3.2-12.3-9.4-18.1c7.5-44.9,26.1-121.9,47-199.9c16.6-4,29.1-19,29.1-36.9 c0-21-17-38-38-38c-21.1,0-38,17-38,38c0,10.8,4.5,20.6,11.8,27.5c-20.8,67-50.1,141.4-70.4,182.4l-20.4-4.9 c-0.3-54.2,9.2-167.8,21.5-269.9c17.4-5,30.2-21,30.2-40c0-23-18.6-41.6-41.6-41.6S521.5,200,521.5,223c0,13.3,6.3,25.1,15.9,32.7 c-18,95.8-51.2,221.4-69.4,266.1l-20.4-1.3c-9.1-66.5-20.8-188.6-26-302.6c14.1-7.5,23.8-22.1,23.8-39.2 c0-24.4-19.9-44.3-44.3-44.3c-24.4,0-44.3,19.9-44.3,44.3c0,17.1,9.6,31.9,23.8,39.2c-5.1,114-16.8,236.1-26,302.6l-20.4,1.3 c-18.1-44.7-51.4-170.3-69.4-266.1c9.7-7.6,15.9-19.4,15.9-32.7c0-23-18.6-41.6-41.6-41.6S197.3,200,197.3,223 c0,19,12.7,35,30.2,40C239.8,365,249.3,478.5,249,532.8l-20.4,4.9c-20.3-41.1-49.7-115.5-70.4-182.4c7.2-6.9,11.8-16.6,11.8-27.5 c0-21-17-38-38-38c-21.1,0-38,17-38,38c0,17.9,12.4,32.9,29.1,36.9c20.8,78,39.5,155,47,199.9c-6,5.7-9.4,11.8-9.4,18.1l10.2,60.3 C170.9,614.5,274,591.4,401.1,591.4z"/><g><circle cx="401.1" cy="112.9" r="25.9"/><circle cx="226.1" cy="164.8" r="23"/><circle cx="114.9" cy="273.8" r="22.4"/><circle cx="576" cy="164.8" r="23"/><circle cx="688.4" cy="273.8" r="22.4"/></g></g>',
   R: '<g><g><path style="fill:#FFFFFF;" d="M400.4,708.3c-57.1,0-110.8-5.8-151.2-16.5c-45.5-12-68.5-28.4-68.5-48.6V582 c0-28.4,44.1-46.2,74.7-55.3l8.1-172.4c-3.2-2.6-5.6-5.3-7.3-8.1l-0.2-0.3l-24.7-52.8c-19.3-9.5-19.3-19-19.3-22.2V145.3h74.5 v50.8h43.2v-50.3l137.2,0.1v50.2H510v-50.8h75.6v125.4c0,7.8-4.2,14.5-13,19.9L548.6,346l-0.4,0.8c-2.1,3.1-5,6-8.5,8.6l7.6,170.9 c21.1,6,38.8,13.5,51.5,21.6c16.5,10.5,24.8,21.9,24.8,34.1c0,0.8,0,1.6-0.1,2.5l-0.1,58.6c0,20.2-23.4,36.6-69.6,48.6 C512.9,702.4,458.3,708.3,400.4,708.3z"/><path d="M576,155v115.7c0,4.5-3.2,9-10.9,13.1l-24.9,57.7c-2.2,3.2-5.6,6.2-10.4,9l8.2,183.5c47.2,12.5,76,30.8,76,48.2 c0,0.6,0,1.3-0.1,1.9l-0.1,59.3c0,30.6-95,55.4-213.3,55.4c-116.6,0-210-24.7-210-55.4v-61.2l0,0c0-17.2,28.2-35.3,74.4-47.8 l8.6-184.7c-4.1-2.6-7.2-5.3-8.9-8.1l-26-55.7c-10.4-4.5-16.8-9.6-16.8-15V155H277v50.8h62.6v-50.3l117.7,0.1v50.2H520V155H576 M595.5,135.6h-19h-56.2h-19.9v19.5v31.2h-23.8v-30.8v-19.4h-19.4L339.7,136h-19.7v19.4v30.9h-23.8v-31.2v-19.5h-19.5h-55.2h-19.2 v19.5v115.6c0,15.4,12.5,24.6,21.6,29.5l23.1,49.4l0.3,0.8l0.4,0.8c1.5,2.6,3.5,5.1,5.8,7.5l-7.6,160.8 c-18.7,5.9-34.2,12.9-46.2,20.5c-8.3,5.3-14.9,11.1-19.5,17.1c-6.2,7.9-9.3,16.2-9.3,24.9v61.3c0,18.3,13.9,30.8,25.5,38 c12.2,7.7,29.1,14.4,50.2,20c41.1,10.9,95.7,16.8,153.7,16.8c58.8,0,114-5.9,155.8-16.8c21.4-5.6,38.6-12.3,50.9-19.9 c11.9-7.3,25.9-19.9,25.9-38.1l0.1-58.2c0.1-1.1,0.1-2.1,0.1-3c0-8.7-3.1-17.3-9.4-25.2c-4.8-6-11.4-11.8-19.9-17.2 c-12.3-7.8-28.2-14.7-47.3-20.6l-7-159.1c2.7-2.4,5-5,6.8-7.8l1-1.4l0.6-1.6l22.5-52.1c12.3-8.7,14.9-18.9,14.9-26.4V155.1V135.6 L595.5,135.6z"/></g><g><path style="fill:#FFFFFF;stroke:#000000;stroke-width:18.36;stroke-linecap:round;stroke-miterlimit:10;" d=" M191,581.6v61.6c0,30.6,93.1,55.4,209.6,55.4c118.3,0,213.2-24.8,213.2-55.4l-0.3-61.3"/><path style="fill:#FFFFFF;stroke:#000000;stroke-width:21.6;stroke-miterlimit:10;" d="M613.9,582 c0,30.6-94.5,55.4-211.1,55.4c-116.6,0-211.1-24.8-211.1-55.4s87.5-64,211.1-64C524.4,517.9,613.9,551.3,613.9,582z"/></g><path style="fill:#FFFFFF;stroke:#000000;stroke-width:15.12;stroke-miterlimit:10;" d="M275.8,260.9l-10.5,280.6 c0,19.7,62.1,34.1,136.8,34.1c74.8,0,136.1-14.4,136.1-33.9l-14.9-280.8H275.8L275.8,260.9z"/><path style="fill:#FFFFFF;stroke:#000000;stroke-width:15.12;stroke-miterlimit:10;" d="M231.3,268.1l33.8,73.1 c9.5,16.5,61.6,28.5,137.6,28.5c76,0,126.4-11.7,137.6-28.5l32.8-73.1"/><path style="fill:#FFFFFF;stroke:#000000;stroke-width:19.44;stroke-linecap:square;stroke-miterlimit:10;" d=" M522,154v50.8h-63.7v-49.1l-116.6-0.1v49.2H278V154h-55.1v116.7c0,20.1,83.1,36.4,178.5,36.4c95.5,0,176.8-16.3,176.8-36.4V154H522 z"/></g>',
@@ -139,7 +33,6 @@ var PIECE_SVG = {
   n: '<g><path d="M134.4,614.5l139.1,59.3l25.9-67.398c15.3-22.802,43.6-57.802,61.3-74c21.7-9.4,58.2-29.802,70.8-64.7 c6.5-17.8,8.9-38,7.5-59.102c7.2,19.802,11.101,41.5,11.101,63.5C450.101,536,414.7,610.9,348,689l-15.2,17.9h319.5V278.6 l-4.398-3.2C586.4,230.5,500,187.5,447,175.5c-13.3-3-28.6-4.5-45.3-4.5c-9.9,0-20.4,0.5-31.102,1.6c-0.8-25.5-15.1-54.8-42.6-68.7 l-9.4-4.8l-5.8,8.7c-15.3,22.7-20.3,50.5-14.399,72.1c-17.5-29.5-49.9-50.2-83.601-51.9l-14-0.8l2.9,13.7c1.7,8,2.9,17.4,4.2,27.3 c3.2,23.7,6.5,50.4,18.399,69.4c-0.8,1.7-1.6,3.5-2.6,5.7c-10.5,23.5-30.2,67.1-44.1,109l-0.5,1.6v40 c-14.4,61-35.301,169-43.301,212L134.4,614.5z"/><path fill="#F2F2F2" d="M197.8,603.3c11.5-21.398-3-36.1-22.399-25.2L197.8,603.3z"/><path fill="#F2F2F2" d="M268.601,359l4.5,3.7l-21.5,24.9c-4.5,3.6-14.101,7.4-18.601,8c-6.6-5.2-12.899-25-6-34.5 C237.9,358.9,259.9,358.9,268.601,359z"/><path fill="#F2F2F2" d="M428.9,214.8c55.1,17,151.3,92.3,196.3,135.8v-55.1c-61.5-45.3-163.8-104.1-209.5-104.1 c-24.3,0-66.2,0.9-97.3,6l-0.602,2.9C354.8,199.1,391.7,203.3,428.9,214.8z"/></g>',
   p: '<g><path d="M487.507,418.344L487.507,418.344c0.099-16.66,11.76-24.598,63.798-29.302V331.81h-88.886 c31.36-19.11,51.744-52.43,51.744-91.042c0-60.662-50.274-108.192-114.366-108.192s-114.366,47.53-114.366,108.192 c0,38.612,20.286,71.833,51.744,91.042h-89.572v57.232c52.625,4.704,63.896,12.642,63.896,29.204 c0,59.486-36.848,128.87-113.19,196.098l0.098,62.721c0,18.229,91.336,31.359,201.194,31.359l0,0l0,0 c109.858,0,201.292-13.23,201.292-31.359l0.098-62.721C524.648,547.214,487.507,477.732,487.507,418.344z"/><path fill="none" stroke="#F2F2F2" stroke-width="19.0512" stroke-linecap="round" stroke-miterlimit="10" d=" M235.451,623.066c0,13.426,74.479,25.186,164.248,25.186l0,0c89.67,0,164.051-10.779,164.051-24.107"/><path fill="none" stroke="#F2F2F2" stroke-width="15.876" stroke-linecap="round" stroke-miterlimit="10" d=" M400.875,155.704c-23.52-0.196-46.648,8.428-64.975,26.754c-26.165,26.264-31.85,61.936-19.6,93.394"/></g>',
 };
-
 // ─── Piece set: Spatial ───
 // Source: lichess-org/lila public/piece/spatial (Maurizio Monge,
 // https://github.com/maurimo/chess-art, MIT License). Flattened from the
@@ -147,7 +40,7 @@ var PIECE_SVG = {
 // THIRD-PARTY-LICENSES.md for why (duplicate gradient ids collide once
 // multiple same-type pieces are embedded in one document) and for the
 // full license text.
-var PIECE_SVG_SPATIAL = {
+const PIECE_SVG_SPATIAL: PieceMap = {
   K: '<path d="M493.348 343.592v-129.84H598.06v-75.459H493.348V72.16h-69.602v66.133h-87.174v75.459h87.174v129.84m-2.358 53.141c31.212 112.7 9 276.095-66 241.96-137.19-62.44-188.192-292.18 30.844-176.93-59.33-121.286-134.17-163.98-195.037-161.568-68.981 2.735-120.017 63.407-110.19 133.268 19.373 137.709 171.584 262.12 179.55 322.2m409.326-.058c4.987-68.476 177.617-200.398 183.316-326.025 5.65-126.94-213.43-225.252-309.818 32.078 221.543-118.496 150.548 107.25 40.601 177.035-69.352 44.02-106.305-117.674-72.556-244.036m-250.62 410.864-39.452-2v71.946h483.16V803.52l-32.12 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M423.747 72.16v66.134h-87.174v75.458h87.174v135.84h69.6v-135.84H598.06v-75.458H493.348V72.159Z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M543.378 461.659c221.544-118.496 150.55 107.25 40.603 177.035-70.836 44.961-107.872-124.686-70.293-252.094l-94.939 1.144c35.009 112.745 13.658 286.004-63.361 250.95-137.192-62.44-188.193-292.18 30.844-176.93C259.659 203.019 62.507 301.959 81.007 433.462c20.095 142.853 183.137 271.395 179.824 328.662h409.111c-6.554-66.35 177.37-202.804 183.256-332.544 5.65-126.94-213.432-225.252-309.82 32.079" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M221.352 801.521h483.16v73.945h-483.16z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
   Q: '<path d="M690.605 766.18c88.769-90.71 140.98-241.722 162.04-453.666-110.451 239.661-180.878 345.902-228.256 364.75 45.241-116.612 78.78-291.617 87.425-525.358-69.294 207.629-120.577 351.382-164.138 431.832-26.514-109.699-38.22-296.9-66.014-478.004-34.791 188.524-47.636 382.449-77.369 488.623-41.408-77.705-87.892-224.036-150.941-439.25-.989 223.42 22.967 393.006 60.406 508.846-48.155-34.212-117.283-142.337-221.014-357.238 11.588 214.478 62.838 367.984 150.213 459.816m8.033 46.627-22-2v68.117h469.834v-68.117l-16.786 2" style="fill:none;stroke-width:35;stroke:#000"/><path d="M711.814 151.906c-225.866 676.77-260.764 678.027-458.462 3.202-1.216 275.009 35.357 468.451 88.355 580.494h256.806c58.083-112.565 103.074-307.205 113.301-583.696" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M481.662 105.734c-81.968 444.154-41.752 920.212-388.918 200.981 11.881 219.895 65.45 375.697 156.9 466.654h433.718c93.18-89.82 147.656-243.21 169.283-460.855-331.536 719.381-302.754 237.784-370.983-206.78" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M228.99 809.158h469.835v70.118H228.99z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
   R: '<path d="m654.315 303.569 65.054 1.522c43.135-59.53 53.993-116.965 67.252-174.556l-114.596.086c-6.523 15.694-10.593 43.583-20.996 46.604-21.779 6.324-38.799 12.144-52.607 17.568-12.091-4.516-26.495-9.335-43.834-14.498-13.687-4.076-21.49-35.24-23.725-49.57l-116.056.084c-5.556 16.485-8.341 45.4-20.475 49.175-21.698 6.753-38.726 12.875-52.594 18.516-14.14-5.022-31.546-10.375-53.797-16.137-22.016-5.7-14.889-38.886-22.091-51.443l-107.944.078c5.63 60.878 10.46 115.728 55.924 176.38l56.53-1.84m5.462 48.09 16 381.61m345.022 0 16-381.61M279.35 787.163l-54.555-2.47c-28.96 31.656-25.96 54.006-36.674 80.349h554.18c-6.147-26.851-4.744-54.296-32.707-79.431l-55.586 1.552" style="fill:none;stroke-width:35;stroke:#000"/><path d="m275.822 345.629 16 397.61h345.022l16-397.61z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M157.905 130.999c5.766 62.36 10.697 118.39 59.316 180.815l499.102-2.587c45.68-61.009 56.731-119.768 70.297-178.692l-114.594.086c-6.524 15.694-10.595 43.584-20.997 46.604-292.698 84.994 192.123 88.995-96.44 3.07-13.687-4.076-21.492-35.24-23.726-49.571l-116.057.085c-5.556 16.486-8.341 45.4-20.475 49.176-294.979 91.796 191.18 79.433-106.39 2.379-22.016-5.701-14.888-38.886-22.091-51.444z" style="fill:#ffffff;stroke:#000;stroke-width:20"/><path d="M228.12 781.161c-32.525 33.548-28.891 56.567-40 83.88H742.3c-6.51-28.445-4.55-57.555-38-83.88z" style="fill:#ffffff;stroke:#000;stroke-width:20"/>',
@@ -161,10 +54,9 @@ var PIECE_SVG_SPATIAL = {
   n: '<path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Z" style="fill:none;stroke-width:35;stroke:#000"/><path d="M391.91 61.45c-1.872 129.02 4.719 80.296-76.698 20.736 12.565 84.162 4.036 86.935-17.714 122.95-11.903 19.71-22.394 81.77-29.842 95.449-45.132 82.89-148.785 191.103-148.607 226.381.227 44.656 53.337 84.63 101.92 37.407-45.452 66.536 91.773-.302 149.28-41.341 76.122 46.86 182.47-4.418 184.447-79.712 34.64 170.31-288.835 199.89-306.114 420.796 241.083 55.034 375.362-124.27 522.306 14.384 75.118-217.801 82.05-581.866-267.162-718.365-47.462-18.553-67.401-66.275-111.817-98.685Zm-1.458 240.252c-7.892 11.198-24.49 29.475-39.052 26.8-13.465-2.475-18.883-7.04-19.504-22.984-.523-13.426 47.048-12.993 58.556-3.816" style="fill:#2b2e3f;stroke-width:20;stroke:#000"/>',
   p: '<path d="M460.195 305.537c-77.6 0-140.507 64.062-140.507 143.086.179 39.335 16.253 76.86 44.44 103.754-7.673-88.861 209.21-79.895 188.567 3.633 30.426-27.098 47.918-66.225 48.008-107.387 0-79.024-62.907-143.086-140.508-143.086m47.383 247.432-101.539.66c-25.392 205.944-140.792 212.006-127.57 303.533l355.502.223c11.141-100.852-107.312-99.908-126.393-304.416" style="fill:none;stroke-width:35;stroke:#000"/><path d="M460.195 305.538c-77.6 0-140.507 64.061-140.507 143.085.179 39.335 16.252 76.86 44.44 103.754-7.674-88.861 209.21-79.895 188.566 3.633 30.426-27.097 47.919-66.225 48.01-107.387 0-79.024-62.909-143.086-140.51-143.085z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/><path d="M278.47 857.163c-13.222-91.527 102.178-97.591 127.57-303.535l101.537-.658c19.081 204.508 137.535 203.564 126.394 304.415z" style="fill:#2b2e3f;stroke:#000;stroke-width:20"/>',
 };
-
 // ─── Piece set: Minimal (Noteriv original artwork, no license needed) ───
 // Plain geometric glyphs — not traced from any existing font or piece set.
-var MINIMAL_SHAPES = {
+const MINIMAL_SHAPES: PieceMap = {
   K: '<path d="M34 85 L38 45 L62 45 L66 85 Z"/><path d="M47 20h6v8h8v6h-8v8h-6v-8h-8v-6h8z"/>',
   Q: '<path d="M32 85 L36 45 L64 45 L68 85 Z"/><circle cx="36" cy="40" r="5"/><circle cx="45" cy="34" r="5"/><circle cx="50" cy="29" r="5"/><circle cx="55" cy="34" r="5"/><circle cx="64" cy="40" r="5"/>',
   R: '<path d="M30 85 L30 40 L38 40 L38 30 L46 30 L46 40 L54 40 L54 30 L62 30 L62 40 L70 40 L70 85 Z"/>',
@@ -173,23 +65,23 @@ var MINIMAL_SHAPES = {
   P: '<circle cx="50" cy="32" r="14"/><path d="M38 48h24l10 30H28z"/>',
 };
 
-function buildMinimalPieces() {
-  var pieces = {};
-  var types = ["K", "Q", "R", "B", "N", "P"];
-  for (var i = 0; i < types.length; i++) {
-    var t = types[i];
+function buildMinimalPieces(): PieceMap {
+  const pieces: PieceMap = {};
+  const types = ["K", "Q", "R", "B", "N", "P"];
+  for (let i = 0; i < types.length; i++) {
+    const t = types[i];
     pieces[t] = '<g style="fill:#ffffff;stroke:#1a1a1a;stroke-width:4;stroke-linejoin:round">' + MINIMAL_SHAPES[t] + "</g>";
     pieces[t.toLowerCase()] = '<g style="fill:#2b2e3f;stroke:#f0f0f0;stroke-width:4;stroke-linejoin:round">' + MINIMAL_SHAPES[t] + "</g>";
   }
   return pieces;
 }
-var PIECE_SVG_MINIMAL = buildMinimalPieces();
+const PIECE_SVG_MINIMAL = buildMinimalPieces();
 
 // ─── Piece set registry ───
 // Each entry's `pieces` map uses the same keys as the original PIECE_SVG
 // (uppercase = white, lowercase = black), rendered inside a nested <svg
 // viewBox="{viewBox}"> sized to that set's own artwork coordinate space.
-var PIECE_SETS = {
+export const PIECE_SETS: Record<string, PieceSet> = {
   classic: { name: "Classic (Chessnut)", viewBox: "0 0 800 800", pieces: PIECE_SVG },
   spatial: { name: "Spatial", viewBox: "0 0 933.333 933.333", pieces: PIECE_SVG_SPATIAL },
   minimal: { name: "Minimal", viewBox: "0 0 100 100", pieces: PIECE_SVG_MINIMAL },
@@ -198,7 +90,7 @@ var PIECE_SETS = {
 // ─── Board theme registry ───
 // Square colors + annotation colors (highlight squares, arrows). Hex
 // values only — no license concerns, unlike piece artwork.
-var BOARD_THEMES = {
+export const BOARD_THEMES: Record<string, BoardTheme> = {
   classic: {
     name: "Classic Wood",
     light: "#f0d9b5",
@@ -227,201 +119,4 @@ var BOARD_THEMES = {
     highlight: { g: "#66bb6a", r: "#ef5350", b: "#5c6bc0", y: "#fdd835" },
     arrow: "#90caf9",
   },
-};
-
-// Default fallbacks until onLoad finishes reading saved settings (see
-// bottom of file) — and the fallback whenever a block or a saved setting
-// names an id that no longer exists in the registries above.
-var currentSettings = { pieceSet: "classic", boardTheme: "classic" };
-
-function renderBoardSVG(config) {
-  var board = config.fen.split(" ")[0];
-  var ranks = board.split("/");
-  var theme = BOARD_THEMES[config.boardTheme] || BOARD_THEMES.classic;
-  var pieceSet = PIECE_SETS[config.pieceSet] || PIECE_SETS.classic;
-  var svg = '<svg viewBox="0 0 400 400" class="chessboard-plugin-svg" style="display:block;width:100%;max-width:360px;margin:12px auto;" xmlns="http://www.w3.org/2000/svg">';
-
-  // 1. squares
-  for (var row = 0; row < 8; row++) {
-    for (var col = 0; col < 8; col++) {
-      var light = (row + col) % 2 === 0;
-      svg += '<rect x="' + col * 50 + '" y="' + row * 50 + '" width="50" height="50" fill="' + (light ? theme.light : theme.dark) + '" />';
-    }
-  }
-
-  // 2. highlights
-  for (var a = 0; a < config.annotations.length; a++) {
-    var hMatch = config.annotations[a].match(/^H([a-h][1-8])\/?([grby]?)$/i);
-    if (!hMatch) continue;
-    var hXY = squareToXY(hMatch[1], config.orientation);
-    var color = theme.highlight[(hMatch[2] || "g").toLowerCase()] || theme.highlight.g;
-    svg += '<rect x="' + hXY.x + '" y="' + hXY.y + '" width="50" height="50" fill="' + color + '" fill-opacity="0.55" />';
-  }
-
-  // 3. pieces
-  for (var rk = 0; rk < ranks.length; rk++) {
-    var file = 0;
-    var rankStr = ranks[rk];
-    for (var c = 0; c < rankStr.length; c++) {
-      var ch = rankStr[c];
-      if (/[1-8]/.test(ch)) {
-        file += Number(ch);
-        continue;
-      }
-      var square = "abcdefgh"[file] + (8 - rk);
-      var xy = squareToXY(square, config.orientation);
-      var pieceSvg = pieceSet.pieces[ch];
-      if (pieceSvg) {
-        svg += '<svg x="' + xy.x + '" y="' + xy.y + '" width="50" height="50" viewBox="' + pieceSet.viewBox + '">' + pieceSvg + '</svg>';
-      }
-      file++;
-    }
-  }
-
-  // 4. arrows
-  svg += '<defs><marker id="cb-arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto" markerUnits="userSpaceOnUse"><path d="M0,0 L8,4 L0,8 Z" fill="' + theme.arrow + '" fill-opacity="0.85"/></marker></defs>';
-  for (var b = 0; b < config.annotations.length; b++) {
-    var aMatch = config.annotations[b].match(/^A([a-h][1-8])-([a-h][1-8])$/i);
-    if (!aMatch) continue;
-    var from = squareToXY(aMatch[1], config.orientation);
-    var to = squareToXY(aMatch[2], config.orientation);
-    var x1 = from.x + 25, y1 = from.y + 25;
-    var x2 = to.x + 25, y2 = to.y + 25;
-    svg += '<line x1="' + x1 + '" y1="' + y1 + '" x2="' + x2 + '" y2="' + y2 + '" stroke="' + theme.arrow + '" stroke-opacity="0.85" stroke-width="6" marker-end="url(#cb-arrowhead)" />';
-  }
-
-  svg += "</svg>";
-  return svg;
-}
-
-function chessboardProcessor(source, el) {
-  var config = parseChessboardBlock(source);
-
-  var errorStyle = "padding:10px 16px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;color:#f44336;";
-
-  if (!config.fen) {
-    el.innerHTML = '<div class="chessboard-error" style="' + errorStyle + '">Missing "fen:" field</div>';
-    return;
-  }
-
-  if (config.strict) {
-    var result = validateFEN(config.fen);
-    if (!result.valid) {
-      el.innerHTML = '<div class="chessboard-error" style="' + errorStyle + '">Invalid FEN: ' + escapeHtml(result.error) + '</div>';
-      return;
-    }
-  }
-
-  try {
-    var renderConfig = Object.assign({}, config, {
-      pieceSet: config.pieceset || currentSettings.pieceSet,
-      boardTheme: config.boardtheme || currentSettings.boardTheme,
-    });
-    el.innerHTML = '<div class="chessboard-plugin-widget">' + renderBoardSVG(renderConfig) + '</div>';
-  } catch (err) {
-    el.innerHTML = '<div class="chessboard-error" style="' + errorStyle + '">Render error: ' + escapeHtml(err && err.message ? err.message : String(err)) + '</div>';
-  }
-
-  return function cleanup() {
-    el.innerHTML = "";
-  };
-}
-
-var PREVIEW_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-
-function renderSettingsTab(api) {
-  return function render(container) {
-    var pieceOptions = Object.keys(PIECE_SETS)
-      .map(function (id) {
-        var selected = id === currentSettings.pieceSet ? " selected" : "";
-        return '<option value="' + id + '"' + selected + ">" + escapeHtml(PIECE_SETS[id].name) + "</option>";
-      })
-      .join("");
-    var themeOptions = Object.keys(BOARD_THEMES)
-      .map(function (id) {
-        var selected = id === currentSettings.boardTheme ? " selected" : "";
-        return '<option value="' + id + '"' + selected + ">" + escapeHtml(BOARD_THEMES[id].name) + "</option>";
-      })
-      .join("");
-
-    container.innerHTML =
-      '<div style="font-size:13px;">' +
-      '<div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:12px;">' +
-      '<label style="display:flex;flex-direction:column;gap:4px;">Piece set' +
-      '<select class="cb-settings-pieceset" style="padding:4px 6px;">' + pieceOptions + "</select>" +
-      "</label>" +
-      '<label style="display:flex;flex-direction:column;gap:4px;">Board theme' +
-      '<select class="cb-settings-boardtheme" style="padding:4px 6px;">' + themeOptions + "</select>" +
-      "</label>" +
-      "</div>" +
-      '<div class="cb-settings-preview" style="margin-bottom:12px;max-width:220px;"></div>' +
-      '<button type="button" class="cb-settings-save" style="padding:6px 14px;cursor:pointer;">Save as default</button>' +
-      '<div style="margin-top:8px;font-size:11px;opacity:0.7;">Boards already open in a note keep their current look until you reopen the note.</div>' +
-      "</div>";
-
-    var pieceSelect = container.querySelector(".cb-settings-pieceset");
-    var themeSelect = container.querySelector(".cb-settings-boardtheme");
-    var preview = container.querySelector(".cb-settings-preview");
-    var saveBtn = container.querySelector(".cb-settings-save");
-
-    function updatePreview() {
-      preview.innerHTML = renderBoardSVG({
-        fen: PREVIEW_FEN,
-        orientation: "white",
-        annotations: [],
-        pieceSet: pieceSelect.value,
-        boardTheme: themeSelect.value,
-      });
-    }
-    updatePreview();
-
-    pieceSelect.addEventListener("change", updatePreview);
-    themeSelect.addEventListener("change", updatePreview);
-
-    saveBtn.addEventListener("click", function () {
-      currentSettings = { pieceSet: pieceSelect.value, boardTheme: themeSelect.value };
-      api.app.saveSettings(currentSettings).then(function () {
-        api.ui.showNotice("Chessboard defaults saved.", 4000);
-      });
-    });
-  };
-}
-
-module.exports.onLoad = async function (api) {
-  if (!api.markdown || typeof api.markdown.registerCodeBlockProcessor !== "function") {
-    api.ui.showNotice("Chessboard plugin requires a newer version of Noteriv (markdown code block API).", 6000);
-    return;
-  }
-
-  // Load the saved default piece set / board theme (feature-detected: older
-  // Noteriv builds without api.app.loadSettings just keep the classic
-  // defaults). This must finish before registering the processor so the
-  // very first render of any already-open note uses the saved defaults
-  // instead of flashing "classic" first.
-  if (api.app && typeof api.app.loadSettings === "function") {
-    try {
-      var saved = await api.app.loadSettings();
-      currentSettings = {
-        pieceSet: (saved && saved.pieceSet) || "classic",
-        boardTheme: (saved && saved.boardTheme) || "classic",
-      };
-    } catch (e) {
-      // Keep defaults on any read error.
-    }
-  }
-
-  api.markdown.registerCodeBlockProcessor("chessboard", chessboardProcessor);
-
-  if (api.ui && typeof api.ui.addSettingsTab === "function" && api.app && typeof api.app.saveSettings === "function") {
-    api.ui.addSettingsTab({
-      id: "chessboard-settings",
-      name: "Chessboard",
-      render: renderSettingsTab(api),
-    });
-  }
-};
-
-module.exports.onUnload = function () {
-  // PluginManager.unloadPlugin already calls unregisterAllCodeBlockProcessorsForPlugin(pluginId),
-  // so no manual cleanup is required here.
 };

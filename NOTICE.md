@@ -41,10 +41,10 @@ tree (it remains in git history, as it does upstream).
 
 ### Imported components
 
-Both entries below are chess piece artwork embedded in the example community plugin
-`desktop/examples/plugins/chessboard/main.js`. The full licence texts and the exact
+Both entries below are chess piece artwork embedded in the Chessboard core plugin,
+`packages/plugins/src/chessboard/pieces.ts`. The full licence texts and the exact
 modifications are in
-[`desktop/examples/plugins/chessboard/THIRD-PARTY-LICENSES.md`](desktop/examples/plugins/chessboard/THIRD-PARTY-LICENSES.md).
+[`packages/plugins/src/chessboard/THIRD-PARTY-LICENSES.md`](packages/plugins/src/chessboard/THIRD-PARTY-LICENSES.md).
 
 - **chessnut-pieces** ("classic" set, `PIECE_SVG`)
   - Source: <https://github.com/LexLuengas/chessnut-pieces>

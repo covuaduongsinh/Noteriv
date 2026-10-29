@@ -2,14 +2,14 @@
 
 ## Chess piece artwork
 
-Three piece sets are embedded in `main.js`: `classic` (third-party, see
+Three piece sets are embedded in `pieces.ts`: `classic` (third-party, see
 below), `spatial` (third-party, see below), and `minimal` (original Noteriv
 artwork, geometric glyphs with no external source — no license entry
 needed).
 
 ### classic (`PIECE_SVG`)
 
-The chess piece SVG artwork embedded in `main.js` (the `PIECE_SVG` map) is
+The chess piece SVG artwork embedded in `pieces.ts` (the `PIECE_SVG` map) is
 derived from **chessnut-pieces** by Alexis Luengas:
 
 - Source: https://github.com/LexLuengas/chessnut-pieces
@@ -20,9 +20,9 @@ Changes made from the original files: the 12 individual SVG documents (one
 per piece/color) were stripped of their XML prolog, DOCTYPE, Illustrator
 comments, and `id` attributes (the ids were not referenced by anything and
 would otherwise collide when the same piece appears more than once on a
-board), then inlined as string literals directly in `main.js` so the plugin
-stays a single self-contained file (Noteriv's plugin sandbox has no asset-
-loading mechanism). The path geometry and colors are unmodified.
+board), then inlined as string literals directly in `pieces.ts` so the plugin
+needs no asset loading (the artwork ships inside the plugin bundle and is
+drawn as inline SVG). The path geometry and colors are unmodified.
 
 ---
 Apache License
@@ -229,7 +229,7 @@ Apache License
 
 ### spatial (`PIECE_SVG_SPATIAL`)
 
-The "Spatial" piece set embedded in `main.js` (the `PIECE_SVG_SPATIAL` map)
+The "Spatial" piece set embedded in `pieces.ts` (the `PIECE_SVG_SPATIAL` map)
 is derived from the `spatial` piece set in **lichess-org/lila**
 (`public/piece/spatial`), originally authored by Maurizio Monge:
 
@@ -240,7 +240,7 @@ is derived from the `spatial` piece set in **lichess-org/lila**
 
 Changes made from the original files: each of the 12 individual SVG
 documents (one per piece/color) defined its own `<defs>` with
-`<linearGradient>` fills (e.g. `id="main-gradient"`). Since this plugin
+`<linearGradient>` fills (e.g. `id="main-gradient"`). Since the plugin
 embeds every piece as an inline string and several same-type pieces can
 appear on one board (e.g. 8 pawns), those per-file gradient `id`s would
 collide once concatenated into a single document — browsers resolve a

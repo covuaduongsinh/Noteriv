@@ -233,7 +233,7 @@ api.markdown.registerCodeBlockProcessor("shout", (source, el) => {
 });
 ```
 
-See the Chessboard plugin example (`desktop/examples/plugins/chessboard/` in this repository) for a complete example that parses FEN and draws an SVG chess diagram.
+The built-in Chessboard core plugin (`packages/plugins/src/chessboard/` in this repository) is a complete example of a code block processor that parses FEN and draws an SVG chess diagram. Core plugins register through the same `registerCodeBlockProcessor` call.
 
 ### api.app
 

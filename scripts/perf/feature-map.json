@@ -19,6 +19,7 @@
     "publish": { "label": "Publish preview", "patterns": ["/src/components/PublishPreview\\.", "core/src/publish\\.", "desktop/src/lib/publish\\."] },
     "clipper": { "label": "Web clipper (cài đặt)", "patterns": ["/src/components/ClipperSection\\."] },
     "mermaid": { "label": "Mermaid", "patterns": ["plugins/src/mermaid/", "ui/src/markdown/mermaid\\.","node_modules/mermaid/"] },
+    "chessboard": { "label": "Chessboard", "patterns": ["plugins/src/chessboard/"] },
     "math": { "label": "Math (KaTeX)", "patterns": ["ui/src/markdown/math\\.", "ui/src/markdown/renderers/math\\.", "ui/src/markdown/katex-loader\\."] }
   }
 }

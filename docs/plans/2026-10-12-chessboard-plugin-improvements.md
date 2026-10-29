@@ -1,6 +1,8 @@
 # Kế hoạch cải tiến: Chessboard Plugin
 
-> **Plugin:** `desktop/examples/plugins/chessboard/`  
+> **Cập nhật 2026-10-29:** plugin đã chuyển thành plugin lõi `packages/plugins/src/chessboard/` (TypeScript, tắt sẵn, chạy trên web/desktop/phone); bản ví dụ `desktop/examples/plugins/chessboard/` đã xóa. **Phase 1 (P1.1–P1.5) đã làm xong và có test** (`packages/plugins/test/chessboard.test.ts`; `squareToXY` trả `null` cho ô không hợp lệ thay vì `{x:0,y:0}`). Phase 2–4 còn lại; các đường dẫn `main.js` bên dưới là của bản cũ.
+>
+> **Plugin (bản cũ):** `desktop/examples/plugins/chessboard/`  
 > **Phiên bản hiện tại:** 0.2.0  
 > **Ngày lập kế hoạch:** 2026-10-12  
 > **Nguồn:** Code review toàn diện bởi Antigravity
