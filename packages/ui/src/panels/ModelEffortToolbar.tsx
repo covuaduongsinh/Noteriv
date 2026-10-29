@@ -7,11 +7,14 @@ export interface ModelEffortToolbarProps {
   onProviderChange: (updated: AiProviderConfig) => void;
   onAttachImage?: (img: AiImageAttachment) => void;
   onOpenSettings?: () => void;
+  /** Disable the model picker (the current model stays visible). */
+  modelSelectionDisabled?: boolean;
 }
 
 export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
   provider,
   onProviderChange,
+  modelSelectionDisabled = false,
   onAttachImage,
   onOpenSettings,
 }) => {
@@ -112,19 +115,20 @@ export const ModelEffortToolbar: React.FC<ModelEffortToolbarProps> = ({
         <div className="relative">
           <button
             type="button"
+            disabled={modelSelectionDisabled}
             onClick={() => {
               setShowModelMenu((prev) => !prev);
               setShowEffortMenu(false);
             }}
-            className="flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-modifier-hover)] text-[var(--text-primary)] font-medium text-[11px] transition-colors max-w-[170px] truncate"
-            title="Đổi mô hình AI nhanh của từng provider"
+            className="flex items-center gap-1 px-2 py-0.5 rounded border border-[var(--border-subtle)] bg-[var(--bg-primary)] hover:bg-[var(--bg-modifier-hover)] text-[var(--text-primary)] font-medium text-[11px] transition-colors max-w-[170px] truncate disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-[var(--bg-primary)]"
+            title={modelSelectionDisabled ? "Đã hết hạn mức AI của tháng" : "Đổi mô hình AI nhanh của từng provider"}
           >
             <span className="truncate">{displayLabel}</span>
             <span className="text-[10px] text-[var(--text-secondary)] opacity-70">▾</span>
           </button>
 
           {/* Model Menu Dropdown */}
-          {showModelMenu && (
+          {showModelMenu && !modelSelectionDisabled && (
             <div className="absolute bottom-full left-0 mb-1.5 w-72 bg-[var(--bg-primary)] border border-[var(--border-subtle)] rounded-lg shadow-2xl py-1 z-50 text-xs overflow-hidden max-h-80 overflow-y-auto">
               {PROVIDER_GROUPS.map((group, gIdx) => (
                 <div key={group.id} className={gIdx > 0 ? "border-t border-[var(--border-subtle)] mt-1 pt-1" : ""}>

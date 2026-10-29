@@ -1503,6 +1503,17 @@
     "account": {
       "verifyFirst": "Verify your email first: open the link we emailed you. Your vaults → Account can send it again."
     },
+    "usage": {
+      "label": "AI usage this month",
+      "tokens": "Tokens used: {used} / {limit}",
+      "remaining": "{remaining} remaining",
+      "budget": "Budget: {cost} / {budget}",
+      "progress": "{percent}% of the monthly limit used",
+      "model": "Model: {model}",
+      "warning": "{percent}% of this month's AI limit is used.",
+      "critical": "Almost out: {percent}% of this month's AI limit is used.",
+      "exceeded": "Monthly AI limit reached. Model selection is disabled until the limit resets."
+    },
     "plan": {
       "current": "Current plan",
       "hint": "Limits count everything in the vaults you own.",
