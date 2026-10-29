@@ -71,3 +71,7 @@ e2e/test-results/
 e2e/playwright-report/
 web/server/.email-outbox/
 web/server/.sentry-outbox/
+
+# machine-specific vault key generated on first dev run (lib/credentials-vault.ts)
+.secret_key
+web/server/.secret_key

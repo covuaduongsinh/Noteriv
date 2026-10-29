@@ -56,6 +56,9 @@ jobs:
       - name: Security checks
         run: npx tsx scripts/test-security.ts
 
+      - name: Credential vault checks
+        run: npx tsx scripts/test-llm-vault.ts
+
       - name: Build
         run: npm run build
 

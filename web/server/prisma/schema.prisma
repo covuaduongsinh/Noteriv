@@ -77,8 +77,24 @@ model User {
   preference       UserPreference?
   emailTokens      EmailToken[]
   activityDays     UserActivityDay[]
+  llmApiKeys       LlmApiKey[]
 
   @@map("users")
+}
+
+/// A user's API key for an LLM provider (claude, openai, ...). keyEncrypted is "enc:<fernet token>" written by
+/// lib/credentials-vault.ts; the plaintext key is never stored or returned by the API.
+model LlmApiKey {
+  id           String   @id @default(uuid())
+  userId       String   @map("user_id")
+  provider     String
+  keyEncrypted String   @map("key_encrypted")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, provider])
+  @@map("llm_api_keys")
 }
 
 /// A plan and its limits (session 5.3). Null means no limit. Limits apply to what the user owns: the vaults in their
