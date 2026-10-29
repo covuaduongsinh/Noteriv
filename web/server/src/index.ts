@@ -25,6 +25,7 @@ import attachmentRoutes from "./routes/attachments.js";
 import { syncQueue } from "./lib/syncQueue.js";
 import adminRoutes from "./routes/admin.js";
 import opsRoutes from "./routes/ops.js";
+import usageRoutes from "./routes/usage.js";
 import aiRoutes from "./routes/ai.js";
 import { captureError, initSentry } from "./lib/sentry.js";
 
@@ -93,6 +94,7 @@ await fastify.register(quickNoteRoutes, { prefix: "/api/v1/vaults" });
 await fastify.register(clipTokenRoutes, { prefix: "/api/v1/users" });
 await fastify.register(diagnosticsRoutes, { prefix: "/api/v1/diagnostics" });
 await fastify.register(userRoutes, { prefix: "/api/v1/users" });
+await fastify.register(usageRoutes, { prefix: "/api/v1/usage" });
 await fastify.register(adminRoutes, { prefix: "/api/v1/admin" });
 await fastify.register(opsRoutes, { prefix: "/api/v1" });
 await fastify.register(aiRoutes, { prefix: "/ai" });
