@@ -23,6 +23,13 @@ ENV NODE_ENV=production
 # over HTTPS needs the CA bundle; without git every sync fails with "spawn git ENOENT".
 RUN apk add --no-cache openssl git ca-certificates
 
+# Claude Code CLI for the owner-only AI relay (routes/ai.ts). Alpine needs libgcc, libstdc++ and the system ripgrep.
+# Its login lives in CLAUDE_CONFIG_DIR, which compose mounts as a volume so it survives rebuilds.
+RUN apk add --no-cache libgcc libstdc++ ripgrep \
+ && npm install -g @anthropic-ai/claude-code \
+ && mkdir -p /claude-config && chown node:node /claude-config
+ENV USE_BUILTIN_RIPGREP=0 CLAUDE_CONFIG_DIR=/claude-config
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma

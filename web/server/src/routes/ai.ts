@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from "fastify";
 import { spawn } from "node:child_process";
+import os from "node:os";
 import path from "node:path";
 import fs from "node:fs";
 import { verifyAccessToken } from "../lib/jwt.js";
@@ -9,14 +10,30 @@ import { recordUsage } from "../lib/usageTracker.js";
  * The signed-in user, if the request carries a valid access cookie. These relay routes are also used by clients
  * without a session (a local sidecar), so a missing user means "do not record usage", never a 401.
  */
-function optionalUserId(request: FastifyRequest): string | null {
+function optionalUser(request: FastifyRequest): { id: string; email: string } | null {
   const token = request.cookies?.["noteriv_access"];
   if (!token) return null;
   try {
-    return verifyAccessToken(token).sub;
+    const payload = verifyAccessToken(token);
+    return { id: payload.sub, email: payload.email };
   } catch {
     return null;
   }
+}
+
+const optionalUserId = (request: FastifyRequest): string | null => optionalUser(request)?.id ?? null;
+
+/**
+ * The Claude Code CLI runs on the owner's personal subscription, so on the server only the accounts listed in
+ * CLAUDE_CLI_ALLOWED_EMAILS may use it. Variable unset (local sidecar, dev) = no restriction; set but empty = nobody.
+ */
+function claudeCliAllowed(request: FastifyRequest): boolean {
+  const raw = process.env.CLAUDE_CLI_ALLOWED_EMAILS;
+  if (raw === undefined) return true;
+  const user = optionalUser(request);
+  if (!user) return false;
+  const allowed = raw.split(",").map((e) => e.trim().toLowerCase()).filter(Boolean);
+  return allowed.includes(user.email.trim().toLowerCase());
 }
 
 const asCount = (n: unknown): number => (typeof n === "number" && Number.isFinite(n) && n > 0 ? n : 0);
@@ -33,6 +50,7 @@ export default async function aiRoutes(fastify: FastifyInstance) {
   }
 
   fastify.post("/claude-stream", async (request, reply) => {
+    if (!claudeCliAllowed(request)) return reply.code(403).send({ error: "forbidden" });
     const body = (request.body || {}) as any;
     const { messages = [], systemPrompt = "", model, reasoningEffort } = body;
 
@@ -70,11 +88,11 @@ export default async function aiRoutes(fastify: FastifyInstance) {
 
     // Spawn claude CLI with stdin piping to avoid Windows shell argument truncation
     const child = spawn(
-      "claude.exe",
+      process.env.CLAUDE_BIN || (process.platform === "win32" ? "claude.exe" : "claude"),
       args,
       {
         stdio: ["pipe", "pipe", "pipe"],
-        cwd: process.env.TEMP || "C:\\",
+        cwd: process.platform === "win32" ? process.env.TEMP || "C:\\" : os.tmpdir(),
         shell: process.platform === "win32",
       }
     );
