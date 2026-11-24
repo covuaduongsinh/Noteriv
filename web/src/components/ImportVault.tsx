@@ -7,6 +7,8 @@ import { formatFileSize } from "@/lib/attachment-utils";
 import {
   scanFolder,
   scanZip,
+  scanFiles,
+  intoFolder,
   runImport,
   type ImportScan,
   type ImportProgress,
@@ -22,6 +24,10 @@ interface ImportVaultProps {
   onClose: () => void;
   /** Called after a successful import with the vault that received the notes. */
   onFinished: (vaultId: string) => void;
+  /** Folder paths of the vault, offered as the place to import into (existing vault only). */
+  folders?: string[];
+  /** Folder chosen up front, e.g. from the file sidebar's "Import .md files here…" ("" = vault root). */
+  initialFolder?: string;
 }
 
 /** Progress phase names, read when shown. */
@@ -37,9 +43,10 @@ const PHASE_LABEL: Record<ImportProgress["phase"], () => string> = {
  * a hand-made archive) into this vault or a brand-new one. All parsing happens in
  * the browser; see lib/vault-import.ts.
  */
-export default function ImportVault({ vaultId, vaultName, onClose, onFinished }: ImportVaultProps) {
+export default function ImportVault({ vaultId, vaultName, onClose, onFinished, folders = [], initialFolder = "" }: ImportVaultProps) {
   useLocale();
   const folderInput = useRef<HTMLInputElement>(null);
+  const filesInput = useRef<HTMLInputElement>(null);
   const zipInput = useRef<HTMLInputElement>(null);
   const abortRef = useRef<AbortController | null>(null);
 
@@ -52,14 +59,15 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
   const [progress, setProgress] = useState<ImportProgress | null>(null);
   const [report, setReport] = useState<ImportReport | null>(null);
   const [targetVaultId, setTargetVaultId] = useState<string | null>(vaultId);
+  const [folder, setFolder] = useState(initialFolder);
 
-  async function onPick(files: File[], kind: "folder" | "zip") {
+  async function onPick(files: File[], kind: "folder" | "zip" | "files") {
     setError("");
     setReport(null);
     if (files.length === 0) return;
     setScanning(true);
     try {
-      const s = kind === "zip" ? await scanZip(files[0]) : scanFolder(files);
+      const s = kind === "zip" ? await scanZip(files[0]) : kind === "files" ? scanFiles(files) : scanFolder(files);
       if (s.notes.length === 0 && s.attachments.length === 0) {
         setError(t("web.import.nothing"));
         setScan(null);
@@ -88,7 +96,9 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
         target = created.id;
         setTargetVaultId(created.id);
       }
-      const rep = await runImport(target, scan, { onConflict }, setProgress, controller.signal);
+      // A new vault has no folders yet, so the folder choice only applies to an existing one.
+      const placed = vaultId ? intoFolder(scan, folder) : scan;
+      const rep = await runImport(target, placed, { onConflict }, setProgress, controller.signal);
       setReport(rep);
     } catch (err) {
       setError(planLimitNotice(err) ?? t("web.import.interrupted"));
@@ -123,7 +133,38 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
             <p className="text-xs text-[var(--text-muted)]" style={{ marginBottom: 12 }}>
               {t("web.import.intro")}
             </p>
-            <div className="flex gap-2" style={{ marginBottom: 12 }}>
+            {/* Shown before picking, so the place the notes go is clear up front. */}
+            {vaultId && (
+              <label className="block text-sm" style={{ marginBottom: 10 }}>
+                {t("web.import.folder")}
+                <select
+                  value={folder}
+                  onChange={(e) => setFolder(e.target.value)}
+                  disabled={running}
+                  data-testid="import-folder"
+                  className="w-full rounded-md bg-[var(--bg-tertiary)] outline-none text-sm"
+                  style={{ padding: "6px 8px", marginTop: 4 }}
+                >
+                  <option value="">{t("web.import.vaultRoot")}</option>
+                  {[...new Set([...folders, ...(initialFolder ? [initialFolder] : [])])]
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
+            <div className="flex flex-wrap gap-2" style={{ marginBottom: 12 }}>
+              <button
+                className="rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm"
+                style={{ padding: "8px 14px" }}
+                disabled={running || scanning}
+                onClick={() => filesInput.current?.click()}
+              >
+                {t("web.import.pickFiles")}
+              </button>
               <button
                 className="rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm"
                 style={{ padding: "8px 14px" }}
@@ -149,6 +190,18 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished }:
               {...({ webkitdirectory: "", directory: "" } as Record<string, string>)}
               onChange={(e) => {
                 onPick(Array.from(e.target.files ?? []), "folder");
+                e.target.value = "";
+              }}
+            />
+            <input
+              ref={filesInput}
+              type="file"
+              multiple
+              hidden
+              accept=".md,text/markdown,image/*,application/pdf,audio/*,video/*"
+              data-testid="import-files"
+              onChange={(e) => {
+                onPick(Array.from(e.target.files ?? []), "files");
                 e.target.value = "";
               }}
             />
