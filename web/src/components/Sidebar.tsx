@@ -259,6 +259,8 @@ interface SidebarProps {
   onRenameRequestHandled?: () => void;
   /** Notes that moved (renamed, dragged, or inside a renamed folder), with every note path from before the move. */
   onMoved?: (moves: PathMove[], before: string[]) => void;
+  /** Opens the import dialog aimed at a folder (its path; "" = the vault root). */
+  onImportHere?: (folderPath: string) => void;
 }
 
 /**
@@ -281,6 +283,7 @@ export default function Sidebar({
   renameRequest,
   onRenameRequestHandled,
   onMoved,
+  onImportHere,
 }: SidebarProps) {
   useLocale();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -453,6 +456,10 @@ export default function Sidebar({
       { label: t("shell.files.newFile"), onClick: () => handleNewFileIn(targetFolderId) },
       { label: t("shell.files.newFolder"), onClick: () => handleNewFolderIn(targetFolderId) },
     ];
+    if (onImportHere && (!node || node.type === "folder")) {
+      const folderPath = targetFolderId ? (index?.folders.find((f) => f.id === targetFolderId)?.path ?? "") : "";
+      items.push({ label: t("shell.files.importHere"), onClick: () => onImportHere(folderPath) });
+    }
     if (node) {
       items.push({ label: "", separator: true, onClick: () => {} });
       items.push({ label: t("shell.files.rename"), onClick: () => startRename(node) });

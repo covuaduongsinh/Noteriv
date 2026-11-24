@@ -365,6 +365,38 @@ test("Import from another app brings in a Notion export and an Evernote notebook
   await expect(editor()).toContainText("From Evernote");
 });
 
+test("single .md files are imported into the folder chosen in the sidebar, their links working", async () => {
+  // A folder to import into, made from the sidebar like a person would: right-click the empty
+  // space below the file list.
+  const list = page.locator(".sidebar-root .overflow-y-auto.py-1").first();
+  const box = await list.boundingBox();
+  await list.click({ button: "right", position: { x: 40, y: box!.height - 10 } });
+  await page.getByText("New Folder", { exact: true }).click();
+  const rename = page.locator(".sidebar-root input.sb-rename").first();
+  await expect(rename).toBeFocused();
+  await rename.fill("Picked e2e");
+  await rename.press("Enter");
+  await expect(sidebarItem("Picked e2e")).toBeVisible();
+
+  await sidebarItem("Picked e2e").click({ button: "right" });
+  await page.getByText("Import .md files here…", { exact: true }).click();
+  await expect(page.locator("[data-testid=import-folder]")).toHaveValue("Picked e2e");
+  await page.locator("[data-testid=import-files]").setInputFiles([
+    { name: "Single one.md", mimeType: "text/markdown", buffer: Buffer.from("# Single one\n\nPoints to [[Single two]].\n") },
+    { name: "Single two.md", mimeType: "text/markdown", buffer: Buffer.from("# Single two\n\nPicked file e2e.\n") },
+  ]);
+  await expect(page.getByText("2 notes · 0 attachments")).toBeVisible();
+  await page.getByRole("button", { name: "Start import" }).click();
+  await expect(page.getByText("Import finished")).toBeVisible();
+  await page.getByRole("button", { name: "Open the vault" }).click();
+
+  await sidebarItem("Picked e2e").click(); // expands the folder
+  await sidebarItem("Single one").click();
+  await expect(page.locator(".tab-active")).toContainText("Single one");
+  await page.locator(".cm-content .md-wikilink", { hasText: "Single two" }).click();
+  await expect(editor()).toContainText("Picked file e2e.");
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

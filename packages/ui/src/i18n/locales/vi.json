@@ -1279,6 +1279,9 @@
       "interrupted": "Import bị gián đoạn. Bạn có thể chạy lại — những file đã nhập sẽ được bỏ qua.",
       "pickFolder": "Chọn thư mục…",
       "pickZip": "Chọn file .zip…",
+      "pickFiles": "Chọn file .md…",
+      "folder": "Nhập vào thư mục",
+      "vaultRoot": "(Gốc vault)",
       "scanning": "Đang quét…",
       "newName": "Tên vault mới",
       "conflict": "Nếu note đã tồn tại cùng đường dẫn",
@@ -1303,7 +1306,7 @@
       },
       "into": "Import vào \"{vault}\"",
       "newVault": "Import vault mới",
-      "intro": "Chọn thư mục vault (có thể đang dùng với desktop/Obsidian) hoặc file .zip. Note .md giữ nguyên cấu trúc thư mục; ảnh, PDF, audio… được tải lên làm file đính kèm và liên kết trong note được cập nhật theo.",
+      "intro": "Chọn một hoặc nhiều file .md, thư mục vault (có thể đang dùng với desktop/Obsidian) hoặc file .zip. Note .md giữ nguyên cấu trúc thư mục; ảnh, PDF, audio… được tải lên làm file đính kèm và liên kết trong note được cập nhật theo.",
       "found": "{notes} note · {attachments} file đính kèm",
       "skipped": {
         "other": "Bỏ qua {count} file"
@@ -1935,6 +1938,7 @@
       "rename": "Đổi tên",
       "delete": "Xoá",
       "copyPath": "Chép đường dẫn",
+      "importHere": "Import file .md vào đây…",
       "newFileButton": "Thêm note",
       "empty": "Chưa có note nào",
       "createNote": "Tạo một note",

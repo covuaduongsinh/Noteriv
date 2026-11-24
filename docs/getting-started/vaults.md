@@ -34,7 +34,7 @@ Inside a vault, its name at the left of the title bar opens the **vault switcher
 
 Bring existing Markdown notes — an Obsidian vault, a folder of notes, a zip export — into Noteriv:
 
-- **File → Import folder / zip…** adds them to the current vault.
+- **File → Import folder / zip…** adds them to the current vault — single `.md` files too, into the folder you choose (or right-click a folder → **Import .md files here…**).
 - **File → Import as New Vault…** creates a new vault from them.
 
 Folders are kept, `[[links]]` between the imported notes work straight away, and images and other attachments referenced by the notes are uploaded with them. See [Import and export](../features/import-export.md).

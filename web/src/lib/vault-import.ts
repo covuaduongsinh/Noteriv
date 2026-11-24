@@ -92,6 +92,33 @@ export function scanFolder(files: File[]): ImportScan {
   return finalizeScan(scan);
 }
 
+/**
+ * Scan single files picked one by one (a few .md notes, maybe with the images they use).
+ * They carry no folder of their own: each lands under its file name, and `intoFolder`
+ * places them in a vault folder.
+ */
+export function scanFiles(files: File[]): ImportScan {
+  const notes = files.filter((f) => /\.md$/i.test(f.name));
+  const rootName = notes.length === 1 ? notes[0].name.replace(/\.md$/i, "") : "Imported notes";
+  const scan: ImportScan = { rootName, notes: [], attachments: [], skipped: [] };
+  for (const file of files) {
+    const path = file.name;
+    const kind = classify(path, file.size, scan);
+    if (!kind) continue;
+    const item: ImportItem = { path, size: file.size, read: async () => file };
+    (kind === "note" ? scan.notes : scan.attachments).push(item);
+  }
+  return finalizeScan(scan);
+}
+
+/** The same scan with every path moved under `folder` (a vault folder path; "" = the vault root). */
+export function intoFolder(scan: ImportScan, folder: string): ImportScan {
+  const prefix = folder.replace(/^\/+|\/+$/g, "");
+  if (!prefix) return scan;
+  const move = (item: ImportItem): ImportItem => ({ ...item, path: `${prefix}/${item.path}` });
+  return { ...scan, notes: scan.notes.map(move), attachments: scan.attachments.map(move) };
+}
+
 /** Scan a .zip (e.g. a vault exported from Noteriv/Obsidian or zipped by hand). */
 export async function scanZip(zipFile: File): Promise<ImportScan> {
   const JSZip = (await import("jszip")).default;

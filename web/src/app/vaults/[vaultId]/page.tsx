@@ -300,6 +300,8 @@ export default function VaultPage() {
   // key = `${pluginDbId}:${panelId}` of the plugin sidebar panel shown in place of the file tree
   const [activePluginPanel, setActivePluginPanel] = useState<string | null>(null);
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
+  /** Folder the import dialog starts aimed at (set from the file sidebar; "" = vault root). */
+  const [importFolder, setImportFolder] = useState("");
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const bookmarkedNotes = useMemo(
@@ -1972,6 +1974,10 @@ export default function VaultPage() {
               renameRequest={sidebarRenameRequest}
               onRenameRequestHandled={clearSidebarRenameRequest}
               onMoved={(moves, before) => void handleNotesMoved(moves, before)}
+              onImportHere={(folderPath) => {
+                setImportFolder(folderPath);
+                setImportMode("current");
+              }}
             />
           ))}
 
@@ -2423,9 +2429,15 @@ export default function VaultPage() {
         <ImportVault
           vaultId={importMode === "current" ? vaultId : null}
           vaultName={vault?.name}
-          onClose={() => setImportMode(null)}
+          folders={index?.folders.map((f) => f.path) ?? []}
+          initialFolder={importMode === "current" ? importFolder : ""}
+          onClose={() => {
+            setImportMode(null);
+            setImportFolder("");
+          }}
           onFinished={(id) => {
             setImportMode(null);
+            setImportFolder("");
             if (id !== vaultId) router.push(`/vaults/${id}`);
             else refreshIndex();
           }}
