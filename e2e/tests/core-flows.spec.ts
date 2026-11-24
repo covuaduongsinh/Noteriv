@@ -397,6 +397,30 @@ test("single .md files are imported into the folder chosen in the sidebar, their
   await expect(editor()).toContainText("Picked file e2e.");
 });
 
+test(".md files dragged from the computer onto a folder are imported into it", async () => {
+  // What the browser hands the page when files are dragged in from the desktop.
+  const dataTransfer = await page.evaluateHandle(() => {
+    const dt = new DataTransfer();
+    dt.items.add(new File(["# Dropped e2e\n\nCame in by drag and drop.\n"], "Dropped e2e.md", { type: "text/markdown" }));
+    return dt;
+  });
+  const folder = page.locator(".sidebar-root .sb-folder", { hasText: "Picked e2e" }).first();
+  await folder.dispatchEvent("dragenter", { dataTransfer });
+  await folder.dispatchEvent("dragover", { dataTransfer });
+  await folder.dispatchEvent("drop", { dataTransfer });
+
+  // The dialog opens with the file already read and the folder chosen.
+  await expect(page.locator("[data-testid=import-folder]")).toHaveValue("Picked e2e");
+  await expect(page.getByText("1 notes · 0 attachments")).toBeVisible();
+  await page.getByRole("button", { name: "Start import" }).click();
+  await expect(page.getByText("Import finished")).toBeVisible();
+  await page.getByRole("button", { name: "Open the vault" }).click();
+
+  await sidebarItem("Dropped e2e").click();
+  await expect(editor()).toContainText("Came in by drag and drop.");
+  await expect(page.locator(".tab-active")).toContainText("Dropped e2e");
+});
+
 test("typed properties: a number property is set and listed in All properties", async () => {
   await sidebarItem("Third thought").click();
   const props = page.locator(".fm-editor").first();

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { webApi } from "@/lib/webApi";
 import { planLimitNotice } from "@/components/PlanLimitNotice";
 import { formatFileSize } from "@/lib/attachment-utils";
@@ -28,6 +28,8 @@ interface ImportVaultProps {
   folders?: string[];
   /** Folder chosen up front, e.g. from the file sidebar's "Import .md files here…" ("" = vault root). */
   initialFolder?: string;
+  /** Files already chosen, e.g. dropped on the file sidebar: scanned as soon as the dialog opens. */
+  initialFiles?: File[];
 }
 
 /** Progress phase names, read when shown. */
@@ -43,7 +45,15 @@ const PHASE_LABEL: Record<ImportProgress["phase"], () => string> = {
  * a hand-made archive) into this vault or a brand-new one. All parsing happens in
  * the browser; see lib/vault-import.ts.
  */
-export default function ImportVault({ vaultId, vaultName, onClose, onFinished, folders = [], initialFolder = "" }: ImportVaultProps) {
+export default function ImportVault({
+  vaultId,
+  vaultName,
+  onClose,
+  onFinished,
+  folders = [],
+  initialFolder = "",
+  initialFiles,
+}: ImportVaultProps) {
   useLocale();
   const folderInput = useRef<HTMLInputElement>(null);
   const filesInput = useRef<HTMLInputElement>(null);
@@ -81,6 +91,15 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished, f
       setScanning(false);
     }
   }
+
+  // Dropped files skip the picker: scan them once, when the dialog opens.
+  const scannedInitial = useRef(false);
+  useEffect(() => {
+    if (scannedInitial.current || !initialFiles?.length) return;
+    scannedInitial.current = true;
+    void onPick(initialFiles, "files");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once per dialog
+  }, [initialFiles]);
 
   async function start() {
     if (!scan) return;

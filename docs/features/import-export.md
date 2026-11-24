@@ -14,7 +14,7 @@ Bring an existing collection of Markdown notes into Noteriv — an Obsidian vaul
 - **File → Import folder / zip…** adds the notes to the current vault.
 - **File → Import as New Vault…** creates a new vault from them. (Also in the vault switcher: **Import folder / zip…**.)
 
-Pick one or more `.md` files (**Choose .md files…**, with the images they use if you like), a folder, or a `.zip` file. When importing into the current vault, **Import into folder** chooses where the notes go; right-clicking a folder (or empty space) in the file sidebar and choosing **Import .md files here…** opens the dialog aimed at that folder. When you pick a folder, its own name is not kept — only what is inside it.
+Pick one or more `.md` files (**Choose .md files…**, with the images they use if you like), a folder, or a `.zip` file. When importing into the current vault, **Import into folder** chooses where the notes go; right-clicking a folder (or empty space) in the file sidebar and choosing **Import .md files here…** opens the dialog aimed at that folder. You can also drag `.md` files from your computer straight onto a folder (or onto empty space for the vault root) in the file sidebar: the dialog opens with them already read, and **Start import** brings them in. When you pick a folder, its own name is not kept — only what is inside it.
 
 Noteriv then:
 - keeps the folder structure;
