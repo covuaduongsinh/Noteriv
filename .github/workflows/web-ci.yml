@@ -122,7 +122,8 @@ jobs:
   # End-to-end: the production web build and the API against a fresh database, driven by
   # Playwright through the real UI (e2e/). Sign-up uses an invite code seeded by e2e/global-setup.ts.
   e2e:
-    runs-on: ubuntu-latest
+    # Pinned: ubuntu-latest moved to 26.04, where Playwright has no Chromium build yet.
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
     services:
       postgres:
@@ -188,7 +189,7 @@ jobs:
           cp -r web/.next/static web/.next/standalone/web/.next/static
           (cd web/.next/standalone && PORT=3457 HOSTNAME=127.0.0.1 nohup node web/server.js > /tmp/web.log 2>&1 &)
           for i in $(seq 1 60); do curl -sf http://127.0.0.1:4001/api/v1/healthz >/dev/null && curl -sf http://localhost:3457/login >/dev/null && exit 0; sleep 2; done
-          echo "servers did not start"; tail -50 /tmp/api.log /tmp/web.log; exit 1
+          echo "servers did not start"; tail -n 50 /tmp/api.log /tmp/web.log; exit 1
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -198,7 +199,7 @@ jobs:
 
       - name: Server logs
         if: failure()
-        run: tail -100 /tmp/api.log /tmp/web.log
+        run: tail -n 100 /tmp/api.log /tmp/web.log
 
       - uses: actions/upload-artifact@v4
         if: failure()

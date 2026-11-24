@@ -11,7 +11,7 @@
  */
 
 import type { Locale } from "@noteriv/ui/i18n";
-import type { UsageSnapshot } from "@/types/usage";
+import type { UsageSnapshot } from "../types/usage";
 import { setReportingUser } from "./error-reporting";
 
 export interface ApiUser {

@@ -2241,7 +2241,19 @@ export default function Home() {
                   {!zenMode &&
                     !mainFileView &&
                     viewMode !== "view" && (
-                      <FormattingToolbar onAction={handleCommandExecute} />
+                      <FormattingToolbar
+                        onAction={(action) => {
+                          // The AI button is the only toolbar action with no desktop hotkey command;
+                          // the shared editor already holds the inline-edit extension (Ctrl+K).
+                          if (action === "inlineAiEdit") {
+                            void import("@noteriv/ui/editor").then((m) =>
+                              m.runFormattingAction(editorViewRef.current, action)
+                            );
+                          } else {
+                            handleCommandExecute(action);
+                          }
+                        }}
+                      />
                     )}
                   <div className="flex-1 overflow-hidden">
                     {mainFileView ? (
