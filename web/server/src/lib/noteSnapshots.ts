@@ -10,36 +10,61 @@ import { snapshotCap, snapshotLimitForNote } from "./plans.js";
  * cleanupExpiredTrash in lib/trash.ts.
  */
 export async function captureSnapshots(prisma: PrismaClient): Promise<void> {
-  const notes = await prisma.note.findMany({
-    where: { deletedAt: null, content: { not: "" } },
-    select: {
-      id: true,
-      content: true,
-      vault: { select: { workspace: { select: { owner: { select: { plan: { select: { maxSnapshotsPerNote: true } } } } } } } },
-    },
-  });
+  // Postgres compares each note with its latest snapshot and returns only the ids that
+  // changed. Loading every note's content into the worker instead (the first version)
+  // ran a 384 MB container out of heap once production held ~90 MB of notes, and the
+  // worker crash-looped on start-up because this job runs right away.
+  const changed = await prisma.$queryRaw<{ id: string }[]>`
+    SELECT n.id
+    FROM notes n
+    LEFT JOIN LATERAL (
+      SELECT s.content FROM note_snapshots s
+      WHERE s.note_id = n.id
+      ORDER BY s.created_at DESC
+      LIMIT 1
+    ) latest ON true
+    WHERE n.deleted_at IS NULL
+      AND n.content <> ''
+      AND (latest.content IS NULL OR latest.content <> n.content)
+    ORDER BY n.id`;
 
-  for (const note of notes) {
-    const latest = await prisma.noteSnapshot.findFirst({
-      where: { noteId: note.id },
-      orderBy: { createdAt: "desc" },
-      select: { content: true },
+  for (let i = 0; i < changed.length; i += SNAPSHOT_BATCH_SIZE) {
+    const ids = changed.slice(i, i + SNAPSHOT_BATCH_SIZE).map((row) => row.id);
+    const notes = await prisma.note.findMany({
+      where: { id: { in: ids }, deletedAt: null, content: { not: "" } },
+      select: {
+        id: true,
+        content: true,
+        vault: { select: { workspace: { select: { owner: { select: { plan: { select: { maxSnapshotsPerNote: true } } } } } } } },
+      },
     });
-    if (latest && latest.content === note.content) continue;
 
-    await prisma.noteSnapshot.create({ data: { noteId: note.id, content: note.content } });
+    for (const note of notes) {
+      // Checked again: the note may have changed back since the query above.
+      const latest = await prisma.noteSnapshot.findFirst({
+        where: { noteId: note.id },
+        orderBy: { createdAt: "desc" },
+        select: { content: true },
+      });
+      if (latest && latest.content === note.content) continue;
 
-    const toPrune = await prisma.noteSnapshot.findMany({
-      where: { noteId: note.id },
-      orderBy: { createdAt: "desc" },
-      skip: snapshotCap(note.vault.workspace.owner.plan.maxSnapshotsPerNote),
-      select: { id: true },
-    });
-    if (toPrune.length > 0) {
-      await prisma.noteSnapshot.deleteMany({ where: { id: { in: toPrune.map((s) => s.id) } } });
+      await prisma.noteSnapshot.create({ data: { noteId: note.id, content: note.content } });
+
+      const toPrune = await prisma.noteSnapshot.findMany({
+        where: { noteId: note.id },
+        orderBy: { createdAt: "desc" },
+        skip: snapshotCap(note.vault.workspace.owner.plan.maxSnapshotsPerNote),
+        select: { id: true },
+      });
+      if (toPrune.length > 0) {
+        await prisma.noteSnapshot.deleteMany({ where: { id: { in: toPrune.map((s) => s.id) } } });
+      }
     }
   }
 }
+
+/** Notes loaded with their content at a time; keeps the worker's heap small. */
+const SNAPSHOT_BATCH_SIZE = 50;
 
 /**
  * Saves the note's current content as a snapshot (unless the latest snapshot already
