@@ -133,6 +133,29 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished, f
             <p className="text-xs text-[var(--text-muted)]" style={{ marginBottom: 12 }}>
               {t("web.import.intro")}
             </p>
+            {/* Shown before picking, so the place the notes go is clear up front. */}
+            {vaultId && (
+              <label className="block text-sm" style={{ marginBottom: 10 }}>
+                {t("web.import.folder")}
+                <select
+                  value={folder}
+                  onChange={(e) => setFolder(e.target.value)}
+                  disabled={running}
+                  data-testid="import-folder"
+                  className="w-full rounded-md bg-[var(--bg-tertiary)] outline-none text-sm"
+                  style={{ padding: "6px 8px", marginTop: 4 }}
+                >
+                  <option value="">{t("web.import.vaultRoot")}</option>
+                  {[...new Set([...folders, ...(initialFolder ? [initialFolder] : [])])]
+                    .sort((a, b) => a.localeCompare(b))
+                    .map((f) => (
+                      <option key={f} value={f}>
+                        {f}
+                      </option>
+                    ))}
+                </select>
+              </label>
+            )}
             <div className="flex flex-wrap gap-2" style={{ marginBottom: 12 }}>
               <button
                 className="rounded-md bg-[var(--bg-tertiary)] hover:bg-[var(--bg-hover)] text-sm"
@@ -227,29 +250,6 @@ export default function ImportVault({ vaultId, vaultName, onClose, onFinished, f
                   className="w-full rounded-md bg-[var(--bg-tertiary)] outline-none text-sm"
                   style={{ padding: "6px 8px", marginTop: 4 }}
                 />
-              </label>
-            )}
-
-            {vaultId && (
-              <label className="block text-sm" style={{ marginBottom: 10 }}>
-                {t("web.import.folder")}
-                <select
-                  value={folder}
-                  onChange={(e) => setFolder(e.target.value)}
-                  disabled={running}
-                  data-testid="import-folder"
-                  className="w-full rounded-md bg-[var(--bg-tertiary)] outline-none text-sm"
-                  style={{ padding: "6px 8px", marginTop: 4 }}
-                >
-                  <option value="">{t("web.import.vaultRoot")}</option>
-                  {[...new Set([...folders, ...(initialFolder ? [initialFolder] : [])])]
-                    .sort((a, b) => a.localeCompare(b))
-                    .map((f) => (
-                      <option key={f} value={f}>
-                        {f}
-                      </option>
-                    ))}
-                </select>
               </label>
             )}
 
