@@ -5,6 +5,7 @@ import ContextMenu, { type ContextMenuItem } from "@/components/ContextMenu";
 import { ChevronIcon, PlusIcon } from "@/components/icons";
 import { webApi, ApiError, type VaultIndex } from "@/lib/webApi";
 import { createUntitledNote } from "@/lib/note-names";
+import { droppedFiles, isFileDrag } from "@/lib/dropped-files";
 import { expandFolderMove, type PathMove } from "@noteriv/core/link-rename";
 import { t } from "@noteriv/ui/i18n";
 import { useLocale } from "@noteriv/ui/i18n/react";
@@ -74,6 +75,8 @@ interface TreeRowProps {
   onDragOverFolder: (id: string | null) => void;
   onMove: (payload: DragPayload, targetFolderId: string | null) => void;
   onHoverExpand: (id: string) => void;
+  /** Files dragged in from the computer and dropped on a folder; absent when importing is not offered. */
+  onDropFiles?: (files: File[], targetFolderId: string | null) => void;
 }
 
 function readPayload(e: React.DragEvent): DragPayload | null {
@@ -103,6 +106,7 @@ function TreeRow({
   onDragOverFolder,
   onMove,
   onHoverExpand,
+  onDropFiles,
 }: TreeRowProps) {
   const indent = depth * 12 + 12;
   const isRenaming = renamingId === node.id;
@@ -157,20 +161,27 @@ function TreeRow({
           onDragStart={dragStart}
           onDragEnter={() => !expanded && onHoverExpand(node.id)}
           onDragOver={(e) => {
-            if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+            const files = !!onDropFiles && isFileDrag(e.dataTransfer);
+            if (!files && !e.dataTransfer.types.includes(DND_TYPE)) return;
             e.preventDefault();
             e.stopPropagation();
-            e.dataTransfer.dropEffect = "move";
+            e.dataTransfer.dropEffect = files ? "copy" : "move";
             if (dragOverId !== node.id) onDragOverFolder(node.id);
           }}
           onDragLeave={() => dragOverId === node.id && onDragOverFolder(null)}
           onDrop={(e) => {
             const payload = readPayload(e);
-            if (!payload) return;
-            e.preventDefault();
-            e.stopPropagation();
-            onDragOverFolder(null);
-            onMove(payload, node.id);
+            if (payload) {
+              e.preventDefault();
+              e.stopPropagation();
+              onDragOverFolder(null);
+              onMove(payload, node.id);
+            } else if (onDropFiles && isFileDrag(e.dataTransfer)) {
+              e.preventDefault();
+              e.stopPropagation();
+              onDragOverFolder(null);
+              onDropFiles(droppedFiles(e.dataTransfer), node.id);
+            }
           }}
           style={{
             paddingLeft: `${indent}px`,
@@ -203,6 +214,7 @@ function TreeRow({
               onDragOverFolder={onDragOverFolder}
               onMove={onMove}
               onHoverExpand={onHoverExpand}
+              onDropFiles={onDropFiles}
             />
           ))}
       </div>
@@ -261,6 +273,8 @@ interface SidebarProps {
   onMoved?: (moves: PathMove[], before: string[]) => void;
   /** Opens the import dialog aimed at a folder (its path; "" = the vault root). */
   onImportHere?: (folderPath: string) => void;
+  /** Files dragged in from the computer, to import into a folder (its path; "" = the vault root). */
+  onImportFiles?: (files: File[], folderPath: string) => void;
 }
 
 /**
@@ -284,6 +298,7 @@ export default function Sidebar({
   onRenameRequestHandled,
   onMoved,
   onImportHere,
+  onImportFiles,
 }: SidebarProps) {
   useLocale();
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -448,6 +463,12 @@ export default function Sidebar({
     setContextMenu({ x: e.clientX, y: e.clientY, node: null });
   }
 
+  function importDroppedFiles(files: File[], folderId: string | null) {
+    if (!onImportFiles || files.length === 0) return;
+    const folderPath = folderId ? (index?.folders.find((f) => f.id === folderId)?.path ?? "") : "";
+    onImportFiles(files, folderPath);
+  }
+
   function getContextMenuItems(): ContextMenuItem[] {
     if (!contextMenu) return [];
     const { node } = contextMenu;
@@ -515,18 +536,25 @@ export default function Sidebar({
         className="flex-1 overflow-y-auto py-1"
         onContextMenu={handleEmptyContextMenu}
         // Dropping on empty space (not on a folder) moves the item to the vault root.
+        // Files dragged in from the computer import into the vault root the same way.
         onDragOver={(e) => {
-          if (!e.dataTransfer.types.includes(DND_TYPE)) return;
+          const files = !!onImportFiles && isFileDrag(e.dataTransfer);
+          if (!files && !e.dataTransfer.types.includes(DND_TYPE)) return;
           e.preventDefault();
+          if (files) e.dataTransfer.dropEffect = "copy";
           setRootDropActive(true);
         }}
         onDragLeave={(e) => e.currentTarget === e.target && setRootDropActive(false)}
         onDrop={(e) => {
           setRootDropActive(false);
           const payload = readPayload(e);
-          if (!payload) return;
-          e.preventDefault();
-          moveNode(payload, null);
+          if (payload) {
+            e.preventDefault();
+            moveNode(payload, null);
+          } else if (onImportFiles && isFileDrag(e.dataTransfer)) {
+            e.preventDefault();
+            importDroppedFiles(droppedFiles(e.dataTransfer), null);
+          }
         }}
         style={rootDropActive ? { outline: "1px dashed var(--accent)", outlineOffset: -2 } : undefined}
       >
@@ -551,6 +579,7 @@ export default function Sidebar({
               onDragOverFolder={setDragOverId}
               onMove={moveNode}
               onHoverExpand={hoverExpand}
+              onDropFiles={onImportFiles ? importDroppedFiles : undefined}
             />
           ))
         ) : (

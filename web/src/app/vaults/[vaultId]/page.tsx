@@ -302,6 +302,8 @@ export default function VaultPage() {
   const [importMode, setImportMode] = useState<"current" | "new" | null>(null);
   /** Folder the import dialog starts aimed at (set from the file sidebar; "" = vault root). */
   const [importFolder, setImportFolder] = useState("");
+  /** Files dropped on the file sidebar, handed to the import dialog. */
+  const [importFiles, setImportFiles] = useState<File[] | undefined>(undefined);
   const [bookmarksVisible, setBookmarksVisible] = useState(false);
   const [bookmarks, setBookmarks] = useState<string[]>([]);
   const bookmarkedNotes = useMemo(
@@ -1976,6 +1978,13 @@ export default function VaultPage() {
               onMoved={(moves, before) => void handleNotesMoved(moves, before)}
               onImportHere={(folderPath) => {
                 setImportFolder(folderPath);
+                setImportFiles(undefined);
+                setImportMode("current");
+              }}
+              onImportFiles={(files, folderPath) => {
+                if (importMode) return; // a dialog is already open
+                setImportFolder(folderPath);
+                setImportFiles(files);
                 setImportMode("current");
               }}
             />
@@ -2431,13 +2440,16 @@ export default function VaultPage() {
           vaultName={vault?.name}
           folders={index?.folders.map((f) => f.path) ?? []}
           initialFolder={importMode === "current" ? importFolder : ""}
+          initialFiles={importMode === "current" ? importFiles : undefined}
           onClose={() => {
             setImportMode(null);
             setImportFolder("");
+            setImportFiles(undefined);
           }}
           onFinished={(id) => {
             setImportMode(null);
             setImportFolder("");
+            setImportFiles(undefined);
             if (id !== vaultId) router.push(`/vaults/${id}`);
             else refreshIndex();
           }}
